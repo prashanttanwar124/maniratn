@@ -1,0 +1,416 @@
+<script setup>
+import CustomerSelector from '@/components/CustomerSelector.vue';
+import AppLayout from '@/layouts/AppLayout.vue';
+import { useForm } from '@inertiajs/vue3';
+import axios from 'axios';
+import Button from 'primevue/button';
+import Column from 'primevue/column';
+import DataTable from 'primevue/datatable';
+import Divider from 'primevue/divider';
+import InputNumber from 'primevue/inputnumber';
+import InputText from 'primevue/inputtext';
+import Tag from 'primevue/tag';
+import { useToast } from 'primevue/usetoast';
+import { computed, onMounted, ref } from 'vue';
+import { route } from 'ziggy-js';
+
+const props = defineProps({
+    customers: Array,
+    products: Array,
+    prefilledItems: {
+        type: Array,
+        default: () => [],
+    },
+    prefilledCustomer: {
+        type: Object,
+        default: () => null,
+    },
+});
+
+const toast = useToast();
+const barcodeInput = ref(null);
+
+const form = useForm({
+    customer_id: props.prefilledCustomer?.id || null,
+    date: new Date().toISOString().split('T')[0],
+    gold_rate: null,
+    items:
+        props.prefilledItems && props.prefilledItems.length > 0
+            ? props.prefilledItems.map((item) => ({
+                  type: 'order_item',
+                  id: item.id,
+                  description: item.item_name,
+                  weight: parseFloat(item.finished_weight),
+                  purity: item.purity,
+                  rate: null,
+                  making_charge: 0,
+                  final_price: 0,
+              }))
+            : [],
+    payment_cash: 0,
+    payment_card: 0,
+    card_note: '',
+});
+
+const scannedBarcode = ref('');
+const isProcessing = ref(false);
+
+const lockedCustomerName = computed(() => {
+    return props.prefilledCustomer ? props.prefilledCustomer.name : '';
+});
+
+onMounted(() => {
+    if (barcodeInput.value) barcodeInput.value.$el.focus();
+});
+
+const fetchProduct = async () => {
+    if (!scannedBarcode.value) return;
+    isProcessing.value = true;
+
+    try {
+        const response = await axios.get(`/api/products/${scannedBarcode.value}`);
+        const product = response.data;
+
+        if (form.items.find((p) => p.type === 'product' && p.id === product.id)) {
+            toast.add({ severity: 'warn', summary: 'Duplicate', detail: 'Item is already in the list.', life: 2000 });
+            scannedBarcode.value = '';
+            return;
+        }
+
+        if (product.is_sold) {
+            toast.add({ severity: 'error', summary: 'Sold Out', detail: 'This item is already sold!', life: 3000 });
+            scannedBarcode.value = '';
+            return;
+        }
+
+        const currentRate = form.gold_rate || 0;
+        const price = parseFloat(product.net_weight) * currentRate + parseFloat(product.making_charge);
+
+        form.items.push({
+            type: 'product',
+            id: product.id,
+            description: product.name + (product.barcode ? ` (${product.barcode})` : ''),
+            weight: parseFloat(product.net_weight),
+            rate: currentRate,
+            making_charge: parseFloat(product.making_charge),
+            final_price: price,
+        });
+
+        scannedBarcode.value = '';
+        toast.add({ severity: 'success', summary: 'Added', detail: product.name, life: 1000 });
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Not Found', detail: 'Invalid Barcode', life: 3000 });
+    } finally {
+        isProcessing.value = false;
+        if (barcodeInput.value) barcodeInput.value.$el.focus();
+    }
+};
+
+const removeItem = (index) => form.items.splice(index, 1);
+
+const onRowInput = (event, item, field) => {
+    item[field] = event.value;
+    recalculateRow(item);
+};
+
+const recalculateRow = (item) => {
+    const w = parseFloat(item.weight) || 0;
+    const r = parseFloat(item.rate) || 0;
+    const m = parseFloat(item.making_charge) || 0;
+    item.final_price = w * r + m;
+};
+
+const subTotal = computed(() => form.items.reduce((acc, item) => acc + (item.final_price || 0), 0));
+const gstAmount = computed(() => subTotal.value * 0.03);
+const grandTotal = computed(() => subTotal.value + gstAmount.value);
+const balanceDue = computed(() => Math.round(grandTotal.value) - (form.payment_cash || 0) - (form.payment_card || 0));
+
+const formatCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
+
+const submitInvoice = () => {
+    if (form.items.length === 0) {
+        toast.add({ severity: 'warn', summary: 'Empty Cart', detail: 'Add items first!', life: 3000 });
+        return;
+    }
+    if (!form.customer_id) {
+        toast.add({ severity: 'error', summary: 'Missing Customer', detail: 'Select a customer', life: 3000 });
+        return;
+    }
+    if (!form.gold_rate) {
+        toast.add({ severity: 'error', summary: 'Missing Rate', detail: "Enter today's Gold Rate", life: 3000 });
+        return;
+    }
+
+    form.transform((data) => ({
+        ...data,
+        date: new Date(data.date).toISOString().split('T')[0],
+        items: data.items.map((item) => ({
+            type: item.type,
+            id: item.id,
+            making_charge: item.making_charge || 0,
+        })),
+    })).post(route('invoices.store'), {
+        onSuccess: () => {
+            toast.add({ severity: 'success', summary: 'Success', detail: 'Invoice Generated!', life: 3000 });
+            form.reset();
+        },
+        onError: (errors) => {
+            console.error(errors);
+            toast.add({ severity: 'error', summary: 'Error', detail: 'Please check form inputs', life: 3000 });
+        },
+    });
+};
+</script>
+
+<template>
+    <AppLayout>
+        <div class="flex flex-col gap-5">
+            <!-- HEADER -->
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-color">New Invoice</h2>
+                    <p class="text-sm text-muted-color">Create a new sales invoice</p>
+                </div>
+            </div>
+
+            <!-- TOP ROW: Customer, Rate, Date -->
+            <div class="card overflow-hidden !p-0">
+                <div class="border-b border-surface-200 bg-white px-5 py-4">
+                    <h3 class="text-lg font-semibold text-surface-900">Invoice Details</h3>
+                    <p class="mt-1 text-sm text-surface-500">Select customer, rate, and invoice date</p>
+                </div>
+
+                <div class="bg-white p-5">
+                    <div class="grid grid-cols-1 gap-5 md:grid-cols-4">
+                        <!-- Customer -->
+                        <div class="md:col-span-2">
+                            <label class="mb-2 block text-sm font-medium text-surface-700"> Customer </label>
+
+                            <div v-if="prefilledCustomer">
+                                <InputText :modelValue="lockedCustomerName" readonly class="w-full" />
+
+                                <div class="mt-2 flex items-center gap-2 text-xs text-primary">
+                                    <i class="pi pi-info-circle"></i>
+                                    <span>Locked to Custom Order #{{ prefilledItems[0]?.order_id || 'Ref' }}</span>
+                                </div>
+                            </div>
+
+                            <div v-else>
+                                <CustomerSelector v-model="form.customer_id" class="w-full" :errorMessage="form.errors.customer_id" />
+                            </div>
+                        </div>
+
+                        <!-- Gold Rate -->
+                        <div>
+                            <label class="mb-2 block text-sm font-medium text-surface-700">
+                                Today's Rate (22k)
+                                <span class="text-red-500">*</span>
+                            </label>
+
+                            <InputNumber v-model="form.gold_rate" mode="currency" currency="INR" locale="en-IN" placeholder="₹0.00" class="w-full" inputClass="w-full font-medium" />
+                        </div>
+
+                        <!-- Invoice Date -->
+                        <div>
+                            <label class="mb-2 block text-sm font-medium text-surface-700"> Invoice Date </label>
+
+                            <InputText type="date" v-model="form.date" class="w-full" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAIN CONTENT: Items Table + Bill Summary -->
+            <div class="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3">
+                <!-- ITEMS TABLE -->
+                <div class="card flex h-full flex-col overflow-hidden !p-0 lg:col-span-2">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between border-b border-surface-200 bg-white px-5 py-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-surface-900">Invoice Items</h3>
+                            <p class="mt-1 text-sm text-surface-500">Scan barcode or enter product code</p>
+                        </div>
+
+                        <span class="text-sm font-medium text-surface-500"> {{ form.items?.length || 0 }} items </span>
+                    </div>
+
+                    <!-- Scanner Input -->
+                    <div class="flex gap-3 border-b border-surface-200 bg-surface-50 p-4">
+                        <IconField class="flex-1">
+                            <InputIcon class="pi pi-barcode" />
+                            <InputText ref="barcodeInput" v-model="scannedBarcode" @keydown.enter="fetchProduct" placeholder="Scan barcode or enter product code..." class="w-full" />
+                        </IconField>
+
+                        <Button label="Add Item" icon="pi pi-plus" @click="fetchProduct" :loading="isProcessing" />
+                    </div>
+
+                    <!-- Table -->
+                    <DataTable :value="form.items" scrollable scrollHeight="420px" stripedRows rowHover size="small" dataKey="id" class="text-sm">
+                        <!-- Empty -->
+                        <template #empty>
+                            <div class="flex flex-col items-center py-16 text-center text-surface-500">
+                                <i class="pi pi-barcode mb-4 text-4xl opacity-30"></i>
+                                <p class="font-medium">No items added</p>
+                                <span class="text-sm">Scan barcode to start billing</span>
+                            </div>
+                        </template>
+
+                        <!-- Type -->
+                        <Column header="Type" style="width: 90px">
+                            <template #body="{ data }">
+                                <Tag :value="data.type === 'order_item' ? 'ORDER' : 'STOCK'" :severity="data.type === 'order_item' ? 'info' : 'success'" />
+                            </template>
+                        </Column>
+
+                        <!-- Item -->
+                        <Column field="description" header="Item" style="min-width: 220px">
+                            <template #body="{ data }">
+                                <div class="flex flex-col">
+                                    <span class="font-medium text-surface-900">
+                                        {{ data.description }}
+                                    </span>
+
+                                    <span v-if="data.type === 'order_item'" class="mt-1 text-xs text-primary"> Custom Work </span>
+                                </div>
+                            </template>
+                        </Column>
+
+                        <!-- Weight -->
+                        <Column header="Wt (g)" style="width: 90px">
+                            <template #body="{ data }">
+                                <div class="text-right font-medium">
+                                    {{ data.weight }}
+                                </div>
+                            </template>
+                        </Column>
+
+                        <!-- Rate -->
+                        <Column header="Rate/g" style="width: 130px">
+                            <template #body="{ data }">
+                                <InputNumber
+                                    v-model="data.rate"
+                                    inputClass="w-full text-right"
+                                    class="w-full"
+                                    mode="decimal"
+                                    :minFractionDigits="2"
+                                    :maxFractionDigits="2"
+                                    @input="onRowInput($event, data, 'rate')"
+                                />
+                            </template>
+                        </Column>
+
+                        <!-- Making -->
+                        <Column header="Making" style="width: 130px">
+                            <template #body="{ data }">
+                                <InputNumber
+                                    v-model="data.making_charge"
+                                    inputClass="w-full text-right"
+                                    class="w-full"
+                                    mode="decimal"
+                                    :minFractionDigits="2"
+                                    :maxFractionDigits="2"
+                                    @input="onRowInput($event, data, 'making_charge')"
+                                />
+                            </template>
+                        </Column>
+
+                        <!-- Total -->
+                        <Column header="Total" style="width: 140px">
+                            <template #body="{ data }">
+                                <div class="text-right font-semibold text-surface-900">
+                                    {{ formatCurrency(data.final_price) }}
+                                </div>
+                            </template>
+                        </Column>
+
+                        <!-- Delete -->
+                        <Column style="width: 70px">
+                            <template #body="{ index }">
+                                <div class="flex justify-center">
+                                    <Button icon="pi pi-trash" text severity="danger" rounded @click="removeItem(index)" />
+                                </div>
+                            </template>
+                        </Column>
+                    </DataTable>
+                </div>
+
+                <!-- BILL SUMMARY -->
+                <div class="card flex h-full flex-col justify-between overflow-hidden !p-0">
+                    <!-- Summary -->
+                    <div class="p-5">
+                        <div class="mb-5">
+                            <h3 class="text-lg font-semibold text-surface-900">Bill Summary</h3>
+                            <p class="mt-1 text-sm text-surface-500">Overview of charges and received payment</p>
+                        </div>
+
+                        <div class="space-y-3">
+                            <!-- Items -->
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-surface-500"> Items ({{ form.items.length }}) </span>
+                                <span class="text-sm font-semibold text-surface-900">
+                                    {{ formatCurrency(subTotal) }}
+                                </span>
+                            </div>
+
+                            <!-- GST -->
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-surface-500">GST (3%)</span>
+                                <span class="text-sm font-semibold text-surface-900">
+                                    {{ formatCurrency(gstAmount) }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <Divider class="my-4" />
+
+                        <!-- Grand Total -->
+                        <div class="flex items-end justify-between">
+                            <div>
+                                <p class="text-sm text-surface-500">Grand Total</p>
+                                <p class="mt-1 text-xs text-surface-400">Rounded final payable amount</p>
+                            </div>
+
+                            <span class="text-3xl font-bold text-primary">
+                                {{ formatCurrency(Math.round(grandTotal)) }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Payment -->
+                    <div class="border-t border-surface-200 bg-surface-50 p-5">
+                        <div class="mb-4">
+                            <h3 class="text-sm font-semibold tracking-wide text-surface-700 uppercase">Payment Received</h3>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="mb-2 block text-sm font-medium text-surface-700">Cash</label>
+                                <InputNumber v-model="form.payment_cash" mode="currency" currency="INR" locale="en-IN" inputClass="w-full" class="w-full" placeholder="₹0.00" />
+                            </div>
+
+                            <div>
+                                <label class="mb-2 block text-sm font-medium text-surface-700">Card / UPI</label>
+                                <InputNumber v-model="form.payment_card" mode="currency" currency="INR" locale="en-IN" inputClass="w-full" class="w-full" placeholder="₹0.00" />
+                            </div>
+                        </div>
+
+                        <Divider class="my-4" />
+
+                        <!-- Balance -->
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-semibold text-surface-700">Balance Due</span>
+                            <span class="text-xl font-bold" :class="balanceDue > 0 ? 'text-red-500' : 'text-green-600'">
+                                {{ formatCurrency(balanceDue) }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Action -->
+                    <div class="border-t border-surface-200 bg-white p-4">
+                        <Button label="Generate Invoice" icon="pi pi-print" severity="success" class="w-full" size="large" @click="submitInvoice" :loading="form.processing" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </AppLayout>
+</template>
