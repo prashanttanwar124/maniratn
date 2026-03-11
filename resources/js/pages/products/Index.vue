@@ -26,6 +26,8 @@ const props = defineProps({
     purities: Array,
     suppliers: Array,
     filters: Object,
+    summary: Object,
+    category_breakdown: Array,
 });
 
 const toast = useToast();
@@ -207,6 +209,67 @@ const printSelected = () => {
             </div>
 
             <!-- Search / Table -->
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="border border-surface-200 bg-white px-5 py-4">
+                    <p class="text-sm text-surface-500">Total Items</p>
+                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ props.summary?.total_items || 0 }}</p>
+                    <p class="mt-1 text-xs text-surface-500">Available: {{ props.summary?.available_items || 0 }}</p>
+                </div>
+
+                <div class="border border-surface-200 bg-white px-5 py-4">
+                    <p class="text-sm text-surface-500">Sold Items</p>
+                    <p class="mt-2 text-2xl font-semibold text-red-600">{{ props.summary?.sold_items || 0 }}</p>
+                    <p class="mt-1 text-xs text-surface-500">Net sold weight: {{ formatWeight(props.summary?.sold_weight) }}</p>
+                </div>
+
+                <div class="border border-surface-200 bg-white px-5 py-4">
+                    <p class="text-sm text-surface-500">Total Gross Weight</p>
+                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ formatWeight(props.summary?.gross_weight) }}</p>
+                    <p class="mt-1 text-xs text-surface-500">Across filtered product records</p>
+                </div>
+
+                <div class="border border-surface-200 bg-white px-5 py-4">
+                    <p class="text-sm text-surface-500">Total Net Weight</p>
+                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ formatWeight(props.summary?.net_weight) }}</p>
+                    <p class="mt-1 text-xs text-surface-500">Sale-weight basis</p>
+                </div>
+            </div>
+
+            <div class="border border-surface-200 bg-white">
+                <div class="border-b border-surface-200 px-5 py-4">
+                    <h3 class="text-base font-semibold text-surface-900">Category Breakdown</h3>
+                    <p class="mt-1 text-sm text-surface-500">Item counts and total weights by category</p>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
+                    <div v-for="entry in category_breakdown" :key="entry.category" class="border border-surface-200 bg-surface-50 px-4 py-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-semibold text-surface-900">{{ entry.category }}</p>
+                                <p class="mt-1 text-xs text-surface-500">{{ entry.items_count }} item{{ entry.items_count === 1 ? '' : 's' }}</p>
+                            </div>
+                            <Tag :value="`${entry.sold_count} sold`" severity="warn" />
+                        </div>
+
+                        <div class="mt-4 space-y-2 text-sm">
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="text-surface-500">Gross Weight</span>
+                                <span class="font-medium text-surface-900">{{ formatWeight(entry.gross_weight) }}</span>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="text-surface-500">Net Weight</span>
+                                <span class="font-medium text-surface-900">{{ formatWeight(entry.net_weight) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="!category_breakdown?.length" class="border border-dashed border-surface-300 bg-white px-4 py-8 text-center text-sm text-surface-500">
+                        No category inventory found for the current filter.
+                    </div>
+                </div>
+            </div>
+
             <div class="card overflow-hidden !p-0">
                 <div class="border-b border-surface-200 bg-white px-5 py-4">
                     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -288,6 +351,12 @@ const printSelected = () => {
                                 <span class="font-medium text-surface-900">
                                     {{ formatCurrency(data.making_charge) }}
                                 </span>
+                            </template>
+                        </Column>
+
+                        <Column header="Status" style="width: 130px">
+                            <template #body="{ data }">
+                                <Tag :value="data.is_sold ? 'Sold' : 'In Stock'" :severity="data.is_sold ? 'danger' : 'success'" />
                             </template>
                         </Column>
 

@@ -6,15 +6,19 @@ use Inertia\Inertia;
 use App\Models\Order;
 use App\Models\Invoice;
 use App\Models\Product;
+use App\Models\DailyRate;
 use App\Enums\VaultType;
 use App\Models\Customer;
 use App\Models\OrderItem;
 use App\Models\InvoiceItem;
 use Illuminate\Http\Request;
 use App\Services\VaultService;
+use App\Services\LedgerImpactService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Transaction; // <--- The Ledger Model
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 
 class InvoiceController extends Controller
 {
@@ -22,16 +26,45 @@ class InvoiceController extends Controller
 
     public function index()
     {
-        // 1. Fetch Invoices
-        // 'with('customer')' is CRITICAL. It gets the customer name for the table.
-        // 'orderBy' ensures the newest bills appear at the top.
         $invoices = Invoice::with('customer')
-            ->orderBy('created_at', 'desc') // or orderBy('date', 'desc')
+            ->with(['items', 'transactions', 'cancelledBy'])
+            ->orderBy('created_at', 'desc')
             ->get();
 
-        // 2. Send to the Vue Page
         return Inertia::render('invoices/Index', [
-            'invoices' => $invoices
+            'invoices' => $invoices->map(function (Invoice $invoice) {
+                $paidAmount = (float) $invoice->transactions
+                    ->where('type', 'PAYMENT')
+                    ->sum('amount');
+
+                $pendingAmount = $invoice->status === 'CANCELLED'
+                    ? 0
+                    : max((float) $invoice->total_amount - $paidAmount, 0);
+
+                return [
+                    'id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'customer' => [
+                        'id' => $invoice->customer?->id,
+                        'name' => $invoice->customer?->name,
+                    ],
+                    'date' => $invoice->date,
+                    'status' => $invoice->status,
+                    'total_amount' => (float) $invoice->total_amount,
+                    'discount_type' => $invoice->discount_type,
+                    'discount_value' => (float) ($invoice->discount_value ?? 0),
+                    'discount_amount' => (float) ($invoice->discount_amount ?? 0),
+                    'tax_amount' => (float) ($invoice->tax_amount ?? 0),
+                    'paid_amount' => $paidAmount,
+                    'pending_amount' => $pendingAmount,
+                    'void_amount' => $invoice->status === 'CANCELLED' ? $paidAmount : 0,
+                    'item_count' => $invoice->items->count(),
+                    'cancellation_mode' => $invoice->cancellation_mode,
+                    'cancellation_reason' => $invoice->cancellation_reason,
+                    'cancelled_at' => optional($invoice->cancelled_at)?->toDateTimeString(),
+                    'cancelled_by' => $invoice->cancelledBy?->name,
+                ];
+            })->values(),
         ]);
     }
 
@@ -39,6 +72,10 @@ class InvoiceController extends Controller
     {
         $prefilledItems = [];
         $customer = null;
+        $lockCustomer = false;
+        $todayRate = DailyRate::query()
+            ->whereDate('date', now()->toDateString())
+            ->value('gold_sell') ?? 0;
 
         // If we are coming from the Kanban Board with an Order ID
         if ($request->has('order_id')) {
@@ -54,15 +91,47 @@ class InvoiceController extends Controller
             // 2. Get the Customer details from the first item
             if ($prefilledItems->isNotEmpty()) {
                 $customer = $prefilledItems->first()->order->customer;
+                $lockCustomer = true;
             }
+        }
+
+        if (!$customer && $request->filled('customer_id')) {
+            $customer = Customer::find($request->integer('customer_id'));
         }
 
         return Inertia::render('invoices/Create', [
             'customers'      => \App\Models\Customer::all(),
             'products'       => \App\Models\Product::all(),
+            'defaultGoldRate' => (float) $todayRate,
             // Pass the ready items to the frontend
             'prefilledItems' => $prefilledItems,
             'prefilledCustomer' => $customer,
+            'lockCustomer' => $lockCustomer,
+        ]);
+    }
+
+    public function print(Invoice $invoice)
+    {
+        $invoice->load([
+            'customer',
+            'items.product',
+            'items.orderItem',
+            'transactions',
+            'user',
+        ]);
+
+        $paidAmount = (float) $invoice->transactions
+            ->where('type', 'PAYMENT')
+            ->sum('amount');
+
+        $balanceDue = $invoice->status === 'CANCELLED'
+            ? 0
+            : max((float) $invoice->total_amount - $paidAmount, 0);
+
+        return view('print.invoice', [
+            'invoice' => $invoice,
+            'paidAmount' => $paidAmount,
+            'balanceDue' => $balanceDue,
         ]);
     }
 
@@ -75,6 +144,8 @@ class InvoiceController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'gold_rate'   => 'required|numeric',
             'date'        => 'required|date',
+            'discount_type' => 'nullable|in:amount,percentage',
+            'discount_value' => 'nullable|numeric|min:0',
 
             // MIXED ITEMS LIST (Can be Product OR OrderItem)
             'items'       => 'required|array',
@@ -90,15 +161,23 @@ class InvoiceController extends Controller
         return DB::transaction(function () use ($validated) {
 
             $totalBillAmount = 0;
+            $totalVaultGoldSoldWeight = 0;
 
             // 2. Create Invoice Header
             $invoice = Invoice::create([
-                'invoice_number' => 'INV-' . time(),
+                'invoice_number' => 'TMP-' . Str::uuid(),
                 'customer_id'    => $validated['customer_id'],
                 'gold_rate_applied' => $validated['gold_rate'],
+                'discount_type' => $validated['discount_type'] ?? null,
+                'discount_value' => (float) ($validated['discount_value'] ?? 0),
+                'discount_amount' => 0,
                 'date'           => $validated['date'],
                 'total_amount'   => 0,
                 'user_id'        => Auth::id(),
+            ]);
+
+            $invoice->update([
+                'invoice_number' => sprintf('INV-%s-%06d', now()->format('Ymd'), $invoice->id),
             ]);
 
             // 3. LOOP THROUGH MIXED ITEMS
@@ -161,6 +240,8 @@ class InvoiceController extends Controller
                         'making_charges' => $row['making_charges'],
                         'final_price'   => ($weight * $validated['gold_rate']) + $row['making_charges']
                     ]);
+
+                    $totalVaultGoldSoldWeight += (float) $weight;
                 }
 
                 // Math: (Weight * Rate) + Making Charge
@@ -168,14 +249,57 @@ class InvoiceController extends Controller
                 $totalBillAmount += $itemTotal;
             }
 
-            // 4. Calculate Tax & Final Total
-            $gst = $totalBillAmount * 0.03; // 3% GST
-            $finalTotal = $totalBillAmount + $gst;
+            // 4. Calculate Discount, Tax & Final Total
+            $discountType = $validated['discount_type'] ?? null;
+            $discountValue = round((float) ($validated['discount_value'] ?? 0), 2);
+            $discountAmount = 0;
+
+            if ($discountType === 'percentage') {
+                if ($discountValue > 100) {
+                    throw ValidationException::withMessages([
+                        'discount_value' => 'Percentage discount cannot be greater than 100.',
+                    ]);
+                }
+
+                $discountAmount = round($totalBillAmount * ($discountValue / 100), 2);
+            } elseif ($discountType === 'amount') {
+                $discountAmount = $discountValue;
+            }
+
+            if ($discountAmount > $totalBillAmount) {
+                throw ValidationException::withMessages([
+                    'discount_value' => 'Discount cannot be greater than the item subtotal.',
+                ]);
+            }
+
+            $taxableAmount = round($totalBillAmount - $discountAmount, 2);
+            $gst = round($taxableAmount * 0.03, 2); // 3% GST after discount
+            $finalTotal = round($taxableAmount + $gst, 2);
+            $totalPaid = (float) ($validated['payment_cash'] ?? 0) + (float) ($validated['payment_card'] ?? 0);
+
+            if ($totalPaid > $finalTotal) {
+                throw ValidationException::withMessages([
+                    'payment_cash' => 'Received amount cannot be greater than the invoice total.',
+                ]);
+            }
 
             $invoice->update([
+                'discount_type' => $discountType,
+                'discount_value' => $discountValue,
+                'discount_amount' => $discountAmount,
                 'total_amount' => $finalTotal,
                 'tax_amount'   => $gst
             ]);
+
+            if ($totalVaultGoldSoldWeight > 0) {
+                VaultService::debit(VaultType::GOLD, $totalVaultGoldSoldWeight, [
+                    'source_type' => Invoice::class,
+                    'source_id' => $invoice->id,
+                    'reference' => $invoice->invoice_number,
+                    'user_id' => Auth::id(),
+                    'note' => "Gold sold in {$invoice->invoice_number}",
+                ]);
+            }
 
             // 5. ACCOUNTING (Ledger Entries)
 
@@ -189,11 +313,12 @@ class InvoiceController extends Controller
                 'description'       => "Bill #" . $invoice->invoice_number,
                 'date'              => $validated['date'],
                 'user_id'           => Auth::id(),
+                'entry_type_code'   => 'INVOICE_SALE',
             ]);
 
             // B. CREDIT THE CUSTOMER (Cash Payment)
             if (!empty($validated['payment_cash']) && $validated['payment_cash'] > 0) {
-                Transaction::create([
+                $transaction = Transaction::create([
                     'transactable_type' => Customer::class,
                     'transactable_id'   => $validated['customer_id'],
                     'invoice_id'        => $invoice->id,
@@ -202,17 +327,15 @@ class InvoiceController extends Controller
                     'description'       => "Cash Payment",
                     'date'              => $validated['date'],
                     'user_id'           => Auth::id(),
-                    'payment_method' => 'CASH'
+                    'payment_method' => 'CASH',
+                    'entry_type_code' => 'INVOICE_PAYMENT',
                 ]);
-
-
-                $vaultType = VaultType::CASH;
-                VaultService::credit($vaultType, $validated['payment_cash']);
+                LedgerImpactService::applyCashTransaction($transaction);
             }
 
             // C. CREDIT THE CUSTOMER (Card Payment)
             if (!empty($validated['payment_card']) && $validated['payment_card'] > 0) {
-                Transaction::create([
+                $transaction = Transaction::create([
                     'transactable_type' => Customer::class,
                     'transactable_id'   => $validated['customer_id'],
                     'invoice_id'        => $invoice->id,
@@ -221,11 +344,11 @@ class InvoiceController extends Controller
                     'description'       => "Card Payment " . ($validated['card_note'] ?? ''),
                     'date'              => $validated['date'],
                     'user_id'           => Auth::id(),
-                    'payment_method' => 'CARD'
+                    'payment_method' => 'CARD',
+                    'entry_type_code' => 'INVOICE_PAYMENT',
 
                 ]);
-                $vaultType = VaultType::BANK;
-                VaultService::credit($vaultType, $validated['payment_cash']);
+                LedgerImpactService::applyCashTransaction($transaction);
             }
 
             return $invoice;
@@ -233,44 +356,92 @@ class InvoiceController extends Controller
     }
 
 
-    public function cancel($id)
+    public function cancel(Request $request, $id)
     {
-        $invoice = Invoice::with(['items.product', 'transactions'])->findOrFail($id);
+        $validated = $request->validate([
+            'mode' => 'required|in:keep_advance,refund',
+            'reason' => 'required|string|max:500',
+        ]);
+
+        $invoice = Invoice::with(['items.product', 'items.orderItem', 'transactions'])->findOrFail($id);
 
         if ($invoice->status === 'CANCELLED') {
             return back()->with('error', 'This invoice is already cancelled.');
         }
 
-        DB::transaction(function () use ($invoice) {
-            // 1. Change Status
-            $invoice->update(['status' => 'CANCELLED']);
+        try {
+            DB::transaction(function () use ($invoice, $validated) {
+            $invoice->update([
+                'status' => 'CANCELLED',
+                'cancellation_mode' => $validated['mode'],
+                'cancellation_reason' => $validated['reason'],
+                'cancelled_by' => Auth::id(),
+                'cancelled_at' => now(),
+            ]);
 
-            // 2. Return Products to Stock
+            $soldWeight = (float) $invoice->items
+                ->filter(fn ($item) => $item->order_item_id !== null)
+                ->sum('weight');
+
+            if ($soldWeight > 0) {
+                VaultService::credit(VaultType::GOLD, $soldWeight, [
+                    'source_type' => Invoice::class,
+                    'source_id' => $invoice->id,
+                    'reference' => $invoice->invoice_number,
+                    'user_id' => Auth::id(),
+                    'note' => "Gold restored after voiding {$invoice->invoice_number}",
+                ]);
+            }
+
             foreach ($invoice->items as $item) {
                 if ($item->product) {
                     $item->product->update(['is_sold' => false]);
                 }
-            }
 
-            // 3. Process Vault Reversals based on Transaction history
-            foreach ($invoice->transactions as $transaction) {
-                if ($transaction->type === 'PAYMENT') {
-                    // Determine which vault to debit based on the payment method
-                    $vaultType = ($transaction->payment_method === 'CARD') ? VaultType::BANK : VaultType::CASH;
-
-                    // Debit the vault to remove the money
-                    VaultService::debit(
-                        $vaultType,
-                        $transaction->amount,
-                        "Reversal: Cancelled Invoice #{$invoice->id}"
-                    );
-
-                    // 4. Mark transaction as VOID so it's excluded from current totals
-                    $transaction->update(['type' => 'VOID']);
+                if ($item->orderItem) {
+                    $item->orderItem->update(['status' => 'READY']);
                 }
             }
-        });
 
-        return back()->with('success', 'Invoice cancelled. Inventory restored and vault balances adjusted.');
+            foreach ($invoice->transactions as $transaction) {
+                if ($transaction->type === 'SALE') {
+                    $transaction->update([
+                        'type' => 'VOID',
+                        'description' => "Voided sale for {$invoice->invoice_number}",
+                        'entry_type_code' => 'VOID_INVOICE_SALE',
+                    ]);
+                    continue;
+                }
+
+                if ($transaction->type !== 'PAYMENT') {
+                    continue;
+                }
+
+                if ($validated['mode'] === 'refund') {
+                    LedgerImpactService::reverseCashTransaction($transaction);
+
+                    $transaction->update([
+                        'type' => 'VOID',
+                        'description' => "Refunded payment for {$invoice->invoice_number}",
+                        'entry_type_code' => 'INVOICE_REFUND',
+                    ]);
+                } else {
+                    $transaction->update([
+                        'description' => trim(($transaction->description ?: 'Payment') . " | Kept as customer advance after void {$invoice->invoice_number}"),
+                    ]);
+                }
+            }
+            });
+        } catch (\Throwable $e) {
+            return back()->withErrors([
+                'reason' => $e->getMessage(),
+            ]);
+        }
+
+        $message = $validated['mode'] === 'refund'
+            ? 'Invoice voided, stock restored, and paid amount refunded.'
+            : 'Invoice voided, stock restored, and paid amount kept as customer advance.';
+
+        return back()->with('success', $message);
     }
 }

@@ -8,6 +8,14 @@ class Invoice extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'cancelled_at' => 'datetime',
+        'discount_value' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
+        'total_amount' => 'decimal:2',
+    ];
+
     public function customer()
     {
         return $this->belongsTo(Customer::class);
@@ -30,5 +38,10 @@ class Invoice extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function cancelledBy()
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 }

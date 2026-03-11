@@ -7,6 +7,8 @@ use App\Models\Karigar;
 use App\Models\Customer;
 use App\Models\Mortgage;
 use App\Models\Transaction;
+use App\Models\Vault;
+use App\Models\VaultMovement;
 use Faker\Factory as Faker;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -188,5 +190,34 @@ class DatabaseSeeder extends Seeder
         // 1. Run Product Seeder first (if you have one)
         $this->call(ProductSeeder::class);
         $this->call(RolesAndPermissionsSeeder::class);
+
+        $this->syncSeededVaultBalances();
+    }
+
+    private function syncSeededVaultBalances(): void
+    {
+        $cashVault = Vault::query()->where('type', 'CASH')->first();
+        $bankVault = Vault::query()->where('type', 'BANK')->first();
+        $silverVault = Vault::query()->where('type', 'SILVER')->first();
+
+        foreach ([$cashVault, $bankVault, $silverVault] as $vault) {
+            if (! $vault) {
+                continue;
+            }
+
+            VaultMovement::create([
+                'vault_id' => $vault->id,
+                'vault_type' => $vault->type,
+                'direction' => 'CREDIT',
+                'amount' => (float) $vault->balance,
+                'balance_before' => 0,
+                'balance_after' => (float) $vault->balance,
+                'source_type' => self::class,
+                'reference' => 'Seeder Sync',
+                'note' => "Seeded opening balance for {$vault->type} vault",
+                'user_id' => 1,
+                'recorded_at' => now(),
+            ]);
+        }
     }
 }

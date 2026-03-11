@@ -2,54 +2,49 @@
 
 .layout-topbar {
     position: fixed;
-    height: 4rem;
-    z-index: 997;
-    left: 0;
     top: 0;
-    width: 100%;
-    padding: 0 2rem;
-    background-color: var(--surface-card);
-    transition: left var(--layout-section-transition-duration);
+    left: 0;
+    z-index: 997;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 4.75rem;
+    padding: 0 1.25rem;
+    background:
+        linear-gradient(115deg, #fffaf0 0%, #f8f3e3 18%, var(--surface-card) 46%, var(--surface-card) 100%);
+    border-bottom: 1px solid color-mix(in srgb, var(--surface-border) 86%, #d8c38a);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+    transition: left var(--layout-section-transition-duration);
 
-    .layout-topbar-logo-container {
-        width: 20rem;
+    .layout-topbar-start {
         display: flex;
         align-items: center;
-    }
-
-    .layout-topbar-logo {
-        display: inline-flex;
-        align-items: center;
-        font-size: 1.5rem;
-        border-radius: var(--content-border-radius);
-        color: var(--text-color);
-        font-weight: 500;
-        gap: 0.5rem;
-
-        svg {
-            width: 3rem;
-        }
-
-        &:focus-visible {
-            @include focused();
-        }
+        gap: 0.9rem;
+        min-width: 0;
+        flex: 0 0 auto;
     }
 
     .layout-topbar-action {
         display: inline-flex;
-        justify-content: center;
         align-items: center;
-        border-radius: 50%;
-        width: 2.5rem;
-        height: 2.5rem;
+        justify-content: center;
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 0;
         color: var(--text-color);
-        transition: background-color var(--element-transition-duration);
+        background: rgba(255, 255, 255, 0.68);
+        border: 1px solid var(--surface-border);
+        transition:
+            transform var(--element-transition-duration),
+            background-color var(--element-transition-duration),
+            border-color var(--element-transition-duration);
         cursor: pointer;
 
         &:hover {
-            background-color: var(--surface-hover);
+            background-color: #fffdf7;
+            border-color: color-mix(in srgb, var(--surface-border) 72%, #d9bf72);
+            transform: translateY(-1px);
         }
 
         &:focus-visible {
@@ -57,145 +52,286 @@
         }
 
         i {
-            font-size: 1.25rem;
-        }
-
-        span {
-            font-size: 1rem;
-            display: none;
-        }
-
-        &.layout-topbar-action-highlight {
-            background-color: var(--primary-color);
-            color: var(--primary-contrast-color);
+            font-size: 1.05rem;
         }
     }
 
-    .layout-menu-button {
-        margin-right: 0.5rem;
+    .layout-topbar-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.85rem;
+        min-width: 0;
+        padding-right: 1rem;
     }
 
-    .layout-topbar-menu-button {
-        display: none;
+    .layout-topbar-mark {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.8rem;
+        height: 2.8rem;
+        border-radius: 0;
+        background: linear-gradient(145deg, #b8923f 0%, #f4df9c 55%, #a47d2f 100%);
+        color: #5d4311;
+        font-size: 0.92rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.55),
+            0 8px 18px rgba(175, 140, 55, 0.18);
+        flex: 0 0 auto;
     }
 
-    .layout-topbar-actions {
-        margin-left: auto;
+    .layout-topbar-brand-copy {
         display: flex;
-        gap: 1rem;
+        flex-direction: column;
+        min-width: 0;
     }
 
-    .layout-topbar-menu-content {
-        display: flex;
-        gap: 1rem;
-    }
+    .layout-topbar-logo {
+        color: #21160a;
+        font-size: 1.2rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        line-height: 1;
 
-    .layout-config-menu {
-        display: flex;
-        gap: 1rem;
-    }
-}
-
-@media (max-width: 991px) {
-    .layout-topbar {
-        padding: 0 2rem;
-
-        .layout-topbar-logo-container {
-            width: auto;
-        }
-
-        .layout-menu-button {
-            margin-left: 0;
-            margin-right: 0.5rem;
-        }
-
-        .layout-topbar-menu-button {
-            display: inline-flex;
-        }
-
-        .layout-topbar-menu {
-            position: absolute;
-            background-color: var(--surface-overlay);
-            transform-origin: top;
-            box-shadow:
-                0px 3px 5px rgba(0, 0, 0, 0.02),
-                0px 0px 2px rgba(0, 0, 0, 0.05),
-                0px 1px 4px rgba(0, 0, 0, 0.08);
-            border-radius: var(--content-border-radius);
-            padding: 1rem;
-            right: 2rem;
-            top: 4rem;
-            min-width: 15rem;
-            border: 1px solid var(--surface-border);
-
-            .layout-topbar-menu-content {
-                gap: 0.5rem;
-            }
-
-            .layout-topbar-action {
-                display: flex;
-                width: 100%;
-                height: auto;
-                justify-content: flex-start;
-                border-radius: var(--content-border-radius);
-                padding: 0.5rem 1rem;
-
-                i {
-                    font-size: 1rem;
-                    margin-right: 0.5rem;
-                }
-
-                span {
-                    font-weight: medium;
-                    display: block;
-                }
-            }
-        }
-
-        .layout-topbar-menu-content {
-            flex-direction: column;
+        &:focus-visible {
+            @include focused();
         }
     }
-}
 
-.config-panel {
-    .config-panel-label {
-        font-size: 0.875rem;
-        color: var(--text-secondary-color);
+    .layout-topbar-subtitle {
+        margin-top: 0.2rem;
+        color: #7b6a42;
+        font-size: 0.7rem;
         font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
         line-height: 1;
     }
 
-    .config-panel-colors {
-        > div {
-            padding-top: 0.5rem;
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            justify-content: space-between;
+    .layout-topbar-center {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.85rem;
+        flex: 1 1 auto;
+        padding: 0 1.25rem;
+        min-width: 0;
+    }
 
-            button {
-                border: none;
-                width: 1.25rem;
-                height: 1.25rem;
-                border-radius: 50%;
-                padding: 0;
-                cursor: pointer;
-                outline-color: transparent;
-                outline-width: 2px;
-                outline-style: solid;
-                outline-offset: 1px;
+    .layout-topbar-workspace,
+    .layout-topbar-date {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.65rem;
+        min-height: 2.7rem;
+        padding: 0.55rem 0.9rem;
+        border-radius: 0;
+        border: 1px solid var(--surface-border);
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--text-secondary-color);
+        backdrop-filter: blur(8px);
+    }
 
-                &.active-color {
-                    outline-color: var(--primary-color);
-                }
-            }
+    .layout-topbar-workspace-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #8e7b4d;
+    }
+
+    .layout-topbar-workspace-value {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text-color);
+        white-space: nowrap;
+    }
+
+    .layout-topbar-date {
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    .layout-topbar-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.65rem;
+        flex: 0 0 auto;
+    }
+
+    .layout-topbar-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 2.7rem;
+        padding: 0.55rem 0.9rem;
+        border-radius: 0;
+        font-size: 0.8rem;
+        font-weight: 700;
+        white-space: nowrap;
+        border: 1px solid transparent;
+    }
+
+    .layout-topbar-status-open {
+        color: #166534;
+        background: #edfdf3;
+        border-color: #b7efcb;
+    }
+
+    .layout-topbar-status-closed {
+        color: #9a3412;
+        background: #fff4e8;
+        border-color: #fdc48b;
+    }
+
+    .layout-topbar-status-dot {
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 999px;
+        background: currentColor;
+    }
+
+    .layout-topbar-user {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-height: 2.9rem;
+        padding: 0.3rem 0.55rem 0.3rem 0.35rem;
+        border-radius: 0;
+        border: 1px solid var(--surface-border);
+        background: rgba(255, 255, 255, 0.82);
+        min-width: 0;
+    }
+
+    .layout-topbar-user-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.3rem;
+        height: 2.3rem;
+        border-radius: 0;
+        background: linear-gradient(145deg, #d7bb6a 0%, #f6e3a8 55%, #b58a34 100%);
+        color: #5d4311;
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        flex: 0 0 auto;
+    }
+
+    .layout-topbar-user-meta {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .layout-topbar-user-name {
+        color: var(--text-color);
+        font-size: 0.87rem;
+        font-weight: 700;
+        line-height: 1.1;
+        white-space: nowrap;
+    }
+
+    .layout-topbar-user-role {
+        color: #8a7650;
+        font-size: 0.68rem;
+        font-weight: 700;
+        line-height: 1.1;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .layout-topbar-utility {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        min-height: 2.7rem;
+        padding: 0 0.9rem;
+        border-radius: 0;
+        border: 1px solid var(--surface-border);
+        background: rgba(255, 255, 255, 0.78);
+        color: var(--text-color);
+        font-size: 0.84rem;
+        font-weight: 600;
+        transition:
+            transform var(--element-transition-duration),
+            background-color var(--element-transition-duration),
+            border-color var(--element-transition-duration);
+
+        &:hover {
+            background-color: #fffdf7;
+            border-color: color-mix(in srgb, var(--surface-border) 72%, #d9bf72);
+            transform: translateY(-1px);
+        }
+
+        &:focus-visible {
+            @include focused();
         }
     }
 
-    .config-panel-settings {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
+    .layout-topbar-logout {
+        color: #8a1f1f;
+        background: #fff5f5;
+        border-color: #f1c9c9;
+    }
+
+    .layout-topbar-logout:hover {
+        background: #feecec;
+    }
+}
+
+@media (max-width: 1199px) {
+    .layout-topbar {
+        padding: 0 1rem;
+
+        .layout-topbar-brand {
+            padding-right: 0;
+        }
+
+        .layout-topbar-user {
+            max-width: 13rem;
+        }
+    }
+}
+
+@media (max-width: 767px) {
+    .layout-topbar {
+        height: 4.25rem;
+        padding: 0 0.8rem;
+
+        .layout-topbar-start {
+            gap: 0.65rem;
+        }
+
+        .layout-topbar-mark {
+            width: 2.45rem;
+            height: 2.45rem;
+            border-radius: 0;
+            font-size: 0.78rem;
+        }
+
+        .layout-topbar-logo {
+            font-size: 1rem;
+        }
+
+        .layout-topbar-actions {
+            gap: 0.45rem;
+        }
+
+        .layout-topbar-status,
+        .layout-topbar-utility {
+            min-height: 2.45rem;
+            padding: 0 0.75rem;
+        }
+
+        .layout-topbar-user {
+            display: none;
+        }
     }
 }

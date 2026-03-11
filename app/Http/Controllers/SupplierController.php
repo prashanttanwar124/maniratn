@@ -4,24 +4,48 @@ namespace App\Http\Controllers;
 
 use Inertia\Inertia;
 use App\Models\Supplier;
-use App\Models\Transaction;
 use Illuminate\Http\Request;
-use App\Models\MetalTransaction;
 
 class SupplierController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Supplier::query();
+        $search = trim((string) $request->input('search', ''));
 
-        if ($request->search) {
-            $query->where('company_name', 'like', '%' . $request->search . '%')
-                ->orWhere('mobile', 'like', '%' . $request->search . '%');
+        $suppliersQuery = Supplier::query();
+
+        if ($search !== '') {
+            $suppliersQuery->where(function ($query) use ($search) {
+                $query->where('company_name', 'like', '%' . $search . '%')
+                    ->orWhere('contact_person', 'like', '%' . $search . '%')
+                    ->orWhere('mobile', 'like', '%' . $search . '%');
+            });
+
         }
 
+        $suppliers = $suppliersQuery->get()->map(fn (Supplier $supplier) => $this->transformSupplier($supplier));
+        $recoveryDesk = $suppliers
+            ->map(fn ($supplier) => [
+                'id' => $supplier['id'],
+                'name' => $supplier['company_name'],
+                'cash_balance' => $supplier['cash_balance'],
+                'metal_balance' => $supplier['metal_balance'],
+                'priority_score' => abs($supplier['cash_balance']) + (abs($supplier['metal_balance']) * 10000),
+            ])
+            ->sortByDesc('priority_score')
+            ->take(6)
+            ->values();
+
         return Inertia::render('suppliers/Index', [
-            'suppliers' => $query->paginate(10),
-            'filters' => $request->only(['search']), // Pass back to keep input filled
+            'suppliers' => $suppliers,
+            'recoveryDesk' => $recoveryDesk,
+            'metrics' => [
+                'supplier_count' => $suppliers->count(),
+                'supplier_cash_exposure' => $suppliers->sum('cash_balance'),
+                'supplier_gold_out' => $suppliers->sum('metal_balance'),
+                'urgent_accounts' => $recoveryDesk->filter(fn ($row) => abs($row['cash_balance']) > 0 || abs($row['metal_balance']) > 0)->count(),
+            ],
+            'filters' => $request->only(['search']),
         ]);
     }
 
@@ -113,5 +137,26 @@ class SupplierController extends Controller
     {
         $supplier->delete();
         return redirect()->back()->with('message', 'Supplier Deleted');
+    }
+
+    private function transformSupplier(Supplier $supplier): array
+    {
+        $cashPaid = $supplier->transactions()->where('type', 'PAYMENT')->sum('amount');
+        $cashReceived = $supplier->transactions()->where('type', 'RECEIPT')->sum('amount');
+
+        return [
+            'id' => $supplier->id,
+            'company_name' => $supplier->company_name,
+            'contact_person' => $supplier->contact_person,
+            'mobile' => $supplier->mobile,
+            'type' => $supplier->type,
+            'gst_number' => $supplier->gst_number,
+            'pan_no' => $supplier->pan_no,
+            'bank_name' => $supplier->bank_name,
+            'account_no' => $supplier->account_no,
+            'ifsc_code' => $supplier->ifsc_code,
+            'cash_balance' => (float) $cashPaid - (float) $cashReceived,
+            'metal_balance' => (float) $supplier->metal_balance,
+        ];
     }
 }

@@ -7,9 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 class InvoiceItem extends Model
 {
     protected $guarded = [];
+
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function orderItem()
+    {
+        return $this->belongsTo(OrderItem::class);
     }
 
     public function invoice()

@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use App\Models\Customer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 
 class CustomerController extends Controller
@@ -70,6 +71,15 @@ class CustomerController extends Controller
         ]);
     }
 
+    public function store(Request $request)
+    {
+        $validated = $this->validateCustomer($request);
+
+        Customer::create($validated);
+
+        return back()->with('success', 'Customer created successfully.');
+    }
+
 
     public function show($id)
     {
@@ -98,6 +108,28 @@ class CustomerController extends Controller
         ]);
     }
 
+    public function update(Request $request, Customer $customer)
+    {
+        $validated = $this->validateCustomer($request, $customer);
+
+        $customer->update($validated);
+
+        return back()->with('success', 'Customer updated successfully.');
+    }
+
+    public function destroy(Customer $customer)
+    {
+        if ($customer->transactions()->exists() || $customer->metalTransactions()->exists() || $customer->mortgages()->exists()) {
+            return back()->withErrors([
+                'customer' => 'Customer cannot be deleted because ledger or mortgage records already exist.',
+            ]);
+        }
+
+        $customer->delete();
+
+        return back()->with('success', 'Customer deleted successfully.');
+    }
+
     public function search(Request $request)
     {
         $query = $request->input('query');
@@ -110,5 +142,26 @@ class CustomerController extends Controller
             ->get();
 
         return response()->json($customers);
+    }
+
+    private function validateCustomer(Request $request, ?Customer $customer = null): array
+    {
+        return $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'mobile' => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('customers', 'mobile')->ignore($customer?->id),
+            ],
+            'email' => ['nullable', 'email', 'max:255'],
+            'address' => ['nullable', 'string'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'pan_no' => ['nullable', 'string', 'max:20'],
+            'aadhaar_no' => ['nullable', 'string', 'max:20'],
+            'dob' => ['nullable', 'date'],
+            'anniversary_date' => ['nullable', 'date'],
+            'membership_id' => ['nullable', 'string', 'max:100'],
+        ]);
     }
 }

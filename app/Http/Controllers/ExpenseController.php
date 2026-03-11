@@ -40,7 +40,13 @@ class ExpenseController extends Controller
                 $vaultType = ($validated['payment_method'] === 'CASH') ? VaultType::CASH : VaultType::BANK;
 
                 // This line throws the Exception if funds are low
-                VaultService::debit($vaultType, $validated['amount']);
+                VaultService::debit($vaultType, $validated['amount'], [
+                    'source_type' => Expense::class,
+                    'reference' => $validated['title'],
+                    'user_id' => Auth::id(),
+                    'recorded_at' => $validated['date'],
+                    'note' => "Expense paid: {$validated['title']}",
+                ]);
 
                 // 2. CREATE RECORD
                 Expense::create([
@@ -67,7 +73,13 @@ class ExpenseController extends Controller
         DB::transaction(function () use ($expense) {
             // 1. REFUND MONEY BACK TO VAULT (Reverse the expense)
             $vaultType = ($expense->payment_method === 'CASH') ? VaultType::CASH : VaultType::BANK;
-            VaultService::credit($vaultType, $expense->amount);
+            VaultService::credit($vaultType, $expense->amount, [
+                'source_type' => Expense::class,
+                'source_id' => $expense->id,
+                'reference' => $expense->title,
+                'user_id' => Auth::id(),
+                'note' => "Expense reversed: {$expense->title}",
+            ]);
 
             // 2. DELETE RECORD
             $expense->delete();

@@ -1,6 +1,6 @@
 <script setup>
 import AppLayout from '@/layouts/AppLayout.vue';
-import { useForm } from '@inertiajs/vue3';
+import { useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { route } from 'ziggy-js';
 
@@ -22,8 +22,11 @@ const props = defineProps({
     transactions: Array,
 });
 
+const page = usePage();
 const toast = useToast();
+const isDayOpen = computed(() => Boolean(page.props.dayStatus?.is_open));
 const showDialog = ref(false);
+const editingRow = ref(null);
 
 const entryOptions = [
     { label: 'Issue Gold', value: 'ISSUE_GOLD' },
@@ -41,6 +44,7 @@ const form = useForm({
     gold_weight: null,
     purity: 91.6,
     cash_amount: null,
+    payment_method: 'CASH',
     rate: null,
     description: '',
     date: new Date().toISOString().split('T')[0],
@@ -59,6 +63,7 @@ const partySubInfo = computed(() => {
 const needsGold = computed(() => ['ISSUE_GOLD', 'RECEIVE_GOLD', 'GOLD_TO_CASH'].includes(form.entry_type));
 
 const needsCash = computed(() => ['PAY_CASH', 'RECEIVE_CASH', 'CASH_TO_GOLD'].includes(form.entry_type));
+const needsPaymentMethod = computed(() => ['PAY_CASH', 'RECEIVE_CASH'].includes(form.entry_type));
 
 const needsRate = computed(() => ['GOLD_TO_CASH', 'CASH_TO_GOLD'].includes(form.entry_type));
 
@@ -88,12 +93,35 @@ const formatCurrency = (val) =>
 const formatWeight = (w) => `${Number(w || 0).toFixed(3)} g`;
 
 const openEntryModal = () => {
+    if (!isDayOpen.value) {
+        toast.add({ severity: 'warn', summary: 'Day Closed', detail: 'Open the shop day first from the dashboard.', life: 3000 });
+        return;
+    }
+    editingRow.value = null;
     form.reset();
     form.clearErrors();
     form.party_type = props.party_type_class;
     form.party_id = props.party?.id;
     form.entry_type = 'ISSUE_GOLD';
+    form.payment_method = 'CASH';
     form.date = new Date().toISOString().split('T')[0];
+    showDialog.value = true;
+};
+
+const openEditModal = (row) => {
+    editingRow.value = row;
+    form.reset();
+    form.clearErrors();
+    form.party_type = props.party_type_class;
+    form.party_id = props.party?.id;
+    form.entry_type = row.entry_type_code;
+    form.gold_weight = row.category === 'METAL' ? Number(row.amount || 0) : null;
+    form.purity = row.category === 'METAL' ? Number(row.purity || 91.6) : 91.6;
+    form.cash_amount = row.category === 'CASH' ? Number(row.amount || 0) : null;
+    form.payment_method = row.payment_method || 'CASH';
+    form.rate = null;
+    form.description = row.description || '';
+    form.date = row.date;
     showDialog.value = true;
 };
 
@@ -101,6 +129,12 @@ const purityOptions = [
     { label: '24K (99.9)', value: 99.9 },
     { label: '22K (91.6)', value: 91.6 },
     { label: '18K (75.0)', value: 75.0 },
+];
+
+const paymentMethodOptions = [
+    { label: 'Cash', value: 'CASH' },
+    { label: 'Bank', value: 'BANK' },
+    { label: 'UPI', value: 'UPI' },
 ];
 
 const entryTypeLabel = (entryType) => {
@@ -138,12 +172,34 @@ const ledgerData = computed(() => {
         }
 
         if (txn.category === 'CASH') {
-            if (txn.type === 'PAYMENT') {
-                cashOut = Number(txn.amount || 0);
-                cashBalance += cashOut;
+            const amount = Number(txn.amount || 0);
+
+            if (txn.type === 'VOID') {
+                return {
+                    ...txn,
+                    metal_in: metalIn,
+                    metal_out: metalOut,
+                    cash_in: cashIn,
+                    cash_out: cashOut,
+                    run_metal: metalBalance,
+                    run_cash: cashBalance,
+                };
+            }
+
+            if (partyTypeName.value === 'Customer') {
+                if (txn.type === 'SALE') {
+                    cashOut = amount;
+                    cashBalance += amount;
+                } else {
+                    cashIn = amount;
+                    cashBalance -= amount;
+                }
+            } else if (txn.type === 'SALE' || txn.type === 'PAYMENT') {
+                cashOut = amount;
+                cashBalance += amount;
             } else if (txn.type === 'RECEIPT') {
-                cashIn = Number(txn.amount || 0);
-                cashBalance -= cashIn;
+                cashIn = amount;
+                cashBalance -= amount;
             }
         }
 
@@ -165,20 +221,52 @@ const currentMetalBal = computed(() => (ledgerData.value.length ? ledgerData.val
 const currentCashBal = computed(() => (ledgerData.value.length ? ledgerData.value[0].run_cash : 0));
 
 const metalBalanceText = computed(() => {
+    if (partyTypeName.value === 'Karigar') {
+        return currentMetalBal.value > 0 ? 'Gold currently with karigar' : 'Gold returned to shop / extra received';
+    }
+
+    if (partyTypeName.value === 'Supplier') {
+        return currentMetalBal.value > 0 ? 'Gold currently with supplier' : 'Gold received back / extra in shop';
+    }
+
     return currentMetalBal.value > 0 ? 'Gold with party' : 'Gold with shop';
 });
 
 const cashBalanceText = computed(() => {
+    if (partyTypeName.value === 'Customer') {
+        return currentCashBal.value > 0 ? 'Customer pending amount' : 'Customer account settled / advance';
+    }
+
+    if (partyTypeName.value === 'Karigar') {
+        return currentCashBal.value > 0 ? 'Cash paid to karigar / recoverable balance' : 'Cash received back / settled';
+    }
+
+    if (partyTypeName.value === 'Supplier') {
+        return currentCashBal.value > 0 ? 'Cash paid to supplier / debit balance' : 'Cash received from supplier / settled';
+    }
+
     return currentCashBal.value > 0 ? 'Cash paid / debit balance' : 'Cash receivable cleared / credit side';
 });
 
 const submitTransaction = () => {
-    form.post(route('ledger.store-entry'), {
+    const isEditing = Boolean(editingRow.value);
+    const endpoint = isEditing
+        ? route('ledger.update-entry', {
+              category: editingRow.value.category.toLowerCase(),
+              id: editingRow.value.row_id,
+          })
+        : route('ledger.store-entry');
+
+    form.transform((data) => ({
+        ...data,
+        _method: isEditing ? 'patch' : 'post',
+    })).post(endpoint, {
         preserveScroll: true,
 
         onSuccess: () => {
             // close modal
             showDialog.value = false;
+            editingRow.value = null;
 
             // reset form
             form.reset();
@@ -191,12 +279,13 @@ const submitTransaction = () => {
             form.party_id = props.party?.id;
             form.entry_type = 'ISSUE_GOLD';
             form.purity = 91.6;
+            form.payment_method = 'CASH';
             form.date = new Date().toISOString().split('T')[0];
 
             toast.add({
                 severity: 'success',
                 summary: 'Saved',
-                detail: 'Ledger entry added successfully',
+                detail: isEditing ? 'Ledger entry updated successfully' : 'Ledger entry added successfully',
                 life: 3000,
             });
         },
@@ -236,7 +325,7 @@ const submitTransaction = () => {
                     </div>
 
                     <div class="flex shrink-0 items-center gap-2">
-                        <Button label="Add Entry" icon="pi pi-plus" class="!w-auto shrink-0 whitespace-nowrap" @click="openEntryModal" />
+                        <Button label="Add Entry" icon="pi pi-plus" class="!w-auto shrink-0 whitespace-nowrap" @click="openEntryModal" :disabled="!isDayOpen" />
                     </div>
                 </div>
             </div>
@@ -281,7 +370,12 @@ const submitTransaction = () => {
 
                         <Column field="description" header="Particulars" style="min-width: 240px">
                             <template #body="{ data }">
-                                <span class="text-surface-900">{{ data.description || '—' }}</span>
+                                <div>
+                                    <span class="text-surface-900">{{ data.description || '—' }}</span>
+                                    <div v-if="data.category === 'CASH' && data.payment_method" class="mt-1 text-xs text-surface-500">
+                                        {{ data.payment_method }}
+                                    </div>
+                                </div>
                             </template>
                         </Column>
 
@@ -309,7 +403,7 @@ const submitTransaction = () => {
                             </template>
                         </Column>
 
-                        <Column header="Cash In" style="width: 140px">
+                        <Column header="Credit" style="width: 140px">
                             <template #body="{ data }">
                                 <span v-if="data.cash_in" class="font-medium text-green-600">
                                     {{ formatCurrency(data.cash_in) }}
@@ -317,7 +411,7 @@ const submitTransaction = () => {
                             </template>
                         </Column>
 
-                        <Column header="Cash Out" style="width: 140px">
+                        <Column header="Debit" style="width: 140px">
                             <template #body="{ data }">
                                 <span v-if="data.cash_out" class="font-medium text-red-600">
                                     {{ formatCurrency(data.cash_out) }}
@@ -325,7 +419,7 @@ const submitTransaction = () => {
                             </template>
                         </Column>
 
-                        <Column header="Cash Bal" style="width: 140px">
+                        <Column header="Balance" style="width: 140px">
                             <template #body="{ data }">
                                 <span class="font-medium text-surface-900">
                                     {{ formatCurrency(data.run_cash) }}
@@ -335,7 +429,20 @@ const submitTransaction = () => {
 
                         <Column field="category" header="Type" style="width: 100px">
                             <template #body="{ data }">
-                                <Tag :value="data.category" severity="secondary" />
+                                <Tag :value="data.category === 'CASH' ? data.type : data.category" severity="secondary" />
+                            </template>
+                        </Column>
+
+                        <Column header="" style="width: 110px">
+                            <template #body="{ data }">
+                                <Button
+                                    v-if="data.is_editable"
+                                    label="Edit"
+                                    icon="pi pi-pencil"
+                                    text
+                                    size="small"
+                                    @click="openEditModal(data)"
+                                />
                             </template>
                         </Column>
                     </DataTable>
@@ -344,13 +451,17 @@ const submitTransaction = () => {
         </div>
 
         <!-- Entry Dialog -->
-        <Dialog v-model:visible="showDialog" header="Add Ledger Entry" modal class="w-full max-w-md">
+        <Dialog v-model:visible="showDialog" :header="editingRow ? 'Edit Ledger Entry' : 'Add Ledger Entry'" modal class="w-full max-w-md">
             <div class="space-y-5 pt-2">
                 <div class="border border-surface-200 bg-surface-50 px-4 py-3">
                     <p class="text-sm font-medium text-surface-900">
                         {{ partyDisplayName }}
                     </p>
                     <p class="mt-1 text-sm text-surface-500">Select the entry type and enter only the fields needed for that action.</p>
+                </div>
+
+                <div v-if="form.errors.entry" class="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {{ form.errors.entry }}
                 </div>
 
                 <div>
@@ -387,6 +498,14 @@ const submitTransaction = () => {
                     <InputNumber v-model="form.cash_amount" mode="currency" currency="INR" locale="en-IN" class="w-full" />
                     <small v-if="form.errors.cash_amount" class="mt-1 block text-xs text-red-500">
                         {{ form.errors.cash_amount }}
+                    </small>
+                </div>
+
+                <div v-if="needsPaymentMethod">
+                    <label class="mb-2 block text-sm font-medium text-surface-700"> Payment Method </label>
+                    <Select v-model="form.payment_method" :options="paymentMethodOptions" optionLabel="label" optionValue="value" class="w-full" />
+                    <small v-if="form.errors.payment_method" class="mt-1 block text-xs text-red-500">
+                        {{ form.errors.payment_method }}
                     </small>
                 </div>
 
@@ -431,8 +550,17 @@ const submitTransaction = () => {
                 </div>
 
                 <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">
-                    <Button label="Cancel" text severity="secondary" type="button" @click="showDialog = false" />
-                    <Button label="Save Entry" :loading="form.processing" :disabled="form.processing" @click="submitTransaction" />
+                    <Button
+                        label="Cancel"
+                        text
+                        severity="secondary"
+                        type="button"
+                        @click="
+                            showDialog = false;
+                            editingRow = null;
+                        "
+                    />
+                    <Button :label="editingRow ? 'Update Entry' : 'Save Entry'" :loading="form.processing" :disabled="form.processing" @click="submitTransaction" />
                 </div>
             </div>
         </Dialog>

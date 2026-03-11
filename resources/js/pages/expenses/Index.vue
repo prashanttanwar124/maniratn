@@ -1,7 +1,7 @@
 <script setup>
 import AppLayout from '@/layouts/AppLayout.vue';
-import { router, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { router, useForm, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
 // PrimeVue Components
 import Button from 'primevue/button';
@@ -20,8 +20,10 @@ const props = defineProps({
     expenses: Object, // Paginated List
 });
 
+const page = usePage();
 const confirm = useConfirm();
 const showDialog = ref(false);
+const isDayOpen = computed(() => Boolean(page.props.dayStatus?.is_open));
 
 const form = useForm({
     title: '',
@@ -35,6 +37,10 @@ const categories = ['Food', 'Travel', 'Utility', 'Salary', 'Repair', 'Other'];
 const methods = ['CASH', 'UPI', 'BANK'];
 
 const saveExpense = () => {
+    if (!isDayOpen.value) {
+        return;
+    }
+
     form.post(route('expenses.store'), {
         onSuccess: () => {
             showDialog.value = false;
@@ -44,6 +50,10 @@ const saveExpense = () => {
 };
 
 const deleteExpense = (event, id) => {
+    if (!isDayOpen.value) {
+        return;
+    }
+
     confirm.require({
         target: event.currentTarget,
         message: 'Delete this expense? Money will be refunded to the vault.',
@@ -67,7 +77,7 @@ const formatDate = (date) => new Date(date).toLocaleDateString('en-IN');
                     <h1 class="text-xl font-bold text-gray-800">Daily Expenses</h1>
                     <p class="text-sm text-gray-500">Track shop spending (Tea, Petrol, Bills)</p>
                 </div>
-                <Button label="New Expense" icon="pi pi-plus" class="p-button-danger" @click="showDialog = true" />
+                <Button label="New Expense" icon="pi pi-plus" class="p-button-danger" @click="showDialog = true" :disabled="!isDayOpen" />
             </div>
 
             <div class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">

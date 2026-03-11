@@ -15,7 +15,9 @@ class MetalTransaction extends Model
         'purity',
         'fine_weight',
         'description',
-        'date'
+        'date',
+        'entry_source',
+        'entry_type_code',
     ];
 
     protected $casts = [

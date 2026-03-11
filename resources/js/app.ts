@@ -25,7 +25,6 @@ import Tooltip from 'primevue/tooltip';
 import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from 'ziggy-js';
-import { initializeTheme } from './composables/useAppearance';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -64,11 +63,6 @@ createInertiaApp({
             theme: {
                 preset: ManiratnGold,
                 options: {
-                    // IMPORTANT: Sakai uses '.app-dark' by default in its layout files.
-                    // You have two choices:
-                    //   Option A: Change this to '.app-dark' and update your useAppearance composable
-                    //   Option B: Keep '.dark' and update Sakai's layout files to use '.dark'
-                    // Choose whichever is easier for your project.
                     darkModeSelector: '.dark',
                 },
             },
@@ -98,6 +92,3 @@ createInertiaApp({
         color: '#4B5563',
     },
 });
-
-// This will set light / dark mode on page load...
-initializeTheme();

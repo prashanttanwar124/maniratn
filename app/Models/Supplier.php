@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Str;
 
 class Supplier extends Model
 {
@@ -44,15 +44,32 @@ class Supplier extends Model
     // Helper: Get Current Metal Balance (Fine Gold)
     public function getMetalBalanceAttribute()
     {
-        // ISSUE (You gave) is negative for them? Or Positive? 
-        // Let's standardise: 
-        // We OWE them (Credit) = Positive
-        // They OWE us (Debit) = Negative
+        // Standard ledger rule:
+        // ISSUE = gold sent to the party
+        // RECEIPT = gold received back from the party
+        // Positive result means supplier currently holds your gold.
+        $issued = $this->metalTransactions()->where('type', 'ISSUE')->sum('gross_weight');
+        $received = $this->metalTransactions()->where('type', 'RECEIPT')->sum('gross_weight');
 
-        $given = $this->metalTransactions()->where('type', 'ISSUE')->sum('fine_weight');
-        $received = $this->metalTransactions()->where('type', 'RECEIVE')->sum('fine_weight');
+        return $issued - $received;
+    }
 
-        return $received - $given;
-        // If result is positive, YOU owe the supplier gold.
+    public function setCompanyNameAttribute($value): void
+    {
+        $this->attributes['company_name'] = $this->toTitleCase($value);
+    }
+
+    public function setContactPersonAttribute($value): void
+    {
+        $this->attributes['contact_person'] = $this->toTitleCase($value);
+    }
+
+    private function toTitleCase($value): ?string
+    {
+        if ($value === null || trim((string) $value) === '') {
+            return $value;
+        }
+
+        return Str::of(trim((string) $value))->lower()->title()->toString();
     }
 }

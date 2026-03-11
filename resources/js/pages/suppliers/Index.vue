@@ -1,325 +1,359 @@
 <script setup>
 import AppLayout from '@/layouts/AppLayout.vue';
-import { router, useForm } from '@inertiajs/vue3';
+import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import throttle from 'lodash/throttle';
-import { useToast } from 'primevue/usetoast';
 import { ref, watch } from 'vue';
 import { route } from 'ziggy-js';
-// PrimeVue Components
-import { Plus, Search } from 'lucide-vue-next';
+
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
 import InputText from 'primevue/inputtext';
-import Paginator from 'primevue/paginator';
+import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import Toast from 'primevue/toast';
+import { useToast } from 'primevue/usetoast';
+
 const props = defineProps({
-    suppliers: Object,
+    suppliers: Array,
+    recoveryDesk: Array,
+    metrics: Object,
     filters: Object,
 });
 
+const page = usePage();
 const toast = useToast();
+const isDayOpen = ref(Boolean(page.props.dayStatus?.is_open));
+const search = ref(props.filters?.search || '');
 const supplierDialog = ref(false);
 const deleteDialog = ref(false);
-const supplier = ref({});
-const isEditing = ref(false);
+const deleteTarget = ref(null);
+const isEditingSupplier = ref(false);
 
-// Options for the "Type" dropdown
-const supplierTypes = ref([
+const supplierTypes = [
     { label: 'Gold', value: 'GOLD' },
     { label: 'Silver', value: 'SILVER' },
     { label: 'Diamond', value: 'DIAMOND' },
     { label: 'Packaging', value: 'PACKAGING' },
-]);
+];
 
-// Initialize Form with EXACT database column names
-const form = useForm({
+const supplierForm = useForm({
     id: null,
     company_name: '',
     contact_person: '',
     mobile: '',
-    type: 'GOLD', // Default as per schema
+    type: 'GOLD',
     gst_number: '',
-    pan_no: '', // Matches database column 'pan_no'
+    pan_no: '',
     bank_name: '',
     account_no: '',
     ifsc_code: '',
 });
 
-// --- ACTIONS ---
-
-const search = ref(props.filters?.search || ''); // You need to accept filters prop
-
-// Watch Search and reload
 watch(
     search,
     throttle((value) => {
-        router.get(
-            route('suppliers.index'),
-            { search: value }, // Send search term to Laravel
-            {
-                preserveState: true,
-                preserveScroll: true,
-                replace: true, // Replaces history so "Back" button works better
-            },
-        );
+        router.get(route('suppliers.index'), { search: value }, { preserveState: true, preserveScroll: true, replace: true });
     }, 300),
 );
 
-const onPageChange = (event) => {
-    const newPage = event.page + 1;
-    router.get(route('suppliers.index'), { page: newPage }, { preserveScroll: true, preserveState: true });
+const formatCurrency = (value) =>
+    new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 0,
+    }).format(value || 0);
+
+const formatWeight = (value) => `${Number(value || 0).toFixed(3)} g`;
+
+const getTypeSeverity = (type) => {
+    if (type === 'GOLD') return 'warning';
+    if (type === 'SILVER') return 'secondary';
+    if (type === 'DIAMOND') return 'info';
+    if (type === 'PACKAGING') return 'success';
+    return 'contrast';
 };
 
-const openNew = () => {
-    supplier.value = {};
-    isEditing.value = false;
-    form.reset();
-    form.clearErrors();
+const openSupplierDialog = (supplier = null) => {
+    if (!isDayOpen.value) {
+        toast.add({ severity: 'warn', summary: 'Day Closed', detail: 'Open the shop day first from the dashboard.', life: 3000 });
+        return;
+    }
+    supplierForm.reset();
+    supplierForm.clearErrors();
+    isEditingSupplier.value = Boolean(supplier);
 
-    // Set default type
-    form.type = 'GOLD';
-
-    supplierDialog.value = true;
-};
-
-const editSupplier = (sup) => {
-    supplier.value = { ...sup };
-    isEditing.value = true;
-
-    form.clearErrors();
-
-    // Map existing data to form
-    form.id = sup.id;
-    form.company_name = sup.company_name;
-    form.contact_person = sup.contact_person;
-    form.mobile = sup.mobile;
-    form.type = sup.type;
-    form.gst_number = sup.gst_number;
-    form.pan_no = sup.pan_no;
-    form.bank_name = sup.bank_name;
-    form.account_no = sup.account_no;
-    form.ifsc_code = sup.ifsc_code;
+    if (supplier) {
+        Object.assign(supplierForm, supplier);
+    } else {
+        supplierForm.type = 'GOLD';
+    }
 
     supplierDialog.value = true;
 };
 
 const saveSupplier = () => {
     const options = {
+        preserveScroll: true,
         onSuccess: () => {
             supplierDialog.value = false;
-            toast.add({ severity: 'success', summary: 'Successful', detail: 'Supplier Saved', life: 3000 });
-            form.reset();
-        },
-        onError: () => {
-            toast.add({ severity: 'error', summary: 'Error', detail: 'Please check the form', life: 3000 });
+            toast.add({ severity: 'success', summary: 'Saved', detail: 'Supplier saved successfully', life: 3000 });
         },
     };
 
-    if (isEditing.value) {
-        form.put(route('suppliers.update', form.id), options);
-    } else {
-        form.post(route('suppliers.store'), options);
+    if (isEditingSupplier.value) {
+        supplierForm.put(route('suppliers.update', supplierForm.id), options);
+        return;
     }
+
+    supplierForm.post(route('suppliers.store'), options);
 };
 
-const confirmDeleteSupplier = (sup) => {
-    supplier.value = sup;
+const confirmDelete = (record) => {
+    deleteTarget.value = record;
     deleteDialog.value = true;
 };
 
-const deleteSupplier = () => {
-    router.delete(route('suppliers.destroy', supplier.value.id), {
+const deleteRecord = () => {
+    if (!deleteTarget.value) return;
+
+    router.delete(route('suppliers.destroy', deleteTarget.value.id), {
+        preserveScroll: true,
         onSuccess: () => {
             deleteDialog.value = false;
-            supplier.value = {};
-            toast.add({ severity: 'success', summary: 'Successful', detail: 'Supplier Deleted', life: 3000 });
+            deleteTarget.value = null;
+            toast.add({ severity: 'success', summary: 'Deleted', detail: 'Supplier deleted successfully', life: 3000 });
         },
     });
-};
-
-const getTypeSeverity = (type) => {
-    switch (type) {
-        case 'GOLD':
-            return 'warning'; // Yellowish
-        case 'SILVER':
-            return 'secondary'; // Gray
-        case 'DIAMOND':
-            return 'info'; // Blue
-        case 'PACKAGING':
-            return 'success'; // Green
-        default:
-            return 'contrast';
-    }
 };
 </script>
 
 <template>
     <AppLayout>
-        <div class="card p-4">
-            <Toast />
+        <Toast />
+        <div class="space-y-6">
+            <section class="border border-surface-200 bg-white px-5 py-6">
+                <div class="flex flex-col gap-5">
+                    <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                        <div class="max-w-3xl">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <h1 class="text-2xl font-semibold tracking-tight text-surface-900">Supplier Desk</h1>
+                                <Tag value="Vendor Relations" severity="secondary" />
+                            </div>
+                            <p class="mt-2 text-sm leading-6 text-surface-600">
+                                Manage supplier relationships, review cash and gold exposure, and jump directly into supplier ledgers for settlement.
+                            </p>
+                        </div>
 
-            <div class="mb-4 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <h2 class="text-xl font-bold">Supplier Master</h2>
+                        <div class="flex justify-start lg:justify-end">
+                            <Button label="New Supplier" icon="pi pi-plus" @click="openSupplierDialog()" :disabled="!isDayOpen" />
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-                <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                    <div class="relative w-full sm:w-64">
-                        <Search class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                        <InputText v-model="search" placeholder="Search..." class="w-full !pl-10" />
+            <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="border border-surface-200 bg-white px-5 py-4">
+                    <p class="text-sm text-surface-500">Suppliers</p>
+                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ metrics?.supplier_count || 0 }}</p>
+                </div>
+                <div class="border border-surface-200 bg-white px-5 py-4">
+                    <p class="text-sm text-surface-500">Cash Exposure</p>
+                    <p class="mt-2 text-2xl font-semibold text-red-600">{{ formatCurrency(metrics?.supplier_cash_exposure) }}</p>
+                </div>
+                <div class="border border-surface-200 bg-white px-5 py-4">
+                    <p class="text-sm text-surface-500">Gold With Suppliers</p>
+                    <p class="mt-2 text-2xl font-semibold text-amber-700">{{ formatWeight(metrics?.supplier_gold_out) }}</p>
+                </div>
+                <div class="border border-surface-200 bg-white px-5 py-4">
+                    <p class="text-sm text-surface-500">Urgent Accounts</p>
+                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ metrics?.urgent_accounts || 0 }}</p>
+                </div>
+            </section>
+
+            <section class="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                <div class="overflow-hidden border border-surface-200 bg-white xl:col-span-2">
+                    <div class="border-b border-surface-200 px-5 py-4">
+                        <h2 class="text-lg font-semibold text-surface-900">Priority Recovery</h2>
+                        <p class="mt-1 text-sm text-surface-500">Suppliers with the highest combined cash and metal exposure.</p>
                     </div>
 
-                    <div class="flex gap-2">
-                        <Button @click="openNew" class="flex shrink-0 items-center gap-2 whitespace-nowrap">
-                            <Plus class="h-4 w-4" />
-                            <span>New Supplier</span>
-                        </Button>
+                    <div class="grid grid-cols-1 gap-3 p-4 md:grid-cols-2">
+                        <div v-for="row in recoveryDesk" :key="row.id" class="border border-surface-200 px-4 py-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="font-medium text-surface-900">{{ row.name }}</p>
+                                    <p class="mt-1 text-xs text-surface-500">Supplier priority account</p>
+                                </div>
+                                <Link :href="route('ledger.show', { type: 'suppliers', id: row.id })">
+                                    <Button icon="pi pi-arrow-right" text rounded />
+                                </Link>
+                            </div>
+
+                            <div class="mt-4 grid grid-cols-2 gap-3">
+                                <div class="border border-surface-200 bg-surface-50 px-3 py-3">
+                                    <p class="text-xs uppercase tracking-wide text-surface-500">Cash</p>
+                                    <p class="mt-1 text-sm font-semibold text-surface-900">{{ formatCurrency(row.cash_balance) }}</p>
+                                </div>
+                                <div class="border border-surface-200 bg-surface-50 px-3 py-3">
+                                    <p class="text-xs uppercase tracking-wide text-surface-500">Gold</p>
+                                    <p class="mt-1 text-sm font-semibold text-surface-900">{{ formatWeight(row.metal_balance) }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="!recoveryDesk.length" class="col-span-full py-12 text-center text-surface-500">No supplier exposure right now.</div>
                     </div>
+                </div>
+
+                <div class="overflow-hidden border border-surface-200 bg-white">
+                    <div class="border-b border-surface-200 px-5 py-4">
+                        <h2 class="text-lg font-semibold text-surface-900">Recovery Notes</h2>
+                        <p class="mt-1 text-sm text-surface-500">Suggested supplier follow-up actions.</p>
+                    </div>
+                    <div class="space-y-3 p-4 text-sm text-surface-600">
+                        <div class="border border-surface-200 bg-surface-50 px-4 py-3">Review supplier ledger before making settlement payments.</div>
+                        <div class="border border-surface-200 bg-surface-50 px-4 py-3">Track cash paid against gold or stock received back from the supplier.</div>
+                        <div class="border border-surface-200 bg-surface-50 px-4 py-3">Keep banking details updated for faster payout operations.</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="overflow-hidden border border-surface-200 bg-white">
+                <div class="border-b border-surface-200 px-5 py-4">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                        <div>
+                            <h2 class="text-lg font-semibold text-surface-900">Supplier Register</h2>
+                            <p class="mt-1 text-sm text-surface-500">All suppliers with balances, banking details, and ledger access.</p>
+                        </div>
+
+                        <div class="w-full lg:max-w-sm">
+                            <InputText v-model="search" placeholder="Search suppliers..." class="w-full" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4">
+                    <DataTable :value="suppliers" stripedRows rowHover tableStyle="min-width: 72rem">
+                        <template #empty>
+                            <div class="py-12 text-center text-surface-500">No suppliers found.</div>
+                        </template>
+
+                        <Column field="company_name" header="Supplier">
+                            <template #body="{ data }">
+                                <div>
+                                    <p class="font-medium text-surface-900">{{ data.company_name }}</p>
+                                    <p class="mt-1 text-xs text-surface-500">{{ data.contact_person }} • {{ data.mobile }}</p>
+                                </div>
+                            </template>
+                        </Column>
+
+                        <Column field="type" header="Type">
+                            <template #body="{ data }">
+                                <Tag :value="data.type" :severity="getTypeSeverity(data.type)" />
+                            </template>
+                        </Column>
+
+                        <Column header="Cash Balance">
+                            <template #body="{ data }">
+                                <span class="font-semibold text-surface-900">{{ formatCurrency(data.cash_balance) }}</span>
+                            </template>
+                        </Column>
+
+                        <Column header="Gold Balance">
+                            <template #body="{ data }">
+                                <span class="font-semibold text-surface-900">{{ formatWeight(data.metal_balance) }}</span>
+                            </template>
+                        </Column>
+
+                        <Column header="Bank">
+                            <template #body="{ data }">
+                                <div v-if="data.bank_name" class="text-sm">
+                                    <p class="font-medium text-surface-900">{{ data.bank_name }}</p>
+                                    <p class="mt-1 text-xs text-surface-500">{{ data.account_no || 'Account pending' }}</p>
+                                </div>
+                                <span v-else class="text-sm text-surface-400">Not added</span>
+                            </template>
+                        </Column>
+
+                        <Column header="Actions" style="width: 220px">
+                            <template #body="{ data }">
+                                <div class="flex justify-end gap-2">
+                                    <Link :href="route('ledger.show', { type: 'suppliers', id: data.id })">
+                                        <Button label="Ledger" icon="pi pi-book" text size="small" />
+                                    </Link>
+                                    <Button icon="pi pi-pencil" outlined size="small" @click="openSupplierDialog(data)" />
+                                    <Button icon="pi pi-trash" outlined severity="danger" size="small" @click="confirmDelete(data)" />
+                                </div>
+                            </template>
+                        </Column>
+                    </DataTable>
+                </div>
+            </section>
+        </div>
+
+        <Dialog v-model:visible="supplierDialog" :header="isEditingSupplier ? 'Edit Supplier' : 'New Supplier'" modal :style="{ width: '42rem' }">
+            <form class="space-y-4 pt-2" @submit.prevent="saveSupplier">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Company Name</label>
+                        <InputText v-model="supplierForm.company_name" class="w-full" placeholder="Enter supplier company name" />
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Contact Person</label>
+                        <InputText v-model="supplierForm.contact_person" class="w-full" placeholder="Enter contact person" />
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Mobile</label>
+                        <InputText v-model="supplierForm.mobile" class="w-full" placeholder="10-digit mobile number" />
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Type</label>
+                        <Select v-model="supplierForm.type" :options="supplierTypes" optionLabel="label" optionValue="value" class="w-full" />
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">GST Number</label>
+                        <InputText v-model="supplierForm.gst_number" class="w-full" placeholder="Optional GST number" />
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">PAN No</label>
+                        <InputText v-model="supplierForm.pan_no" class="w-full" placeholder="Optional PAN number" />
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Bank Name</label>
+                        <InputText v-model="supplierForm.bank_name" class="w-full" placeholder="Optional bank name" />
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Account No</label>
+                        <InputText v-model="supplierForm.account_no" class="w-full" placeholder="Optional account number" />
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">IFSC Code</label>
+                        <InputText v-model="supplierForm.ifsc_code" class="w-full" placeholder="Optional IFSC code" />
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">
+                    <Button label="Cancel" severity="secondary" text type="button" @click="supplierDialog = false" />
+                    <Button :label="isEditingSupplier ? 'Update Supplier' : 'Save Supplier'" type="submit" :loading="supplierForm.processing" />
+                </div>
+            </form>
+        </Dialog>
+
+        <Dialog v-model:visible="deleteDialog" header="Delete Supplier" modal :style="{ width: '28rem' }">
+            <div class="space-y-4 pt-2">
+                <p class="text-sm text-surface-600">
+                    Delete
+                    <span class="font-medium text-surface-900">{{ deleteTarget?.company_name }}</span>
+                    from the supplier desk?
+                </p>
+
+                <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">
+                    <Button label="Cancel" severity="secondary" text @click="deleteDialog = false" />
+                    <Button label="Delete" severity="danger" @click="deleteRecord" />
                 </div>
             </div>
-            <DataTable :value="suppliers.data" stripedRows tableStyle="min-width: 60rem" dataKey="id">
-                <Column field="company_name" header="Firm Name" sortable>
-                    <template #body="slotProps">
-                        <div class="font-bold">{{ slotProps.data.company_name }}</div>
-                        <div class="text-xs text-gray-500">GST: {{ slotProps.data.gst_number || 'N/A' }}</div>
-                    </template>
-                </Column>
-
-                <Column field="contact_person" header="Contact Person">
-                    <template #body="slotProps">
-                        <div class="flex flex-col">
-                            <span><i class="pi pi-user mr-1 text-xs text-gray-400"></i>{{ slotProps.data.contact_person }}</span>
-                            <span class="text-sm text-blue-600"><i class="pi pi-phone mr-1 text-xs"></i>{{ slotProps.data.mobile }}</span>
-                        </div>
-                    </template>
-                </Column>
-
-                <Column field="type" header="Type">
-                    <template #body="slotProps">
-                        <Tag :value="slotProps.data.type" :severity="getTypeSeverity(slotProps.data.type)" />
-                    </template>
-                </Column>
-
-                <Column header="Banking Info">
-                    <template #body="slotProps">
-                        <div v-if="slotProps.data.bank_name" class="text-xs">
-                            <div class="font-semibold">{{ slotProps.data.bank_name }}</div>
-                            <div class="text-gray-500">{{ slotProps.data.account_no }}</div>
-                        </div>
-                        <span v-else class="text-xs text-gray-400">Not Added</span>
-                    </template>
-                </Column>
-
-                <Column header="Action" style="min-width: 8rem">
-                    <template #body="slotProps">
-                        <div class="flex gap-2">
-                            <Button icon="pi pi-pencil" size="small" outlined severity="success" @click="editSupplier(slotProps.data)" />
-                            <Button icon="pi pi-trash" size="small" outlined severity="danger" @click="confirmDeleteSupplier(slotProps.data)" />
-                        </div>
-                    </template>
-                </Column>
-            </DataTable>
-
-            <Paginator
-                :rows="suppliers.per_page"
-                :totalRecords="suppliers.total"
-                :first="(suppliers.current_page - 1) * suppliers.per_page"
-                @page="onPageChange"
-                class="mt-2 border-t border-gray-100"
-            ></Paginator>
-
-            <Dialog v-model:visible="supplierDialog" :header="isEditing ? 'Edit Supplier' : 'Add New Supplier'" :modal="true" :style="{ width: '600px' }">
-                <form @submit.prevent="saveSupplier" class="mt-2 flex flex-col gap-5">
-                    <div class="flex flex-col gap-3">
-                        <div class="flex flex-col gap-1">
-                            <label class="text-sm font-bold text-gray-700">Company Name</label>
-                            <InputText v-model="form.company_name" placeholder="e.g. Raj Gold House" required autofocus :class="{ 'p-invalid': form.errors.company_name }" />
-                            <small class="text-xs text-red-500" v-if="form.errors.company_name">{{ form.errors.company_name }}</small>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="flex flex-col gap-1">
-                                <label class="text-sm font-bold text-gray-700">Contact Person</label>
-                                <InputText v-model="form.contact_person" placeholder="e.g. Rajesh Bhai" required :class="{ 'p-invalid': form.errors.contact_person }" />
-                                <small class="text-xs text-red-500" v-if="form.errors.contact_person">{{ form.errors.contact_person }}</small>
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-sm font-bold text-gray-700">Mobile</label>
-                                <InputText v-model="form.mobile" placeholder="98XXXXXXXX" required :class="{ 'p-invalid': form.errors.mobile }" />
-                                <small class="text-xs text-red-500" v-if="form.errors.mobile">{{ form.errors.mobile }}</small>
-                            </div>
-                        </div>
-
-                        <div class="flex flex-col gap-1">
-                            <label class="text-sm font-bold text-gray-700">Supplier Type</label>
-                            <Dropdown v-model="form.type" :options="supplierTypes" optionLabel="label" optionValue="value" placeholder="Select Type" class="w-full" />
-                            <small class="text-xs text-red-500" v-if="form.errors.type">{{ form.errors.type }}</small>
-                        </div>
-                    </div>
-
-                    <div class="rounded border border-gray-100 bg-gray-50 p-3">
-                        <h3 class="mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase">Taxation (For Input Tax Credit)</h3>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="flex flex-col gap-1">
-                                <label class="text-sm font-bold text-gray-700">GST Number</label>
-                                <InputText v-model="form.gst_number" placeholder="27XXXX..." :class="{ 'p-invalid': form.errors.gst_number }" />
-                                <small class="text-xs text-red-500" v-if="form.errors.gst_number">{{ form.errors.gst_number }}</small>
-                                <small class="text-xs text-gray-400" v-else>Mandatory for B2B</small>
-                            </div>
-
-                            <div class="flex flex-col gap-1">
-                                <label class="text-sm font-bold text-gray-700">PAN No</label>
-                                <InputText v-model="form.pan_no" placeholder="ABCDE1234F" :class="{ 'p-invalid': form.errors.pan_no }" />
-                                <small class="text-xs text-red-500" v-if="form.errors.pan_no">{{ form.errors.pan_no }}</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="rounded border border-gray-100 bg-gray-50 p-3">
-                        <h3 class="mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase">Bank Details (Payouts)</h3>
-                        <div class="flex flex-col gap-3">
-                            <div class="flex flex-col gap-1">
-                                <label class="text-sm font-bold text-gray-700">Bank Name</label>
-                                <InputText v-model="form.bank_name" placeholder="e.g. HDFC Bank" :class="{ 'p-invalid': form.errors.bank_name }" />
-                                <small class="text-xs text-red-500" v-if="form.errors.bank_name">{{ form.errors.bank_name }}</small>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="flex flex-col gap-1">
-                                    <label class="text-sm font-bold text-gray-700">Account No</label>
-                                    <InputText v-model="form.account_no" placeholder="0000..." :class="{ 'p-invalid': form.errors.account_no }" />
-                                    <small class="text-xs text-red-500" v-if="form.errors.account_no">{{ form.errors.account_no }}</small>
-                                </div>
-                                <div class="flex flex-col gap-1">
-                                    <label class="text-sm font-bold text-gray-700">IFSC Code</label>
-                                    <InputText v-model="form.ifsc_code" placeholder="HDFC000..." :class="{ 'p-invalid': form.errors.ifsc_code }" />
-                                    <small class="text-xs text-red-500" v-if="form.errors.ifsc_code">{{ form.errors.ifsc_code }}</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-2 flex justify-end gap-2 border-t pt-4">
-                        <Button label="Cancel" text severity="secondary" @click="supplierDialog = false" />
-                        <Button :label="isEditing ? 'Update Supplier' : 'Save Supplier'" type="submit" :loading="form.processing" />
-                    </div>
-                </form>
-            </Dialog>
-
-            <Dialog v-model:visible="deleteDialog" :style="{ width: '450px' }" header="Confirm Delete" :modal="true">
-                <div class="flex items-center gap-4">
-                    <i class="pi pi-exclamation-triangle text-3xl text-red-500" />
-                    <span v-if="supplier">
-                        Are you sure you want to delete <b>{{ supplier.company_name }}</b
-                        >?
-                    </span>
-                </div>
-                <template #footer>
-                    <Button label="No" text severity="secondary" @click="deleteDialog = false" />
-                    <Button label="Yes, Delete" severity="danger" @click="deleteSupplier" />
-                </template>
-            </Dialog>
-        </div>
+        </Dialog>
     </AppLayout>
 </template>

@@ -1,9 +1,9 @@
 <script setup>
 import AppLayout from '@/layouts/AppLayout.vue';
-import { router, useForm } from '@inertiajs/vue3';
+import { router, useForm, usePage } from '@inertiajs/vue3';
 import { CheckCircle, Clock, Hammer, Scale, Truck } from 'lucide-vue-next';
 import { useToast } from 'primevue/usetoast';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
 
 import Button from 'primevue/button';
@@ -22,6 +22,7 @@ import TabPanels from 'primevue/tabpanels';
 import Tabs from 'primevue/tabs';
 import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
+import Toast from 'primevue/toast';
 
 const props = defineProps({
     orders: Object,
@@ -30,7 +31,9 @@ const props = defineProps({
     customers: Array,
 });
 
+const page = usePage();
 const toast = useToast();
+const isDayOpen = computed(() => Boolean(page.props.dayStatus?.is_open));
 
 const createDialog = ref(false);
 const assignDialog = ref(false);
@@ -60,7 +63,6 @@ const assignForm = useForm({
 });
 
 const transactionForm = useForm({
-    cash_amount: null,
     metal_weight: null,
     date: new Date(),
     description: '',
@@ -69,6 +71,11 @@ const transactionForm = useForm({
 const completeForm = useForm({
     received_weight: null,
     wastage: 0,
+    extra_gold_added: 0,
+    extra_gold_source: null,
+    extra_gold_supplier_id: null,
+    extra_gold_karigar_id: null,
+    mismatch_note: '',
 });
 
 const totalInProduction = computed(() => props.orders?.ASSIGNED?.length || 0);
@@ -76,19 +83,18 @@ const totalReady = computed(() => props.orders?.READY?.length || 0);
 const totalNew = computed(() => props.orders?.NEW?.length || 0);
 
 const totalGoldInPipeline = computed(() => {
-    return props.orders?.ASSIGNED?.reduce((acc, item) => acc + parseFloat(item.target_weight || 0), 0) || 0;
+    return props.orders?.ASSIGNED?.reduce((acc, item) => acc + parseFloat(item.issued_gold || 0), 0) || 0;
 });
 
 const itemTransactionSummary = computed(() => {
-    if (!selectedItem.value?.transactions) return { gold: 0, cash: 0 };
+    if (!selectedItem.value?.transactions) return { gold: 0 };
 
     return selectedItem.value.transactions.reduce(
         (acc, txn) => {
-            if (txn.type === 'ISSUE') acc.gold += parseFloat(txn.amount || 0);
-            if (txn.type === 'PAYMENT' || txn.type === 'PAYMENT_OUT') acc.cash += parseFloat(txn.amount || 0);
+            if (txn.category === 'metal') acc.gold += parseFloat(txn.amount || 0);
             return acc;
         },
-        { gold: 0, cash: 0 },
+        { gold: 0 },
     );
 });
 
@@ -105,12 +111,32 @@ const removeItemRow = (index) => {
     if (createForm.items.length > 1) createForm.items.splice(index, 1);
 };
 
+const resetCreateForm = () => {
+    createForm.reset();
+    createForm.clearErrors();
+    createForm.customer_id = null;
+    createForm.due_date = null;
+    createForm.items = [{ item_name: '', target_weight: null, purity: 91.6, notes: '' }];
+};
+
+const openCreateDialog = () => {
+    if (!isDayOpen.value) {
+        toast.add({ severity: 'warn', summary: 'Day Closed', detail: 'Open the shop day first from the dashboard.', life: 3000 });
+        return;
+    }
+    resetCreateForm();
+    createDialog.value = true;
+};
+
+const closeCreateDialog = () => {
+    createDialog.value = false;
+    resetCreateForm();
+};
+
 const saveOrder = () => {
     createForm.post(route('orders.store'), {
         onSuccess: () => {
-            createDialog.value = false;
-            createForm.reset();
-            createForm.items = [{ item_name: '', target_weight: null, purity: 91.6, notes: '' }];
+            closeCreateDialog();
             toast.add({
                 severity: 'success',
                 summary: 'Order Created',
@@ -118,10 +144,20 @@ const saveOrder = () => {
                 life: 3000,
             });
         },
+        onError: () => {
+            toast.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Please check the new order form',
+                life: 3000,
+            });
+        },
     });
 };
 
 const openEdit = (item) => {
+    editForm.reset();
+    editForm.clearErrors();
     editForm.id = item.id;
     editForm.item_name = item.item_name;
     editForm.target_weight = parseFloat(item.target_weight);
@@ -141,13 +177,23 @@ const submitEdit = () => {
                 life: 3000,
             });
         },
+        onError: () => {
+            toast.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Unable to update the order item',
+                life: 3000,
+            });
+        },
     });
 };
 
 const openAssign = (item) => {
     selectedItem.value = item;
     assignForm.reset();
+    assignForm.clearErrors();
     assignForm.type = 'Karigar';
+    assignForm.id = null;
     assignForm.issue_gold = parseFloat(item.target_weight || 0);
     assignDialog.value = true;
 };
@@ -165,12 +211,21 @@ const submitAssignment = () => {
                 life: 3000,
             });
         },
+        onError: () => {
+            toast.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Assignment could not be saved',
+                life: 3000,
+            });
+        },
     });
 };
 
 const openTransactionModal = (item) => {
     selectedItem.value = item;
     transactionForm.reset();
+    transactionForm.clearErrors();
     transactionForm.date = new Date();
     transactionDialog.value = true;
 };
@@ -188,13 +243,28 @@ const submitTransaction = () => {
                 life: 3000,
             });
         },
+        onError: () => {
+            toast.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Transaction could not be recorded',
+                life: 3000,
+            });
+        },
     });
 };
 
 const openComplete = (item) => {
     selectedItem.value = item;
     completeForm.reset();
+    completeForm.clearErrors();
     completeForm.received_weight = parseFloat(item.target_weight || 0);
+    completeForm.wastage = 0;
+    completeForm.extra_gold_added = 0;
+    completeForm.extra_gold_source = null;
+    completeForm.extra_gold_supplier_id = null;
+    completeForm.extra_gold_karigar_id = item.assignee_type?.includes('Karigar') ? item.assignee_id : null;
+    completeForm.mismatch_note = '';
     completeDialog.value = true;
 };
 
@@ -208,6 +278,14 @@ const submitComplete = () => {
                 severity: 'success',
                 summary: 'Received',
                 detail: 'Item added to ready stock',
+                life: 3000,
+            });
+        },
+        onError: () => {
+            toast.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: completeForm.errors.extra_gold_added || completeForm.errors.mismatch_note || completeForm.errors.complete || 'Unable to receive the finished item',
                 life: 3000,
             });
         },
@@ -236,12 +314,144 @@ const getDueDateClass = (date) => {
 };
 
 const issueWeightForItem = (item) => {
-    return item?.transactions?.filter((t) => t.type === 'ISSUE').reduce((sum, t) => sum + parseFloat(t.amount || 0), 0) || 0;
+    return parseFloat(item?.issued_gold || 0);
 };
+
+const completeIssuedGold = computed(() => parseFloat(selectedItem.value?.issued_gold || 0));
+
+const completeReturnTotal = computed(() => parseFloat(completeForm.received_weight || 0) + parseFloat(completeForm.wastage || 0));
+
+const completeRequiredExtraGold = computed(() => Math.max(completeReturnTotal.value - completeIssuedGold.value, 0));
+
+const completeExtraGoldMatches = computed(() => {
+    return Math.abs(parseFloat(completeForm.extra_gold_added || 0) - completeRequiredExtraGold.value) < 0.0001;
+});
+
+const canSubmitComplete = computed(() => {
+    if (completeRequiredExtraGold.value <= 0) {
+        return true;
+    }
+
+    if (!completeExtraGoldMatches.value || !completeForm.extra_gold_source) {
+        return false;
+    }
+
+    if (completeForm.extra_gold_source === 'SUPPLIER' && !completeForm.extra_gold_supplier_id) {
+        return false;
+    }
+
+    if (completeForm.extra_gold_source === 'KARIGAR' && !completeForm.extra_gold_karigar_id) {
+        return false;
+    }
+
+    return Boolean((completeForm.mismatch_note || '').trim());
+});
+
+const extraGoldSourceOptions = computed(() => {
+    const options = [{ label: 'Shop Stock', value: 'SHOP' }];
+
+    if (selectedItem.value?.order?.customer?.id) {
+        options.push({
+            label: `Customer Gold (${selectedItem.value.order.customer.name})`,
+            value: 'CUSTOMER',
+        });
+    }
+
+    options.push({ label: 'Supplier Gold', value: 'SUPPLIER' });
+    options.push({ label: 'Karigar Gold', value: 'KARIGAR' });
+
+    return options;
+});
+
+watch(completeRequiredExtraGold, (value) => {
+    completeForm.extra_gold_added = value > 0 ? Number(value.toFixed(3)) : 0;
+
+    if (value <= 0) {
+        completeForm.extra_gold_source = null;
+        completeForm.extra_gold_supplier_id = null;
+        completeForm.extra_gold_karigar_id = selectedItem.value?.assignee_type?.includes('Karigar') ? selectedItem.value.assignee_id : null;
+    }
+});
+
+const closeEditDialog = () => {
+    editDialog.value = false;
+    editForm.reset();
+    editForm.clearErrors();
+};
+
+const closeAssignDialog = () => {
+    assignDialog.value = false;
+    assignForm.reset();
+    assignForm.clearErrors();
+    selectedItem.value = null;
+};
+
+const closeTransactionDialog = () => {
+    transactionDialog.value = false;
+    transactionForm.reset();
+    transactionForm.clearErrors();
+    transactionForm.date = new Date();
+    selectedItem.value = null;
+};
+
+const closeCompleteDialog = () => {
+    completeDialog.value = false;
+    completeForm.reset();
+    completeForm.clearErrors();
+    completeForm.extra_gold_added = 0;
+    completeForm.extra_gold_source = null;
+    completeForm.extra_gold_supplier_id = null;
+    completeForm.extra_gold_karigar_id = null;
+    completeForm.mismatch_note = '';
+    selectedItem.value = null;
+};
+
+const transactionSeverity = (transaction) => {
+    if (transaction.category === 'metal') {
+        return transaction.type === 'ISSUE' ? 'warn' : 'success';
+    }
+
+    return transaction.type === 'PAYMENT' ? 'danger' : 'info';
+};
+
+const formatTransactionAmount = (transaction) => {
+    if (transaction.category === 'metal') {
+        return `${formatWeight(transaction.amount)} g`;
+    }
+
+    return formatCurrency(transaction.amount);
+};
+
+const itemFieldError = (index, field) => createForm.errors[`items.${index}.${field}`];
+const formError = (form, field) => form.errors[field];
+
+watch(
+    () => assignForm.type,
+    () => {
+        assignForm.id = null;
+        assignForm.clearErrors('id', 'assign');
+    },
+);
+
+watch(
+    () => completeForm.extra_gold_source,
+    (source) => {
+        if (source !== 'SUPPLIER') {
+            completeForm.extra_gold_supplier_id = null;
+            completeForm.clearErrors('extra_gold_supplier_id');
+        }
+
+        if (source !== 'KARIGAR') {
+            completeForm.extra_gold_karigar_id = selectedItem.value?.assignee_type?.includes('Karigar') ? selectedItem.value.assignee_id : null;
+            completeForm.clearErrors('extra_gold_karigar_id');
+        }
+    },
+);
 </script>
 
 <template>
     <AppLayout>
+        <Toast />
         <div class="space-y-6">
             <!-- Header -->
             <div class="border-b border-surface-200 bg-white px-5 py-5">
@@ -255,7 +465,7 @@ const issueWeightForItem = (item) => {
                     </div>
 
                     <div class="flex flex-wrap items-center gap-2">
-                        <Button label="New Order" icon="pi pi-plus" @click="createDialog = true" />
+                        <Button label="New Order" icon="pi pi-plus" @click="openCreateDialog" :disabled="!isDayOpen" />
                     </div>
                 </div>
             </div>
@@ -529,19 +739,23 @@ const issueWeightForItem = (item) => {
         </div>
 
         <!-- Create Order -->
-        <Dialog v-model:visible="createDialog" header="Create New Order" modal :style="{ width: '52rem' }" :breakpoints="{ '640px': '95vw' }">
+        <Dialog v-model:visible="createDialog" header="Create New Order" modal :style="{ width: '52rem' }" :breakpoints="{ '640px': '95vw' }" @hide="closeCreateDialog">
             <div class="space-y-5 pt-2">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <label class="mb-2 block text-sm font-medium text-surface-700">Customer</label>
                         <Select v-model="createForm.customer_id" :options="customers" optionLabel="name" optionValue="id" filter placeholder="Search customer..." class="w-full" />
+                        <p v-if="formError(createForm, 'customer_id')" class="mt-2 text-sm text-red-600">{{ formError(createForm, 'customer_id') }}</p>
                     </div>
 
                     <div>
                         <label class="mb-2 block text-sm font-medium text-surface-700">Due Date</label>
                         <Calendar v-model="createForm.due_date" showIcon dateFormat="yy-mm-dd" class="w-full" inputClass="w-full" placeholder="Select date" />
+                        <p v-if="formError(createForm, 'due_date')" class="mt-2 text-sm text-red-600">{{ formError(createForm, 'due_date') }}</p>
                     </div>
                 </div>
+
+                <p v-if="formError(createForm, 'items')" class="text-sm text-red-600">{{ formError(createForm, 'items') }}</p>
 
                 <div>
                     <div class="mb-3 flex items-center justify-between">
@@ -560,10 +774,12 @@ const issueWeightForItem = (item) => {
                             <div class="grid grid-cols-1 gap-3 sm:grid-cols-12">
                                 <div class="sm:col-span-5">
                                     <InputText v-model="item.item_name" class="w-full" placeholder="Item name" />
+                                    <p v-if="itemFieldError(idx, 'item_name')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'item_name') }}</p>
                                 </div>
 
                                 <div class="sm:col-span-3">
                                     <InputNumber v-model="item.target_weight" :minFractionDigits="2" class="w-full" placeholder="Weight (g)" />
+                                    <p v-if="itemFieldError(idx, 'target_weight')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'target_weight') }}</p>
                                 </div>
 
                                 <div class="sm:col-span-4">
@@ -577,10 +793,12 @@ const issueWeightForItem = (item) => {
                                         optionValue="v"
                                         class="w-full"
                                     />
+                                    <p v-if="itemFieldError(idx, 'purity')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'purity') }}</p>
                                 </div>
 
                                 <div class="sm:col-span-12">
                                     <InputText v-model="item.notes" class="w-full" placeholder="Notes, sizes, design code..." />
+                                    <p v-if="itemFieldError(idx, 'notes')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'notes') }}</p>
                                 </div>
                             </div>
                         </div>
@@ -588,24 +806,26 @@ const issueWeightForItem = (item) => {
                 </div>
 
                 <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">
-                    <Button label="Cancel" severity="secondary" text @click="createDialog = false" />
+                    <Button label="Cancel" severity="secondary" text @click="closeCreateDialog" />
                     <Button label="Create Order" icon="pi pi-check" @click="saveOrder" :loading="createForm.processing" />
                 </div>
             </div>
         </Dialog>
 
         <!-- Edit -->
-        <Dialog v-model:visible="editDialog" header="Edit Item" modal :style="{ width: '30rem' }">
+        <Dialog v-model:visible="editDialog" header="Edit Item" modal :style="{ width: '30rem' }" @hide="closeEditDialog">
             <div class="space-y-4 pt-2">
                 <div>
                     <label class="mb-2 block text-sm font-medium text-surface-700">Item Name</label>
                     <InputText v-model="editForm.item_name" class="w-full" />
+                    <p v-if="formError(editForm, 'item_name')" class="mt-2 text-sm text-red-600">{{ formError(editForm, 'item_name') }}</p>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="mb-2 block text-sm font-medium text-surface-700">Weight (g)</label>
                         <InputNumber v-model="editForm.target_weight" :minFractionDigits="3" class="w-full" />
+                        <p v-if="formError(editForm, 'target_weight')" class="mt-2 text-sm text-red-600">{{ formError(editForm, 'target_weight') }}</p>
                     </div>
 
                     <div>
@@ -620,23 +840,26 @@ const issueWeightForItem = (item) => {
                             optionValue="v"
                             class="w-full"
                         />
+                        <p v-if="formError(editForm, 'purity')" class="mt-2 text-sm text-red-600">{{ formError(editForm, 'purity') }}</p>
                     </div>
                 </div>
 
                 <div>
                     <label class="mb-2 block text-sm font-medium text-surface-700">Notes</label>
                     <Textarea v-model="editForm.notes" rows="3" class="w-full" />
+                    <p v-if="formError(editForm, 'notes')" class="mt-2 text-sm text-red-600">{{ formError(editForm, 'notes') }}</p>
+                    <p v-if="formError(editForm, 'item')" class="mt-2 text-sm text-red-600">{{ formError(editForm, 'item') }}</p>
                 </div>
 
                 <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">
-                    <Button label="Cancel" severity="secondary" text @click="editDialog = false" />
+                    <Button label="Cancel" severity="secondary" text @click="closeEditDialog" />
                     <Button label="Save" icon="pi pi-save" @click="submitEdit" :loading="editForm.processing" />
                 </div>
             </div>
         </Dialog>
 
         <!-- Assign -->
-        <Dialog v-model:visible="assignDialog" header="Assign to Production" modal :style="{ width: '28rem' }">
+        <Dialog v-model:visible="assignDialog" header="Assign to Production" modal :style="{ width: '28rem' }" @hide="closeAssignDialog">
             <div class="space-y-4 pt-2">
                 <div class="border border-surface-200 bg-surface-50">
                     <div class="grid grid-cols-2">
@@ -664,23 +887,33 @@ const issueWeightForItem = (item) => {
                     <Select v-if="assignForm.type === 'Karigar'" v-model="assignForm.id" :options="karigars" optionLabel="name" optionValue="id" placeholder="Choose karigar..." class="w-full" />
 
                     <Select v-else v-model="assignForm.id" :options="suppliers" optionLabel="company_name" optionValue="id" placeholder="Choose supplier..." class="w-full" />
+                    <p v-if="formError(assignForm, 'id')" class="mt-2 text-sm text-red-600">{{ formError(assignForm, 'id') }}</p>
                 </div>
 
                 <div class="border border-surface-200 bg-surface-50 p-4">
                     <label class="mb-2 block text-sm font-medium text-surface-700"> Initial Gold Issue (g) </label>
                     <InputNumber v-model="assignForm.issue_gold" :minFractionDigits="3" suffix=" g" class="w-full" />
-                    <p class="mt-2 text-xs text-surface-500">Additional gold can be issued later from transactions.</p>
+                    <p class="mt-2 text-xs text-surface-500">Leave this empty or 0 if you are only assigning the item now. Additional gold can be issued later from transactions.</p>
+                    <p v-if="formError(assignForm, 'issue_gold')" class="mt-2 text-sm text-red-600">{{ formError(assignForm, 'issue_gold') }}</p>
+                    <p v-if="formError(assignForm, 'assign')" class="mt-2 text-sm text-red-600">{{ formError(assignForm, 'assign') }}</p>
                 </div>
 
                 <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">
-                    <Button label="Cancel" severity="secondary" text @click="assignDialog = false" />
+                    <Button label="Cancel" severity="secondary" text @click="closeAssignDialog" />
                     <Button label="Assign" icon="pi pi-arrow-right" @click="submitAssignment" :loading="assignForm.processing" />
                 </div>
             </div>
         </Dialog>
 
         <!-- Transactions -->
-        <Dialog v-model:visible="transactionDialog" header="Gold & Cash Transactions" modal :style="{ width: '40rem' }" :breakpoints="{ '640px': '95vw' }">
+        <Dialog
+            v-model:visible="transactionDialog"
+            header="Gold Issue History"
+            modal
+            :style="{ width: '40rem' }"
+            :breakpoints="{ '640px': '95vw' }"
+            @hide="closeTransactionDialog"
+        >
             <div class="space-y-5 pt-2">
                 <div class="border border-surface-200 bg-surface-50 px-4 py-3">
                     <div class="flex items-center justify-between gap-4">
@@ -702,7 +935,7 @@ const issueWeightForItem = (item) => {
                     <div class="border-b border-surface-200 px-4 py-3">
                         <div class="flex items-center justify-between gap-3">
                             <h4 class="text-sm font-semibold text-surface-900">Transaction History</h4>
-                            <span class="text-xs text-surface-500"> Issued: {{ formatWeight(itemTransactionSummary.gold) }} g </span>
+                            <span class="text-xs text-surface-500">Gold moved: {{ formatWeight(itemTransactionSummary.gold) }} g</span>
                         </div>
                     </div>
 
@@ -715,14 +948,12 @@ const issueWeightForItem = (item) => {
                             <Column field="date" header="Date" />
                             <Column field="type" header="Type">
                                 <template #body="{ data }">
-                                    <Tag :value="data.type" :severity="data.type === 'ISSUE' ? 'warn' : 'success'" />
+                                    <Tag :value="data.type" :severity="transactionSeverity(data)" />
                                 </template>
                             </Column>
                             <Column field="amount" header="Amount">
                                 <template #body="{ data }">
-                                    <span class="font-medium text-surface-900">
-                                        {{ data.type === 'ISSUE' ? `${formatWeight(data.amount)} g` : formatCurrency(data.amount) }}
-                                    </span>
+                                    <span class="font-medium text-surface-900">{{ formatTransactionAmount(data) }}</span>
                                 </template>
                             </Column>
                             <Column field="description" header="Note" />
@@ -732,29 +963,33 @@ const issueWeightForItem = (item) => {
 
                 <div class="border border-surface-200 bg-white">
                     <div class="border-b border-surface-200 px-4 py-3">
-                        <h4 class="text-sm font-semibold text-surface-900">New Transaction</h4>
+                        <h4 class="text-sm font-semibold text-surface-900">Issue Additional Gold</h4>
                     </div>
 
                     <div class="space-y-4 p-4">
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <div>
-                                <label class="mb-2 block text-sm font-medium text-surface-700">Issue Gold (g)</label>
-                                <InputNumber v-model="transactionForm.metal_weight" :minFractionDigits="3" suffix=" g" placeholder="0.000" class="w-full" />
+                                <label class="mb-2 block text-sm font-medium text-surface-700">Transaction Date</label>
+                                <Calendar v-model="transactionForm.date" showIcon dateFormat="yy-mm-dd" class="w-full" inputClass="w-full" />
+                                <p v-if="formError(transactionForm, 'date')" class="mt-2 text-sm text-red-600">{{ formError(transactionForm, 'date') }}</p>
                             </div>
 
                             <div>
-                                <label class="mb-2 block text-sm font-medium text-surface-700">Pay Cash</label>
-                                <InputNumber v-model="transactionForm.cash_amount" mode="currency" currency="INR" locale="en-IN" placeholder="₹0" class="w-full" />
+                                <label class="mb-2 block text-sm font-medium text-surface-700">Gold Weight (g)</label>
+                                <InputNumber v-model="transactionForm.metal_weight" :minFractionDigits="3" suffix=" g" placeholder="0.000" class="w-full" />
+                                <p v-if="formError(transactionForm, 'metal_weight')" class="mt-2 text-sm text-red-600">{{ formError(transactionForm, 'metal_weight') }}</p>
                             </div>
                         </div>
 
                         <div>
                             <label class="mb-2 block text-sm font-medium text-surface-700">Description</label>
-                            <InputText v-model="transactionForm.description" placeholder="Add transaction note" class="w-full" />
+                            <InputText v-model="transactionForm.description" placeholder="Optional note for this gold issue" class="w-full" />
+                            <p v-if="formError(transactionForm, 'description')" class="mt-2 text-sm text-red-600">{{ formError(transactionForm, 'description') }}</p>
+                            <p v-if="formError(transactionForm, 'transaction')" class="mt-2 text-sm text-red-600">{{ formError(transactionForm, 'transaction') }}</p>
                         </div>
 
                         <div class="flex justify-end border-t border-surface-200 pt-4">
-                            <Button label="Save Transaction" icon="pi pi-check" @click="submitTransaction" :loading="transactionForm.processing" />
+                            <Button label="Save Gold Issue" icon="pi pi-check" @click="submitTransaction" :loading="transactionForm.processing" />
                         </div>
                     </div>
                 </div>
@@ -762,26 +997,140 @@ const issueWeightForItem = (item) => {
         </Dialog>
 
         <!-- Receive -->
-        <Dialog v-model:visible="completeDialog" header="Receive Finished Item" modal :style="{ width: '26rem' }">
+        <Dialog v-model:visible="completeDialog" header="Receive Finished Item" modal :style="{ width: '26rem' }" @hide="closeCompleteDialog">
             <div class="space-y-4 pt-2">
-                <div class="border border-surface-200 bg-surface-50 px-4 py-4 text-center">
-                    <p class="text-xs font-medium tracking-wide text-surface-500 uppercase">Target Weight</p>
-                    <p class="mt-1 text-2xl font-semibold text-surface-900">{{ formatWeight(selectedItem?.target_weight) }} g</p>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div class="border border-surface-200 bg-surface-50 px-4 py-4 text-center">
+                        <p class="text-xs font-medium tracking-wide text-surface-500 uppercase">Target Weight</p>
+                        <p class="mt-1 text-xl font-semibold text-surface-900">{{ formatWeight(selectedItem?.target_weight) }} g</p>
+                    </div>
+
+                    <div class="border border-surface-200 bg-surface-50 px-4 py-4 text-center">
+                        <p class="text-xs font-medium tracking-wide text-surface-500 uppercase">Issued Gold</p>
+                        <p class="mt-1 text-xl font-semibold text-surface-900">{{ formatWeight(completeIssuedGold) }} g</p>
+                    </div>
+
+                    <div class="border border-surface-200 bg-surface-50 px-4 py-4 text-center">
+                        <p class="text-xs font-medium tracking-wide text-surface-500 uppercase">Return Total</p>
+                        <p class="mt-1 text-xl font-semibold text-surface-900">{{ formatWeight(completeReturnTotal) }} g</p>
+                    </div>
                 </div>
 
                 <div>
                     <label class="mb-2 block text-sm font-medium text-surface-700">Received Weight (g)</label>
                     <InputNumber v-model="completeForm.received_weight" :minFractionDigits="3" class="w-full" autofocus />
+                    <p v-if="formError(completeForm, 'received_weight')" class="mt-2 text-sm text-red-600">{{ formError(completeForm, 'received_weight') }}</p>
                 </div>
 
                 <div>
                     <label class="mb-2 block text-sm font-medium text-surface-700">Wastage (g)</label>
                     <InputNumber v-model="completeForm.wastage" :minFractionDigits="3" class="w-full" />
+                    <p v-if="formError(completeForm, 'wastage')" class="mt-2 text-sm text-red-600">{{ formError(completeForm, 'wastage') }}</p>
+                </div>
+
+                <div v-if="completeRequiredExtraGold > 0" class="border border-amber-300 bg-amber-50 px-4 py-3">
+                    <p class="text-sm font-semibold text-amber-900">Weight mismatch detected</p>
+                    <p class="mt-1 text-sm text-amber-800">
+                        Return total is {{ formatWeight(completeReturnTotal) }} g, but only {{ formatWeight(completeIssuedGold) }} g was issued.
+                    </p>
+                    <p v-if="completeIssuedGold <= 0" class="mt-1 text-sm text-amber-800">
+                        No gold issue is recorded for this item. Record the issued gold first, or explicitly declare the full {{ formatWeight(completeRequiredExtraGold) }} g as extra gold added.
+                    </p>
+                    <p v-else class="mt-1 text-sm text-amber-800">Record {{ formatWeight(completeRequiredExtraGold) }} g as extra gold added before receiving this item.</p>
+                </div>
+
+                <div>
+                    <label class="mb-2 block text-sm font-medium text-surface-700">Extra Gold Added (g)</label>
+                    <InputNumber
+                        v-model="completeForm.extra_gold_added"
+                        :minFractionDigits="3"
+                        class="w-full"
+                        :placeholder="completeRequiredExtraGold > 0 ? formatWeight(completeRequiredExtraGold) : '0.000'"
+                    />
+                    <p class="mt-1 text-xs text-surface-500">
+                        Required mismatch amount: {{ formatWeight(completeRequiredExtraGold) }} g. This field is auto-filled from the difference.
+                    </p>
+                    <p v-if="completeRequiredExtraGold > 0 && !completeExtraGoldMatches" class="mt-2 text-sm text-red-600">
+                        Extra gold added must match the required mismatch amount of {{ formatWeight(completeRequiredExtraGold) }} g.
+                    </p>
+                    <p v-if="completeForm.errors.extra_gold_added" class="mt-2 text-sm text-red-600">
+                        {{ completeForm.errors.extra_gold_added }}
+                    </p>
+                </div>
+
+                <div>
+                    <label class="mb-2 block text-sm font-medium text-surface-700">Extra Gold Source</label>
+                    <Select
+                        v-model="completeForm.extra_gold_source"
+                        :options="extraGoldSourceOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Select source of extra gold"
+                        class="w-full"
+                    />
+                    <p class="mt-1 text-xs text-surface-500">This tells the system where the additional gold actually came from.</p>
+                    <p v-if="completeForm.errors.extra_gold_source" class="mt-2 text-sm text-red-600">
+                        {{ completeForm.errors.extra_gold_source }}
+                    </p>
+                </div>
+
+                <div v-if="completeForm.extra_gold_source === 'SUPPLIER'">
+                    <label class="mb-2 block text-sm font-medium text-surface-700">Supplier</label>
+                    <Select
+                        v-model="completeForm.extra_gold_supplier_id"
+                        :options="suppliers"
+                        optionLabel="company_name"
+                        optionValue="id"
+                        placeholder="Select supplier"
+                        class="w-full"
+                    />
+                    <p v-if="completeForm.errors.extra_gold_supplier_id" class="mt-2 text-sm text-red-600">
+                        {{ completeForm.errors.extra_gold_supplier_id }}
+                    </p>
+                </div>
+
+                <div v-if="completeForm.extra_gold_source === 'KARIGAR'">
+                    <label class="mb-2 block text-sm font-medium text-surface-700">Karigar</label>
+                    <Select
+                        v-model="completeForm.extra_gold_karigar_id"
+                        :options="karigars"
+                        optionLabel="name"
+                        optionValue="id"
+                        placeholder="Select karigar"
+                        class="w-full"
+                    />
+                    <p class="mt-1 text-xs text-surface-500">Choose the karigar who provided the extra gold. The assigned karigar is preselected when available.</p>
+                    <p v-if="completeForm.errors.extra_gold_karigar_id" class="mt-2 text-sm text-red-600">
+                        {{ completeForm.errors.extra_gold_karigar_id }}
+                    </p>
+                </div>
+
+                <div>
+                    <label class="mb-2 block text-sm font-medium text-surface-700">Mismatch / Extra Gold Note</label>
+                    <Textarea
+                        v-model="completeForm.mismatch_note"
+                        rows="3"
+                        class="w-full"
+                        placeholder="Why was extra gold added or why does finished return differ from issued gold?"
+                    />
+                    <p v-if="completeForm.errors.mismatch_note" class="mt-2 text-sm text-red-600">
+                        {{ completeForm.errors.mismatch_note }}
+                    </p>
                 </div>
 
                 <Divider />
 
-                <Button label="Mark as Ready" severity="success" icon="pi pi-check-circle" class="w-full" @click="submitComplete" :loading="completeForm.processing" />
+                <p v-if="formError(completeForm, 'complete')" class="text-sm text-red-600">{{ formError(completeForm, 'complete') }}</p>
+
+                <Button
+                    label="Mark as Ready"
+                    severity="success"
+                    icon="pi pi-check-circle"
+                    class="w-full"
+                    @click="submitComplete"
+                    :loading="completeForm.processing"
+                    :disabled="!canSubmitComplete"
+                />
             </div>
         </Dialog>
     </AppLayout>

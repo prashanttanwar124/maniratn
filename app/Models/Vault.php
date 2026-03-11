@@ -14,4 +14,9 @@ class Vault extends Model
         'type',
         'balance',
     ];
+
+    public function movements()
+    {
+        return $this->hasMany(VaultMovement::class);
+    }
 }

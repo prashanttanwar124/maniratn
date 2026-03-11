@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\DailyRegister;
+use Carbon\Carbon;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -38,6 +40,16 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
         $user = $request->user();
+        $lastClosedRegister = DailyRegister::query()
+            ->whereNotNull('closed_at')
+            ->latest('date')
+            ->latest('id')
+            ->first();
+        $todayRegister = DailyRegister::query()
+            ->whereDate('date', Carbon::today())
+            ->latest('id')
+            ->first();
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
@@ -46,6 +58,15 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'dayStatus' => [
+                'is_open' => (bool) ($todayRegister && $todayRegister->closed_at === null),
+                'opened_at' => optional($todayRegister?->created_at)?->toDateTimeString(),
+                'closed_at' => optional($todayRegister?->closed_at)?->toDateTimeString(),
+                'has_register' => (bool) $todayRegister,
+                'expected_opening_cash' => (float) ($lastClosedRegister?->closing_cash ?? 0),
+                'expected_opening_gold' => (float) ($lastClosedRegister?->closing_gold ?? 0),
+                'expected_opening_date' => optional($lastClosedRegister?->date)?->toDateString(),
+            ],
             'auth' => [
                 'user' => $user,
                 'role' => $user ? $user->getRoleNames()->first() : null,

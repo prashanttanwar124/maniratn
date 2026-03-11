@@ -16,11 +16,32 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $query = Product::query()->with(['category', 'purity']);
+        $statsBaseQuery = Product::query()->with('category');
 
         if ($request->search) {
             $query->where('name', 'like', '%' . $request->search . '%')
                 ->orWhere('barcode', 'like', '%' . $request->search . '%');
+
+            $statsBaseQuery->where(function ($productQuery) use ($request) {
+                $productQuery->where('name', 'like', '%' . $request->search . '%')
+                    ->orWhere('barcode', 'like', '%' . $request->search . '%');
+            });
         }
+
+        $statsProducts = $statsBaseQuery->get();
+        $categoryBreakdown = $statsProducts
+            ->groupBy(fn (Product $product) => $product->category?->name ?? 'Uncategorized')
+            ->map(function ($products, $categoryName) {
+                return [
+                    'category' => $categoryName,
+                    'items_count' => $products->count(),
+                    'sold_count' => $products->where('is_sold', true)->count(),
+                    'gross_weight' => round((float) $products->sum('gross_weight'), 3),
+                    'net_weight' => round((float) $products->sum('net_weight'), 3),
+                ];
+            })
+            ->sortByDesc('items_count')
+            ->values();
 
         return Inertia::render('products/Index', [
             'products'    => $query->latest()->paginate(10),
@@ -28,6 +49,15 @@ class ProductController extends Controller
             'categories'  => Category::all(),
             'purities'    => Purity::all(),
             'filters'     => $request->only(['search']), // Pass search term back
+            'summary' => [
+                'total_items' => $statsProducts->count(),
+                'sold_items' => $statsProducts->where('is_sold', true)->count(),
+                'available_items' => $statsProducts->where('is_sold', false)->count(),
+                'gross_weight' => round((float) $statsProducts->sum('gross_weight'), 3),
+                'net_weight' => round((float) $statsProducts->sum('net_weight'), 3),
+                'sold_weight' => round((float) $statsProducts->where('is_sold', true)->sum('net_weight'), 3),
+            ],
+            'category_breakdown' => $categoryBreakdown,
         ]);
     }
     public function store(Request $request)
@@ -74,6 +104,12 @@ class ProductController extends Controller
             $validated['image_path'] = $request->file('image')->store('products', 'public');
         }
 
+        if ($product->is_sold && (float) $product->net_weight !== (float) $validated['net_weight']) {
+            return redirect()->back()->withErrors([
+                'net_weight' => 'Sold products cannot have their stock weight changed.',
+            ]);
+        }
+
         $product->update($validated);
 
         return redirect()->back()->with('message', 'Product Updated Successfully');
@@ -81,6 +117,12 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
+        if ($product->is_sold) {
+            return redirect()->back()->withErrors([
+                'product' => 'Sold products cannot be deleted.',
+            ]);
+        }
+
         if ($product->image_path) {
             Storage::disk('public')->delete($product->image_path);
         }
