@@ -24,11 +24,11 @@ use App\Http\Controllers\MetalTransactionController;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canRegister' => Features::enabled(Features::registration()),
-    ]);
-})->name('home');
+// Route::get('/', function () {
+//     return Inertia::render('Welcome', [
+//         'canRegister' => Features::enabled(Features::registration()),
+//     ]);
+// })->name('home');
 
 // Utility API Route (Used by Frontend to scan barcodes)
 Route::get('/api/products/{barcode}', function ($barcode) {
