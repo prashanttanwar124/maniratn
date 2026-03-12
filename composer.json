@@ -17,11 +17,11 @@
         "laravel/wayfinder": "^0.1.9",
         "picqer/php-barcode-generator": "^3.2",
         "spatie/laravel-permission": "^6.24",
-        "tightenco/ziggy": "^2.6"
+        "tightenco/ziggy": "^2.6",
+        "fakerphp/faker": "^1.23"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.6",
-        "fakerphp/faker": "^1.23",
         "laravel/boost": "^1.8",
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.24",
