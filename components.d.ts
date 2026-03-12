@@ -14,5 +14,10 @@ declare module 'vue' {
     IconField: typeof import('primevue/iconfield')['default']
     InputIcon: typeof import('primevue/inputicon')['default']
     InputOTP: typeof import('primevue/inputotp')['default']
+    SelectButton: typeof import('primevue/selectbutton')['default']
+  }
+  export interface GlobalDirectives {
+    StyleClass: typeof import('primevue/styleclass')['default']
+    Tooltip: typeof import('primevue/tooltip')['default']
   }
 }
