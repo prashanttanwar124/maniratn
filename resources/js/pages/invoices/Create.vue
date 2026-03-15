@@ -290,14 +290,7 @@ const submitInvoice = () => {
         })),
     })).post(route('invoices.store'), {
         onSuccess: () => {
-            toast.add({ severity: 'success', summary: 'Success', detail: 'Invoice Generated!', life: 3000 });
-            form.reset();
-            form.customer_id = props.prefilledCustomer?.id || null;
-            form.date = new Date().toISOString().split('T')[0];
-            form.gold_rate = Number(props.defaultGoldRate || 0);
-            form.silver_rate = Number(props.defaultSilverRate || 0);
-            form.discount_type = 'amount';
-            form.discount_value = 0;
+            toast.add({ severity: 'success', summary: 'Success', detail: 'Invoice generated. Opening invoice register...', life: 2500 });
         },
         onError: (errors) => {
             console.error(errors);
@@ -367,7 +360,14 @@ const submitInvoice = () => {
                             </div>
 
                             <div v-else>
-                                <CustomerSelector v-model="form.customer_id" class="w-full" :errorMessage="form.errors.customer_id" />
+                                <CustomerSelector
+                                    v-model="form.customer_id"
+                                    class="w-full"
+                                    :errorMessage="form.errors.customer_id"
+                                    :selectedOption="prefilledCustomer"
+                                    helperText="Pick the billing customer before scanning stock or adding custom-order items."
+                                    placeholder="Search billing customer by name or mobile..."
+                                />
                             </div>
                         </div>
 

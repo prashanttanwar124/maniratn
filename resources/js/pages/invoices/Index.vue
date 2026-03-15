@@ -2,12 +2,14 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { Search } from 'lucide-vue-next';
 import { route } from 'ziggy-js';
 
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
+import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
@@ -21,6 +23,7 @@ const props = defineProps({
 const toast = useToast();
 const selectedInvoice = ref(null);
 const showVoidDialog = ref(false);
+const search = ref('');
 
 const voidForm = useForm({
     mode: 'keep_advance',
@@ -31,6 +34,23 @@ const totalSales = computed(() => props.invoices?.filter((invoice) => invoice.st
 const totalCollected = computed(() => props.invoices?.filter((invoice) => invoice.status !== 'CANCELLED').reduce((sum, invoice) => sum + Number(invoice.paid_amount || 0), 0) || 0);
 const totalPending = computed(() => props.invoices?.filter((invoice) => invoice.status !== 'CANCELLED').reduce((sum, invoice) => sum + Number(invoice.pending_amount || 0), 0) || 0);
 const cancelledCount = computed(() => props.invoices?.filter((invoice) => invoice.status === 'CANCELLED').length || 0);
+const filteredInvoices = computed(() => {
+    const term = search.value.trim().toLowerCase();
+
+    if (!term) return props.invoices || [];
+
+    return (props.invoices || []).filter((invoice) =>
+        [
+            invoice.invoice_number,
+            invoice.customer?.name,
+            invoice.status,
+            invoice.cancellation_mode,
+            invoice.cancelled_by,
+        ]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(term)),
+    );
+});
 
 const voidModeOptions = [
     { label: 'Keep As Advance', value: 'keep_advance', hint: 'Paid amount stays in the customer ledger as advance for the next bill.' },
@@ -144,21 +164,34 @@ const printInvoice = (invoice) => {
 
             <section class="overflow-hidden border border-surface-200 bg-white">
                 <div class="border-b border-surface-200 px-5 py-4">
-                    <h2 class="text-lg font-semibold text-surface-900">Invoice Register</h2>
-                    <p class="mt-1 text-sm text-surface-500">Paid amount, pending amount, and void outcome are shown per bill.</p>
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <h2 class="text-lg font-semibold text-surface-900">Invoice Register</h2>
+                            <p class="mt-1 text-sm text-surface-500">Paid amount, pending amount, and void outcome are shown per bill.</p>
+                        </div>
+
+                        <div class="relative w-full lg:w-80">
+                            <Search class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                            <InputText v-model="search" placeholder="Search bill, customer, or status..." class="w-full !pl-10" />
+                        </div>
+                    </div>
                 </div>
 
                 <div class="p-4">
-                    <DataTable :value="invoices" paginator :rows="10" stripedRows rowHover tableStyle="min-width: 72rem">
+                    <DataTable :value="filteredInvoices" paginator :rows="10" stripedRows rowHover tableStyle="min-width: 76rem">
                         <template #empty>
                             <div class="py-12 text-center text-surface-500">No invoices recorded yet.</div>
                         </template>
 
-                        <Column field="invoice_number" header="Bill No" sortable style="width: 160px">
+                        <Column field="invoice_number" header="Bill" sortable style="width: 190px">
                             <template #body="{ data }">
                                 <div>
                                     <p class="font-semibold text-surface-900">{{ data.invoice_number }}</p>
-                                    <p class="mt-1 text-xs text-surface-500">{{ formatDate(data.date) }}</p>
+                                    <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-surface-500">
+                                        <span>{{ formatDate(data.date) }}</span>
+                                        <span class="text-surface-300">•</span>
+                                        <span>{{ data.item_count }} item{{ data.item_count === 1 ? '' : 's' }}</span>
+                                    </div>
                                 </div>
                             </template>
                         </Column>
@@ -167,58 +200,60 @@ const printInvoice = (invoice) => {
                             <template #body="{ data }">
                                 <div>
                                     <p class="font-medium text-surface-900">{{ data.customer?.name || 'Walk-in' }}</p>
-                                    <p class="mt-1 text-xs text-surface-500">{{ data.item_count }} item{{ data.item_count === 1 ? '' : 's' }}</p>
+                                    <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-surface-500">
+                                        <span>Total {{ formatCurrency(data.total_amount) }}</span>
+                                        <template v-if="Number(data.discount_amount || 0) > 0">
+                                            <span class="text-surface-300">•</span>
+                                            <span>Discount {{ formatCurrency(data.discount_amount) }}</span>
+                                        </template>
+                                    </div>
                                 </div>
                             </template>
                         </Column>
 
-                        <Column field="total_amount" header="Total" sortable style="width: 140px">
+                        <Column header="Financials" style="width: 220px">
                             <template #body="{ data }">
-                                <span class="font-semibold text-surface-900">{{ formatCurrency(data.total_amount) }}</span>
+                                <div class="space-y-1 text-sm">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-surface-500">Paid</span>
+                                        <span class="font-semibold text-emerald-700">{{ formatCurrency(data.paid_amount) }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-surface-500">Pending</span>
+                                        <span class="font-semibold" :class="data.pending_amount > 0 ? 'text-amber-700' : 'text-surface-900'">
+                                            {{ formatCurrency(data.pending_amount) }}
+                                        </span>
+                                    </div>
+                                </div>
                             </template>
                         </Column>
 
-                        <Column field="paid_amount" header="Paid" sortable style="width: 140px">
+                        <Column field="status" header="Status" sortable style="width: 170px">
                             <template #body="{ data }">
-                                <span class="font-semibold text-emerald-700">{{ formatCurrency(data.paid_amount) }}</span>
+                                <div class="space-y-2">
+                                    <Tag :severity="data.status === 'CANCELLED' ? 'danger' : 'success'" :value="data.status === 'CANCELLED' ? 'Voided' : 'Valid'" />
+                                    <p v-if="data.status !== 'CANCELLED'" class="text-xs text-surface-500">
+                                        {{ data.pending_amount > 0 ? 'Payment pending' : 'Fully settled' }}
+                                    </p>
+                                    <p v-else class="text-xs text-surface-500">
+                                        {{ data.cancellation_mode === 'refund' ? 'Refunded to customer' : 'Kept as advance' }}
+                                    </p>
+                                </div>
                             </template>
                         </Column>
 
-                        <Column field="pending_amount" header="Pending" sortable style="width: 140px">
-                            <template #body="{ data }">
-                                <span class="font-semibold" :class="data.pending_amount > 0 ? 'text-amber-700' : 'text-surface-900'">
-                                    {{ formatCurrency(data.pending_amount) }}
-                                </span>
-                            </template>
-                        </Column>
-
-                        <Column field="status" header="Status" sortable style="width: 150px">
-                            <template #body="{ data }">
-                                <Tag :severity="data.status === 'CANCELLED' ? 'danger' : 'success'" :value="data.status === 'CANCELLED' ? 'Voided' : 'Valid'" />
-                            </template>
-                        </Column>
-
-                        <Column header="Void Outcome" style="width: 220px">
+                        <Column header="Void / Notes" style="min-width: 250px">
                             <template #body="{ data }">
                                 <div v-if="data.status === 'CANCELLED'" class="space-y-1">
-                                    <Tag
-                                        :severity="data.cancellation_mode === 'refund' ? 'danger' : 'warn'"
-                                        :value="data.cancellation_mode === 'refund' ? 'Refunded' : 'Kept As Advance'"
-                                    />
                                     <p class="text-xs font-medium" :class="data.cancellation_mode === 'refund' ? 'text-red-600' : 'text-amber-700'">
-                                        {{ formatCurrency(data.void_amount) }}
+                                        {{ formatCurrency(data.void_amount) }} {{ data.cancellation_mode === 'refund' ? 'refunded' : 'kept as advance' }}
                                     </p>
                                     <p v-if="data.cancelled_by" class="text-xs text-surface-500">
                                         {{ data.cancelled_by }} on {{ formatDate(data.cancelled_at || data.date) }}
                                     </p>
+                                    <p v-if="data.cancellation_reason" class="text-sm text-surface-600">{{ data.cancellation_reason }}</p>
+                                    <span v-else class="text-sm text-surface-400">No remarks</span>
                                 </div>
-                                <span v-else class="text-sm text-surface-400">Active invoice</span>
-                            </template>
-                        </Column>
-
-                        <Column header="Notes" style="min-width: 240px">
-                            <template #body="{ data }">
-                                <p v-if="data.cancellation_reason" class="text-sm text-surface-600">{{ data.cancellation_reason }}</p>
                                 <span v-else class="text-sm text-surface-400">No remarks</span>
                             </template>
                         </Column>
@@ -240,6 +275,30 @@ const printInvoice = (invoice) => {
                             </template>
                         </Column>
                     </DataTable>
+                </div>
+            </section>
+
+            <section class="overflow-hidden border border-surface-200 bg-white">
+                <div class="border-b border-surface-200 px-5 py-4">
+                    <h2 class="text-lg font-semibold text-surface-900">Collection Snapshot</h2>
+                    <p class="mt-1 text-sm text-surface-500">Quick view of billed amount, recovery, and pending book.</p>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 p-4 md:grid-cols-3">
+                    <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                        <p class="text-xs uppercase tracking-wide text-surface-500">Total Billed</p>
+                        <p class="mt-2 text-xl font-semibold text-surface-900">{{ formatCurrency(totalSales) }}</p>
+                    </div>
+
+                    <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                        <p class="text-xs uppercase tracking-wide text-surface-500">Recovered</p>
+                        <p class="mt-2 text-xl font-semibold text-emerald-700">{{ formatCurrency(totalCollected) }}</p>
+                    </div>
+
+                    <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                        <p class="text-xs uppercase tracking-wide text-surface-500">Outstanding</p>
+                        <p class="mt-2 text-xl font-semibold text-amber-700">{{ formatCurrency(totalPending) }}</p>
+                    </div>
                 </div>
             </section>
         </div>

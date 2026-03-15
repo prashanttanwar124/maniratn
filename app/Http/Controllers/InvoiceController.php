@@ -452,7 +452,9 @@ class InvoiceController extends Controller
                 LedgerImpactService::applyCashTransaction($transaction);
             }
 
-            return $invoice;
+            return redirect()
+                ->route('invoices.index')
+                ->with('success', "Invoice {$invoice->invoice_number} generated successfully.");
         });
     }
 
