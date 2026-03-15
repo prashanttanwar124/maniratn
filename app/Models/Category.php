@@ -11,4 +11,9 @@ class Category extends Model
     {
         return $this->hasMany(Product::class);
     }
+
+    public function silverProducts()
+    {
+        return $this->hasMany(SilverProduct::class);
+    }
 }

@@ -2,6 +2,7 @@
 
 use Inertia\Inertia;
 use App\Models\Product;
+use App\Models\SilverProduct;
 use Laravel\Fortify\Features;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\OrderController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\SilverProductController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\MortgageController;
 use App\Http\Controllers\SupplierController;
@@ -33,6 +35,12 @@ use App\Http\Controllers\MetalTransactionController;
 // Utility API Route (Used by Frontend to scan barcodes)
 Route::get('/api/products/{barcode}', function ($barcode) {
     return Product::with(['category', 'purity'])
+        ->where('barcode', $barcode)
+        ->firstOrFail();
+});
+
+Route::get('/api/silver-products/{barcode}', function ($barcode) {
+    return SilverProduct::with(['category', 'supplier'])
         ->where('barcode', $barcode)
         ->firstOrFail();
 });
@@ -107,6 +115,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/products', [ProductController::class, 'store'])->middleware(['permission:manage_products', 'day.open'])->name('products.store');
     Route::match(['put', 'patch'], '/products/{product}', [ProductController::class, 'update'])->middleware(['permission:manage_products', 'day.open'])->name('products.update');
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware(['permission:manage_products', 'day.open'])->name('products.destroy');
+
+    Route::resource('silver-products', SilverProductController::class)
+        ->only(['index'])
+        ->middleware('permission:manage_products');
+    Route::post('/silver-products', [SilverProductController::class, 'store'])->middleware(['permission:manage_products', 'day.open'])->name('silver-products.store');
+    Route::match(['put', 'patch'], '/silver-products/{silverProduct}', [SilverProductController::class, 'update'])->middleware(['permission:manage_products', 'day.open'])->name('silver-products.update');
+    Route::delete('/silver-products/{silverProduct}', [SilverProductController::class, 'destroy'])->middleware(['permission:manage_products', 'day.open'])->name('silver-products.destroy');
 
     // --- CUSTOMERS ---
     Route::get('/customers', [CustomerController::class, 'index'])->middleware('permission:manage_customers')->name('customers.index');

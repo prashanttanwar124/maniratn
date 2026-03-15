@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\DailyRegister;
+use App\Models\Vault;
 use Carbon\Carbon;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
@@ -49,6 +50,9 @@ class HandleInertiaRequests extends Middleware
             ->whereDate('date', Carbon::today())
             ->latest('id')
             ->first();
+        $hasAnyRegister = DailyRegister::query()->exists();
+        $cashVault = Vault::query()->where('type', 'CASH')->value('balance') ?? 0;
+        $goldVault = Vault::query()->where('type', 'GOLD')->value('balance') ?? 0;
 
         return [
             ...parent::share($request),
@@ -63,9 +67,12 @@ class HandleInertiaRequests extends Middleware
                 'opened_at' => optional($todayRegister?->created_at)?->toDateTimeString(),
                 'closed_at' => optional($todayRegister?->closed_at)?->toDateTimeString(),
                 'has_register' => (bool) $todayRegister,
+                'is_initial_setup' => ! $hasAnyRegister,
                 'expected_opening_cash' => (float) ($lastClosedRegister?->closing_cash ?? 0),
                 'expected_opening_gold' => (float) ($lastClosedRegister?->closing_gold ?? 0),
                 'expected_opening_date' => optional($lastClosedRegister?->date)?->toDateString(),
+                'current_vault_cash' => (float) $cashVault,
+                'current_vault_gold' => (float) $goldVault,
             ],
             'auth' => [
                 'user' => $user,

@@ -13,6 +13,11 @@ class InvoiceItem extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function silverProduct()
+    {
+        return $this->belongsTo(SilverProduct::class);
+    }
+
     public function orderItem()
     {
         return $this->belongsTo(OrderItem::class);

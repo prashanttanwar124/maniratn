@@ -289,9 +289,11 @@ class DashboardController extends Controller
     // OPEN THE DAY (Verify Cash/Gold)
     public function openDay(Request $request)
     {
+        $isInitialSetup = ! DailyRegister::query()->exists();
+
         $validated = $request->validate([
-            'opening_cash' => 'required|numeric|gt:0',
-            'opening_gold' => 'required|numeric|gt:0',
+            'opening_cash' => ['required', 'numeric', $isInitialSetup ? 'min:0' : 'gt:0'],
+            'opening_gold' => ['required', 'numeric', $isInitialSetup ? 'min:0' : 'gt:0'],
             'mismatch_reason' => 'nullable|string|max:500',
             'reopen_reason' => 'nullable|string|max:500',
         ]);
@@ -334,7 +336,7 @@ class DashboardController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($validated, $expectedOpeningCash, $expectedOpeningGold, $today, $todayLastRegister, $isReopen) {
+        DB::transaction(function () use ($validated, $expectedOpeningCash, $expectedOpeningGold, $today, $todayLastRegister, $isReopen, $isInitialSetup) {
             $today = Carbon::today();
             DailyRegister::create([
                 'date' => $today,
@@ -351,6 +353,46 @@ class DashboardController extends Controller
 
             $cashVault = Vault::firstOrCreate(['type' => 'CASH'], ['name' => 'CASH', 'balance' => 0]);
             $goldVault = Vault::firstOrCreate(['type' => 'GOLD'], ['name' => 'GOLD', 'balance' => 0]);
+
+            if ($isInitialSetup) {
+                $cashBefore = (float) $cashVault->balance;
+                $goldBefore = (float) $goldVault->balance;
+                $cashAfter = round((float) $validated['opening_cash'], 2);
+                $goldAfter = round((float) $validated['opening_gold'], 3);
+
+                $cashVault->update(['balance' => $cashAfter]);
+                $goldVault->update(['balance' => $goldAfter]);
+
+                VaultMovement::create([
+                    'vault_id' => $cashVault->id,
+                    'vault_type' => VaultType::CASH->value,
+                    'direction' => 'CREDIT',
+                    'amount' => $cashAfter,
+                    'balance_before' => $cashBefore,
+                    'balance_after' => $cashAfter,
+                    'source_type' => DailyRegister::class,
+                    'reference' => 'Initial Opening Balance',
+                    'note' => 'Initial cash balance created during first-time system setup',
+                    'user_id' => Auth::id(),
+                    'recorded_at' => now(),
+                ]);
+
+                VaultMovement::create([
+                    'vault_id' => $goldVault->id,
+                    'vault_type' => VaultType::GOLD->value,
+                    'direction' => 'CREDIT',
+                    'amount' => $goldAfter,
+                    'balance_before' => $goldBefore,
+                    'balance_after' => $goldAfter,
+                    'source_type' => DailyRegister::class,
+                    'reference' => 'Initial Opening Balance',
+                    'note' => 'Initial gold balance created during first-time system setup',
+                    'user_id' => Auth::id(),
+                    'recorded_at' => now(),
+                ]);
+
+                return;
+            }
 
             VaultMovement::create([
                 'vault_id' => $cashVault->id,
@@ -385,7 +427,9 @@ class DashboardController extends Controller
             ]);
         });
 
-        return redirect()->back()->with('success', 'Good Morning! Shop is Open.');
+        return redirect()->back()->with('success', $isInitialSetup
+            ? 'Initial opening balance saved and shop day opened.'
+            : 'Good Morning! Shop is Open.');
     }
 
     public function closeDay(Request $request)

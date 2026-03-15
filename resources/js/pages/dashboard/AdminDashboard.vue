@@ -29,6 +29,7 @@ const props = defineProps({
 
 const page = usePage();
 const can = computed(() => page.props.auth?.can || {});
+const isInitialSetup = computed(() => Boolean(page.props.dayStatus?.is_initial_setup));
 const openingExpectation = computed(() => props.opening_expectation || { cash: 0, gold: 0, date: null });
 const rateForm = useForm({
     gold_sell: parseFloat(props.rates?.gold_sell || 0),
@@ -44,7 +45,7 @@ const dayForm = useForm({
 });
 
 const dayOpeningMismatch = computed(() => {
-    return (
+    return !isInitialSetup.value && (
         Math.abs(Number(dayForm.opening_cash || 0) - Number(openingExpectation.value?.cash || 0)) > 0.0001 ||
         Math.abs(Number(dayForm.opening_gold || 0) - Number(openingExpectation.value?.gold || 0)) > 0.0001
     );
@@ -149,6 +150,26 @@ const transferCanSubmit = computed(() => {
     );
 });
 
+const expenseSourceVaultLabel = computed(() => (expenseForm.payment_method === 'CASH' ? 'Cash in Hand' : 'Bank'));
+const expenseSourceBalance = computed(() => {
+    return expenseForm.payment_method === 'CASH' ? Number(props.vaults?.cash || 0) : Number(props.vaults?.bank || 0);
+});
+const expenseAmountExceedsBalance = computed(() => {
+    if (expenseForm.amount === null || expenseForm.amount === undefined) return false;
+
+    return Number(expenseForm.amount || 0) > expenseSourceBalance.value;
+});
+const expenseCanSubmit = computed(() => {
+    return (
+        String(expenseForm.title || '').trim().length > 0 &&
+        String(expenseForm.category || '').trim().length > 0 &&
+        expenseForm.payment_method &&
+        Number(expenseForm.amount || 0) > 0 &&
+        !expenseAmountExceedsBalance.value &&
+        Boolean(expenseForm.date)
+    );
+});
+
 const saveRates = () => {
     rateForm.post(route('dashboard.update-rates'), {
         onSuccess: () => (showRateDialog.value = false),
@@ -178,6 +199,11 @@ const saveExpense = () => {
             expenseForm.date = new Date();
         },
     });
+};
+
+const openExpenseDialog = () => {
+    expenseForm.clearErrors();
+    showExpenseDialog.value = true;
 };
 
 const saveVaultTransfer = () => {
@@ -217,7 +243,7 @@ const openVaultTransferDialog = () => {
                         </div>
 
                         <div class="flex flex-wrap items-center gap-2">
-                            <Button v-if="can.manage_expenses" label="Add Expense" icon="pi pi-minus-circle" severity="danger" outlined size="small" @click="showExpenseDialog = true" />
+                            <Button v-if="can.manage_expenses" label="Add Expense" icon="pi pi-minus-circle" severity="danger" outlined size="small" @click="openExpenseDialog" />
                             <Button v-if="can.manage_vault && isDayOpen" label="Transfer Funds" icon="pi pi-arrow-right-arrow-left" outlined size="small" @click="openVaultTransferDialog" />
                             <Button v-if="can.manage_daily_rates" label="Update Rates" icon="pi pi-pencil" outlined size="small" @click="showRateDialog = true" />
                             <Button v-if="can.manage_vault && !isDayOpen" label="Open Day" icon="pi pi-lock-open" size="small" @click="showDayDialog = true" />
@@ -458,7 +484,7 @@ const openVaultTransferDialog = () => {
                                     <h3 class="text-base font-semibold text-surface-900">Recent Expenses</h3>
                                     <p class="mt-1 text-sm text-surface-500">Latest outgoing shop expenses.</p>
                                 </div>
-                                <Button label="Add Expense" text size="small" @click="showExpenseDialog = true" />
+                                <Button label="Add Expense" text size="small" @click="openExpenseDialog" />
                             </div>
                         </div>
 
@@ -739,34 +765,47 @@ const openVaultTransferDialog = () => {
 
         <Dialog v-model:visible="showExpenseDialog" header="Add Expense" modal class="w-full max-w-md">
             <div class="space-y-4 pt-2">
+                <div class="border border-surface-200 bg-white px-4 py-3 text-sm text-surface-700">
+                    Available in {{ expenseSourceVaultLabel }}:
+                    <span class="font-semibold text-surface-900">{{ formatCurrency(expenseSourceBalance) }}</span>
+                </div>
+
                 <div>
                     <label class="mb-2 block text-sm font-medium text-surface-700">Expense Title</label>
                     <InputText v-model="expenseForm.title" placeholder="Tea, courier, repair, salary..." class="w-full" />
+                    <small v-if="expenseForm.errors.title" class="mt-1 block text-red-600">{{ expenseForm.errors.title }}</small>
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <label class="mb-2 block text-sm font-medium text-surface-700">Category</label>
                         <Select v-model="expenseForm.category" :options="expenseCategories" class="w-full" />
+                        <small v-if="expenseForm.errors.category" class="mt-1 block text-red-600">{{ expenseForm.errors.category }}</small>
                     </div>
 
                     <div>
                         <label class="mb-2 block text-sm font-medium text-surface-700">Payment Method</label>
                         <Select v-model="expenseForm.payment_method" :options="expenseMethods" class="w-full" />
+                        <small v-if="expenseForm.errors.payment_method" class="mt-1 block text-red-600">{{ expenseForm.errors.payment_method }}</small>
                     </div>
                 </div>
 
                 <div>
                     <label class="mb-2 block text-sm font-medium text-surface-700">Amount</label>
                     <InputNumber v-model="expenseForm.amount" mode="currency" currency="INR" locale="en-IN" class="w-full" />
+                    <small v-if="expenseForm.errors.amount" class="mt-1 block text-red-600">{{ expenseForm.errors.amount }}</small>
+                    <small v-else-if="expenseAmountExceedsBalance" class="mt-1 block text-red-600">
+                        Amount cannot be more than {{ formatCurrency(expenseSourceBalance) }}.
+                    </small>
                 </div>
 
                 <div>
                     <label class="mb-2 block text-sm font-medium text-surface-700">Date</label>
                     <Calendar v-model="expenseForm.date" showIcon dateFormat="yy-mm-dd" class="w-full" inputClass="w-full" />
+                    <small v-if="expenseForm.errors.date" class="mt-1 block text-red-600">{{ expenseForm.errors.date }}</small>
                 </div>
 
-                <Button label="Save Expense" icon="pi pi-check" severity="danger" class="w-full" @click="saveExpense" :loading="expenseForm.processing" />
+                <Button label="Save Expense" icon="pi pi-check" severity="danger" class="w-full" @click="saveExpense" :loading="expenseForm.processing" :disabled="!expenseCanSubmit" />
             </div>
         </Dialog>
 

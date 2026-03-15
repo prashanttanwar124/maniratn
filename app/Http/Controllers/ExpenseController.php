@@ -27,18 +27,40 @@ class ExpenseController extends Controller
     {
         $validated = $request->validate([
             'title'          => 'required|string|max:255',
-            'category'       => 'required|string',
+            'category'       => 'required|string|max:100',
             'amount'         => 'required|numeric|min:1',
             'payment_method' => 'required|in:CASH,UPI,BANK',
             'date'           => 'required|date',
         ]);
 
+        $validated['title'] = trim((string) $validated['title']);
+        $validated['category'] = trim((string) $validated['category']);
+
+        if ($validated['title'] === '') {
+            throw ValidationException::withMessages([
+                'title' => 'Enter an expense title.',
+            ]);
+        }
+
+        if ($validated['category'] === '') {
+            throw ValidationException::withMessages([
+                'category' => 'Select a valid expense category.',
+            ]);
+        }
+
+        $vaultType = ($validated['payment_method'] === 'CASH') ? VaultType::CASH : VaultType::BANK;
+        $availableBalance = VaultService::getBalance($vaultType);
+
+        if ((float) $validated['amount'] > $availableBalance) {
+            throw ValidationException::withMessages([
+                'amount' => 'Expense amount exceeds available ' . strtolower($vaultType->value === VaultType::CASH->value ? 'cash' : 'bank') . ' balance of ' . number_format($availableBalance, 2, '.', '') . '.',
+            ]);
+        }
+
         try {
-            DB::transaction(function () use ($validated) {
+            DB::transaction(function () use ($validated, $vaultType) {
 
                 // 1. DEDUCT MONEY
-                $vaultType = ($validated['payment_method'] === 'CASH') ? VaultType::CASH : VaultType::BANK;
-
                 // This line throws the Exception if funds are low
                 VaultService::debit($vaultType, $validated['amount'], [
                     'source_type' => Expense::class,

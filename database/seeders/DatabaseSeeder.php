@@ -189,6 +189,7 @@ class DatabaseSeeder extends Seeder
 
         // 1. Run Product Seeder first (if you have one)
         $this->call(ProductSeeder::class);
+        $this->call(SilverProductSeeder::class);
         $this->call(RolesAndPermissionsSeeder::class);
 
         $this->syncSeededVaultBalances();

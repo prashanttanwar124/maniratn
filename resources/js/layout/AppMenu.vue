@@ -21,7 +21,8 @@ const model = [
     {
         label: 'Inventory',
         items: [
-            { label: 'Products', icon: 'pi pi-fw pi-box', to: '/products', visible: Boolean(can.manage_products) },
+            { label: 'Gold Products', icon: 'pi pi-fw pi-box', to: '/products', visible: Boolean(can.manage_products) },
+            { label: 'Silver Products', icon: 'pi pi-fw pi-database', to: '/silver-products', visible: Boolean(can.manage_products) },
             { label: 'Print Barcodes', icon: 'pi pi-fw pi-barcode', to: '/products/print-barcodes', visible: Boolean(can.manage_products) },
             { label: 'Categories', icon: 'pi pi-fw pi-tags', to: '/categories', visible: Boolean(can.manage_categories) },
         ],

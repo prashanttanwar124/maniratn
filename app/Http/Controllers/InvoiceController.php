@@ -6,6 +6,7 @@ use Inertia\Inertia;
 use App\Models\Order;
 use App\Models\Invoice;
 use App\Models\Product;
+use App\Models\SilverProduct;
 use App\Models\DailyRate;
 use App\Enums\VaultType;
 use App\Models\Customer;
@@ -75,7 +76,7 @@ class InvoiceController extends Controller
         $lockCustomer = false;
         $todayRate = DailyRate::query()
             ->whereDate('date', now()->toDateString())
-            ->value('gold_sell') ?? 0;
+            ->first();
 
         // If we are coming from the Kanban Board with an Order ID
         if ($request->has('order_id')) {
@@ -101,8 +102,8 @@ class InvoiceController extends Controller
 
         return Inertia::render('invoices/Create', [
             'customers'      => \App\Models\Customer::all(),
-            'products'       => \App\Models\Product::all(),
-            'defaultGoldRate' => (float) $todayRate,
+            'defaultGoldRate' => (float) ($todayRate?->gold_sell ?? 0),
+            'defaultSilverRate' => (float) ($todayRate?->silver_sell ?? 0),
             // Pass the ready items to the frontend
             'prefilledItems' => $prefilledItems,
             'prefilledCustomer' => $customer,
@@ -115,6 +116,7 @@ class InvoiceController extends Controller
         $invoice->load([
             'customer',
             'items.product',
+            'items.silverProduct',
             'items.orderItem',
             'transactions',
             'user',
@@ -142,16 +144,18 @@ class InvoiceController extends Controller
         // 1. Validate: Accept a generic 'items' array containing mixed types
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
-            'gold_rate'   => 'required|numeric',
+            'gold_rate'   => 'nullable|numeric|min:0',
             'date'        => 'required|date',
             'discount_type' => 'nullable|in:amount,percentage',
             'discount_value' => 'nullable|numeric|min:0',
+            'silver_rate' => 'nullable|numeric|min:0',
 
             // MIXED ITEMS LIST (Can be Product OR OrderItem)
             'items'       => 'required|array',
-            'items.*.type' => 'required|in:product,order_item', // Identify the type
+            'items.*.type' => 'required|in:product,order_item,silver_product', // Identify the type
             'items.*.id'   => 'required|integer', // The ID of the Product or OrderItem
             'items.*.making_charges' => 'required|numeric|min:0', // We need this from frontend
+            'items.*.quantity' => 'nullable|integer|min:1',
 
             'payment_cash' => 'nullable|numeric|min:0',
             'payment_card' => 'nullable|numeric|min:0',
@@ -162,6 +166,31 @@ class InvoiceController extends Controller
 
             $totalBillAmount = 0;
             $totalVaultGoldSoldWeight = 0;
+            $hasGoldPricedItems = collect($validated['items'])->contains(fn ($item) => in_array($item['type'], ['product', 'order_item'], true));
+            $hasSilverWeightItems = collect($validated['items'])->contains(fn ($item) => $item['type'] === 'silver_product');
+
+            if ($hasGoldPricedItems && empty($validated['gold_rate'])) {
+                throw ValidationException::withMessages([
+                    'gold_rate' => "Today's Gold Rate is required for gold invoice items.",
+                ]);
+            }
+
+            if ($hasSilverWeightItems && empty($validated['silver_rate'])) {
+                $hasWeightSilverItems = collect($validated['items'])->contains(function ($item) {
+                    if (($item['type'] ?? null) !== 'silver_product') {
+                        return false;
+                    }
+
+                    $silverProduct = SilverProduct::find($item['id']);
+                    return $silverProduct?->pricing_mode === 'WEIGHT';
+                });
+
+                if ($hasWeightSilverItems) {
+                    throw ValidationException::withMessages([
+                        'silver_rate' => "Today's Silver Rate is required for weight-based silver invoice items.",
+                    ]);
+                }
+            }
 
             // 2. Create Invoice Header
             $invoice = Invoice::create([
@@ -208,11 +237,81 @@ class InvoiceController extends Controller
                         'invoice_id'  => $invoice->id,
                         'product_id'  => $product->id, // Link Product
                         'description' => $itemName,
+                        'quantity'    => 1,
                         'weight'      => $weight,
                         'purity'      => $purity->name,
+                        'rate'        => $validated['gold_rate'],
                         'making_charges' => $row['making_charges'],
                         'final_price' => ($weight * $validated['gold_rate']) + $row['making_charges']
                     ]);
+                }
+
+                elseif ($row['type'] === 'silver_product') {
+                    $silverProduct = SilverProduct::findOrFail($row['id']);
+
+                    if ($silverProduct->is_sold) {
+                        abort(400, "Silver product {$silverProduct->name} is already sold!");
+                    }
+
+                    $saleQuantity = max(1, (int) ($row['quantity'] ?? 1));
+
+                    if ($silverProduct->pricing_mode === 'PIECE') {
+                        if ($saleQuantity > (int) $silverProduct->quantity) {
+                            throw ValidationException::withMessages([
+                                'items' => "Requested quantity for {$silverProduct->name} exceeds available stock.",
+                            ]);
+                        }
+
+                        $weight = (float) ($silverProduct->net_weight ?? 0) * $saleQuantity;
+                        $itemName = $silverProduct->name;
+                        $itemTotal = ((float) ($silverProduct->piece_price ?? 0) * $saleQuantity) + (float) $row['making_charges'];
+
+                        $remainingQuantity = (int) $silverProduct->quantity - $saleQuantity;
+                        $silverProduct->update([
+                            'quantity' => $remainingQuantity,
+                            'is_sold' => $remainingQuantity <= 0,
+                        ]);
+
+                        InvoiceItem::create([
+                            'invoice_id' => $invoice->id,
+                            'silver_product_id' => $silverProduct->id,
+                            'description' => $itemName,
+                            'quantity' => $saleQuantity,
+                            'weight' => $weight,
+                            'purity' => 'Silver',
+                            'rate' => (float) ($silverProduct->piece_price ?? 0),
+                            'making_charges' => $row['making_charges'],
+                            'final_price' => $itemTotal,
+                        ]);
+
+                        $totalBillAmount += $itemTotal;
+                        continue;
+                    }
+
+                    $weight = (float) $silverProduct->net_weight;
+                    $itemName = $silverProduct->name;
+                    $silverRate = (float) ($validated['silver_rate'] ?? 0);
+                    $itemTotal = ($weight * $silverRate) + (float) $row['making_charges'];
+
+                    $silverProduct->update([
+                        'quantity' => 0,
+                        'is_sold' => true,
+                    ]);
+
+                    InvoiceItem::create([
+                        'invoice_id' => $invoice->id,
+                        'silver_product_id' => $silverProduct->id,
+                        'description' => $itemName,
+                        'quantity' => 1,
+                        'weight' => $weight,
+                        'purity' => 'Silver',
+                        'rate' => $silverRate,
+                        'making_charges' => $row['making_charges'],
+                        'final_price' => $itemTotal,
+                    ]);
+
+                    $totalBillAmount += $itemTotal;
+                    continue;
                 }
 
                 // --- CASE B: IT IS A CUSTOM ORDER (Made by Karigar) ---
@@ -235,8 +334,10 @@ class InvoiceController extends Controller
                         'invoice_id'    => $invoice->id,
                         'order_item_id' => $orderItem->id, // Link Order Item
                         'description'   => $itemName . " (Order #" . $orderItem->order->order_number . ")",
+                        'quantity'      => 1,
                         'weight'        => $weight,
                         'purity'        => $purity,
+                        'rate'          => $validated['gold_rate'],
                         'making_charges' => $row['making_charges'],
                         'final_price'   => ($weight * $validated['gold_rate']) + $row['making_charges']
                     ]);
@@ -363,7 +464,7 @@ class InvoiceController extends Controller
             'reason' => 'required|string|max:500',
         ]);
 
-        $invoice = Invoice::with(['items.product', 'items.orderItem', 'transactions'])->findOrFail($id);
+        $invoice = Invoice::with(['items.product', 'items.silverProduct', 'items.orderItem', 'transactions'])->findOrFail($id);
 
         if ($invoice->status === 'CANCELLED') {
             return back()->with('error', 'This invoice is already cancelled.');
@@ -396,6 +497,20 @@ class InvoiceController extends Controller
             foreach ($invoice->items as $item) {
                 if ($item->product) {
                     $item->product->update(['is_sold' => false]);
+                }
+
+                if ($item->silverProduct) {
+                    if ($item->silverProduct->pricing_mode === 'PIECE') {
+                        $item->silverProduct->update([
+                            'quantity' => (int) $item->silverProduct->quantity + (int) ($item->quantity ?? 1),
+                            'is_sold' => false,
+                        ]);
+                    } else {
+                        $item->silverProduct->update([
+                            'quantity' => max(1, (int) ($item->quantity ?? 1)),
+                            'is_sold' => false,
+                        ]);
+                    }
                 }
 
                 if ($item->orderItem) {

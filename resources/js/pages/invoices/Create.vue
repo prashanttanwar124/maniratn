@@ -7,7 +7,9 @@ import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Divider from 'primevue/divider';
+import IconField from 'primevue/iconfield';
 import InputNumber from 'primevue/inputnumber';
+import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
@@ -18,7 +20,6 @@ import { route } from 'ziggy-js';
 
 const props = defineProps({
     customers: Array,
-    products: Array,
     prefilledItems: {
         type: Array,
         default: () => [],
@@ -28,6 +29,10 @@ const props = defineProps({
         default: () => null,
     },
     defaultGoldRate: {
+        type: Number,
+        default: 0,
+    },
+    defaultSilverRate: {
         type: Number,
         default: 0,
     },
@@ -45,11 +50,17 @@ const discountTypeOptions = [
     { label: 'Amount', value: 'amount' },
     { label: 'Percentage', value: 'percentage' },
 ];
+const inventoryTypeOptions = [
+    { label: 'Gold Stock', value: 'gold' },
+    { label: 'Silver Stock', value: 'silver' },
+];
+const selectedInventoryType = ref('gold');
 
 const form = useForm({
     customer_id: props.prefilledCustomer?.id || null,
     date: new Date().toISOString().split('T')[0],
     gold_rate: Number(props.defaultGoldRate || 0),
+    silver_rate: Number(props.defaultSilverRate || 0),
     discount_type: 'amount',
     discount_value: 0,
     items:
@@ -86,10 +97,11 @@ const fetchProduct = async () => {
     isProcessing.value = true;
 
     try {
-        const response = await axios.get(`/api/products/${scannedBarcode.value}`);
+        const endpoint = selectedInventoryType.value === 'silver' ? `/api/silver-products/${scannedBarcode.value}` : `/api/products/${scannedBarcode.value}`;
+        const response = await axios.get(endpoint);
         const product = response.data;
 
-        if (form.items.find((p) => p.type === 'product' && p.id === product.id)) {
+        if (form.items.find((p) => p.type === (selectedInventoryType.value === 'silver' ? 'silver_product' : 'product') && p.id === product.id)) {
             toast.add({ severity: 'warn', summary: 'Duplicate', detail: 'Item is already in the list.', life: 2000 });
             scannedBarcode.value = '';
             return;
@@ -101,18 +113,43 @@ const fetchProduct = async () => {
             return;
         }
 
-        const currentRate = form.gold_rate || 0;
-        const price = parseFloat(product.net_weight) * currentRate + parseFloat(product.making_charge);
+        if (selectedInventoryType.value === 'silver') {
+            const silverWeight = parseFloat(product.net_weight || 0);
+            const silverRate = form.silver_rate || 0;
+            const quantity = product.pricing_mode === 'PIECE' ? 1 : 1;
+            const piecePrice = parseFloat(product.piece_price || 0);
+            const makingCharge = parseFloat(product.making_charge || 0);
+            const price = product.pricing_mode === 'PIECE'
+                ? piecePrice * quantity + makingCharge
+                : silverWeight * silverRate + makingCharge;
 
-        form.items.push({
-            type: 'product',
-            id: product.id,
-            description: product.name + (product.barcode ? ` (${product.barcode})` : ''),
-            weight: parseFloat(product.net_weight),
-            rate: currentRate,
-            making_charges: parseFloat(product.making_charge),
-            final_price: price,
-        });
+            form.items.push({
+                type: 'silver_product',
+                id: product.id,
+                description: product.name + (product.barcode ? ` (${product.barcode})` : ''),
+                weight: silverWeight,
+                quantity,
+                quantity_available: Number(product.quantity || 0),
+                pricing_mode: product.pricing_mode,
+                rate: product.pricing_mode === 'PIECE' ? piecePrice : silverRate,
+                making_charges: makingCharge,
+                final_price: price,
+            });
+        } else {
+            const currentRate = form.gold_rate || 0;
+            const price = parseFloat(product.net_weight) * currentRate + parseFloat(product.making_charge);
+
+            form.items.push({
+                type: 'product',
+                id: product.id,
+                description: product.name + (product.barcode ? ` (${product.barcode})` : ''),
+                weight: parseFloat(product.net_weight),
+                quantity: 1,
+                rate: currentRate,
+                making_charges: parseFloat(product.making_charge),
+                final_price: price,
+            });
+        }
 
         scannedBarcode.value = '';
         toast.add({ severity: 'success', summary: 'Added', detail: product.name, life: 1000 });
@@ -132,6 +169,22 @@ const onRowInput = (event, item, field) => {
 };
 
 const recalculateRow = (item) => {
+    if (item.type === 'silver_product') {
+        const q = Math.max(1, parseInt(item.quantity || 1, 10));
+        const m = parseFloat(item.making_charges) || 0;
+
+        if (item.pricing_mode === 'PIECE') {
+            const pieceRate = parseFloat(item.rate) || 0;
+            item.final_price = Number((q * pieceRate + m).toFixed(2));
+            return;
+        }
+
+        const w = parseFloat(item.weight) || 0;
+        const r = parseFloat(item.rate) || 0;
+        item.final_price = Number((w * r + m).toFixed(2));
+        return;
+    }
+
     const w = parseFloat(item.weight) || 0;
     const r = parseFloat(item.rate) || 0;
     const m = parseFloat(item.making_charges) || 0;
@@ -168,10 +221,22 @@ const formatCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currenc
 watch(
     () => form.gold_rate,
     (rate) => {
-        form.items.forEach((item) => {
+        form.items.filter((item) => item.type !== 'silver_product').forEach((item) => {
             item.rate = Number(rate || 0);
             recalculateRow(item);
         });
+    },
+);
+
+watch(
+    () => form.silver_rate,
+    (rate) => {
+        form.items
+            .filter((item) => item.type === 'silver_product' && item.pricing_mode === 'WEIGHT')
+            .forEach((item) => {
+                item.rate = Number(rate || 0);
+                recalculateRow(item);
+            });
     },
 );
 
@@ -188,8 +253,16 @@ const submitInvoice = () => {
         toast.add({ severity: 'error', summary: 'Missing Customer', detail: 'Select a customer', life: 3000 });
         return;
     }
-    if (!form.gold_rate) {
+    if (form.items.some((item) => item.type !== 'silver_product') && !form.gold_rate) {
         toast.add({ severity: 'error', summary: 'Missing Rate', detail: "Enter today's Gold Rate", life: 3000 });
+        return;
+    }
+    if (form.items.some((item) => item.type === 'silver_product' && item.pricing_mode === 'WEIGHT') && !form.silver_rate) {
+        toast.add({ severity: 'error', summary: 'Missing Rate', detail: "Enter today's Silver Rate", life: 3000 });
+        return;
+    }
+    if (form.items.some((item) => item.type === 'silver_product' && item.pricing_mode === 'PIECE' && Number(item.quantity || 0) > Number(item.quantity_available || 0))) {
+        toast.add({ severity: 'error', summary: 'Invalid Quantity', detail: 'Silver invoice quantity cannot exceed available stock.', life: 3000 });
         return;
     }
     if (form.discount_type === 'percentage' && Number(form.discount_value || 0) > 100) {
@@ -212,6 +285,7 @@ const submitInvoice = () => {
         items: data.items.map((item) => ({
             type: item.type,
             id: item.id,
+            quantity: item.type === 'silver_product' ? Number(item.quantity || 1) : 1,
             making_charges: item.making_charges || 0,
         })),
     })).post(route('invoices.store'), {
@@ -221,6 +295,7 @@ const submitInvoice = () => {
             form.customer_id = props.prefilledCustomer?.id || null;
             form.date = new Date().toISOString().split('T')[0];
             form.gold_rate = Number(props.defaultGoldRate || 0);
+            form.silver_rate = Number(props.defaultSilverRate || 0);
             form.discount_type = 'amount';
             form.discount_value = 0;
         },
@@ -277,7 +352,7 @@ const submitInvoice = () => {
                 </div>
 
                 <div class="bg-white p-5">
-                    <div class="grid grid-cols-1 gap-5 md:grid-cols-4">
+                    <div class="grid grid-cols-1 gap-5 md:grid-cols-5">
                         <!-- Customer -->
                         <div class="md:col-span-2">
                             <label class="mb-2 block text-sm font-medium text-surface-700"> Customer </label>
@@ -307,6 +382,12 @@ const submitInvoice = () => {
                             <small class="mt-1 block text-xs text-surface-500">
                                 Auto-filled from today's stored rate. Changing it updates all invoice rows automatically.
                             </small>
+                        </div>
+
+                        <div>
+                            <label class="mb-2 block text-sm font-medium text-surface-700">Today's Silver Rate</label>
+                            <InputNumber v-model="form.silver_rate" mode="currency" currency="INR" locale="en-IN" placeholder="₹0.00" class="w-full" inputClass="w-full font-medium" />
+                            <small class="mt-1 block text-xs text-surface-500">Used only for weight-based silver items.</small>
                         </div>
 
                         <!-- Invoice Date -->
@@ -357,7 +438,7 @@ const submitInvoice = () => {
                     <div class="flex items-center justify-between border-b border-surface-200 bg-white px-5 py-4">
                         <div>
                             <h3 class="text-lg font-semibold text-surface-900">Invoice Items</h3>
-                            <p class="mt-1 text-sm text-surface-500">Scan barcode or enter product code</p>
+                            <p class="mt-1 text-sm text-surface-500">Scan gold or silver product barcode into the same invoice.</p>
                         </div>
 
                         <span class="text-sm font-medium text-surface-500"> {{ form.items?.length || 0 }} items </span>
@@ -365,6 +446,7 @@ const submitInvoice = () => {
 
                     <!-- Scanner Input -->
                     <div class="flex gap-3 border-b border-surface-200 bg-surface-50 p-4">
+                        <Select v-model="selectedInventoryType" :options="inventoryTypeOptions" optionLabel="label" optionValue="value" class="w-44 shrink-0" />
                         <IconField class="flex-1">
                             <InputIcon class="pi pi-barcode" />
                             <InputText ref="barcodeInput" v-model="scannedBarcode" @keydown.enter="fetchProduct" placeholder="Scan barcode or enter product code..." class="w-full" />
@@ -387,7 +469,7 @@ const submitInvoice = () => {
                         <!-- Type -->
                         <Column header="Type" style="width: 90px">
                             <template #body="{ data }">
-                                <Tag :value="data.type === 'order_item' ? 'ORDER' : 'STOCK'" :severity="data.type === 'order_item' ? 'info' : 'success'" />
+                                <Tag :value="data.type === 'order_item' ? 'ORDER' : data.type === 'silver_product' ? 'SILVER' : 'STOCK'" :severity="data.type === 'order_item' ? 'info' : data.type === 'silver_product' ? 'warn' : 'success'" />
                             </template>
                         </Column>
 
@@ -400,7 +482,25 @@ const submitInvoice = () => {
                                     </span>
 
                                     <span v-if="data.type === 'order_item'" class="mt-1 text-xs text-primary"> Custom Work </span>
+                                    <span v-else-if="data.type === 'silver_product'" class="mt-1 text-xs text-amber-700">
+                                        {{ data.pricing_mode === 'PIECE' ? 'Silver Piece Item' : 'Silver Weight Item' }}
+                                    </span>
                                 </div>
+                            </template>
+                        </Column>
+
+                        <Column header="Qty" style="width: 90px">
+                            <template #body="{ data }">
+                                <InputNumber
+                                    v-if="data.type === 'silver_product' && data.pricing_mode === 'PIECE'"
+                                    v-model="data.quantity"
+                                    inputClass="w-full text-right"
+                                    class="w-full"
+                                    :min="1"
+                                    :max="data.quantity_available || 1"
+                                    @input="onRowInput($event, data, 'quantity')"
+                                />
+                                <div v-else class="text-right font-medium">1</div>
                             </template>
                         </Column>
 
@@ -414,7 +514,7 @@ const submitInvoice = () => {
                         </Column>
 
                         <!-- Rate -->
-                        <Column header="Rate/g" style="width: 130px">
+                        <Column header="Rate" style="width: 130px">
                             <template #body="{ data }">
                                 <InputNumber
                                     v-model="data.rate"
@@ -423,6 +523,7 @@ const submitInvoice = () => {
                                     mode="decimal"
                                     :minFractionDigits="2"
                                     :maxFractionDigits="2"
+                                    :disabled="data.type === 'silver_product' && data.pricing_mode === 'PIECE'"
                                     @input="onRowInput($event, data, 'rate')"
                                 />
                             </template>

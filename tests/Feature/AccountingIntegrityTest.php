@@ -556,8 +556,8 @@ it('reopens the same day without creating a duplicate register', function () {
         ->and($reopenedRegister->opening_mismatch_reason)->toBe('Physical opening count differs from previous close after manual reconciliation.')
         ->and($reopenedRegister->reopen_reason)->toBe('Day was closed early and reopened after final count.')
         ->and((int) $reopenedRegister->reopened_from_id)->toBe($register->id)
-        ->and((float) $cashVault->balance)->toBe(0.0)
-        ->and((float) $goldVault->balance)->toBe(0.0);
+        ->and((float) $cashVault->balance)->toBe(5000.0)
+        ->and((float) $goldVault->balance)->toBe(50.0);
 });
 
 it('stores both cash and gold reconciliation differences when closing the day', function () {
@@ -588,6 +588,23 @@ it('stores both cash and gold reconciliation differences when closing the day', 
         ->and((float) $register->difference_cash)->toBe(-50.0)
         ->and((float) $register->difference_gold)->toBe(-0.750)
         ->and($register->closed_at)->not->toBeNull();
+});
+
+it('initializes vault balances from the first-ever opening day', function () {
+    post(route('dashboard.open-day'), [
+        'opening_cash' => 25000,
+        'opening_gold' => 50,
+    ])->assertRedirect();
+
+    $register = DailyRegister::query()->latest('id')->firstOrFail();
+    $cashVault = Vault::query()->where('type', VaultType::CASH->value)->firstOrFail();
+    $goldVault = Vault::query()->where('type', VaultType::GOLD->value)->firstOrFail();
+
+    expect((float) $register->opening_cash)->toBe(25000.0)
+        ->and((float) $register->opening_gold)->toBe(50.0)
+        ->and((float) $cashVault->balance)->toBe(25000.0)
+        ->and((float) $goldVault->balance)->toBe(50.0)
+        ->and(VaultMovement::query()->where('reference', 'Initial Opening Balance')->count())->toBe(2);
 });
 
 function openShopDay(User $user, float $cash, float $gold): void
