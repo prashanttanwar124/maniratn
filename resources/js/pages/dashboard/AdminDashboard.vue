@@ -223,6 +223,49 @@ const openVaultTransferDialog = () => {
     vaultTransferForm.clearErrors();
     showVaultTransferDialog.value = true;
 };
+
+const currencyChartItems = computed(() => {
+    const items = [
+        { label: 'Sales', value: Number(props.metrics?.today_sales || 0), tone: 'bg-surface-900' },
+        { label: 'Collections', value: Number(props.metrics?.today_collections || 0), tone: 'bg-emerald-600' },
+        { label: 'Expenses', value: Number(props.metrics?.today_expenses || 0), tone: 'bg-red-500' },
+    ];
+    const max = Math.max(...items.map((item) => item.value), 1);
+
+    return items.map((item) => ({
+        ...item,
+        width: `${Math.max((item.value / max) * 100, item.value > 0 ? 12 : 0)}%`,
+    }));
+});
+
+const productionChartItems = computed(() => {
+    const items = [
+        { label: 'New', value: Number(props.metrics?.new_orders || 0), tone: 'bg-slate-700' },
+        { label: 'In Production', value: Number(props.metrics?.in_production || 0), tone: 'bg-amber-500' },
+        { label: 'Ready', value: Number(props.metrics?.ready_items || 0), tone: 'bg-emerald-600' },
+        { label: 'Overdue', value: Number(props.metrics?.overdue_items || 0), tone: 'bg-rose-500' },
+    ];
+    const max = Math.max(...items.map((item) => item.value), 1);
+
+    return items.map((item) => ({
+        ...item,
+        width: `${Math.max((item.value / max) * 100, item.value > 0 ? 12 : 0)}%`,
+    }));
+});
+
+const vaultChartItems = computed(() => {
+    const items = [
+        { label: 'Cash', value: Number(props.vaults?.cash || 0), tone: 'bg-surface-900', display: formatCurrency(props.vaults?.cash) },
+        { label: 'Bank', value: Number(props.vaults?.bank || 0), tone: 'bg-sky-600', display: formatCurrency(props.vaults?.bank) },
+        { label: 'Gold', value: Number(props.vaults?.gold || 0), tone: 'bg-amber-500', display: formatWeight(props.vaults?.gold) },
+    ];
+    const max = Math.max(...items.map((item) => item.value), 1);
+
+    return items.map((item) => ({
+        ...item,
+        width: `${Math.max((item.value / max) * 100, item.value > 0 ? 12 : 0)}%`,
+    }));
+});
 </script>
 
 <template>
@@ -293,6 +336,96 @@ const openVaultTransferDialog = () => {
                             <div class="flex items-center justify-between">
                                 <span class="text-sm text-surface-500">Gold Buy Rate</span>
                                 <span class="font-semibold text-surface-900">{{ formatCurrency(rates?.gold_buy) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 xl:grid-cols-4">
+                    <div class="overflow-hidden border border-surface-200 bg-white xl:col-span-1">
+                        <div class="border-b border-surface-200 px-5 py-4">
+                            <h3 class="text-base font-semibold text-surface-900">Market Rates</h3>
+                            <p class="mt-1 text-sm text-surface-500">Today’s active billing rates.</p>
+                        </div>
+
+                        <div class="space-y-3 p-4">
+                            <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                                <p class="text-xs uppercase tracking-wide text-surface-500">Gold Sell</p>
+                                <p class="mt-2 text-lg font-semibold text-surface-900">{{ formatCurrency(rates?.gold_sell) }}</p>
+                            </div>
+                            <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                                <p class="text-xs uppercase tracking-wide text-surface-500">Gold Buy</p>
+                                <p class="mt-2 text-lg font-semibold text-surface-900">{{ formatCurrency(rates?.gold_buy) }}</p>
+                            </div>
+                            <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                                <p class="text-xs uppercase tracking-wide text-surface-500">Silver Sell</p>
+                                <p class="mt-2 text-lg font-semibold text-surface-900">{{ formatCurrency(rates?.silver_sell) }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-hidden border border-surface-200 bg-white xl:col-span-3">
+                        <div class="border-b border-surface-200 px-5 py-4">
+                            <h3 class="text-base font-semibold text-surface-900">Business Pulse</h3>
+                            <p class="mt-1 text-sm text-surface-500">Visual read of today’s money flow, production load, and vault position.</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-3">
+                            <div class="border border-surface-200 bg-surface-50 p-4">
+                                <div class="mb-4">
+                                    <p class="text-sm font-semibold text-surface-900">Daily Flow</p>
+                                    <p class="mt-1 text-xs text-surface-500">Sales vs collections vs expenses</p>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <div v-for="item in currencyChartItems" :key="item.label" class="space-y-1.5">
+                                        <div class="flex items-center justify-between gap-3 text-xs">
+                                            <span class="font-medium text-surface-700">{{ item.label }}</span>
+                                            <span class="text-surface-500">{{ formatCurrency(item.value) }}</span>
+                                        </div>
+                                        <div class="h-2.5 bg-white">
+                                            <div class="h-2.5" :class="item.tone" :style="{ width: item.width }"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border border-surface-200 bg-surface-50 p-4">
+                                <div class="mb-4">
+                                    <p class="text-sm font-semibold text-surface-900">Production Load</p>
+                                    <p class="mt-1 text-xs text-surface-500">Current order pipeline pressure</p>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <div v-for="item in productionChartItems" :key="item.label" class="space-y-1.5">
+                                        <div class="flex items-center justify-between gap-3 text-xs">
+                                            <span class="font-medium text-surface-700">{{ item.label }}</span>
+                                            <span class="text-surface-500">{{ item.value }}</span>
+                                        </div>
+                                        <div class="h-2.5 bg-white">
+                                            <div class="h-2.5" :class="item.tone" :style="{ width: item.width }"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border border-surface-200 bg-surface-50 p-4">
+                                <div class="mb-4">
+                                    <p class="text-sm font-semibold text-surface-900">Vault Position</p>
+                                    <p class="mt-1 text-xs text-surface-500">Quick comparison of major live balances</p>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <div v-for="item in vaultChartItems" :key="item.label" class="space-y-1.5">
+                                        <div class="flex items-center justify-between gap-3 text-xs">
+                                            <span class="font-medium text-surface-700">{{ item.label }}</span>
+                                            <span class="text-surface-500">{{ item.display }}</span>
+                                        </div>
+                                        <div class="h-2.5 bg-white">
+                                            <div class="h-2.5" :class="item.tone" :style="{ width: item.width }"></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -557,29 +690,6 @@ const openVaultTransferDialog = () => {
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 gap-4 xl:grid-cols-1">
-                    <div class="overflow-hidden border border-surface-200 bg-white">
-                        <div class="border-b border-surface-200 px-5 py-4">
-                            <h3 class="text-base font-semibold text-surface-900">Market Rates</h3>
-                            <p class="mt-1 text-sm text-surface-500">Today’s active rates used across billing and valuation.</p>
-                        </div>
-
-                        <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3">
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-4">
-                                <p class="text-xs uppercase tracking-wide text-surface-500">Gold Sell</p>
-                                <p class="mt-2 text-lg font-semibold text-surface-900">{{ formatCurrency(rates?.gold_sell) }}</p>
-                            </div>
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-4">
-                                <p class="text-xs uppercase tracking-wide text-surface-500">Gold Buy</p>
-                                <p class="mt-2 text-lg font-semibold text-surface-900">{{ formatCurrency(rates?.gold_buy) }}</p>
-                            </div>
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-4">
-                                <p class="text-xs uppercase tracking-wide text-surface-500">Silver Sell</p>
-                                <p class="mt-2 text-lg font-semibold text-surface-900">{{ formatCurrency(rates?.silver_sell) }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
 
