@@ -19,6 +19,7 @@ use App\Http\Controllers\KarigarController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\MetalTransactionController;
+use App\Http\Controllers\GoldSchemeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -130,6 +131,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/customers/{id}', [CustomerController::class, 'show'])->middleware('permission:manage_customers')->name('customers.show');
     Route::put('/customers/{customer}', [CustomerController::class, 'update'])->middleware(['permission:manage_customers', 'day.open'])->name('customers.update');
     Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->middleware(['permission:manage_customers', 'day.open'])->name('customers.destroy');
+
+    // --- GOLD SCHEMES ---
+    Route::get('/gold-schemes', [GoldSchemeController::class, 'index'])->middleware('permission:manage_gold_schemes')->name('gold-schemes.index');
+    Route::get('/gold-schemes/{goldScheme}/print', [GoldSchemeController::class, 'print'])->middleware('permission:manage_gold_schemes')->name('gold-schemes.print');
+    Route::get('/gold-schemes/{goldScheme}', [GoldSchemeController::class, 'show'])->middleware('permission:manage_gold_schemes')->name('gold-schemes.show');
+    Route::post('/gold-schemes/enroll', [GoldSchemeController::class, 'enroll'])->middleware(['permission:manage_gold_schemes', 'day.open'])->name('gold-schemes.enroll');
+    Route::match(['put', 'patch'], '/gold-schemes/{goldScheme}', [GoldSchemeController::class, 'update'])->middleware(['permission:manage_gold_schemes', 'day.open'])->name('gold-schemes.update');
+    Route::post('/gold-schemes/{goldScheme}/cancel', [GoldSchemeController::class, 'cancel'])->middleware(['permission:manage_gold_schemes', 'day.open'])->name('gold-schemes.cancel');
+    Route::post('/gold-schemes/installments/{goldSchemeInstallment}/pay', [GoldSchemeController::class, 'payInstallment'])->middleware(['permission:manage_gold_schemes', 'day.open'])->name('gold-schemes.installments.pay');
+    Route::post('/gold-schemes/installments/{goldSchemeInstallment}/void', [GoldSchemeController::class, 'voidInstallment'])->middleware(['permission:manage_gold_schemes', 'day.open'])->name('gold-schemes.installments.void');
 
     // --- MORTGAGES (Girvi) ---
     Route::post('mortgages/{mortgage}/payment', [MortgageController::class, 'addPayment'])

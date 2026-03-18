@@ -37,6 +37,7 @@ const model = [
         label: 'Finance',
         items: [
             { label: 'Expenses', icon: 'pi pi-fw pi-wallet', to: '/expenses', visible: Boolean(can.manage_expenses) },
+            { label: 'Gold Schemes', icon: 'pi pi-fw pi-star', to: '/gold-schemes', visible: Boolean(can.manage_gold_schemes) },
             { label: 'Mortgages (Girvi)', icon: 'pi pi-fw pi-lock', to: '/mortgages', visible: Boolean(can.manage_mortgages) },
         ],
     },

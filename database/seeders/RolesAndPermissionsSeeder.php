@@ -28,6 +28,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage_orders',
             'settle_karigar',
             'manage_invoices',
+            'manage_gold_schemes',
             'manage_ledgers',
             'manage_expenses',
             'manage_mortgages',
@@ -51,6 +52,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'create_order',
                 'manage_orders',
                 'manage_invoices',
+                'manage_gold_schemes',
                 'manage_ledgers',
                 'view_all_sales',
             ],
@@ -61,6 +63,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'manage_ledgers',
                 'manage_expenses',
                 'manage_mortgages',
+                'manage_gold_schemes',
                 'view_all_sales',
             ],
             'staff' => [
