@@ -11,6 +11,7 @@ class MetalTransaction extends Model
         'party_type',
         'party_id',
         'type',
+        'metal_type',
         'gross_weight',
         'purity',
         'fine_weight',
@@ -22,6 +23,8 @@ class MetalTransaction extends Model
 
     protected $casts = [
         'date' => 'date',
+        'gross_weight' => 'decimal:3',
+        'fine_weight' => 'decimal:3',
     ];
 
     // Connects to Supplier OR User (Karigar)

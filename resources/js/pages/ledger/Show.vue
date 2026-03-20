@@ -1,7 +1,7 @@
 <script setup>
 import AppLayout from '@/layouts/AppLayout.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
 
 import Button from 'primevue/button';
@@ -31,10 +31,14 @@ const editingRow = ref(null);
 const entryOptions = [
     { label: 'Issue Gold', value: 'ISSUE_GOLD' },
     { label: 'Receive Gold', value: 'RECEIVE_GOLD' },
+    { label: 'Issue Silver', value: 'ISSUE_SILVER' },
+    { label: 'Receive Silver', value: 'RECEIVE_SILVER' },
     { label: 'Pay Cash', value: 'PAY_CASH' },
     { label: 'Receive Cash', value: 'RECEIVE_CASH' },
     { label: 'Gold → Cash Adjustment', value: 'GOLD_TO_CASH' },
     { label: 'Cash → Gold Adjustment', value: 'CASH_TO_GOLD' },
+    { label: 'Silver → Cash Adjustment', value: 'SILVER_TO_CASH' },
+    { label: 'Cash → Silver Adjustment', value: 'CASH_TO_SILVER' },
 ];
 
 const form = useForm({
@@ -60,21 +64,23 @@ const partySubInfo = computed(() => {
     return props.party?.contact_person || props.party?.phone || '';
 });
 
-const needsGold = computed(() => ['ISSUE_GOLD', 'RECEIVE_GOLD', 'GOLD_TO_CASH'].includes(form.entry_type));
+const needsGold = computed(() =>
+    ['ISSUE_GOLD', 'RECEIVE_GOLD', 'ISSUE_SILVER', 'RECEIVE_SILVER', 'GOLD_TO_CASH', 'SILVER_TO_CASH'].includes(form.entry_type),
+);
 
-const needsCash = computed(() => ['PAY_CASH', 'RECEIVE_CASH', 'CASH_TO_GOLD'].includes(form.entry_type));
+const needsCash = computed(() => ['PAY_CASH', 'RECEIVE_CASH', 'CASH_TO_GOLD', 'CASH_TO_SILVER'].includes(form.entry_type));
 const needsPaymentMethod = computed(() => ['PAY_CASH', 'RECEIVE_CASH'].includes(form.entry_type));
 
-const needsRate = computed(() => ['GOLD_TO_CASH', 'CASH_TO_GOLD'].includes(form.entry_type));
+const needsRate = computed(() => ['GOLD_TO_CASH', 'CASH_TO_GOLD', 'SILVER_TO_CASH', 'CASH_TO_SILVER'].includes(form.entry_type));
 
 const calculatedAdjustmentValue = computed(() => {
-    if (form.entry_type === 'GOLD_TO_CASH') {
+    if (['GOLD_TO_CASH', 'SILVER_TO_CASH'].includes(form.entry_type)) {
         const weight = Number(form.gold_weight || 0);
         const rate = Number(form.rate || 0);
         return weight * rate;
     }
 
-    if (form.entry_type === 'CASH_TO_GOLD') {
+    if (['CASH_TO_GOLD', 'CASH_TO_SILVER'].includes(form.entry_type)) {
         const cash = Number(form.cash_amount || 0);
         const rate = Number(form.rate || 0);
         return rate > 0 ? cash / rate : 0;
@@ -125,11 +131,20 @@ const openEditModal = (row) => {
     showDialog.value = true;
 };
 
-const purityOptions = [
-    { label: '24K (99.9)', value: 99.9 },
-    { label: '22K (91.6)', value: 91.6 },
-    { label: '18K (75.0)', value: 75.0 },
-];
+const defaultPurityForEntryType = (entryType) => (String(entryType).includes('SILVER') ? 92.5 : 91.6);
+
+const purityOptions = computed(() =>
+    String(form.entry_type).includes('SILVER')
+        ? [
+              { label: 'Pure Silver (99.9)', value: 99.9 },
+              { label: 'Sterling Silver (92.5)', value: 92.5 },
+          ]
+        : [
+              { label: '24K (99.9)', value: 99.9 },
+              { label: '22K (91.6)', value: 91.6 },
+              { label: '18K (75.0)', value: 75.0 },
+          ],
+);
 
 const paymentMethodOptions = [
     { label: 'Cash', value: 'CASH' },
@@ -141,6 +156,18 @@ const entryTypeLabel = (entryType) => {
     return entryOptions.find((x) => x.value === entryType)?.label || entryType;
 };
 
+const selectedMetalLabel = computed(() => (String(form.entry_type).includes('SILVER') ? 'Silver' : 'Gold'));
+
+watch(
+    () => form.entry_type,
+    (entryType) => {
+        const allowedPurities = purityOptions.value.map((option) => option.value);
+        if (!allowedPurities.includes(Number(form.purity))) {
+            form.purity = defaultPurityForEntryType(entryType);
+        }
+    },
+);
+
 const calculatedFineWeight = computed(() => {
     const gross = Number(form.gold_weight || 0);
     const purity = Number(form.purity || 0);
@@ -148,11 +175,22 @@ const calculatedFineWeight = computed(() => {
 });
 
 const ledgerData = computed(() => {
-    let metalBalance = 0;
+    let goldBalance = 0;
+    let silverBalance = 0;
     let cashBalance = 0;
 
     const sorted = [...props.transactions].sort((a, b) => {
-        return Number(a.sort_at || 0) - Number(b.sort_at || 0);
+        const dateDiff = Number(a.sort_date || 0) - Number(b.sort_date || 0);
+        if (dateDiff !== 0) {
+            return dateDiff;
+        }
+
+        const createdDiff = Number(a.sort_created_at || 0) - Number(b.sort_created_at || 0);
+        if (createdDiff !== 0) {
+            return createdDiff;
+        }
+
+        return String(a.id || '').localeCompare(String(b.id || ''));
     });
 
     const computedList = sorted.map((txn) => {
@@ -162,12 +200,22 @@ const ledgerData = computed(() => {
         let cashOut = 0;
 
         if (txn.category === 'METAL') {
+            const metalType = txn.metal_type || 'GOLD';
+
             if (txn.type === 'ISSUE') {
                 metalOut = Number(txn.amount || 0);
-                metalBalance += metalOut;
+                if (metalType === 'SILVER') {
+                    silverBalance += metalOut;
+                } else {
+                    goldBalance += metalOut;
+                }
             } else if (txn.type === 'RECEIPT') {
                 metalIn = Number(txn.amount || 0);
-                metalBalance -= metalIn;
+                if (metalType === 'SILVER') {
+                    silverBalance -= metalIn;
+                } else {
+                    goldBalance -= metalIn;
+                }
             }
         }
 
@@ -181,7 +229,8 @@ const ledgerData = computed(() => {
                     metal_out: metalOut,
                     cash_in: cashIn,
                     cash_out: cashOut,
-                    run_metal: metalBalance,
+                    run_gold: goldBalance,
+                    run_silver: silverBalance,
                     run_cash: cashBalance,
                 };
             }
@@ -209,7 +258,8 @@ const ledgerData = computed(() => {
             metal_out: metalOut,
             cash_in: cashIn,
             cash_out: cashOut,
-            run_metal: metalBalance,
+            run_gold: goldBalance,
+            run_silver: silverBalance,
             run_cash: cashBalance,
         };
     });
@@ -217,19 +267,32 @@ const ledgerData = computed(() => {
     return computedList.reverse();
 });
 
-const currentMetalBal = computed(() => (ledgerData.value.length ? ledgerData.value[0].run_metal : 0));
+const currentGoldBal = computed(() => (ledgerData.value.length ? ledgerData.value[0].run_gold : 0));
+const currentSilverBal = computed(() => (ledgerData.value.length ? ledgerData.value[0].run_silver : 0));
 const currentCashBal = computed(() => (ledgerData.value.length ? ledgerData.value[0].run_cash : 0));
 
-const metalBalanceText = computed(() => {
+const goldBalanceText = computed(() => {
     if (partyTypeName.value === 'Karigar') {
-        return currentMetalBal.value > 0 ? 'Gold currently with karigar' : 'Gold returned to shop / extra received';
+        return currentGoldBal.value > 0 ? 'Gold currently with karigar' : 'Gold returned to shop / extra received';
     }
 
     if (partyTypeName.value === 'Supplier') {
-        return currentMetalBal.value > 0 ? 'Gold currently with supplier' : 'Gold received back / extra in shop';
+        return currentGoldBal.value > 0 ? 'Gold currently with supplier' : 'Gold received back / extra in shop';
     }
 
-    return currentMetalBal.value > 0 ? 'Gold with party' : 'Gold with shop';
+    return currentGoldBal.value > 0 ? 'Gold with party' : 'Gold with shop';
+});
+
+const silverBalanceText = computed(() => {
+    if (partyTypeName.value === 'Karigar') {
+        return currentSilverBal.value > 0 ? 'Silver currently with karigar' : 'Silver returned to shop / extra received';
+    }
+
+    if (partyTypeName.value === 'Supplier') {
+        return currentSilverBal.value > 0 ? 'Silver currently with supplier' : 'Silver received back / extra in shop';
+    }
+
+    return currentSilverBal.value > 0 ? 'Silver with party' : 'Silver with shop';
 });
 
 const cashBalanceText = computed(() => {
@@ -319,7 +382,7 @@ const submitTransaction = () => {
                         </div>
 
                         <p class="mt-1 text-sm text-surface-500">
-                            Ledger for cash and gold movement
+                            Ledger for cash, gold, and silver movement
                             <span v-if="partySubInfo"> • {{ partySubInfo }}</span>
                         </p>
                     </div>
@@ -331,14 +394,24 @@ const submitTransaction = () => {
             </div>
 
             <!-- Summary -->
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div class="border border-surface-200 bg-white px-5 py-4">
                     <div class="text-xs tracking-wide text-surface-500 uppercase">Gold Balance</div>
                     <div class="mt-2 text-3xl font-semibold text-surface-900">
-                        {{ formatWeight(currentMetalBal) }}
+                        {{ formatWeight(currentGoldBal) }}
                     </div>
                     <div class="mt-1 text-sm text-surface-500">
-                        {{ metalBalanceText }}
+                        {{ goldBalanceText }}
+                    </div>
+                </div>
+
+                <div class="border border-surface-200 bg-white px-5 py-4">
+                    <div class="text-xs tracking-wide text-surface-500 uppercase">Silver Balance</div>
+                    <div class="mt-2 text-3xl font-semibold text-surface-900">
+                        {{ formatWeight(currentSilverBal) }}
+                    </div>
+                    <div class="mt-1 text-sm text-surface-500">
+                        {{ silverBalanceText }}
                     </div>
                 </div>
 
@@ -357,7 +430,7 @@ const submitTransaction = () => {
             <div class="card overflow-hidden !p-0">
                 <div class="border-b border-surface-200 bg-white px-5 py-4">
                     <h3 class="text-base font-semibold text-surface-900">Ledger Entries</h3>
-                    <p class="mt-1 text-sm text-surface-500">Latest transactions with running gold and cash balances</p>
+                    <p class="mt-1 text-sm text-surface-500">Latest transactions with running metal and cash balances</p>
                 </div>
 
                 <div class="bg-white p-4">
@@ -379,7 +452,13 @@ const submitTransaction = () => {
                             </template>
                         </Column>
 
-                        <Column header="Gold In" style="width: 120px">
+                        <Column header="Metal" style="width: 100px">
+                            <template #body="{ data }">
+                                <Tag v-if="data.category === 'METAL'" :value="data.metal_type || 'GOLD'" :severity="(data.metal_type || 'GOLD') === 'SILVER' ? 'secondary' : 'warn'" />
+                            </template>
+                        </Column>
+
+                        <Column header="Metal In" style="width: 120px">
                             <template #body="{ data }">
                                 <span v-if="data.metal_in" class="font-medium text-green-600">
                                     {{ Number(data.metal_in).toFixed(3) }}
@@ -387,7 +466,7 @@ const submitTransaction = () => {
                             </template>
                         </Column>
 
-                        <Column header="Gold Out" style="width: 120px">
+                        <Column header="Metal Out" style="width: 120px">
                             <template #body="{ data }">
                                 <span v-if="data.metal_out" class="font-medium text-red-600">
                                     {{ Number(data.metal_out).toFixed(3) }}
@@ -395,10 +474,10 @@ const submitTransaction = () => {
                             </template>
                         </Column>
 
-                        <Column header="Gold Bal" style="width: 120px">
+                        <Column header="Metal Bal" style="width: 120px">
                             <template #body="{ data }">
-                                <span class="font-medium text-surface-900">
-                                    {{ Number(data.run_metal).toFixed(3) }}
+                                <span v-if="data.category === 'METAL'" class="font-medium text-surface-900">
+                                    {{ Number((data.metal_type || 'GOLD') === 'SILVER' ? data.run_silver : data.run_gold).toFixed(3) }}
                                 </span>
                             </template>
                         </Column>
@@ -473,14 +552,14 @@ const submitTransaction = () => {
                 </div>
 
                 <div v-if="needsGold">
-                    <label class="mb-2 block text-sm font-medium text-surface-700"> Gold Weight (g) </label>
+                    <label class="mb-2 block text-sm font-medium text-surface-700"> {{ selectedMetalLabel }} Weight (g) </label>
                     <InputNumber v-model="form.gold_weight" :minFractionDigits="3" :maxFractionDigits="3" suffix=" g" class="w-full" />
                     <small v-if="form.errors.gold_weight" class="mt-1 block text-xs text-red-500">
                         {{ form.errors.gold_weight }}
                     </small>
                 </div>
 
-                <div v-if="needsGold || form.entry_type === 'CASH_TO_GOLD'">
+                <div v-if="needsGold || ['CASH_TO_GOLD', 'CASH_TO_SILVER'].includes(form.entry_type)">
                     <label class="mb-2 block text-sm font-medium text-surface-700"> Purity </label>
                     <Select v-model="form.purity" :options="purityOptions" optionLabel="label" optionValue="value" class="w-full" />
                     <small v-if="form.errors.purity" class="mt-1 block text-xs text-red-500">
@@ -489,7 +568,7 @@ const submitTransaction = () => {
                 </div>
 
                 <div v-if="needsGold" class="border border-surface-200 bg-surface-50 px-4 py-3">
-                    <p class="text-sm text-surface-500">Fine Gold</p>
+                    <p class="text-sm text-surface-500">Fine {{ selectedMetalLabel }}</p>
                     <p class="mt-1 text-lg font-semibold text-surface-900">{{ calculatedFineWeight.toFixed(3) }} g</p>
                 </div>
 
@@ -517,20 +596,20 @@ const submitTransaction = () => {
                     </small>
                 </div>
 
-                <div v-if="form.entry_type === 'GOLD_TO_CASH'" class="border border-surface-200 bg-surface-50 px-4 py-3">
+                <div v-if="['GOLD_TO_CASH', 'SILVER_TO_CASH'].includes(form.entry_type)" class="border border-surface-200 bg-surface-50 px-4 py-3">
                     <p class="text-sm text-surface-500">Adjustment Value</p>
                     <p class="mt-1 text-lg font-semibold text-surface-900">
                         {{ formatCurrency(calculatedAdjustmentValue) }}
                     </p>
-                    <p class="mt-1 text-xs text-surface-500">Gold received will reduce cash balance by this amount.</p>
+                    <p class="mt-1 text-xs text-surface-500">{{ selectedMetalLabel }} received will reduce cash balance by this amount.</p>
                 </div>
 
-                <div v-if="form.entry_type === 'CASH_TO_GOLD'" class="border border-surface-200 bg-surface-50 px-4 py-3">
-                    <p class="text-sm text-surface-500">Gold Equivalent</p>
+                <div v-if="['CASH_TO_GOLD', 'CASH_TO_SILVER'].includes(form.entry_type)" class="border border-surface-200 bg-surface-50 px-4 py-3">
+                    <p class="text-sm text-surface-500">{{ selectedMetalLabel }} Equivalent</p>
                     <p class="mt-1 text-lg font-semibold text-surface-900">
                         {{ formatWeight(calculatedAdjustmentValue) }}
                     </p>
-                    <p class="mt-1 text-xs text-surface-500">Cash paid will be converted into this gold quantity.</p>
+                    <p class="mt-1 text-xs text-surface-500">Cash paid will be converted into this {{ selectedMetalLabel.toLowerCase() }} quantity.</p>
                 </div>
 
                 <div>

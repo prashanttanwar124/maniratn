@@ -59,6 +59,7 @@ class OrderController extends Controller
             // VALIDATE ARRAY OF ITEMS
             'items'               => 'required|array|min:1',
             'items.*.item_name'   => 'required|string|max:255',
+            'items.*.metal_type'  => ['required', Rule::in(['GOLD', 'SILVER'])],
             'items.*.target_weight' => 'required|numeric|min:0.001',
             'items.*.purity'      => 'required|numeric|min:0.01|max:100',
             'items.*.notes'       => 'nullable|string|max:500',
@@ -81,6 +82,7 @@ class OrderController extends Controller
             foreach ($validated['items'] as $item) {
                 $order->items()->create([
                     'item_name'     => $item['item_name'],
+                    'metal_type'    => $item['metal_type'],
                     'target_weight' => $item['target_weight'],
                     'purity'        => $item['purity'],
                     'notes'         => $item['notes'] ?? null,
@@ -102,6 +104,7 @@ class OrderController extends Controller
 
         $validated = $request->validate([
             'item_name' => 'required|string|max:255',
+            'metal_type' => ['required', Rule::in(['GOLD', 'SILVER'])],
             'target_weight' => 'required|numeric|min:0.001',
             'purity' => 'required|numeric|min:0.01|max:100',
             'notes' => 'nullable|string|max:500',
@@ -152,18 +155,17 @@ class OrderController extends Controller
 
             // 2. Issue Gold (Debit Stock, Credit Karigar)
             if ($issueGold > 0) {
+                $metalType = $orderItem->metal_type ?: 'GOLD';
                 $metalTransaction = MetalTransaction::create([
                     'party_type'   => $modelClass,
                     'party_id'     => $validated['id'],
                     'type'         => 'ISSUE',
+                    'metal_type'   => $metalType,
                     'gross_weight' => $issueGold,
-                    // Logic: You might issue 24k (fine) or 22k (standard). 
-                    // For simplicity assuming issue is same purity or pure. 
-                    // Usually you issue Fine Gold or Standard Bars.
-                    'fine_weight'  => $issueGold,
+                    'fine_weight'  => $this->makeFineWeight($issueGold, (float) $orderItem->purity),
                     'date'         => now(),
-                    'description'  => "Issued for Order {$orderItem->order->order_number} - {$orderItem->item_name}",
-                    'entry_type_code' => 'ORDER_ISSUE_GOLD',
+                    'description'  => "Issued {$this->metalLabel($metalType)} for Order {$orderItem->order->order_number} - {$orderItem->item_name}",
+                    'entry_type_code' => $this->orderIssueEntryCode($metalType),
                 ]);
                 LedgerImpactService::applyMetalTransaction($metalTransaction);
             }
@@ -197,16 +199,18 @@ class OrderController extends Controller
         try {
             DB::transaction(function () use ($validated, $orderItem) {
             $party = $orderItem->assignee;
+            $metalType = $orderItem->metal_type ?: 'GOLD';
 
             $desc = "Ref: {$orderItem->order->order_number} ({$orderItem->item_name})";
 
             $metalTransaction = $party->metalTransactions()->create([
                 'type'         => 'ISSUE',
+                'metal_type'   => $metalType,
                 'gross_weight' => $validated['metal_weight'],
-                'fine_weight'  => $validated['metal_weight'],
+                'fine_weight'  => $this->makeFineWeight((float) $validated['metal_weight'], (float) $orderItem->purity),
                 'date'         => Carbon::parse($validated['date'])->format('Y-m-d'),
-                'description'  => "Metal: " . $desc . (!empty($validated['description']) ? " - " . trim((string) $validated['description']) : ""),
-                'entry_type_code' => 'ORDER_ISSUE_GOLD',
+                'description'  => "{$this->metalLabel($metalType)}: " . $desc . (!empty($validated['description']) ? " - " . trim((string) $validated['description']) : ""),
+                'entry_type_code' => $this->orderIssueEntryCode($metalType),
             ]);
             LedgerImpactService::applyMetalTransaction($metalTransaction);
             });
@@ -242,6 +246,8 @@ class OrderController extends Controller
 
         try {
             DB::transaction(function () use ($orderItem, $validated) {
+            $metalType = $orderItem->metal_type ?: 'GOLD';
+            $metalLabel = $this->metalLabel($metalType);
             $receivedTotal = round((float) $validated['received_weight'] + (float) ($validated['wastage'] ?? 0), 3);
             $totalIssuedGold = $this->totalIssuedGoldForItem($orderItem);
             $requiredExtraGold = round(max($receivedTotal - $totalIssuedGold, 0), 3);
@@ -249,26 +255,26 @@ class OrderController extends Controller
 
             if ($requiredExtraGold > 0 && abs($declaredExtraGold - $requiredExtraGold) > 0.0001) {
                 throw ValidationException::withMessages([
-                    'extra_gold_added' => "Finished return exceeds issued gold by {$requiredExtraGold} g. Record that extra gold before receiving the item.",
+                    'extra_gold_added' => "Finished return exceeds issued {$metalLabel} by {$requiredExtraGold} g. Record that extra {$metalLabel} before receiving the item.",
                 ]);
             }
 
             if ($requiredExtraGold <= 0 && $declaredExtraGold > 0) {
                 throw ValidationException::withMessages([
-                    'extra_gold_added' => 'Extra gold is not required for this receive entry.',
+                    'extra_gold_added' => "Extra {$metalLabel} is not required for this receive entry.",
                 ]);
             }
 
             if ($requiredExtraGold > 0 && blank($validated['extra_gold_source'] ?? null)) {
                 throw ValidationException::withMessages([
-                    'extra_gold_source' => 'Select where the extra gold came from before receiving this item.',
+                    'extra_gold_source' => "Select where the extra {$metalLabel} came from before receiving this item.",
                 ]);
             }
 
             if ($declaredExtraGold > 0) {
                 if (blank(trim((string) ($validated['mismatch_note'] ?? '')))) {
                     throw ValidationException::withMessages([
-                        'mismatch_note' => 'Add a note explaining why extra gold was added during production.',
+                        'mismatch_note' => "Add a note explaining why extra {$metalLabel} was added during production.",
                     ]);
                 }
 
@@ -276,13 +282,13 @@ class OrderController extends Controller
 
                 if ($source === 'SUPPLIER' && empty($validated['extra_gold_supplier_id'])) {
                     throw ValidationException::withMessages([
-                        'extra_gold_supplier_id' => 'Select the supplier who provided the extra gold.',
+                        'extra_gold_supplier_id' => "Select the supplier who provided the extra {$metalLabel}.",
                     ]);
                 }
 
                 if ($source === 'KARIGAR' && empty($validated['extra_gold_karigar_id'])) {
                     throw ValidationException::withMessages([
-                        'extra_gold_karigar_id' => 'Select the karigar who provided the extra gold.',
+                        'extra_gold_karigar_id' => "Select the karigar who provided the extra {$metalLabel}.",
                     ]);
                 }
 
@@ -293,11 +299,12 @@ class OrderController extends Controller
                         'party_type' => Customer::class,
                         'party_id' => $orderItem->order->customer_id,
                         'type' => 'RECEIPT',
+                        'metal_type' => $metalType,
                         'gross_weight' => $declaredExtraGold,
-                        'fine_weight' => $declaredExtraGold,
+                        'fine_weight' => $this->makeFineWeight($declaredExtraGold, (float) $orderItem->purity),
                         'date' => now(),
-                        'description' => "Additional gold received for {$orderItem->item_name} ({$orderItem->order->order_number}) - {$note}",
-                        'entry_type_code' => 'RECEIVE_GOLD',
+                        'description' => "Additional {$metalLabel} received for {$orderItem->item_name} ({$orderItem->order->order_number}) - {$note}",
+                        'entry_type_code' => $this->receiveEntryCode($metalType),
                         'entry_source' => 'SYSTEM',
                     ]);
                     LedgerImpactService::applyMetalTransaction($customerReceipt);
@@ -308,11 +315,12 @@ class OrderController extends Controller
                         'party_type' => Supplier::class,
                         'party_id' => (int) $validated['extra_gold_supplier_id'],
                         'type' => 'RECEIPT',
+                        'metal_type' => $metalType,
                         'gross_weight' => $declaredExtraGold,
-                        'fine_weight' => $declaredExtraGold,
+                        'fine_weight' => $this->makeFineWeight($declaredExtraGold, (float) $orderItem->purity),
                         'date' => now(),
-                        'description' => "Additional gold supplied for {$orderItem->item_name} ({$orderItem->order->order_number}) - {$note}",
-                        'entry_type_code' => 'RECEIVE_GOLD',
+                        'description' => "Additional {$metalLabel} supplied for {$orderItem->item_name} ({$orderItem->order->order_number}) - {$note}",
+                        'entry_type_code' => $this->receiveEntryCode($metalType),
                         'entry_source' => 'SYSTEM',
                     ]);
                     LedgerImpactService::applyMetalTransaction($supplierReceipt);
@@ -323,11 +331,12 @@ class OrderController extends Controller
                         'party_type' => Karigar::class,
                         'party_id' => (int) $validated['extra_gold_karigar_id'],
                         'type' => 'RECEIPT',
+                        'metal_type' => $metalType,
                         'gross_weight' => $declaredExtraGold,
-                        'fine_weight' => $declaredExtraGold,
+                        'fine_weight' => $this->makeFineWeight($declaredExtraGold, (float) $orderItem->purity),
                         'date' => now(),
-                        'description' => "Additional gold received from karigar for {$orderItem->item_name} ({$orderItem->order->order_number}) - {$note}",
-                        'entry_type_code' => 'RECEIVE_GOLD',
+                        'description' => "Additional {$metalLabel} received from karigar for {$orderItem->item_name} ({$orderItem->order->order_number}) - {$note}",
+                        'entry_type_code' => $this->receiveEntryCode($metalType),
                         'entry_source' => 'SYSTEM',
                     ]);
                     LedgerImpactService::applyMetalTransaction($karigarReceipt);
@@ -345,11 +354,12 @@ class OrderController extends Controller
                         'party_type' => $orderItem->assignee_type,
                         'party_id' => $orderItem->assignee_id,
                         'type' => 'ISSUE',
+                        'metal_type' => $metalType,
                         'gross_weight' => $declaredExtraGold,
-                        'fine_weight' => $declaredExtraGold,
+                        'fine_weight' => $this->makeFineWeight($declaredExtraGold, (float) $orderItem->purity),
                         'date' => now(),
-                        'description' => "Additional issue from {$sourceLabel} for {$orderItem->item_name} ({$orderItem->order->order_number}) - {$note}",
-                        'entry_type_code' => 'ORDER_ISSUE_GOLD',
+                        'description' => "Additional {$metalLabel} issue from {$sourceLabel} for {$orderItem->item_name} ({$orderItem->order->order_number}) - {$note}",
+                        'entry_type_code' => $this->orderIssueEntryCode($metalType),
                     ]);
                     LedgerImpactService::applyMetalTransaction($extraIssue);
                 }
@@ -361,11 +371,12 @@ class OrderController extends Controller
                     'party_type'   => $orderItem->assignee_type,
                     'party_id'     => $orderItem->assignee_id,
                     'type'         => 'RECEIPT',
+                    'metal_type'   => $metalType,
                     'gross_weight' => $receivedTotal,
-                    'fine_weight'  => $receivedTotal,
+                    'fine_weight'  => $this->makeFineWeight($receivedTotal, (float) $orderItem->purity),
                     'date'         => now(),
-                    'description'  => "Finished: {$orderItem->item_name} ({$orderItem->order->order_number})" . (!empty($validated['mismatch_note']) ? " - " . trim((string) $validated['mismatch_note']) : ''),
-                    'entry_type_code' => 'ORDER_RECEIVE_GOLD',
+                    'description'  => "Finished {$metalLabel}: {$orderItem->item_name} ({$orderItem->order->order_number})" . (!empty($validated['mismatch_note']) ? " - " . trim((string) $validated['mismatch_note']) : ''),
+                    'entry_type_code' => $this->orderReceiveEntryCode($metalType),
                 ]);
                 LedgerImpactService::applyMetalTransaction($metalTransaction);
             }
@@ -424,6 +435,26 @@ class OrderController extends Controller
         return $data;
     }
 
+    private function metalLabel(string $metalType): string
+    {
+        return strtoupper($metalType) === 'SILVER' ? 'silver' : 'gold';
+    }
+
+    private function orderIssueEntryCode(string $metalType): string
+    {
+        return strtoupper($metalType) === 'SILVER' ? 'ORDER_ISSUE_SILVER' : 'ORDER_ISSUE_GOLD';
+    }
+
+    private function orderReceiveEntryCode(string $metalType): string
+    {
+        return strtoupper($metalType) === 'SILVER' ? 'ORDER_RECEIVE_SILVER' : 'ORDER_RECEIVE_GOLD';
+    }
+
+    private function receiveEntryCode(string $metalType): string
+    {
+        return strtoupper($metalType) === 'SILVER' ? 'RECEIVE_SILVER' : 'RECEIVE_GOLD';
+    }
+
     private function buildItemTransactions(OrderItem $item)
     {
         if (! $item->relationLoaded('order')) {
@@ -458,7 +489,8 @@ class OrderController extends Controller
                     'type' => $txn->type,
                     'amount' => (float) $txn->amount,
                     'description' => $txn->description,
-                    'sort_at' => optional($txn->created_at)->timestamp ?? strtotime($txn->date),
+                    'sort_date' => strtotime((string) $txn->date) ?: 0,
+                    'sort_created_at' => optional($txn->created_at)->timestamp ?? 0,
                 ]);
 
             $metalTransactions = MetalTransaction::query()
@@ -475,13 +507,31 @@ class OrderController extends Controller
                     'type' => $txn->type,
                     'amount' => (float) $txn->gross_weight,
                     'description' => $txn->description,
-                    'sort_at' => optional($txn->created_at)->timestamp ?? strtotime($txn->date),
+                    'sort_date' => strtotime((string) $txn->date) ?: 0,
+                    'sort_created_at' => optional($txn->created_at)->timestamp ?? 0,
                 ]);
         }
 
         return $cashTransactions
             ->merge($metalTransactions)
-            ->sortBy('sort_at')
+            ->sort(function (array $left, array $right) {
+                $dateCompare = ($left['sort_date'] ?? 0) <=> ($right['sort_date'] ?? 0);
+                if ($dateCompare !== 0) {
+                    return $dateCompare;
+                }
+
+                $createdCompare = ($left['sort_created_at'] ?? 0) <=> ($right['sort_created_at'] ?? 0);
+                if ($createdCompare !== 0) {
+                    return $createdCompare;
+                }
+
+                return strcmp((string) ($left['id'] ?? ''), (string) ($right['id'] ?? ''));
+            })
             ->values();
+    }
+
+    private function makeFineWeight(float $grossWeight, float $purityPercent): float
+    {
+        return round(($grossWeight * $purityPercent) / 100, 3);
     }
 }

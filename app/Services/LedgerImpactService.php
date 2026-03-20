@@ -55,8 +55,9 @@ class LedgerImpactService
     private static function runMetalEffect(MetalTransaction $transaction, bool $reverse): void
     {
         $direction = self::metalEffect($transaction);
+        $vaultType = self::metalVaultType($transaction);
 
-        if (! $direction) {
+        if (! $direction || ! $vaultType) {
             return;
         }
 
@@ -67,9 +68,9 @@ class LedgerImpactService
         $context = self::metalContext($transaction, $direction, $reverse);
 
         if ($direction === 'credit') {
-            VaultService::credit(VaultType::GOLD, (float) $transaction->gross_weight, $context);
+            VaultService::credit($vaultType, (float) $transaction->gross_weight, $context);
         } else {
-            VaultService::debit(VaultType::GOLD, (float) $transaction->gross_weight, $context);
+            VaultService::debit($vaultType, (float) $transaction->gross_weight, $context);
         }
     }
 
@@ -80,9 +81,9 @@ class LedgerImpactService
         $vaultType = self::cashVaultType($paymentMethod);
 
         return match ($code) {
-            'PAY_CASH', 'CASH_TO_GOLD', 'ORDER_CASH_PAYMENT', 'INVOICE_REFUND' => ['debit', $vaultType],
+            'PAY_CASH', 'CASH_TO_GOLD', 'CASH_TO_SILVER', 'ORDER_CASH_PAYMENT', 'INVOICE_REFUND' => ['debit', $vaultType],
             'RECEIVE_CASH', 'INVOICE_PAYMENT' => ['credit', $vaultType],
-            'GOLD_TO_CASH', 'INVOICE_SALE', 'VOID_INVOICE_SALE' => [null, null],
+            'GOLD_TO_CASH', 'SILVER_TO_CASH', 'INVOICE_SALE', 'VOID_INVOICE_SALE' => [null, null],
             default => self::cashEffectFromLegacyFields($transaction, $vaultType),
         };
     }
@@ -117,12 +118,31 @@ class LedgerImpactService
         return match ($transaction->entry_type_code) {
             'ISSUE_GOLD', 'ORDER_ISSUE_GOLD' => 'debit',
             'RECEIVE_GOLD', 'GOLD_TO_CASH', 'CASH_TO_GOLD', 'ORDER_RECEIVE_GOLD' => 'credit',
+            'ISSUE_SILVER', 'ORDER_ISSUE_SILVER' => 'debit',
+            'RECEIVE_SILVER', 'SILVER_TO_CASH', 'CASH_TO_SILVER', 'ORDER_RECEIVE_SILVER' => 'credit',
             default => match ($transaction->type) {
                 'ISSUE' => 'debit',
                 'RECEIPT' => 'credit',
                 default => null,
             },
         };
+    }
+
+    private static function metalVaultType(MetalTransaction $transaction): ?VaultType
+    {
+        $metalType = strtoupper((string) ($transaction->metal_type ?: ''));
+
+        if ($metalType === 'SILVER') {
+            return VaultType::SILVER;
+        }
+
+        if ($metalType === 'GOLD') {
+            return VaultType::GOLD;
+        }
+
+        return str_contains((string) $transaction->entry_type_code, 'SILVER')
+            ? VaultType::SILVER
+            : VaultType::GOLD;
     }
 
     private static function cashVaultType(string $paymentMethod): VaultType
@@ -157,7 +177,7 @@ class LedgerImpactService
             'source_id' => $transaction->id,
             'user_id' => $transaction->user_id ?? null,
             'recorded_at' => $transaction->created_at ?? now(),
-            'note' => trim(($reverse ? 'Reversal: ' : '') . ($transaction->description ?: "{$party} gold {$action}")),
+            'note' => trim(($reverse ? 'Reversal: ' : '') . ($transaction->description ?: "{$party} " . strtolower((string) ($transaction->metal_type ?: 'gold')) . " {$action}")),
         ];
     }
 }

@@ -50,11 +50,6 @@ const discountTypeOptions = [
     { label: 'Amount', value: 'amount' },
     { label: 'Percentage', value: 'percentage' },
 ];
-const inventoryTypeOptions = [
-    { label: 'Gold Stock', value: 'gold' },
-    { label: 'Silver Stock', value: 'silver' },
-];
-const selectedInventoryType = ref('gold');
 
 const form = useForm({
     customer_id: props.prefilledCustomer?.id || null,
@@ -97,11 +92,12 @@ const fetchProduct = async () => {
     isProcessing.value = true;
 
     try {
-        const endpoint = selectedInventoryType.value === 'silver' ? `/api/silver-products/${scannedBarcode.value}` : `/api/products/${scannedBarcode.value}`;
+        const endpoint = `/api/inventory/${encodeURIComponent(scannedBarcode.value)}`;
         const response = await axios.get(endpoint);
-        const product = response.data;
+        const product = response.data.item;
+        const inventoryType = response.data.inventory_type;
 
-        if (form.items.find((p) => p.type === (selectedInventoryType.value === 'silver' ? 'silver_product' : 'product') && p.id === product.id)) {
+        if (form.items.find((p) => p.type === inventoryType && p.id === product.id)) {
             toast.add({ severity: 'warn', summary: 'Duplicate', detail: 'Item is already in the list.', life: 2000 });
             scannedBarcode.value = '';
             return;
@@ -113,7 +109,7 @@ const fetchProduct = async () => {
             return;
         }
 
-        if (selectedInventoryType.value === 'silver') {
+        if (inventoryType === 'silver_product') {
             const silverWeight = parseFloat(product.net_weight || 0);
             const silverRate = form.silver_rate || 0;
             const quantity = product.pricing_mode === 'PIECE' ? 1 : 1;
@@ -152,7 +148,12 @@ const fetchProduct = async () => {
         }
 
         scannedBarcode.value = '';
-        toast.add({ severity: 'success', summary: 'Added', detail: product.name, life: 1000 });
+        toast.add({
+            severity: 'success',
+            summary: inventoryType === 'silver_product' ? 'Silver Item Added' : 'Gold Item Added',
+            detail: product.name,
+            life: 1200,
+        });
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Not Found', detail: 'Invalid Barcode', life: 3000 });
     } finally {
@@ -438,7 +439,7 @@ const submitInvoice = () => {
                     <div class="flex items-center justify-between border-b border-surface-200 bg-white px-5 py-4">
                         <div>
                             <h3 class="text-lg font-semibold text-surface-900">Invoice Items</h3>
-                            <p class="mt-1 text-sm text-surface-500">Scan gold or silver product barcode into the same invoice.</p>
+                            <p class="mt-1 text-sm text-surface-500">Scan any stock barcode and the invoice will detect gold or silver automatically.</p>
                         </div>
 
                         <span class="text-sm font-medium text-surface-500"> {{ form.items?.length || 0 }} items </span>
@@ -446,7 +447,6 @@ const submitInvoice = () => {
 
                     <!-- Scanner Input -->
                     <div class="flex gap-3 border-b border-surface-200 bg-surface-50 p-4">
-                        <Select v-model="selectedInventoryType" :options="inventoryTypeOptions" optionLabel="label" optionValue="value" class="w-44 shrink-0" />
                         <IconField class="flex-1">
                             <InputIcon class="pi pi-barcode" />
                             <InputText ref="barcodeInput" v-model="scannedBarcode" @keydown.enter="fetchProduct" placeholder="Scan barcode or enter product code..." class="w-full" />

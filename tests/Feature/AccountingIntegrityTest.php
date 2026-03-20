@@ -5,11 +5,14 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\DailyRegister;
 use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\Karigar;
+use App\Models\MetalTransaction;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Purity;
+use App\Models\SilverProduct;
 use App\Models\Supplier;
 use App\Models\Transaction;
 use App\Models\User;
@@ -17,8 +20,10 @@ use App\Models\Vault;
 use App\Models\VaultMovement;
 use Carbon\Carbon;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Inertia\Testing\AssertableInertia as Assert;
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\delete;
+use function Pest\Laravel\get;
 use function Pest\Laravel\post;
 use function Pest\Laravel\patch;
 
@@ -87,7 +92,7 @@ it('keeps invoice, payment, and vault balances aligned for partial payment and r
         'payment_card' => 553,
     ]);
 
-    $response->assertCreated();
+    $response->assertRedirect();
 
     $invoice = Invoice::with('transactions')->firstOrFail();
 
@@ -166,7 +171,7 @@ it('stores invoice discount and calculates final total after discount plus gst',
         ],
         'payment_cash' => 0,
         'payment_card' => 0,
-    ])->assertCreated();
+    ])->assertRedirect();
 
     $invoice = Invoice::query()->latest('id')->firstOrFail();
 
@@ -254,6 +259,147 @@ it('uses the selected payment method for manual ledger cash entries', function (
     expect((float) Vault::where('type', VaultType::BANK->value)->value('balance'))->toBe(1800.0)
         ->and((float) Vault::where('type', VaultType::CASH->value)->value('balance'))->toBe(0.0)
         ->and(Transaction::query()->where('transactable_type', Karigar::class)->where('payment_method', 'BANK')->count())->toBe(1);
+});
+
+it('updates the silver vault when manual silver ledger entries are created', function () {
+    openShopDay($this->user, 0, 0);
+
+    Vault::updateOrCreate(
+        ['type' => VaultType::SILVER->value],
+        ['name' => VaultType::SILVER->value, 'balance' => 5]
+    );
+
+    $supplier = Supplier::create([
+        'company_name' => 'silver source',
+        'contact_person' => 'dinesh',
+        'mobile' => '8888888884',
+        'type' => 'SILVER',
+    ]);
+
+    post(route('ledger.store-entry'), [
+        'party_type' => Supplier::class,
+        'party_id' => $supplier->id,
+        'entry_type' => 'ISSUE_SILVER',
+        'gold_weight' => 2,
+        'purity' => 92.5,
+        'description' => 'Silver issued manually',
+        'date' => today()->toDateString(),
+    ])->assertRedirect();
+
+    expect((float) Vault::where('type', VaultType::SILVER->value)->value('balance'))->toBe(3.0);
+
+    post(route('ledger.store-entry'), [
+        'party_type' => Supplier::class,
+        'party_id' => $supplier->id,
+        'entry_type' => 'RECEIVE_SILVER',
+        'gold_weight' => 1.250,
+        'purity' => 92.5,
+        'description' => 'Silver received back',
+        'date' => today()->toDateString(),
+    ])->assertRedirect();
+
+    expect((float) Vault::where('type', VaultType::SILVER->value)->value('balance'))->toBe(4.25)
+        ->and((float) Vault::where('type', VaultType::GOLD->value)->value('balance'))->toBe(0.0)
+        ->and(MetalTransaction::query()->where('party_type', Supplier::class)->where('party_id', $supplier->id)->where('metal_type', 'SILVER')->count())->toBe(2);
+});
+
+it('handles gold and silver cash adjustment entries against the correct vaults', function () {
+    openShopDay($this->user, 10000, 2);
+
+    Vault::updateOrCreate(
+        ['type' => VaultType::SILVER->value],
+        ['name' => VaultType::SILVER->value, 'balance' => 5]
+    );
+
+    $karigar = Karigar::create([
+        'name' => 'adjustment karigar',
+        'mobile' => '7777777776',
+        'work_type' => 'silver work',
+        'city' => 'mumbai',
+    ]);
+
+    post(route('ledger.store-entry'), [
+        'party_type' => Karigar::class,
+        'party_id' => $karigar->id,
+        'entry_type' => 'CASH_TO_GOLD',
+        'cash_amount' => 7000,
+        'rate' => 7000,
+        'purity' => 91.6,
+        'description' => 'Cash converted into gold settlement',
+        'date' => today()->toDateString(),
+    ])->assertRedirect();
+
+    expect((float) Vault::where('type', VaultType::CASH->value)->value('balance'))->toBe(3000.0)
+        ->and((float) Vault::where('type', VaultType::GOLD->value)->value('balance'))->toBe(3.0)
+        ->and((float) Vault::where('type', VaultType::SILVER->value)->value('balance'))->toBe(5.0);
+
+    post(route('ledger.store-entry'), [
+        'party_type' => Karigar::class,
+        'party_id' => $karigar->id,
+        'entry_type' => 'CASH_TO_SILVER',
+        'cash_amount' => 2000,
+        'rate' => 1000,
+        'purity' => 92.5,
+        'description' => 'Cash converted into silver settlement',
+        'date' => today()->toDateString(),
+    ])->assertRedirect();
+
+    expect((float) Vault::where('type', VaultType::CASH->value)->value('balance'))->toBe(1000.0)
+        ->and((float) Vault::where('type', VaultType::GOLD->value)->value('balance'))->toBe(3.0)
+        ->and((float) Vault::where('type', VaultType::SILVER->value)->value('balance'))->toBe(7.0);
+
+    post(route('ledger.store-entry'), [
+        'party_type' => Karigar::class,
+        'party_id' => $karigar->id,
+        'entry_type' => 'SILVER_TO_CASH',
+        'gold_weight' => 1.500,
+        'rate' => 1000,
+        'purity' => 92.5,
+        'description' => 'Silver adjusted instead of cash receipt',
+        'date' => today()->toDateString(),
+    ])->assertRedirect();
+
+    expect((float) Vault::where('type', VaultType::CASH->value)->value('balance'))->toBe(1000.0)
+        ->and((float) Vault::where('type', VaultType::GOLD->value)->value('balance'))->toBe(3.0)
+        ->and((float) Vault::where('type', VaultType::SILVER->value)->value('balance'))->toBe(8.5);
+});
+
+it('shows ledger transactions in business-date order for running balances', function () {
+    openShopDay($this->user, 5000, 0);
+
+    $supplier = Supplier::create([
+        'company_name' => 'sorting supplier',
+        'contact_person' => 'harish',
+        'mobile' => '8888888885',
+        'type' => 'GOLD',
+    ]);
+
+    post(route('ledger.store-entry'), [
+        'party_type' => Supplier::class,
+        'party_id' => $supplier->id,
+        'entry_type' => 'PAY_CASH',
+        'cash_amount' => 1000,
+        'payment_method' => 'CASH',
+        'description' => 'Later business date',
+        'date' => '2026-03-10',
+    ])->assertRedirect();
+
+    post(route('ledger.store-entry'), [
+        'party_type' => Supplier::class,
+        'party_id' => $supplier->id,
+        'entry_type' => 'RECEIVE_CASH',
+        'cash_amount' => 250,
+        'payment_method' => 'CASH',
+        'description' => 'Earlier business date added later',
+        'date' => '2026-03-09',
+    ])->assertRedirect();
+
+    get(route('ledger.show', ['type' => 'suppliers', 'id' => $supplier->id]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('ledger/Show')
+            ->where('transactions.0.date', '2026-03-09')
+            ->where('transactions.1.date', '2026-03-10'));
 });
 
 it('keeps stock product inventory separate from the loose gold vault', function () {
@@ -385,6 +531,141 @@ it('updates gold vault through order assignment and completion', function () {
         ->and($item->fresh()->status)->toBe('READY')
         ->and((float) $item->fresh()->finished_weight)->toBe(4.2)
         ->and((float) $item->fresh()->wastage)->toBe(0.3);
+});
+
+it('updates silver vault through silver order assignment and completion', function () {
+    openShopDay($this->user, 0, 0);
+
+    Vault::updateOrCreate(
+        ['type' => VaultType::SILVER->value],
+        ['name' => VaultType::SILVER->value, 'balance' => 20]
+    );
+
+    $customer = Customer::create([
+        'name' => 'silver customer',
+        'mobile' => '9999999995',
+        'city' => 'virar',
+    ]);
+
+    $karigar = Karigar::create([
+        'name' => 'silver maker',
+        'mobile' => '7777777777',
+        'work_type' => 'silver',
+        'city' => 'mumbai',
+    ]);
+
+    $order = Order::create([
+        'order_number' => 'ORD-0100',
+        'customer_id' => $customer->id,
+        'due_date' => today()->addDays(7)->toDateString(),
+    ]);
+
+    $item = OrderItem::create([
+        'order_id' => $order->id,
+        'item_name' => 'Silver Bracelet',
+        'metal_type' => 'SILVER',
+        'target_weight' => 3,
+        'purity' => 92.50,
+        'status' => 'NEW',
+    ]);
+
+    post(route('orders.assign', $item), [
+        'type' => 'Karigar',
+        'id' => $karigar->id,
+        'issue_gold' => 3,
+    ])->assertRedirect();
+
+    $issueTxn = MetalTransaction::query()
+        ->where('party_type', Karigar::class)
+        ->where('party_id', $karigar->id)
+        ->where('entry_type_code', 'ORDER_ISSUE_SILVER')
+        ->latest('id')
+        ->firstOrFail();
+
+    expect((float) Vault::where('type', VaultType::SILVER->value)->value('balance'))->toBe(17.0)
+        ->and((float) $issueTxn->fine_weight)->toBe(2.775);
+
+    post(route('orders.complete', $item), [
+        'received_weight' => 2.800,
+        'wastage' => 0.100,
+    ])->assertRedirect();
+
+    $receiptTxn = MetalTransaction::query()
+        ->where('party_type', Karigar::class)
+        ->where('party_id', $karigar->id)
+        ->where('entry_type_code', 'ORDER_RECEIVE_SILVER')
+        ->latest('id')
+        ->firstOrFail();
+
+    expect((float) Vault::where('type', VaultType::SILVER->value)->value('balance'))->toBe(19.9)
+        ->and($item->fresh()->status)->toBe('READY')
+        ->and((float) $receiptTxn->fine_weight)->toBe(2.683);
+});
+
+it('invoices silver custom order items against the silver rate and silver vault', function () {
+    openShopDay($this->user, 0, 0);
+
+    Vault::updateOrCreate(
+        ['type' => VaultType::SILVER->value],
+        ['name' => VaultType::SILVER->value, 'balance' => 10]
+    );
+
+    $customer = Customer::create([
+        'name' => 'silver invoice customer',
+        'mobile' => '9999999996',
+        'city' => 'mumbai',
+    ]);
+
+    $order = Order::create([
+        'order_number' => 'ORD-0200',
+        'customer_id' => $customer->id,
+        'due_date' => today()->addDays(7)->toDateString(),
+    ]);
+
+    $item = OrderItem::create([
+        'order_id' => $order->id,
+        'item_name' => 'Silver Anklet',
+        'metal_type' => 'SILVER',
+        'target_weight' => 2.500,
+        'finished_weight' => 2.500,
+        'purity' => 92.50,
+        'status' => 'READY',
+    ]);
+
+    post(route('invoices.store'), [
+        'customer_id' => $customer->id,
+        'silver_rate' => 1000,
+        'date' => today()->toDateString(),
+        'items' => [
+            [
+                'type' => 'order_item',
+                'id' => $item->id,
+                'making_charges' => 250,
+            ],
+        ],
+        'payment_cash' => 0,
+        'payment_card' => 0,
+    ])->assertRedirect();
+
+    $invoice = Invoice::query()->latest('id')->firstOrFail();
+    $invoiceItem = InvoiceItem::query()->where('invoice_id', $invoice->id)->firstOrFail();
+
+    expect((float) $invoice->total_amount)->toBe(2832.5)
+        ->and((float) $invoiceItem->rate)->toBe(1000.0)
+        ->and((float) $invoiceItem->final_price)->toBe(2750.0)
+        ->and($item->fresh()->status)->toBe('DELIVERED')
+        ->and((float) Vault::where('type', VaultType::SILVER->value)->value('balance'))->toBe(7.5)
+        ->and((float) Vault::where('type', VaultType::GOLD->value)->value('balance'))->toBe(0.0);
+
+    post(route('invoices.cancel', $invoice->id), [
+        'mode' => 'refund',
+        'reason' => 'Silver order billing reversed.',
+    ])->assertRedirect();
+
+    expect($invoice->fresh()->status)->toBe('CANCELLED')
+        ->and($item->fresh()->status)->toBe('READY')
+        ->and((float) Vault::where('type', VaultType::SILVER->value)->value('balance'))->toBe(10.0)
+        ->and((float) Vault::where('type', VaultType::GOLD->value)->value('balance'))->toBe(0.0);
 });
 
 it('requires explicit extra gold when finished order weight exceeds issued gold', function () {

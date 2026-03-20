@@ -89,6 +89,8 @@ const vaultTransferOptions = [
 const vaultLabels = {
     CASH: 'Cash in Hand',
     BANK: 'Bank',
+    SILVER: 'Silver Vault',
+    GOLD: 'Gold Vault',
 };
 const quickLinks = [
     { label: 'New Bill', href: route('invoices.create'), icon: 'pi pi-file-edit' },
@@ -258,6 +260,7 @@ const vaultChartItems = computed(() => {
         { label: 'Cash', value: Number(props.vaults?.cash || 0), tone: 'bg-surface-900', display: formatCurrency(props.vaults?.cash) },
         { label: 'Bank', value: Number(props.vaults?.bank || 0), tone: 'bg-sky-600', display: formatCurrency(props.vaults?.bank) },
         { label: 'Gold', value: Number(props.vaults?.gold || 0), tone: 'bg-amber-500', display: formatWeight(props.vaults?.gold) },
+        { label: 'Silver', value: Number(props.vaults?.silver || 0), tone: 'bg-slate-500', display: formatWeight(props.vaults?.silver) },
     ];
     const max = Math.max(...items.map((item) => item.value), 1);
 
@@ -455,7 +458,7 @@ const vaultChartItems = computed(() => {
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-7">
                     <div class="border border-surface-200 bg-white p-4">
                         <p class="text-sm text-surface-500">Cash in Hand</p>
                         <p class="mt-2 text-xl font-semibold text-surface-900">{{ formatCurrency(vaults?.cash) }}</p>
@@ -469,6 +472,11 @@ const vaultChartItems = computed(() => {
                     <div class="border border-surface-200 bg-white p-4">
                         <p class="text-sm text-surface-500">Gold in Vault</p>
                         <p class="mt-2 text-xl font-semibold text-surface-900">{{ formatWeight(vaults?.gold) }}</p>
+                    </div>
+
+                    <div class="border border-surface-200 bg-white p-4">
+                        <p class="text-sm text-surface-500">Silver in Vault</p>
+                        <p class="mt-2 text-xl font-semibold text-surface-900">{{ formatWeight(vaults?.silver) }}</p>
                     </div>
 
                     <div class="border border-surface-200 bg-white p-4">
@@ -656,7 +664,7 @@ const vaultChartItems = computed(() => {
 
                                 <Column field="vault_type" header="Vault" style="width: 90px">
                                     <template #body="{ data }">
-                                        <Tag :value="data.vault_type" :severity="data.vault_type === 'GOLD' ? 'warn' : data.vault_type === 'BANK' ? 'info' : 'secondary'" />
+                                        <Tag :value="data.vault_type" :severity="data.vault_type === 'GOLD' ? 'warn' : data.vault_type === 'BANK' ? 'info' : data.vault_type === 'SILVER' ? 'contrast' : 'secondary'" />
                                     </template>
                                 </Column>
 

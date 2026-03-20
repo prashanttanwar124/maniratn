@@ -5,31 +5,153 @@
     <meta charset="UTF-8">
     <title>Print Jewellery Tags</title>
     <style>
-        /* --- 1. GENERAL SETUP --- */
-        body {
-            font-family: 'Arial', sans-serif;
-            background: #e0e0e0;
-            margin: 20px;
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+        :root {
+            --label-width: 15mm;
+            --label-height: 100mm;
+            --top-zone: 35mm;
+            --middle-zone: 35mm;
+            --tail-zone: 30mm;
+            --screen-bg: #f3efe6;
+            --screen-panel: #fffdf8;
+            --screen-border: #ddd4c4;
+            --screen-text: #251f17;
+            --screen-muted: #746a5d;
         }
 
-        /* Screen Container (Keep this exactly as is for your perfect HTML view) */
+        body {
+            font-family: 'Poppins', Arial, sans-serif;
+            background:
+                linear-gradient(180deg, #f7f3ea 0%, #efe8dc 100%);
+            color: var(--screen-text);
+            margin: 0;
+            padding: 24px;
+        }
+
+        .screen-shell {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .screen-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            padding: 20px 24px;
+            border: 1px solid var(--screen-border);
+            background: var(--screen-panel);
+            box-shadow: 0 10px 30px rgba(55, 41, 21, 0.08);
+        }
+
+        .screen-title {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+        }
+
+        .screen-subtitle {
+            margin: 6px 0 0;
+            font-size: 13px;
+            color: var(--screen-muted);
+        }
+
+        .screen-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .meta-chip {
+            border: 1px solid var(--screen-border);
+            background: #f8f3e9;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+
+        .screen-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .print-button {
+            padding: 12px 22px;
+            background: #18130d;
+            color: #fff;
+            border: none;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .screen-note {
+            max-width: 320px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--screen-muted);
+        }
+
+        .preview-stage {
+            margin-top: 18px;
+            border: 1px solid var(--screen-border);
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(247, 243, 234, 0.98));
+            box-shadow: 0 18px 40px rgba(55, 41, 21, 0.08);
+            padding: 24px;
+        }
+
+        .label-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            align-items: flex-start;
+        }
+
         .label-container {
-            width: 15mm;
-            height: 100mm;
+            width: var(--label-width);
+            height: var(--label-height);
             background: white;
             position: relative;
+            display: grid;
+            grid-template-rows: var(--top-zone) var(--middle-zone) var(--tail-zone);
             margin-bottom: 5px;
             overflow: hidden;
             box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
         }
 
-        /* --- 2. POSITIONING --- */
-        .rotated-content {
-            transform: rotate(-90deg);
-            transform-origin: center center;
+        .label-container::before {
+            content: '';
             position: absolute;
-            width: 30mm;
-            height: 12mm;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .face-zone {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .face-zone--code {
+            background: #fff;
+        }
+
+        .face-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 29mm;
+            transform: translate(-50%, -50%) rotate(-90deg);
             text-align: center;
             display: flex;
             flex-direction: column;
@@ -37,71 +159,123 @@
             align-items: center;
         }
 
-        /* DEFAULT POSITIONS (For Screen - These look good in your screenshot) */
-        .face-top {
-            position: absolute;
-            top: 15mm;
-            left: 50%;
-            margin-top: -6mm;
-            margin-left: -15mm;
+        .info-stack {
+            width: 27.5mm;
+            gap: 1.6px;
         }
 
-        .face-bottom {
-            position: absolute;
-            top: 50mm;
-            left: 50%;
-            margin-top: -6mm;
-            margin-left: -15mm;
-        }
-
-        /* Styling */
-        .company-name {
-            font-size: 9px;
+        .brand-strip {
+            min-width: 25.5mm;
+            padding: 1px 3px 0.8px;
+            font-size: 6.6px;
             font-weight: bold;
             text-transform: uppercase;
-            margin-bottom: 2px;
+            letter-spacing: 0.8px;
+            line-height: 1;
         }
 
-        .product-info {
-            font-size: 8px;
+        .product-block {
+            width: 26.5mm;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            padding: 0.8px 0 0;
+        }
+
+        .product-name {
+            font-size: 7.1px;
             font-weight: 600;
+            line-height: 1.1;
+            max-width: 27mm;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-transform: uppercase;
+            letter-spacing: 0.15px;
+        }
+
+        .product-specs {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            font-size: 6.3px;
+            font-weight: 700;
             line-height: 1.1;
         }
 
+        .spec-divider {
+            width: 2.8px;
+            height: 2.8px;
+            background: #111;
+            display: inline-block;
+        }
+
+        .code-stack {
+            width: 29mm;
+            gap: 1.2px;
+        }
+
+        .barcode-frame {
+            width: 28.3mm;
+            padding: 1px 0.6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
         .barcode-img {
-            width: 95%;
-            height: 10mm;
+            width: 28mm;
+            height: 8.5mm;
+            object-fit: contain;
+            image-rendering: crisp-edges;
         }
 
         .barcode-text {
-            font-size: 8px;
+            font-size: 6.1px;
             font-weight: bold;
-            margin-top: 1px;
+            line-height: 1;
+            margin-top: 0.8px;
+            letter-spacing: 0.45px;
+            font-family: 'Poppins', Arial, sans-serif;
         }
 
         .tail {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            height: 30mm;
-            border-top: 1px dashed #ccc;
+            border-top: none;
         }
 
-
-        /* --- 3. PRINT FIX (THE IMPORTANT PART) --- */
         @media print {
             @page {
-                size: 15mm 100mm;
+                size: var(--label-width) var(--label-height);
                 margin: 0;
             }
 
             body {
                 margin: 0;
                 padding: 0;
+                background: white;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
             .no-print {
                 display: none;
+            }
+
+            .screen-shell,
+            .preview-stage,
+            .label-list {
+                margin: 0;
+                padding: 0;
+                border: none;
+                box-shadow: none;
+                background: transparent;
+                display: block;
+            }
+
+            .face-zone--code {
+                background: white;
             }
 
             .label-container {
@@ -114,47 +288,64 @@
             .label-container:last-child {
                 page-break-after: auto;
             }
-
-            /* COUNTER-ACT THE GAP:
-           We reduce the 'top' value by 10mm specifically for the printer.
-           Screen: 15mm -> Print: 5mm
-           This pulls the content UP into the empty white space you see in the preview.
-        */
-            .face-top {
-                top: 5mm !important;
-            }
-
-            .face-bottom {
-                top: 40mm !important;
-            }
         }
     </style>
 </head>
 
 <body>
-    <div class="no-print" style="margin-bottom: 20px; padding: 10px; background: white;">
-        <h3>🖨️ Settings</h3>
-        <p>If you still see a gap, reduce the "top: 12mm" value to "10mm".</p>
-        <button onclick="window.print()"
-            style="padding: 10px 20px; background: black; color: white; border: none; cursor: pointer;">Print</button>
-    </div>
-
-    @foreach ($barcodes as $item)
-        <div class="label-container">
-            <div class="rotated-content face-top">
-                <div class="company-name">MANIRATN</div>
-                <div class="product-info">{{ $item['name'] }}</div>
-                <div class="product-info"><b>{{ $item['weight'] }}g</b> | {{ $item['purity'] }}</div>
+    <div class="screen-shell">
+        <div class="screen-toolbar no-print">
+            <div>
+                <h1 class="screen-title">Barcode Label Print</h1>
+                <p class="screen-subtitle">Thermal preview for TSC TE244 jewellery tags. Printed output stays locked to 15mm x 100mm.</p>
+                <div class="screen-meta">
+                    <div class="meta-chip">{{ count($barcodes) }} Label{{ count($barcodes) === 1 ? '' : 's' }}</div>
+                    <div class="meta-chip">15mm x 100mm</div>
+                    <div class="meta-chip">Code 128</div>
+                </div>
             </div>
 
-            <div class="rotated-content face-bottom">
-                <img src="data:image/png;base64,{{ $item['barcode'] }}" class="barcode-img">
-                <div class="barcode-text">{{ $item['code'] }}</div>
+            <div class="screen-actions">
+                <div class="screen-note">
+                    Use 100% scale, zero margins, and disable browser headers or footers. These labels print using the product barcode stored in the app.
+                </div>
+                <button onclick="window.print()" class="print-button">Print Labels</button>
             </div>
-
-            <div class="tail"></div>
         </div>
-    @endforeach
+
+        <div class="preview-stage">
+            <div class="label-list">
+                @foreach ($barcodes as $item)
+                    <div class="label-container">
+                        <div class="face-zone face-zone--info">
+                            <div class="face-content info-stack">
+                                <div class="brand-strip">MANIRATN</div>
+                                <div class="product-block">
+                                    <div class="product-name">{{ $item['name'] }}</div>
+                                    <div class="product-specs">
+                                        <span>{{ $item['weight'] }}g</span>
+                                        <span class="spec-divider"></span>
+                                        <span>{{ $item['purity'] }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="face-zone face-zone--code">
+                            <div class="face-content code-stack">
+                                <div class="barcode-frame">
+                                    <img src="data:image/png;base64,{{ $item['barcode'] }}" class="barcode-img">
+                                </div>
+                                <div class="barcode-text">{{ $item['code'] }}</div>
+                            </div>
+                        </div>
+
+                        <div class="tail"></div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

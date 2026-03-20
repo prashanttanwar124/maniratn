@@ -11,6 +11,7 @@ use App\Services\LedgerImpactService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class LedgerController extends Controller
@@ -18,6 +19,8 @@ class LedgerController extends Controller
     private const EDITABLE_ENTRY_TYPES = [
         'ISSUE_GOLD',
         'RECEIVE_GOLD',
+        'ISSUE_SILVER',
+        'RECEIVE_SILVER',
         'PAY_CASH',
         'RECEIVE_CASH',
     ];
@@ -54,7 +57,8 @@ class LedgerController extends Controller
                     'entry_type_code' => $entryTypeCode,
                     'is_editable' => $this->isEditableCashTransaction($txn, $entryTypeCode),
                     'created_at' => optional($txn->created_at)->toDateTimeString(),
-                    'sort_at' => optional($txn->created_at)->timestamp ?? strtotime($txn->date),
+                    'sort_date' => strtotime((string) $txn->date) ?: 0,
+                    'sort_created_at' => optional($txn->created_at)->timestamp ?? 0,
                 ];
             });
 
@@ -71,6 +75,7 @@ class LedgerController extends Controller
                     'date' => $txn->date,
                     'description' => $txn->description,
                     'category' => 'METAL',
+                    'metal_type' => $txn->metal_type ?? 'GOLD',
                     'type' => $txn->type, // ISSUE / RECEIPT
                     'amount' => (float) $txn->gross_weight,
                     'purity' => $this->calculatePurityFromFineWeight((float) $txn->gross_weight, (float) $txn->fine_weight),
@@ -78,13 +83,26 @@ class LedgerController extends Controller
                     'entry_type_code' => $entryTypeCode,
                     'is_editable' => $this->isEditableMetalTransaction($txn, $entryTypeCode),
                     'created_at' => optional($txn->created_at)->toDateTimeString(),
-                    'sort_at' => optional($txn->created_at)->timestamp ?? strtotime($txn->date),
+                    'sort_date' => strtotime((string) $txn->date) ?: 0,
+                    'sort_created_at' => optional($txn->created_at)->timestamp ?? 0,
                 ];
             });
 
         $mergedTransactions = $cashTxns
             ->merge($metalTxns)
-            ->sortBy('sort_at')
+            ->sort(function (array $left, array $right) {
+                $dateCompare = ($left['sort_date'] ?? 0) <=> ($right['sort_date'] ?? 0);
+                if ($dateCompare !== 0) {
+                    return $dateCompare;
+                }
+
+                $createdCompare = ($left['sort_created_at'] ?? 0) <=> ($right['sort_created_at'] ?? 0);
+                if ($createdCompare !== 0) {
+                    return $createdCompare;
+                }
+
+                return strcmp((string) ($left['id'] ?? ''), (string) ($right['id'] ?? ''));
+            })
             ->values();
 
         return Inertia::render('ledger/Show', [
@@ -126,15 +144,15 @@ class LedgerController extends Controller
 
         $entryType = $validated['entry_type'];
 
-        if (in_array($entryType, ['ISSUE_GOLD', 'RECEIVE_GOLD'], true) && empty($validated['gold_weight'])) {
+        if (in_array($entryType, ['ISSUE_GOLD', 'RECEIVE_GOLD', 'ISSUE_SILVER', 'RECEIVE_SILVER'], true) && empty($validated['gold_weight'])) {
             return back()->withErrors([
-                'gold_weight' => 'Gold weight is required for this entry type.',
+                'gold_weight' => 'Metal weight is required for this entry type.',
             ]);
         }
 
-        if (in_array($entryType, ['ISSUE_GOLD', 'RECEIVE_GOLD'], true) && empty($validated['purity'])) {
+        if (in_array($entryType, ['ISSUE_GOLD', 'RECEIVE_GOLD', 'ISSUE_SILVER', 'RECEIVE_SILVER'], true) && empty($validated['purity'])) {
             return back()->withErrors([
-                'purity' => 'Purity is required for gold entries.',
+                'purity' => 'Purity is required for metal entries.',
             ]);
         }
 
@@ -202,7 +220,8 @@ class LedgerController extends Controller
                     $purity = (float) $validated['purity'];
 
                     $transaction->update([
-                        'type' => $entryType === 'ISSUE_GOLD' ? 'ISSUE' : 'RECEIPT',
+                        'type' => in_array($entryType, ['ISSUE_GOLD', 'ISSUE_SILVER'], true) ? 'ISSUE' : 'RECEIPT',
+                        'metal_type' => str_contains($entryType, 'SILVER') ? 'SILVER' : 'GOLD',
                         'gross_weight' => $goldWeight,
                         'fine_weight' => $this->makeFineWeight($goldWeight, $purity),
                         'description' => trim($validated['description'] ?? '') ?: $this->defaultDescriptionForEntryType($entryType, $purity),
@@ -241,10 +260,14 @@ class LedgerController extends Controller
                 Rule::in([
                     'ISSUE_GOLD',
                     'RECEIVE_GOLD',
+                    'ISSUE_SILVER',
+                    'RECEIVE_SILVER',
                     'PAY_CASH',
                     'RECEIVE_CASH',
                     'GOLD_TO_CASH',
                     'CASH_TO_GOLD',
+                    'SILVER_TO_CASH',
+                    'CASH_TO_SILVER',
                 ]),
             ],
             'gold_weight' => ['nullable', 'numeric', 'min:0.001'],
@@ -275,13 +298,13 @@ class LedgerController extends Controller
         $description = trim($validated['description'] ?? '');
         $date = $validated['date'];
 
-        if (in_array($entryType, ['ISSUE_GOLD', 'RECEIVE_GOLD', 'GOLD_TO_CASH'], true) && ! $goldWeight) {
+        if (in_array($entryType, ['ISSUE_GOLD', 'RECEIVE_GOLD', 'ISSUE_SILVER', 'RECEIVE_SILVER', 'GOLD_TO_CASH', 'SILVER_TO_CASH'], true) && ! $goldWeight) {
             return back()->withErrors([
-                'gold_weight' => 'Gold weight is required for this entry type.',
+                'gold_weight' => 'Metal weight is required for this entry type.',
             ]);
         }
 
-        if (in_array($entryType, ['PAY_CASH', 'RECEIVE_CASH', 'CASH_TO_GOLD'], true) && ! $cashAmount) {
+        if (in_array($entryType, ['PAY_CASH', 'RECEIVE_CASH', 'CASH_TO_GOLD', 'CASH_TO_SILVER'], true) && ! $cashAmount) {
             return back()->withErrors([
                 'cash_amount' => 'Cash amount is required for this entry type.',
             ]);
@@ -293,9 +316,9 @@ class LedgerController extends Controller
             ]);
         }
 
-        if (in_array($entryType, ['ISSUE_GOLD', 'RECEIVE_GOLD', 'GOLD_TO_CASH', 'CASH_TO_GOLD'], true) && ! $purity) {
+        if (in_array($entryType, ['ISSUE_GOLD', 'RECEIVE_GOLD', 'ISSUE_SILVER', 'RECEIVE_SILVER', 'GOLD_TO_CASH', 'CASH_TO_GOLD', 'SILVER_TO_CASH', 'CASH_TO_SILVER'], true) && ! $purity) {
             return back()->withErrors([
-                'purity' => 'Purity is required for gold entries.',
+                'purity' => 'Purity is required for metal entries.',
             ]);
         }
 
@@ -305,9 +328,21 @@ class LedgerController extends Controller
             ]);
         }
 
+        if ($entryType === 'SILVER_TO_CASH' && (! $rate || ! $goldWeight)) {
+            return back()->withErrors([
+                'rate' => 'Rate is required for silver to cash adjustment.',
+            ]);
+        }
+
         if ($entryType === 'CASH_TO_GOLD' && (! $rate || ! $cashAmount)) {
             return back()->withErrors([
                 'rate' => 'Rate is required for cash to gold adjustment.',
+            ]);
+        }
+
+        if ($entryType === 'CASH_TO_SILVER' && (! $rate || ! $cashAmount)) {
+            return back()->withErrors([
+                'rate' => 'Rate is required for cash to silver adjustment.',
             ]);
         }
 
@@ -330,31 +365,35 @@ class LedgerController extends Controller
 
                 switch ($entryType) {
                 case 'ISSUE_GOLD':
+                case 'ISSUE_SILVER':
                     $metalTransaction = MetalTransaction::create([
                         'party_type' => $partyType,
                         'party_id' => $partyId,
                         'type' => 'ISSUE',
+                        'metal_type' => $entryType === 'ISSUE_SILVER' ? 'SILVER' : 'GOLD',
                         'gross_weight' => $goldWeight,
                         'fine_weight' => $makeFineWeight($goldWeight, $purity),
-                        'description' => $description ?: "Gold issued ({$purity}%)",
+                        'description' => $description ?: $this->defaultDescriptionForEntryType($entryType, $purity),
                         'date' => $date,
                         'entry_source' => 'MANUAL',
-                        'entry_type_code' => 'ISSUE_GOLD',
+                        'entry_type_code' => $entryType,
                     ]);
                     LedgerImpactService::applyMetalTransaction($metalTransaction);
                     break;
 
                 case 'RECEIVE_GOLD':
+                case 'RECEIVE_SILVER':
                     $metalTransaction = MetalTransaction::create([
                         'party_type' => $partyType,
                         'party_id' => $partyId,
                         'type' => 'RECEIPT',
+                        'metal_type' => $entryType === 'RECEIVE_SILVER' ? 'SILVER' : 'GOLD',
                         'gross_weight' => $goldWeight,
                         'fine_weight' => $makeFineWeight($goldWeight, $purity),
-                        'description' => $description ?: "Gold received ({$purity}%)",
+                        'description' => $description ?: $this->defaultDescriptionForEntryType($entryType, $purity),
                         'date' => $date,
                         'entry_source' => 'MANUAL',
-                        'entry_type_code' => 'RECEIVE_GOLD',
+                        'entry_type_code' => $entryType,
                     ]);
                     LedgerImpactService::applyMetalTransaction($metalTransaction);
                     break;
@@ -396,6 +435,7 @@ class LedgerController extends Controller
                         'party_type' => $partyType,
                         'party_id' => $partyId,
                         'type' => 'RECEIPT',
+                        'metal_type' => 'GOLD',
                         'gross_weight' => $goldWeight,
                         'fine_weight' => $makeFineWeight($goldWeight, $purity),
                         'description' => $description ?: "Gold adjusted against cash @ {$rate} ({$purity}%)",
@@ -436,12 +476,72 @@ class LedgerController extends Controller
                         'party_type' => $partyType,
                         'party_id' => $partyId,
                         'type' => 'RECEIPT',
+                        'metal_type' => 'GOLD',
                         'gross_weight' => $calculatedGold,
                         'fine_weight' => $makeFineWeight($calculatedGold, $purity),
                         'description' => $description ?: "Gold received from cash @ {$rate} ({$purity}%)",
                         'date' => $date,
                         'entry_source' => 'MANUAL',
                         'entry_type_code' => 'CASH_TO_GOLD',
+                    ]);
+                    LedgerImpactService::applyMetalTransaction($metalTransaction);
+                    break;
+
+                case 'SILVER_TO_CASH':
+                    $calculatedCash = round($goldWeight * $rate, 2);
+
+                    $metalTransaction = MetalTransaction::create([
+                        'party_type' => $partyType,
+                        'party_id' => $partyId,
+                        'type' => 'RECEIPT',
+                        'metal_type' => 'SILVER',
+                        'gross_weight' => $goldWeight,
+                        'fine_weight' => $makeFineWeight($goldWeight, $purity),
+                        'description' => $description ?: "Silver adjusted against cash @ {$rate} ({$purity}%)",
+                        'date' => $date,
+                        'entry_source' => 'MANUAL',
+                        'entry_type_code' => 'SILVER_TO_CASH',
+                    ]);
+                    LedgerImpactService::applyMetalTransaction($metalTransaction);
+
+                    Transaction::create([
+                        'transactable_type' => $partyType,
+                        'transactable_id' => $partyId,
+                        'type' => 'RECEIPT',
+                        'amount' => $calculatedCash,
+                        'description' => $description ?: "Cash adjusted from silver @ {$rate}",
+                        'date' => $date,
+                        'entry_source' => 'MANUAL',
+                        'entry_type_code' => 'SILVER_TO_CASH',
+                    ]);
+                    break;
+
+                case 'CASH_TO_SILVER':
+                    $calculatedSilver = round($cashAmount / $rate, 3);
+
+                    $cashTransaction = Transaction::create([
+                        'transactable_type' => $partyType,
+                        'transactable_id' => $partyId,
+                        'type' => 'PAYMENT',
+                        'amount' => $cashAmount,
+                        'description' => $description ?: "Cash adjusted into silver @ {$rate}",
+                        'date' => $date,
+                        'entry_source' => 'MANUAL',
+                        'entry_type_code' => 'CASH_TO_SILVER',
+                    ]);
+                    LedgerImpactService::applyCashTransaction($cashTransaction);
+
+                    $metalTransaction = MetalTransaction::create([
+                        'party_type' => $partyType,
+                        'party_id' => $partyId,
+                        'type' => 'RECEIPT',
+                        'metal_type' => 'SILVER',
+                        'gross_weight' => $calculatedSilver,
+                        'fine_weight' => $makeFineWeight($calculatedSilver, $purity),
+                        'description' => $description ?: "Silver received from cash @ {$rate} ({$purity}%)",
+                        'date' => $date,
+                        'entry_source' => 'MANUAL',
+                        'entry_type_code' => 'CASH_TO_SILVER',
                     ]);
                     LedgerImpactService::applyMetalTransaction($metalTransaction);
                     break;
@@ -466,7 +566,7 @@ class LedgerController extends Controller
     private function isEditableMetalTransaction(MetalTransaction $transaction, ?string $entryTypeCode): bool
     {
         return ($transaction->entry_source ?? 'SYSTEM') === 'MANUAL'
-            && in_array($entryTypeCode, ['ISSUE_GOLD', 'RECEIVE_GOLD'], true);
+            && in_array($entryTypeCode, ['ISSUE_GOLD', 'RECEIVE_GOLD', 'ISSUE_SILVER', 'RECEIVE_SILVER'], true);
     }
 
     private function inferCashEntryType(Transaction $transaction): string
@@ -476,6 +576,12 @@ class LedgerController extends Controller
 
     private function inferMetalEntryType(MetalTransaction $transaction): string
     {
+        $metalType = strtoupper((string) ($transaction->metal_type ?? 'GOLD'));
+
+        if ($metalType === 'SILVER') {
+            return $transaction->type === 'ISSUE' ? 'ISSUE_SILVER' : 'RECEIVE_SILVER';
+        }
+
         return $transaction->type === 'ISSUE' ? 'ISSUE_GOLD' : 'RECEIVE_GOLD';
     }
 
@@ -498,6 +604,8 @@ class LedgerController extends Controller
         return match ($entryType) {
             'ISSUE_GOLD' => "Gold issued ({$purity}%)",
             'RECEIVE_GOLD' => "Gold received ({$purity}%)",
+            'ISSUE_SILVER' => "Silver issued ({$purity}%)",
+            'RECEIVE_SILVER' => "Silver received ({$purity}%)",
             'PAY_CASH' => 'Cash paid',
             'RECEIVE_CASH' => 'Cash received',
             default => 'Ledger entry',

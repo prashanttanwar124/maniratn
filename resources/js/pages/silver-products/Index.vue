@@ -36,6 +36,7 @@ const deleteDialog = ref(false);
 const product = ref({});
 const isEditing = ref(false);
 const previewImage = ref(null);
+const selectedProducts = ref([]);
 const search = ref(props.filters?.search || '');
 
 watch(
@@ -158,6 +159,12 @@ const deleteProduct = () => {
     });
 };
 
+const printSelected = () => {
+    if (selectedProducts.value.length === 0) return;
+    const ids = selectedProducts.value.map((item) => item.id).join(',');
+    window.open(route('silver-products.print_barcodes') + '?ids=' + ids, '_blank');
+};
+
 const copyBarcode = async (barcode) => {
     if (!barcode) {
         toast.add({
@@ -186,7 +193,6 @@ const copyBarcode = async (barcode) => {
         });
     }
 };
-
 </script>
 
 <template>
@@ -282,11 +288,20 @@ const copyBarcode = async (barcode) => {
                     </div>
                 </div>
 
+                <div v-if="selectedProducts.length > 0" class="border-b border-amber-200 bg-amber-50 px-5 py-3">
+                    <div class="flex flex-col items-center justify-center gap-3 text-center text-sm lg:flex-row lg:justify-between lg:text-left">
+                        <p class="font-medium text-amber-800">{{ selectedProducts.length }} silver product{{ selectedProducts.length === 1 ? '' : 's' }} selected for barcode printing.</p>
+                        <Button label="Print Selected Barcodes" severity="warn" outlined @click="printSelected" class="!w-auto shrink-0 whitespace-nowrap" />
+                    </div>
+                </div>
+
                 <div class="bg-white p-4">
-                    <DataTable :value="silverProducts.data" dataKey="id" stripedRows rowHover tableStyle="min-width: 76rem">
+                    <DataTable :value="silverProducts.data" v-model:selection="selectedProducts" dataKey="id" stripedRows rowHover tableStyle="min-width: 76rem">
                         <template #empty>
                             <div class="py-12 text-center text-surface-500">No silver products found</div>
                         </template>
+
+                        <Column selectionMode="multiple" headerStyle="width: 3rem" />
 
                         <Column header="Image" style="width: 90px">
                             <template #body="{ data }">
@@ -327,7 +342,7 @@ const copyBarcode = async (barcode) => {
                                 <div class="space-y-2">
                                     <Tag :value="data.pricing_mode === 'PIECE' ? 'Per Piece' : 'By Weight'" :severity="data.pricing_mode === 'PIECE' ? 'contrast' : 'info'" />
                                     <div class="text-sm">
-                                        <p class="text-xs uppercase tracking-wide text-surface-500">
+                                        <p class="text-xs tracking-wide text-surface-500 uppercase">
                                             {{ data.pricing_mode === 'PIECE' ? 'Piece Price' : 'Weight Rate Input' }}
                                         </p>
                                         <p class="mt-1 font-semibold text-surface-900">
@@ -360,7 +375,7 @@ const copyBarcode = async (barcode) => {
                         <Column header="Charges" style="width: 150px">
                             <template #body="{ data }">
                                 <div class="text-sm">
-                                    <p class="text-xs uppercase tracking-wide text-surface-500">Making</p>
+                                    <p class="text-xs tracking-wide text-surface-500 uppercase">Making</p>
                                     <p class="mt-1 font-semibold text-surface-900">{{ formatCurrency(data.making_charge) }}</p>
                                 </div>
                             </template>
@@ -388,7 +403,13 @@ const copyBarcode = async (barcode) => {
                     </DataTable>
                 </div>
 
-                <Paginator :rows="silverProducts.per_page" :totalRecords="silverProducts.total" :first="(silverProducts.current_page - 1) * silverProducts.per_page" @page="onPageChange" class="border-t border-surface-200" />
+                <Paginator
+                    :rows="silverProducts.per_page"
+                    :totalRecords="silverProducts.total"
+                    :first="(silverProducts.current_page - 1) * silverProducts.per_page"
+                    @page="onPageChange"
+                    class="border-t border-surface-200"
+                />
             </div>
 
             <Dialog v-model:visible="productDialog" :header="isEditing ? 'Edit Silver Product' : 'Add Silver Product'" modal :style="{ width: '38rem' }">
@@ -397,7 +418,16 @@ const copyBarcode = async (barcode) => {
                         <div class="flex items-start gap-4">
                             <div class="flex-1">
                                 <label class="mb-2 block text-sm font-medium text-surface-700">Silver Product Image</label>
-                                <FileUpload mode="basic" name="image" accept="image/*" :maxFileSize="2000000" @select="onFileSelect" :auto="false" chooseLabel="Choose Photo" class="p-button-outlined" />
+                                <FileUpload
+                                    mode="basic"
+                                    name="image"
+                                    accept="image/*"
+                                    :maxFileSize="2000000"
+                                    @select="onFileSelect"
+                                    :auto="false"
+                                    chooseLabel="Choose Photo"
+                                    class="p-button-outlined"
+                                />
                                 <small class="mt-2 block text-xs text-surface-400">Max size: 2MB</small>
                                 <small v-if="form.errors.image" class="mt-1 block text-xs text-red-500">{{ form.errors.image }}</small>
                             </div>
@@ -489,7 +519,8 @@ const copyBarcode = async (barcode) => {
                             <p class="font-medium text-surface-900">Delete silver product</p>
                             <p class="mt-1 text-sm text-surface-500">
                                 Are you sure you want to delete
-                                <span class="font-medium text-surface-900">{{ product.name }}</span>?
+                                <span class="font-medium text-surface-900">{{ product.name }}</span
+                                >?
                             </p>
                         </div>
                     </div>

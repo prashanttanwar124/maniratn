@@ -28,8 +28,11 @@ class SilverProductSeeder extends Seeder
         foreach ($categoriesList as $name => $code) {
             $categoryMap[$name] = Category::firstOrCreate(
                 ['name' => $name],
-                ['code' => $code]
+                ['code' => $code, 'metal_type' => 'SILVER']
             );
+            if ($categoryMap[$name]->metal_type !== 'SILVER') {
+                $categoryMap[$name]->update(['metal_type' => 'SILVER']);
+            }
         }
 
         foreach (range(1, 10) as $index) {

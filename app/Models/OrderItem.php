@@ -8,6 +8,13 @@ class OrderItem extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'target_weight' => 'decimal:3',
+        'purity' => 'decimal:2',
+        'finished_weight' => 'decimal:3',
+        'wastage' => 'decimal:3',
+    ];
+
     public function order()
     {
         return $this->belongsTo(Order::class);

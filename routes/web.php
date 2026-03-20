@@ -12,6 +12,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SilverProductController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\MortgageController;
 use App\Http\Controllers\SupplierController;
@@ -44,6 +45,46 @@ Route::get('/api/silver-products/{barcode}', function ($barcode) {
     return SilverProduct::with(['category', 'supplier'])
         ->where('barcode', $barcode)
         ->firstOrFail();
+});
+
+Route::get('/api/inventory/{barcode}', function ($barcode) {
+    $normalizedBarcode = strtoupper(trim($barcode));
+
+    $goldQuery = fn () => Product::with(['category', 'purity'])
+        ->where('barcode', $barcode)
+        ->first();
+
+    $silverQuery = fn () => SilverProduct::with(['category', 'supplier'])
+        ->where('barcode', $barcode)
+        ->first();
+
+    $record = null;
+    $type = null;
+
+    if (str_starts_with($normalizedBarcode, 'MS-')) {
+        $record = $silverQuery();
+        $type = $record ? 'silver_product' : null;
+    } elseif (str_starts_with($normalizedBarcode, 'MJ-')) {
+        $record = $goldQuery();
+        $type = $record ? 'product' : null;
+    }
+
+    if (! $record) {
+        $record = $goldQuery();
+        $type = $record ? 'product' : null;
+    }
+
+    if (! $record) {
+        $record = $silverQuery();
+        $type = $record ? 'silver_product' : null;
+    }
+
+    abort_unless($record && $type, 404);
+
+    return response()->json([
+        'inventory_type' => $type,
+        'item' => $record,
+    ]);
 });
 
 /*
@@ -117,6 +158,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::match(['put', 'patch'], '/products/{product}', [ProductController::class, 'update'])->middleware(['permission:manage_products', 'day.open'])->name('products.update');
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware(['permission:manage_products', 'day.open'])->name('products.destroy');
 
+    Route::get('silver-products/print-barcodes', [SilverProductController::class, 'printBarcodes'])
+        ->middleware('permission:manage_products')
+        ->name('silver-products.print_barcodes');
+
     Route::resource('silver-products', SilverProductController::class)
         ->only(['index'])
         ->middleware('permission:manage_products');
@@ -161,9 +206,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/invoices/{id}/cancel', [InvoiceController::class, 'cancel'])->middleware(['permission:manage_invoices', 'day.open'])->name('invoices.cancel');
 
     // --- CATEGORIES ---
-    Route::get('categories', function () {
-        return Inertia::render('categories/Index');
-    })->middleware('permission:manage_categories')->name('categories');
+    Route::get('categories', [CategoryController::class, 'index'])->middleware('permission:manage_categories')->name('categories');
+    Route::post('categories', [CategoryController::class, 'store'])->middleware(['permission:manage_categories', 'day.open'])->name('categories.store');
+    Route::match(['put', 'patch'], 'categories/{category}', [CategoryController::class, 'update'])->middleware(['permission:manage_categories', 'day.open'])->name('categories.update');
+    Route::delete('categories/{category}', [CategoryController::class, 'destroy'])->middleware(['permission:manage_categories', 'day.open'])->name('categories.destroy');
 
 
     // --- suppliers ---

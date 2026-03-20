@@ -45,12 +45,13 @@ const selectedItem = ref(null);
 const createForm = useForm({
     customer_id: null,
     due_date: null,
-    items: [{ item_name: '', target_weight: null, purity: 91.6, notes: '' }],
+    items: [{ item_name: '', metal_type: 'GOLD', target_weight: null, purity: 91.6, notes: '' }],
 });
 
 const editForm = useForm({
     id: null,
     item_name: '',
+    metal_type: 'GOLD',
     target_weight: null,
     purity: 91.6,
     notes: '',
@@ -101,6 +102,7 @@ const itemTransactionSummary = computed(() => {
 const addItemRow = () => {
     createForm.items.push({
         item_name: '',
+        metal_type: 'GOLD',
         target_weight: null,
         purity: 91.6,
         notes: '',
@@ -116,7 +118,7 @@ const resetCreateForm = () => {
     createForm.clearErrors();
     createForm.customer_id = null;
     createForm.due_date = null;
-    createForm.items = [{ item_name: '', target_weight: null, purity: 91.6, notes: '' }];
+    createForm.items = [{ item_name: '', metal_type: 'GOLD', target_weight: null, purity: 91.6, notes: '' }];
 };
 
 const openCreateDialog = () => {
@@ -160,6 +162,7 @@ const openEdit = (item) => {
     editForm.clearErrors();
     editForm.id = item.id;
     editForm.item_name = item.item_name;
+    editForm.metal_type = item.metal_type || 'GOLD';
     editForm.target_weight = parseFloat(item.target_weight);
     editForm.purity = parseFloat(item.purity);
     editForm.notes = item.notes;
@@ -317,6 +320,11 @@ const issueWeightForItem = (item) => {
     return parseFloat(item?.issued_gold || 0);
 };
 
+const metalTagSeverity = (metalType) => (metalType === 'SILVER' ? 'secondary' : 'warn');
+const isSilverItem = (item) => item?.metal_type === 'SILVER';
+const defaultPurityForMetal = (metalType) => (metalType === 'SILVER' ? 92.5 : 91.6);
+const metalLabel = (metalType) => (metalType === 'SILVER' ? 'Silver' : 'Gold');
+
 const completeIssuedGold = computed(() => parseFloat(selectedItem.value?.issued_gold || 0));
 
 const completeReturnTotal = computed(() => parseFloat(completeForm.received_weight || 0) + parseFloat(completeForm.wastage || 0));
@@ -348,17 +356,18 @@ const canSubmitComplete = computed(() => {
 });
 
 const extraGoldSourceOptions = computed(() => {
+    const currentMetal = metalLabel(selectedItem.value?.metal_type);
     const options = [{ label: 'Shop Stock', value: 'SHOP' }];
 
     if (selectedItem.value?.order?.customer?.id) {
         options.push({
-            label: `Customer Gold (${selectedItem.value.order.customer.name})`,
+            label: `Customer ${currentMetal} (${selectedItem.value.order.customer.name})`,
             value: 'CUSTOMER',
         });
     }
 
-    options.push({ label: 'Supplier Gold', value: 'SUPPLIER' });
-    options.push({ label: 'Karigar Gold', value: 'KARIGAR' });
+    options.push({ label: `Supplier ${currentMetal}`, value: 'SUPPLIER' });
+    options.push({ label: `Karigar ${currentMetal}`, value: 'KARIGAR' });
 
     return options;
 });
@@ -503,7 +512,7 @@ watch(
                 <div class="border border-surface-200 bg-white px-5 py-4">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-sm text-surface-500">Gold Issued</p>
+                            <p class="text-sm text-surface-500">Metal Issued</p>
                             <p class="mt-2 text-2xl font-semibold text-surface-900">{{ formatWeight(totalGoldInPipeline) }} g</p>
                         </div>
                         <div class="flex h-10 w-10 items-center justify-center bg-yellow-50 text-yellow-700">
@@ -578,7 +587,10 @@ watch(
                                     <Column field="item_name" header="Item">
                                         <template #body="{ data }">
                                             <div>
-                                                <p class="font-medium text-surface-900">{{ data.item_name }}</p>
+                                                <div class="flex items-center gap-2">
+                                                    <p class="font-medium text-surface-900">{{ data.item_name }}</p>
+                                                    <Tag :value="data.metal_type || 'GOLD'" :severity="metalTagSeverity(data.metal_type)" />
+                                                </div>
                                                 <p v-if="data.notes" class="mt-1 text-xs text-surface-500">
                                                     {{ data.notes }}
                                                 </p>
@@ -590,7 +602,9 @@ watch(
                                         <template #body="{ data }">
                                             <div>
                                                 <span class="font-semibold text-surface-900"> {{ formatWeight(data.target_weight) }} g </span>
-                                                <span class="ml-1 text-xs text-surface-500"> ({{ data.purity == 91.6 ? '22K' : '18K' }}) </span>
+                                                <span class="ml-1 text-xs text-surface-500">
+                                                    ({{ data.metal_type === 'SILVER' ? `${data.purity}%` : data.purity == 91.6 ? '22K' : '18K' }})
+                                                </span>
                                             </div>
                                         </template>
                                     </Column>
@@ -619,7 +633,7 @@ watch(
                         <TabPanel value="1" class="!p-0">
                             <div class="border-b border-surface-200 bg-white py-4">
                                 <h3 class="text-base font-semibold text-surface-900">Items in Production</h3>
-                                <p class="mt-1 text-sm text-surface-500">Track gold issue, cash payments, and finished receipt</p>
+                                <p class="mt-1 text-sm text-surface-500">Track metal issue, production movement, and finished receipt</p>
                             </div>
 
                             <div class="bg-white">
@@ -631,7 +645,10 @@ watch(
                                     <Column field="item_name" header="Item" style="width: 260px">
                                         <template #body="{ data }">
                                             <div>
-                                                <p class="font-medium text-surface-900">{{ data.item_name }}</p>
+                                                <div class="flex items-center gap-2">
+                                                    <p class="font-medium text-surface-900">{{ data.item_name }}</p>
+                                                    <Tag :value="data.metal_type || 'GOLD'" :severity="metalTagSeverity(data.metal_type)" />
+                                                </div>
                                                 <div class="mt-1 flex items-center gap-2 text-xs text-surface-500">
                                                     <Tag :value="data.order?.order_number" severity="secondary" />
                                                     <span>{{ data.order?.customer?.name }}</span>
@@ -660,7 +677,7 @@ watch(
                                         </template>
                                     </Column>
 
-                                    <Column header="Gold Given" style="width: 150px">
+                                    <Column header="Metal Given" style="width: 150px">
                                         <template #body="{ data }">
                                             <div>
                                                 <p class="font-semibold text-surface-900">{{ formatWeight(issueWeightForItem(data)) }} g</p>
@@ -697,7 +714,10 @@ watch(
                                     <Column field="item_name" header="Item" sortable>
                                         <template #body="{ data }">
                                             <div>
-                                                <p class="font-medium text-surface-900">{{ data.item_name }}</p>
+                                                <div class="flex items-center gap-2">
+                                                    <p class="font-medium text-surface-900">{{ data.item_name }}</p>
+                                                    <Tag :value="data.metal_type || 'GOLD'" :severity="metalTagSeverity(data.metal_type)" />
+                                                </div>
                                                 <p class="mt-1 text-xs text-surface-500">
                                                     {{ data.order?.customer?.name }}
                                                 </p>
@@ -778,6 +798,21 @@ watch(
                                 </div>
 
                                 <div class="sm:col-span-3">
+                                    <Select
+                                        v-model="item.metal_type"
+                                        :options="[
+                                            { l: 'Gold', v: 'GOLD' },
+                                            { l: 'Silver', v: 'SILVER' },
+                                        ]"
+                                        optionLabel="l"
+                                        optionValue="v"
+                                        class="w-full"
+                                        @change="item.purity = defaultPurityForMetal(item.metal_type)"
+                                    />
+                                    <p v-if="itemFieldError(idx, 'metal_type')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'metal_type') }}</p>
+                                </div>
+
+                                <div class="sm:col-span-3">
                                     <InputNumber v-model="item.target_weight" :minFractionDigits="2" class="w-full" placeholder="Weight (g)" />
                                     <p v-if="itemFieldError(idx, 'target_weight')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'target_weight') }}</p>
                                 </div>
@@ -785,10 +820,17 @@ watch(
                                 <div class="sm:col-span-4">
                                     <Select
                                         v-model="item.purity"
-                                        :options="[
-                                            { l: '22K (91.6)', v: 91.6 },
-                                            { l: '18K (75.0)', v: 75 },
-                                        ]"
+                                        :options="
+                                            item.metal_type === 'SILVER'
+                                                ? [
+                                                      { l: 'Pure Silver (99.9)', v: 99.9 },
+                                                      { l: 'Sterling Silver (92.5)', v: 92.5 },
+                                                  ]
+                                                : [
+                                                      { l: '22K (91.6)', v: 91.6 },
+                                                      { l: '18K (75.0)', v: 75 },
+                                                  ]
+                                        "
                                         optionLabel="l"
                                         optionValue="v"
                                         class="w-full"
@@ -821,7 +863,23 @@ watch(
                     <p v-if="formError(editForm, 'item_name')" class="mt-2 text-sm text-red-600">{{ formError(editForm, 'item_name') }}</p>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Metal Type</label>
+                        <Select
+                            v-model="editForm.metal_type"
+                            :options="[
+                                { l: 'Gold', v: 'GOLD' },
+                                { l: 'Silver', v: 'SILVER' },
+                            ]"
+                            optionLabel="l"
+                            optionValue="v"
+                            class="w-full"
+                            @change="editForm.purity = defaultPurityForMetal(editForm.metal_type)"
+                        />
+                        <p v-if="formError(editForm, 'metal_type')" class="mt-2 text-sm text-red-600">{{ formError(editForm, 'metal_type') }}</p>
+                    </div>
+
                     <div>
                         <label class="mb-2 block text-sm font-medium text-surface-700">Weight (g)</label>
                         <InputNumber v-model="editForm.target_weight" :minFractionDigits="3" class="w-full" />
@@ -832,10 +890,17 @@ watch(
                         <label class="mb-2 block text-sm font-medium text-surface-700">Purity</label>
                         <Select
                             v-model="editForm.purity"
-                            :options="[
-                                { l: '22K', v: 91.6 },
-                                { l: '18K', v: 75 },
-                            ]"
+                            :options="
+                                editForm.metal_type === 'SILVER'
+                                    ? [
+                                          { l: 'Pure Silver (99.9)', v: 99.9 },
+                                          { l: 'Sterling Silver (92.5)', v: 92.5 },
+                                      ]
+                                    : [
+                                          { l: '22K', v: 91.6 },
+                                          { l: '18K', v: 75 },
+                                      ]
+                            "
                             optionLabel="l"
                             optionValue="v"
                             class="w-full"
@@ -891,9 +956,9 @@ watch(
                 </div>
 
                 <div class="border border-surface-200 bg-surface-50 p-4">
-                    <label class="mb-2 block text-sm font-medium text-surface-700"> Initial Gold Issue (g) </label>
+                    <label class="mb-2 block text-sm font-medium text-surface-700"> Initial {{ metalLabel(selectedItem?.metal_type) }} Issue (g) </label>
                     <InputNumber v-model="assignForm.issue_gold" :minFractionDigits="3" suffix=" g" class="w-full" />
-                    <p class="mt-2 text-xs text-surface-500">Leave this empty or 0 if you are only assigning the item now. Additional gold can be issued later from transactions.</p>
+                    <p class="mt-2 text-xs text-surface-500">Leave this empty or 0 if you are only assigning the item now. Additional {{ metalLabel(selectedItem?.metal_type).toLowerCase() }} can be issued later from transactions.</p>
                     <p v-if="formError(assignForm, 'issue_gold')" class="mt-2 text-sm text-red-600">{{ formError(assignForm, 'issue_gold') }}</p>
                     <p v-if="formError(assignForm, 'assign')" class="mt-2 text-sm text-red-600">{{ formError(assignForm, 'assign') }}</p>
                 </div>
@@ -908,7 +973,7 @@ watch(
         <!-- Transactions -->
         <Dialog
             v-model:visible="transactionDialog"
-            header="Gold Issue History"
+            :header="`${metalLabel(selectedItem?.metal_type)} Issue History`"
             modal
             :style="{ width: '40rem' }"
             :breakpoints="{ '640px': '95vw' }"
@@ -935,7 +1000,7 @@ watch(
                     <div class="border-b border-surface-200 px-4 py-3">
                         <div class="flex items-center justify-between gap-3">
                             <h4 class="text-sm font-semibold text-surface-900">Transaction History</h4>
-                            <span class="text-xs text-surface-500">Gold moved: {{ formatWeight(itemTransactionSummary.gold) }} g</span>
+                            <span class="text-xs text-surface-500">{{ metalLabel(selectedItem?.metal_type) }} moved: {{ formatWeight(itemTransactionSummary.gold) }} g</span>
                         </div>
                     </div>
 
@@ -963,7 +1028,7 @@ watch(
 
                 <div class="border border-surface-200 bg-white">
                     <div class="border-b border-surface-200 px-4 py-3">
-                        <h4 class="text-sm font-semibold text-surface-900">Issue Additional Gold</h4>
+                        <h4 class="text-sm font-semibold text-surface-900">Issue Additional {{ metalLabel(selectedItem?.metal_type) }}</h4>
                     </div>
 
                     <div class="space-y-4 p-4">
@@ -975,7 +1040,7 @@ watch(
                             </div>
 
                             <div>
-                                <label class="mb-2 block text-sm font-medium text-surface-700">Gold Weight (g)</label>
+                                <label class="mb-2 block text-sm font-medium text-surface-700">{{ metalLabel(selectedItem?.metal_type) }} Weight (g)</label>
                                 <InputNumber v-model="transactionForm.metal_weight" :minFractionDigits="3" suffix=" g" placeholder="0.000" class="w-full" />
                                 <p v-if="formError(transactionForm, 'metal_weight')" class="mt-2 text-sm text-red-600">{{ formError(transactionForm, 'metal_weight') }}</p>
                             </div>
@@ -983,13 +1048,13 @@ watch(
 
                         <div>
                             <label class="mb-2 block text-sm font-medium text-surface-700">Description</label>
-                            <InputText v-model="transactionForm.description" placeholder="Optional note for this gold issue" class="w-full" />
+                            <InputText v-model="transactionForm.description" :placeholder="`Optional note for this ${metalLabel(selectedItem?.metal_type).toLowerCase()} issue`" class="w-full" />
                             <p v-if="formError(transactionForm, 'description')" class="mt-2 text-sm text-red-600">{{ formError(transactionForm, 'description') }}</p>
                             <p v-if="formError(transactionForm, 'transaction')" class="mt-2 text-sm text-red-600">{{ formError(transactionForm, 'transaction') }}</p>
                         </div>
 
                         <div class="flex justify-end border-t border-surface-200 pt-4">
-                            <Button label="Save Gold Issue" icon="pi pi-check" @click="submitTransaction" :loading="transactionForm.processing" />
+                            <Button :label="`Save ${metalLabel(selectedItem?.metal_type)} Issue`" icon="pi pi-check" @click="submitTransaction" :loading="transactionForm.processing" />
                         </div>
                     </div>
                 </div>
@@ -1006,7 +1071,7 @@ watch(
                     </div>
 
                     <div class="border border-surface-200 bg-surface-50 px-4 py-4 text-center">
-                        <p class="text-xs font-medium tracking-wide text-surface-500 uppercase">Issued Gold</p>
+                        <p class="text-xs font-medium tracking-wide text-surface-500 uppercase">Issued {{ metalLabel(selectedItem?.metal_type) }}</p>
                         <p class="mt-1 text-xl font-semibold text-surface-900">{{ formatWeight(completeIssuedGold) }} g</p>
                     </div>
 
@@ -1034,13 +1099,13 @@ watch(
                         Return total is {{ formatWeight(completeReturnTotal) }} g, but only {{ formatWeight(completeIssuedGold) }} g was issued.
                     </p>
                     <p v-if="completeIssuedGold <= 0" class="mt-1 text-sm text-amber-800">
-                        No gold issue is recorded for this item. Record the issued gold first, or explicitly declare the full {{ formatWeight(completeRequiredExtraGold) }} g as extra gold added.
+                        No {{ metalLabel(selectedItem?.metal_type).toLowerCase() }} issue is recorded for this item. Record the issued {{ metalLabel(selectedItem?.metal_type).toLowerCase() }} first, or explicitly declare the full {{ formatWeight(completeRequiredExtraGold) }} g as extra metal added.
                     </p>
-                    <p v-else class="mt-1 text-sm text-amber-800">Record {{ formatWeight(completeRequiredExtraGold) }} g as extra gold added before receiving this item.</p>
+                    <p v-else class="mt-1 text-sm text-amber-800">Record {{ formatWeight(completeRequiredExtraGold) }} g as extra {{ metalLabel(selectedItem?.metal_type).toLowerCase() }} added before receiving this item.</p>
                 </div>
 
                 <div>
-                    <label class="mb-2 block text-sm font-medium text-surface-700">Extra Gold Added (g)</label>
+                    <label class="mb-2 block text-sm font-medium text-surface-700">Extra {{ metalLabel(selectedItem?.metal_type) }} Added (g)</label>
                     <InputNumber
                         v-model="completeForm.extra_gold_added"
                         :minFractionDigits="3"
@@ -1051,7 +1116,7 @@ watch(
                         Required mismatch amount: {{ formatWeight(completeRequiredExtraGold) }} g. This field is auto-filled from the difference.
                     </p>
                     <p v-if="completeRequiredExtraGold > 0 && !completeExtraGoldMatches" class="mt-2 text-sm text-red-600">
-                        Extra gold added must match the required mismatch amount of {{ formatWeight(completeRequiredExtraGold) }} g.
+                        Extra {{ metalLabel(selectedItem?.metal_type).toLowerCase() }} added must match the required mismatch amount of {{ formatWeight(completeRequiredExtraGold) }} g.
                     </p>
                     <p v-if="completeForm.errors.extra_gold_added" class="mt-2 text-sm text-red-600">
                         {{ completeForm.errors.extra_gold_added }}
@@ -1059,7 +1124,7 @@ watch(
                 </div>
 
                 <div>
-                    <label class="mb-2 block text-sm font-medium text-surface-700">Extra Gold Source</label>
+                    <label class="mb-2 block text-sm font-medium text-surface-700">Extra {{ metalLabel(selectedItem?.metal_type) }} Source</label>
                     <Select
                         v-model="completeForm.extra_gold_source"
                         :options="extraGoldSourceOptions"
@@ -1068,7 +1133,7 @@ watch(
                         placeholder="Select source of extra gold"
                         class="w-full"
                     />
-                    <p class="mt-1 text-xs text-surface-500">This tells the system where the additional gold actually came from.</p>
+                    <p class="mt-1 text-xs text-surface-500">This tells the system where the additional {{ metalLabel(selectedItem?.metal_type).toLowerCase() }} actually came from.</p>
                     <p v-if="completeForm.errors.extra_gold_source" class="mt-2 text-sm text-red-600">
                         {{ completeForm.errors.extra_gold_source }}
                     </p>
@@ -1099,19 +1164,19 @@ watch(
                         placeholder="Select karigar"
                         class="w-full"
                     />
-                    <p class="mt-1 text-xs text-surface-500">Choose the karigar who provided the extra gold. The assigned karigar is preselected when available.</p>
+                    <p class="mt-1 text-xs text-surface-500">Choose the karigar who provided the extra {{ metalLabel(selectedItem?.metal_type).toLowerCase() }}. The assigned karigar is preselected when available.</p>
                     <p v-if="completeForm.errors.extra_gold_karigar_id" class="mt-2 text-sm text-red-600">
                         {{ completeForm.errors.extra_gold_karigar_id }}
                     </p>
                 </div>
 
                 <div>
-                    <label class="mb-2 block text-sm font-medium text-surface-700">Mismatch / Extra Gold Note</label>
+                    <label class="mb-2 block text-sm font-medium text-surface-700">Mismatch / Extra {{ metalLabel(selectedItem?.metal_type) }} Note</label>
                     <Textarea
                         v-model="completeForm.mismatch_note"
                         rows="3"
                         class="w-full"
-                        placeholder="Why was extra gold added or why does finished return differ from issued gold?"
+                        :placeholder="`Why was extra ${metalLabel(selectedItem?.metal_type).toLowerCase()} added or why does finished return differ from issued ${metalLabel(selectedItem?.metal_type).toLowerCase()}?`"
                     />
                     <p v-if="completeForm.errors.mismatch_note" class="mt-2 text-sm text-red-600">
                         {{ completeForm.errors.mismatch_note }}

@@ -160,6 +160,7 @@ class DashboardController extends Controller
                 'vaults' => [
                     'cash' => $vaults['CASH']->balance ?? 0,
                     'gold' => $vaults['GOLD']->balance ?? 0,
+                    'silver' => $vaults['SILVER']->balance ?? 0,
                     'bank' => $vaults['BANK']->balance ?? 0,
                 ],
                 'metrics' => [

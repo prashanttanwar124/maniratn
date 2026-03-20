@@ -34,8 +34,11 @@ class ProductSeeder extends Seeder
             // "firstOrCreate" checks if 'name' exists. If not, creates it with 'code'.
             $category = Category::firstOrCreate(
                 ['name' => $name],
-                ['code' => $code]
+                ['code' => $code, 'metal_type' => 'GOLD']
             );
+            if ($category->metal_type !== 'GOLD') {
+                $category->update(['metal_type' => 'GOLD']);
+            }
             $catIds[$name] = $category; // Store the whole object to access ->code later
         }
 

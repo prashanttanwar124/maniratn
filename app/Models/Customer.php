@@ -42,6 +42,11 @@ class Customer extends Model
         return $this->morphMany(Transaction::class, 'transactable');
     }
 
+    public function goldSchemes()
+    {
+        return $this->hasMany(CustomerGoldScheme::class);
+    }
+
     // 2. METAL Transactions (Add This)
     public function metalTransactions(): MorphMany
     {

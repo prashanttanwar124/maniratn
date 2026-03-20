@@ -6,7 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Category extends Model
 {
-    // A Category has many Products
+    protected $guarded = [];
+
     public function products()
     {
         return $this->hasMany(Product::class);
@@ -15,5 +16,15 @@ class Category extends Model
     public function silverProducts()
     {
         return $this->hasMany(SilverProduct::class);
+    }
+
+    public function scopeGold($query)
+    {
+        return $query->where('metal_type', 'GOLD');
+    }
+
+    public function scopeSilver($query)
+    {
+        return $query->where('metal_type', 'SILVER');
     }
 }

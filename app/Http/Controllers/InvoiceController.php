@@ -166,8 +166,32 @@ class InvoiceController extends Controller
 
             $totalBillAmount = 0;
             $totalVaultGoldSoldWeight = 0;
-            $hasGoldPricedItems = collect($validated['items'])->contains(fn ($item) => in_array($item['type'], ['product', 'order_item'], true));
-            $hasSilverWeightItems = collect($validated['items'])->contains(fn ($item) => $item['type'] === 'silver_product');
+            $totalVaultSilverSoldWeight = 0;
+            $items = collect($validated['items']);
+
+            $hasGoldPricedItems = $items->contains(function ($item) {
+                if (($item['type'] ?? null) === 'product') {
+                    return true;
+                }
+
+                if (($item['type'] ?? null) !== 'order_item') {
+                    return false;
+                }
+
+                return strtoupper((string) optional(OrderItem::find($item['id']))->metal_type) !== 'SILVER';
+            });
+
+            $hasSilverPricedItems = $items->contains(function ($item) {
+                if (($item['type'] ?? null) === 'silver_product') {
+                    return true;
+                }
+
+                if (($item['type'] ?? null) !== 'order_item') {
+                    return false;
+                }
+
+                return strtoupper((string) optional(OrderItem::find($item['id']))->metal_type) === 'SILVER';
+            });
 
             if ($hasGoldPricedItems && empty($validated['gold_rate'])) {
                 throw ValidationException::withMessages([
@@ -175,13 +199,18 @@ class InvoiceController extends Controller
                 ]);
             }
 
-            if ($hasSilverWeightItems && empty($validated['silver_rate'])) {
-                $hasWeightSilverItems = collect($validated['items'])->contains(function ($item) {
+            if ($hasSilverPricedItems && empty($validated['silver_rate'])) {
+                $hasWeightSilverItems = $items->contains(function ($item) {
+                    if (($item['type'] ?? null) === 'order_item') {
+                        return strtoupper((string) optional(OrderItem::find($item['id']))->metal_type) === 'SILVER';
+                    }
+
                     if (($item['type'] ?? null) !== 'silver_product') {
                         return false;
                     }
 
                     $silverProduct = SilverProduct::find($item['id']);
+
                     return $silverProduct?->pricing_mode === 'WEIGHT';
                 });
 
@@ -196,7 +225,7 @@ class InvoiceController extends Controller
             $invoice = Invoice::create([
                 'invoice_number' => 'TMP-' . Str::uuid(),
                 'customer_id'    => $validated['customer_id'],
-                'gold_rate_applied' => $validated['gold_rate'],
+                'gold_rate_applied' => (float) ($validated['gold_rate'] ?? 0),
                 'discount_type' => $validated['discount_type'] ?? null,
                 'discount_value' => (float) ($validated['discount_value'] ?? 0),
                 'discount_amount' => 0,
@@ -318,9 +347,25 @@ class InvoiceController extends Controller
                 elseif ($row['type'] === 'order_item') {
                     $orderItem = OrderItem::findOrFail($row['id']);
 
+                    if ($orderItem->status !== 'READY') {
+                        throw ValidationException::withMessages([
+                            'items' => "Order item {$orderItem->item_name} is not ready for billing.",
+                        ]);
+                    }
+
+                    if (! $orderItem->finished_weight || (float) $orderItem->finished_weight <= 0) {
+                        throw ValidationException::withMessages([
+                            'items' => "Order item {$orderItem->item_name} does not have a finished weight yet.",
+                        ]);
+                    }
+
                     $weight = $orderItem->finished_weight; // Use actual finished weight
                     $purity = $orderItem->purity;
                     $itemName = $orderItem->item_name;
+                    $orderItemMetalType = strtoupper((string) ($orderItem->metal_type ?? 'GOLD'));
+                    $rateApplied = $orderItemMetalType === 'SILVER'
+                        ? (float) ($validated['silver_rate'] ?? 0)
+                        : (float) ($validated['gold_rate'] ?? 0);
 
                     // Mark Item as DELIVERED
                     $orderItem->update([
@@ -337,16 +382,30 @@ class InvoiceController extends Controller
                         'quantity'      => 1,
                         'weight'        => $weight,
                         'purity'        => $purity,
-                        'rate'          => $validated['gold_rate'],
+                        'rate'          => $rateApplied,
                         'making_charges' => $row['making_charges'],
-                        'final_price'   => ($weight * $validated['gold_rate']) + $row['making_charges']
+                        'final_price'   => ($weight * $rateApplied) + $row['making_charges']
                     ]);
 
-                    $totalVaultGoldSoldWeight += (float) $weight;
+                    if ($orderItemMetalType === 'SILVER') {
+                        $totalVaultSilverSoldWeight += (float) $weight;
+                    } else {
+                        $totalVaultGoldSoldWeight += (float) $weight;
+                    }
                 }
 
                 // Math: (Weight * Rate) + Making Charge
-                $itemTotal = ($weight * $validated['gold_rate']) + $row['making_charges'];
+                $rateForItem = 0;
+
+                if ($row['type'] === 'product') {
+                    $rateForItem = (float) ($validated['gold_rate'] ?? 0);
+                } elseif ($row['type'] === 'order_item') {
+                    $rateForItem = strtoupper((string) ($orderItem->metal_type ?? 'GOLD')) === 'SILVER'
+                        ? (float) ($validated['silver_rate'] ?? 0)
+                        : (float) ($validated['gold_rate'] ?? 0);
+                }
+
+                $itemTotal = ($weight * $rateForItem) + $row['making_charges'];
                 $totalBillAmount += $itemTotal;
             }
 
@@ -399,6 +458,16 @@ class InvoiceController extends Controller
                     'reference' => $invoice->invoice_number,
                     'user_id' => Auth::id(),
                     'note' => "Gold sold in {$invoice->invoice_number}",
+                ]);
+            }
+
+            if ($totalVaultSilverSoldWeight > 0) {
+                VaultService::debit(VaultType::SILVER, $totalVaultSilverSoldWeight, [
+                    'source_type' => Invoice::class,
+                    'source_id' => $invoice->id,
+                    'reference' => $invoice->invoice_number,
+                    'user_id' => Auth::id(),
+                    'note' => "Silver sold in {$invoice->invoice_number}",
                 ]);
             }
 
@@ -482,17 +551,31 @@ class InvoiceController extends Controller
                 'cancelled_at' => now(),
             ]);
 
-            $soldWeight = (float) $invoice->items
-                ->filter(fn ($item) => $item->order_item_id !== null)
+            $restoredGoldWeight = (float) $invoice->items
+                ->filter(fn ($item) => $item->order_item_id !== null && strtoupper((string) ($item->orderItem?->metal_type ?? 'GOLD')) !== 'SILVER')
                 ->sum('weight');
 
-            if ($soldWeight > 0) {
-                VaultService::credit(VaultType::GOLD, $soldWeight, [
+            if ($restoredGoldWeight > 0) {
+                VaultService::credit(VaultType::GOLD, $restoredGoldWeight, [
                     'source_type' => Invoice::class,
                     'source_id' => $invoice->id,
                     'reference' => $invoice->invoice_number,
                     'user_id' => Auth::id(),
                     'note' => "Gold restored after voiding {$invoice->invoice_number}",
+                ]);
+            }
+
+            $restoredSilverWeight = (float) $invoice->items
+                ->filter(fn ($item) => $item->order_item_id !== null && strtoupper((string) ($item->orderItem?->metal_type ?? 'GOLD')) === 'SILVER')
+                ->sum('weight');
+
+            if ($restoredSilverWeight > 0) {
+                VaultService::credit(VaultType::SILVER, $restoredSilverWeight, [
+                    'source_type' => Invoice::class,
+                    'source_id' => $invoice->id,
+                    'reference' => $invoice->invoice_number,
+                    'user_id' => Auth::id(),
+                    'note' => "Silver restored after voiding {$invoice->invoice_number}",
                 ]);
             }
 

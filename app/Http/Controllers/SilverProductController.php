@@ -7,7 +7,9 @@ use App\Models\SilverProduct;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use Picqer\Barcode\BarcodeGeneratorPNG;
 
 class SilverProductController extends Controller
 {
@@ -49,7 +51,7 @@ class SilverProductController extends Controller
         return Inertia::render('silver-products/Index', [
             'silverProducts' => $query->latest()->paginate(10),
             'suppliers' => Supplier::all(),
-            'categories' => Category::all(),
+            'categories' => Category::silver()->orderBy('name')->get(),
             'filters' => $request->only(['search']),
             'summary' => [
                 'total_items' => $statsProducts->count(),
@@ -121,11 +123,34 @@ class SilverProductController extends Controller
         return redirect()->back()->with('message', 'Silver Product Deleted');
     }
 
+    public function printBarcodes(Request $request)
+    {
+        $ids = array_filter(explode(',', (string) $request->query('ids')));
+        $products = SilverProduct::whereIn('id', $ids)->get();
+        $generator = new BarcodeGeneratorPNG();
+
+        $barcodes = [];
+        foreach ($products as $product) {
+            $codeStr = $product->barcode ?: ('MS-' . str_pad((string) $product->id, 5, '0', STR_PAD_LEFT));
+            $weight = (float) ($product->net_weight ?: $product->gross_weight ?: 0);
+
+            $barcodes[] = [
+                'name' => \Illuminate\Support\Str::limit($product->name, 16),
+                'weight' => $weight,
+                'purity' => 'Silver',
+                'code' => $codeStr,
+                'barcode' => base64_encode($generator->getBarcode($codeStr, $generator::TYPE_CODE_128, 1, 42)),
+            ];
+        }
+
+        return view('print.barcodes', ['barcodes' => $barcodes]);
+    }
+
     protected function validatePayload(Request $request): array
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'category_id' => ['required', 'exists:categories,id'],
+            'category_id' => ['required', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('metal_type', 'SILVER'))],
             'supplier_id' => ['required', 'exists:suppliers,id'],
             'pricing_mode' => ['required', 'in:PIECE,WEIGHT'],
             'quantity' => ['required', 'integer', 'min:1'],

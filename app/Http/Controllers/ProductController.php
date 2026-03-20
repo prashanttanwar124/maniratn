@@ -8,6 +8,7 @@ use App\Models\Purity;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Picqer\Barcode\BarcodeGeneratorPNG;
 
@@ -46,7 +47,7 @@ class ProductController extends Controller
         return Inertia::render('products/Index', [
             'products'    => $query->latest()->paginate(10),
             'suppliers'   => Supplier::all(),
-            'categories'  => Category::all(),
+            'categories'  => Category::gold()->orderBy('name')->get(),
             'purities'    => Purity::all(),
             'filters'     => $request->only(['search']), // Pass search term back
             'summary' => [
@@ -64,7 +65,7 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'name'          => 'required',
-            'category_id'   => 'required|exists:categories,id',
+            'category_id'   => ['required', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('metal_type', 'GOLD'))],
             'purity_id'     => 'required|exists:purities,id',
             'supplier_id'     => 'required|exists:suppliers,id',
             'gross_weight'  => 'required|numeric',
@@ -87,7 +88,7 @@ class ProductController extends Controller
         // Note: Rules are sometimes 'nullable' on update so user doesn't have to re-upload image
         $validated = $request->validate([
             'name'          => 'required',
-            'category_id'   => 'required|exists:categories,id',
+            'category_id'   => ['required', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('metal_type', 'GOLD'))],
             'purity_id'     => 'required|exists:purities,id',
             'supplier_id'     => 'required|exists:suppliers,id',
             'gross_weight'  => 'required|numeric',
@@ -143,16 +144,14 @@ class ProductController extends Controller
 
         $barcodes = [];
         foreach ($products as $product) {
-            // Keep ID short for the barcode to ensure it fits (e.g., 6 digits)
-            $codeStr = str_pad($product->id, 6, '0', STR_PAD_LEFT);
+            $codeStr = $product->barcode ?: ('MJ-' . str_pad((string) $product->id, 5, '0', STR_PAD_LEFT));
 
             $barcodes[] = [
-                'name' => \Illuminate\Support\Str::limit($product->name, 15), // Shorten name
+                'name' => \Illuminate\Support\Str::limit($product->name, 16),
                 'weight' => $product->gross_weight,
                 'purity' => $product->purity->name ?? '',
                 'code' => $codeStr,
-                // Generate barcode image
-                'barcode' => base64_encode($generator->getBarcode($codeStr, $generator::TYPE_CODE_128, 2, 30))
+                'barcode' => base64_encode($generator->getBarcode($codeStr, $generator::TYPE_CODE_128, 1, 42)),
             ];
         }
 
