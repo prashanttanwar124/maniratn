@@ -108,3 +108,13 @@
         }
     }
 }
+
+@media (max-width: 767px) {
+    .layout-wrapper {
+        .layout-main-container {
+            padding-top: 5rem;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+    }
+}

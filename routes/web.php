@@ -28,11 +28,7 @@ use App\Http\Controllers\GoldSchemeController;
 |--------------------------------------------------------------------------
 */
 
-// Route::get('/', function () {
-//     return Inertia::render('Welcome', [
-//         'canRegister' => Features::enabled(Features::registration()),
-//     ]);
-// })->name('home');
+Route::redirect('/', '/dashboard')->name('home');
 
 // Utility API Route (Used by Frontend to scan barcodes)
 Route::get('/api/products/{barcode}', function ($barcode) {

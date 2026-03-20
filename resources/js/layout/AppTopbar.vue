@@ -1,6 +1,6 @@
 <script setup>
 import { logout } from '@/routes';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { useLayout } from '@/layout/composables/layout';
 
@@ -52,6 +52,10 @@ const workspaceLabel = computed(() => {
 
     return 'Workspace';
 });
+
+const submitLogout = () => {
+    router.post(logout.url());
+};
 </script>
 
 <template>
@@ -61,7 +65,7 @@ const workspaceLabel = computed(() => {
                 <i class="pi pi-bars"></i>
             </button>
 
-            <a href="/" class="layout-topbar-brand">
+            <a href="/dashboard" class="layout-topbar-brand">
                 <span class="layout-topbar-mark">JF</span>
                 <span class="layout-topbar-brand-copy">
                     <span class="layout-topbar-logo">JewelFlow</span>
@@ -70,7 +74,7 @@ const workspaceLabel = computed(() => {
             </a>
         </div>
 
-        <div class="layout-topbar-center hidden xl:flex">
+        <div class="layout-topbar-center">
             <div class="layout-topbar-workspace">
                 <span class="layout-topbar-workspace-label">Current</span>
                 <span class="layout-topbar-workspace-value">{{ workspaceLabel }}</span>
@@ -101,10 +105,10 @@ const workspaceLabel = computed(() => {
                 <span class="hidden md:inline">Profile</span>
             </Link>
 
-            <Link :href="logout()" method="post" as="button" class="layout-topbar-utility layout-topbar-logout" title="Log out">
+            <button type="button" class="layout-topbar-utility layout-topbar-logout" title="Log out" @click="submitLogout">
                 <i class="pi pi-sign-out"></i>
                 <span class="hidden md:inline">Logout</span>
-            </Link>
+            </button>
         </div>
     </div>
 </template>

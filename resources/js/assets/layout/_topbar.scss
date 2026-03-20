@@ -161,6 +161,7 @@
         justify-content: flex-end;
         gap: 0.65rem;
         flex: 0 0 auto;
+        min-width: 0;
     }
 
     .layout-topbar-status {
@@ -288,10 +289,47 @@
 
 @media (max-width: 1199px) {
     .layout-topbar {
+        flex-wrap: wrap;
+        align-items: center;
+        height: auto;
+        min-height: 4.75rem;
         padding: 0 1rem;
+        row-gap: 0.75rem;
+        padding-top: 0.8rem;
+        padding-bottom: 0.8rem;
 
         .layout-topbar-brand {
             padding-right: 0;
+        }
+
+        .layout-topbar-start,
+        .layout-topbar-actions {
+            flex: 1 1 auto;
+        }
+
+        .layout-topbar-actions {
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .layout-topbar-center {
+            order: 3;
+            width: 100%;
+            justify-content: space-between;
+            padding: 0;
+            gap: 0.75rem;
+        }
+
+        .layout-topbar-workspace,
+        .layout-topbar-date {
+            flex: 1 1 0;
+            min-width: 0;
+        }
+
+        .layout-topbar-workspace-value,
+        .layout-topbar-date {
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .layout-topbar-user {
@@ -300,13 +338,45 @@
     }
 }
 
+@media (max-width: 991px) {
+    .layout-topbar {
+        .layout-topbar-user {
+            max-width: none;
+        }
+
+        .layout-topbar-user-meta {
+            display: none;
+        }
+
+        .layout-topbar-utility {
+            min-width: 2.7rem;
+            padding: 0;
+        }
+
+        .layout-topbar-center {
+            gap: 0.6rem;
+        }
+
+        .layout-topbar-workspace-label {
+            display: none;
+        }
+    }
+}
+
 @media (max-width: 767px) {
     .layout-topbar {
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: space-between;
         height: 4.25rem;
+        min-height: 4.25rem;
         padding: 0 0.8rem;
+        row-gap: 0;
 
         .layout-topbar-start {
             gap: 0.65rem;
+            flex: 1 1 auto;
+            min-width: 0;
         }
 
         .layout-topbar-mark {
@@ -322,6 +392,11 @@
 
         .layout-topbar-actions {
             gap: 0.45rem;
+            flex: 0 0 auto;
+        }
+
+        .layout-topbar-center {
+            display: none;
         }
 
         .layout-topbar-status,
@@ -330,8 +405,53 @@
             padding: 0 0.75rem;
         }
 
+        .layout-topbar-status {
+            font-size: 0.75rem;
+            padding: 0 0.65rem;
+        }
+
         .layout-topbar-user {
             display: none;
+        }
+    }
+}
+
+@media (max-width: 575px) {
+    .layout-topbar {
+        padding: 0 0.65rem;
+
+        .layout-topbar-logo {
+            font-size: 0.92rem;
+            letter-spacing: 0.05em;
+        }
+
+        .layout-topbar-mark {
+            width: 2.2rem;
+            height: 2.2rem;
+            font-size: 0.72rem;
+        }
+
+        .layout-topbar-action,
+        .layout-topbar-utility {
+            min-width: 2.3rem;
+            width: 2.3rem;
+            height: 2.3rem;
+            padding: 0;
+        }
+
+        .layout-topbar-status {
+            min-width: 2.2rem;
+            min-height: 2.3rem;
+            justify-content: center;
+            padding: 0 0.55rem;
+
+            span:last-child {
+                display: none;
+            }
+        }
+
+        .layout-topbar-status-dot {
+            margin-right: 0;
         }
     }
 }
