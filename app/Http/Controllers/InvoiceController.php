@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Inertia\Inertia;
-use App\Models\Order;
 use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\SilverProduct;
@@ -318,6 +317,7 @@ class InvoiceController extends Controller
                     }
 
                     $weight = (float) $silverProduct->net_weight;
+                    $originalQuantity = max(1, (int) $silverProduct->quantity);
                     $itemName = $silverProduct->name;
                     $silverRate = (float) ($validated['silver_rate'] ?? 0);
                     $itemTotal = ($weight * $silverRate) + (float) $row['making_charges'];
@@ -331,7 +331,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoice->id,
                         'silver_product_id' => $silverProduct->id,
                         'description' => $itemName,
-                        'quantity' => 1,
+                        'quantity' => $originalQuantity,
                         'weight' => $weight,
                         'purity' => 'Silver',
                         'rate' => $silverRate,

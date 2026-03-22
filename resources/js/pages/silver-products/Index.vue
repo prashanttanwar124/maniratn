@@ -19,7 +19,6 @@ import Paginator from 'primevue/paginator';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
-import Toast from 'primevue/toast';
 
 const props = defineProps({
     silverProducts: Object,
@@ -197,8 +196,6 @@ const copyBarcode = async (barcode) => {
 
 <template>
     <AppLayout>
-        <Toast />
-
         <div class="space-y-6">
             <div class="border-b border-surface-200 bg-white px-5 py-5">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

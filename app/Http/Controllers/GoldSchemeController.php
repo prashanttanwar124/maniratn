@@ -21,7 +21,6 @@ class GoldSchemeController extends Controller
     {
         $schemeModels = CustomerGoldScheme::query()
             ->with(['customer'])
-            ->withCount(['installments as paid_installments_count_live' => fn ($query) => $query->where('status', 'PAID')])
             ->latest()
             ->take(30)
             ->get();
@@ -249,11 +248,33 @@ class GoldSchemeController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated, $goldScheme) {
+            $lockedScheme = CustomerGoldScheme::query()
+                ->lockForUpdate()
+                ->findOrFail($goldScheme->id);
+
+            if ($lockedScheme->status === 'CANCELLED') {
+                return back()->withErrors([
+                    'scheme' => 'Cancelled schemes cannot be edited.',
+                ]);
+            }
+
+            $hasPaidInstallments = GoldSchemeInstallment::query()
+                ->where('customer_gold_scheme_id', $lockedScheme->id)
+                ->lockForUpdate()
+                ->where('status', 'PAID')
+                ->exists();
+
+            if ($hasPaidInstallments || (int) $lockedScheme->paid_installments_count > 0) {
+                return back()->withErrors([
+                    'scheme' => 'This scheme already has collected installments and can no longer be edited.',
+                ]);
+            }
+
             $startDate = Carbon::parse($validated['start_date'])->startOfDay();
             $totalMonths = (int) $validated['total_months'];
             $monthlyAmount = (float) $validated['monthly_amount'];
 
-            $goldScheme->update([
+            $lockedScheme->update([
                 'customer_id' => $validated['customer_id'],
                 'start_date' => $startDate,
                 'maturity_date' => $startDate->copy()->addMonths($totalMonths - 1),
@@ -263,11 +284,14 @@ class GoldSchemeController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
 
-            $goldScheme->installments()->delete();
+            GoldSchemeInstallment::query()
+                ->where('customer_gold_scheme_id', $lockedScheme->id)
+                ->where('status', '!=', 'PAID')
+                ->delete();
 
             foreach (range(1, $totalMonths) as $installmentNo) {
                 GoldSchemeInstallment::create([
-                    'customer_gold_scheme_id' => $goldScheme->id,
+                    'customer_gold_scheme_id' => $lockedScheme->id,
                     'installment_no' => $installmentNo,
                     'due_date' => $startDate->copy()->addMonths($installmentNo - 1),
                     'amount_due' => $monthlyAmount,
@@ -275,7 +299,7 @@ class GoldSchemeController extends Controller
                 ]);
             }
 
-            return back()->with('success', "Scheme {$goldScheme->scheme_number} updated successfully.");
+            return back()->with('success', "Scheme {$lockedScheme->scheme_number} updated successfully.");
         });
     }
 

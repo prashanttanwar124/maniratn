@@ -18,7 +18,6 @@ import InputText from 'primevue/inputtext';
 import Paginator from 'primevue/paginator';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
-import Toast from 'primevue/toast';
 
 const props = defineProps({
     products: Object,
@@ -213,8 +212,6 @@ const copyBarcode = async (barcode) => {
 
 <template>
     <AppLayout>
-        <Toast />
-
         <div class="space-y-6">
             <!-- Header -->
             <div class="border-b border-surface-200 bg-white px-5 py-5">

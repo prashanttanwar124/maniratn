@@ -7,6 +7,8 @@ use App\Models\DailyRegister;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Karigar;
+use App\Models\CustomerGoldScheme;
+use App\Models\GoldSchemeInstallment;
 use App\Models\MetalTransaction;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -121,6 +123,73 @@ it('keeps invoice, payment, and vault balances aligned for partial payment and r
         ->and((float) Vault::where('type', VaultType::BANK->value)->value('balance'))->toBe(0.0);
 });
 
+it('restores full quantity when a weight-based silver invoice is cancelled', function () {
+    openShopDay($this->user, 1000, 0);
+
+    $customer = Customer::create([
+        'name' => 'silver quantity customer',
+        'mobile' => '9999999994',
+        'city' => 'mumbai',
+    ]);
+
+    $supplier = Supplier::create([
+        'company_name' => 'silver supplier',
+        'contact_person' => 'silver bhai',
+        'mobile' => '8888888894',
+        'type' => 'SILVER',
+    ]);
+
+    $category = Category::create([
+        'name' => 'Silver Idol',
+        'code' => 'SID',
+        'metal_type' => 'SILVER',
+    ]);
+
+    $silverProduct = SilverProduct::create([
+        'name' => 'Silver Idol Pair',
+        'category_id' => $category->id,
+        'supplier_id' => $supplier->id,
+        'pricing_mode' => 'WEIGHT',
+        'quantity' => 4,
+        'gross_weight' => 80.000,
+        'net_weight' => 72.000,
+        'piece_price' => null,
+        'making_charge' => 500,
+        'notes' => 'Weight-based silver stock',
+    ]);
+
+    post(route('invoices.store'), [
+        'customer_id' => $customer->id,
+        'silver_rate' => 100,
+        'date' => today()->toDateString(),
+        'items' => [
+            [
+                'type' => 'silver_product',
+                'id' => $silverProduct->id,
+                'making_charges' => 500,
+                'quantity' => 1,
+            ],
+        ],
+        'payment_cash' => 0,
+        'payment_card' => 0,
+    ])->assertRedirect();
+
+    $invoice = Invoice::query()->latest('id')->firstOrFail();
+    $invoiceItem = InvoiceItem::query()->where('invoice_id', $invoice->id)->where('silver_product_id', $silverProduct->id)->firstOrFail();
+
+    expect($silverProduct->fresh()->quantity)->toBe(0)
+        ->and((bool) $silverProduct->fresh()->is_sold)->toBeTrue()
+        ->and($invoiceItem->quantity)->toBe(4);
+
+    post(route('invoices.cancel', $invoice->id), [
+        'mode' => 'refund',
+        'reason' => 'Reverse weight-based silver sale.',
+    ])->assertRedirect();
+
+    expect($silverProduct->fresh()->quantity)->toBe(4)
+        ->and((bool) $silverProduct->fresh()->is_sold)->toBeFalse();
+});
+
 it('stores invoice discount and calculates final total after discount plus gst', function () {
     openShopDay($this->user, 1000, 10);
 
@@ -180,6 +249,64 @@ it('stores invoice discount and calculates final total after discount plus gst',
         ->and((float) $invoice->tax_amount)->toBe(297.0)
         ->and((float) $invoice->total_amount)->toBe(10197.0)
         ->and((float) Transaction::query()->where('invoice_id', $invoice->id)->where('type', 'SALE')->value('amount'))->toBe(10197.0);
+});
+
+it('blocks gold scheme edit when a paid installment exists live', function () {
+    openShopDay($this->user, 1000, 0);
+
+    $customer = Customer::create([
+        'name' => 'scheme customer',
+        'mobile' => '9999999995',
+        'city' => 'mumbai',
+    ]);
+
+    $scheme = CustomerGoldScheme::create([
+        'customer_id' => $customer->id,
+        'start_date' => today(),
+        'maturity_date' => today()->addMonths(10),
+        'status' => 'ACTIVE',
+        'monthly_amount' => 100000,
+        'total_months' => 11,
+        'bonus_amount' => 100000,
+        'paid_total' => 0,
+        'paid_installments_count' => 0,
+        'notes' => 'Editable until paid',
+    ]);
+
+    GoldSchemeInstallment::create([
+        'customer_gold_scheme_id' => $scheme->id,
+        'installment_no' => 1,
+        'due_date' => today(),
+        'amount_due' => 100000,
+        'amount_paid' => 100000,
+        'paid_on' => today(),
+        'payment_method' => 'CASH',
+        'status' => 'PAID',
+        'collected_by' => $this->user->id,
+    ]);
+
+    GoldSchemeInstallment::create([
+        'customer_gold_scheme_id' => $scheme->id,
+        'installment_no' => 2,
+        'due_date' => today()->addMonth(),
+        'amount_due' => 100000,
+        'status' => 'PENDING',
+    ]);
+
+    patch(route('gold-schemes.update', $scheme), [
+        'customer_id' => $customer->id,
+        'start_date' => today()->toDateString(),
+        'monthly_amount' => 90000,
+        'total_months' => 10,
+        'bonus_amount' => 90000,
+        'notes' => 'Updated notes',
+    ])->assertSessionHasErrors([
+        'scheme' => 'This scheme already has collected installments and can no longer be edited.',
+    ]);
+
+    expect($scheme->fresh()->monthly_amount)->toBe('100000.00')
+        ->and($scheme->installments()->count())->toBe(2)
+        ->and($scheme->installments()->where('status', 'PAID')->count())->toBe(1);
 });
 
 it('updates vault balances when manual ledger cash entries are created and edited', function () {
