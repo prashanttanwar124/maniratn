@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\BarcodeLabelPdfService;
 use App\Models\Category;
 use App\Models\SilverProduct;
 use App\Models\Supplier;
@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
-use Picqer\Barcode\BarcodeGeneratorPNG;
 
 class SilverProductController extends Controller
 {
@@ -125,30 +124,25 @@ class SilverProductController extends Controller
         return redirect()->back()->with('message', 'Silver Product Deleted');
     }
 
-    public function printBarcodes(Request $request)
+    public function printBarcodes(Request $request, BarcodeLabelPdfService $barcodeLabelPdfService)
     {
         $ids = array_filter(explode(',', (string) $request->query('ids')));
         $products = SilverProduct::whereIn('id', $ids)->get();
-        $generator = new BarcodeGeneratorPNG();
 
-        $barcodes = [];
+        $labels = [];
         foreach ($products as $product) {
             $codeStr = $product->barcode ?: ('MS-' . str_pad((string) $product->id, 5, '0', STR_PAD_LEFT));
             $weight = (float) ($product->net_weight ?: $product->gross_weight ?: 0);
 
-            $barcodes[] = [
+            $labels[] = [
                 'name' => Str::limit($product->name, 18),
                 'weight' => $weight,
                 'purity' => 'Silver',
                 'code' => $codeStr,
-                'barcode_png' => base64_encode($generator->getBarcode($codeStr, $generator::TYPE_CODE_128, 3, 72)),
             ];
         }
 
-        $pdf = Pdf::loadView('pdf.barcodes', ['barcodes' => $barcodes])
-            ->setPaper([0, 0, $this->mmToPoints(100), $this->mmToPoints(15)]);
-
-        return $pdf->stream('silver-product-barcodes.pdf');
+        return $barcodeLabelPdfService->stream($labels, 'silver-product-barcodes.pdf');
     }
 
     protected function validatePayload(Request $request): array
@@ -178,10 +172,5 @@ class SilverProductController extends Controller
         }
 
         return $validated;
-    }
-
-    protected function mmToPoints(float $mm): float
-    {
-        return $mm * 2.834645669;
     }
 }

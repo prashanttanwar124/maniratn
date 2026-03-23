@@ -19,6 +19,7 @@
         "laravel/wayfinder": "^0.1.9",
         "picqer/php-barcode-generator": "^3.2",
         "spatie/laravel-permission": "^6.24",
+        "tecnickcom/tcpdf": "^6.11",
         "tightenco/ziggy": "^2.6"
     },
     "require-dev": {

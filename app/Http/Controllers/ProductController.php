@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\BarcodeLabelPdfService;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Purity;
@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
-use Picqer\Barcode\BarcodeGeneratorPNG;
 
 class ProductController extends Controller
 {
@@ -136,33 +135,23 @@ class ProductController extends Controller
     }
 
 
-    public function printBarcodes(Request $request)
+    public function printBarcodes(Request $request, BarcodeLabelPdfService $barcodeLabelPdfService)
     {
         $ids = array_filter(explode(',', (string) $request->query('ids')));
         $products = Product::whereIn('id', $ids)->get();
-        $generator = new BarcodeGeneratorPNG();
 
-        $barcodes = [];
+        $labels = [];
         foreach ($products as $product) {
             $codeStr = $product->barcode ?: ('MJ-' . str_pad((string) $product->id, 5, '0', STR_PAD_LEFT));
 
-            $barcodes[] = [
+            $labels[] = [
                 'name' => Str::limit($product->name, 18),
                 'weight' => $product->gross_weight,
                 'purity' => $product->purity->name ?? '',
                 'code' => $codeStr,
-                'barcode_png' => base64_encode($generator->getBarcode($codeStr, $generator::TYPE_CODE_128, 3, 72)),
             ];
         }
 
-        $pdf = Pdf::loadView('pdf.barcodes', ['barcodes' => $barcodes])
-            ->setPaper([0, 0, $this->mmToPoints(100), $this->mmToPoints(15)]);
-
-        return $pdf->stream('product-barcodes.pdf');
-    }
-
-    protected function mmToPoints(float $mm): float
-    {
-        return $mm * 2.834645669;
+        return $barcodeLabelPdfService->stream($labels, 'product-barcodes.pdf');
     }
 }
