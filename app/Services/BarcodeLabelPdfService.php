@@ -39,7 +39,8 @@ class BarcodeLabelPdfService
 
             // Left info block
             $pdf->SetXY(2.0, 2.0);
-            $pdf->Cell(34.0, 2.6, $this->fitText($label['category'] ?? '', 16), 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $categoryLine = trim($this->fitText($label['category'] ?? '', 12) . ' ' . $this->fitText($label['purity'] ?? '', 8));
+            $pdf->Cell(34.0, 2.6, $categoryLine, 0, 1, 'C', false, '', 0, false, 'T', 'M');
 
             $pdf->SetFont($fonts['bold'], '', 6.4);
             $pdf->SetXY(2.2, 5.3);

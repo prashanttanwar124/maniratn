@@ -146,6 +146,7 @@ class ProductController extends Controller
 
             $labels[] = [
                 'category' => strtoupper((string) ($product->category?->name ?? 'GOLD')),
+                'purity' => strtoupper((string) ($product->purity?->name ?? '')),
                 'gross_weight' => (float) $product->gross_weight,
                 'net_weight' => (float) $product->net_weight,
                 'code' => $codeStr,
