@@ -314,13 +314,13 @@
 
         .info-stack {
             width: 32mm;
-            gap: 0.8px;
+            gap: 1.1px;
         }
 
         .brand-strip {
             min-width: 26mm;
             padding: 0;
-            font-size: 5.2px;
+            font-size: 5.8px;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.8px;
@@ -333,12 +333,12 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 0.6px;
-            padding: 0.6px 0 0;
+            gap: 0.8px;
+            padding: 0.8px 0 0;
         }
 
         .product-name {
-            font-size: 5.6px;
+            font-size: 6.2px;
             font-weight: 600;
             line-height: 1.1;
             max-width: 31mm;
@@ -354,7 +354,7 @@
             align-items: center;
             justify-content: center;
             gap: 3px;
-            font-size: 4.9px;
+            font-size: 5.4px;
             font-weight: 700;
             line-height: 1.1;
         }
@@ -369,7 +369,7 @@
 
         .code-stack {
             width: 33mm;
-            gap: 1.5px;
+            gap: 1.8px;
         }
 
         .barcode-frame {
@@ -382,18 +382,18 @@
 
         .barcode-img {
             width: 33mm;
-            height: 7.6mm;
+            height: 8.6mm;
             object-fit: contain;
             image-rendering: crisp-edges;
         }
 
         .barcode-text {
-            font-size: 4.8px;
+            font-size: 5.5px;
             font-weight: bold;
             line-height: 1;
-            margin-top: 1px;
-            letter-spacing: 0.3px;
-            font-family: 'Inter', system-ui, sans-serif;
+            margin-top: 1.2px;
+            letter-spacing: 0.35px;
+            font-family: 'Poppins', Arial, sans-serif;
         }
 
         .tail {
