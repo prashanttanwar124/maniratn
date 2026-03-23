@@ -60,18 +60,18 @@ class BarcodeLabelPdfService
             $pdf->write1DBarcode(
                 $label['code'],
                 'C128',
-                41.0,
-                1.2,
-                31.5,
-                7.8,
+                42.0,
+                1.9,
+                32.5,
+                8.5,
                 0.26,
                 $style,
                 'N'
             );
 
             $pdf->SetFont('courier', 'B', 6.2);
-            $pdf->SetXY(41.0, 10.2);
-            $pdf->Cell(31.5, 2.2, $this->fitText($label['code'], 18), 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $pdf->SetXY(42.0, 11.0);
+            $pdf->Cell(32.5, 2.2, $this->fitText($label['code'], 18), 0, 1, 'C', false, '', 0, false, 'T', 'M');
         }
 
         return response($pdf->Output($filename, 'S'), 200, [
