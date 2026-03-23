@@ -24,20 +24,20 @@ class BarcodeLabelPdfService
         foreach ($labels as $label) {
             $pdf->AddPage();
 
-            $pdf->SetFont('helvetica', 'B', 6.5);
+            $pdf->SetFont('helvetica', 'B', 7.1);
             $pdf->SetTextColor(20, 20, 20);
 
             // Left info block
-            $pdf->SetXY(4, 2.4);
-            $pdf->Cell(31, 2.6, 'MANIRATN', 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $pdf->SetXY(3.4, 1.8);
+            $pdf->Cell(32.5, 2.8, 'MANIRATN', 0, 1, 'C', false, '', 0, false, 'T', 'M');
 
-            $pdf->SetFont('helvetica', 'B', 6.3);
-            $pdf->SetXY(2.5, 5.0);
-            $pdf->Cell(34, 3.0, $this->fitText($label['name'], 18), 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $pdf->SetFont('helvetica', 'B', 6.9);
+            $pdf->SetXY(1.9, 4.6);
+            $pdf->Cell(35.5, 3.3, $this->fitText($label['name'], 18), 0, 1, 'C', false, '', 0, false, 'T', 'M');
 
-            $pdf->SetFont('helvetica', 'B', 5.7);
-            $pdf->SetXY(2.5, 8.1);
-            $pdf->Cell(34, 2.6, $this->fitText(number_format((float) $label['weight'], 3) . 'g | ' . $label['purity'], 20), 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $pdf->SetFont('helvetica', 'B', 6.1);
+            $pdf->SetXY(1.9, 8.4);
+            $pdf->Cell(35.5, 2.8, $this->fitText(number_format((float) $label['weight'], 3) . 'g | ' . $label['purity'], 20), 0, 1, 'C', false, '', 0, false, 'T', 'M');
 
             // Vector barcode in center block
             $style = [
@@ -60,18 +60,18 @@ class BarcodeLabelPdfService
             $pdf->write1DBarcode(
                 $label['code'],
                 'C128',
-                36.5,
-                2.1,
-                33,
-                8.0,
-                0.26,
+                37.8,
+                1.6,
+                34.5,
+                8.8,
+                0.29,
                 $style,
                 'N'
             );
 
-            $pdf->SetFont('courier', 'B', 6.2);
-            $pdf->SetXY(36.5, 10.8);
-            $pdf->Cell(33, 2.2, $this->fitText($label['code'], 18), 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $pdf->SetFont('courier', 'B', 6.8);
+            $pdf->SetXY(37.6, 11.2);
+            $pdf->Cell(34.8, 2.5, $this->fitText($label['code'], 18), 0, 1, 'C', false, '', 0, false, 'T', 'M');
         }
 
         return response($pdf->Output($filename, 'S'), 200, [
