@@ -139,7 +139,7 @@ class SilverProductController extends Controller
                 'weight' => $weight,
                 'purity' => 'Silver',
                 'code' => $codeStr,
-                'barcode' => base64_encode($generator->getBarcode($codeStr, $generator::TYPE_CODE_128, 2, 52)),
+                'barcode' => base64_encode($generator->getBarcode($codeStr, $generator::TYPE_CODE_128, 3, 80)),
             ];
         }
 

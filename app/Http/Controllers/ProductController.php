@@ -151,7 +151,7 @@ class ProductController extends Controller
                 'weight' => $product->gross_weight,
                 'purity' => $product->purity->name ?? '',
                 'code' => $codeStr,
-                'barcode' => base64_encode($generator->getBarcode($codeStr, $generator::TYPE_CODE_128, 2, 52)),
+                'barcode' => base64_encode($generator->getBarcode($codeStr, $generator::TYPE_CODE_128, 3, 80)),
             ];
         }
 
