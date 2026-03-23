@@ -27,7 +27,7 @@ const buildTsplForItem = (item) => {
         'CLS',
         `TEXT 16,18,"0",0,1,1,"${name}"`,
         `TEXT 16,42,"0",0,1,1,"${specs}"`,
-        `BARCODE 300,12,"128",42,0,0,1,1,"${code}"`,
+        `BARCODE 300,12,"128",42,0,0,2,2,"${code}"`,
         `TEXT 300,60,"0",0,1,1,"${code}"`,
         'PRINT 1,1',
     ].join('\n');
@@ -108,9 +108,16 @@ export const printLabelsViaQz = async (items, printerName = DEFAULT_PRINTER_NAME
         encoding: 'UTF-8',
     });
 
-    const payload = items.map(buildTsplForItem).join('\n');
+    const payload = items.map((item) => `${buildTsplForItem(item)}\n`).join('\n');
 
-    await qz.print(config, [payload]);
+    await qz.print(config, [
+        {
+            type: 'raw',
+            format: 'command',
+            flavor: 'plain',
+            data: payload,
+        },
+    ]);
 
     return printer;
 };
