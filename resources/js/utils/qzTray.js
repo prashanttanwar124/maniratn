@@ -25,10 +25,10 @@ const buildTsplForItem = (item) => {
         'REFERENCE 0,0',
         'OFFSET 0 mm',
         'CLS',
-        `TEXT 12,18,"0",0,1,1,"${name}"`,
-        `TEXT 12,42,"0",0,1,1,"${specs}"`,
-        `BARCODE 360,14,"128",48,1,0,2,2,"${code}"`,
-        `TEXT 360,68,"0",0,1,1,"${code}"`,
+        `TEXT 16,18,"0",0,1,1,"${name}"`,
+        `TEXT 16,42,"0",0,1,1,"${specs}"`,
+        `BARCODE 300,12,"128",42,0,0,1,1,"${code}"`,
+        `TEXT 300,60,"0",0,1,1,"${code}"`,
         'PRINT 1,1',
     ].join('\n');
 };
