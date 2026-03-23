@@ -3,12 +3,16 @@
 namespace App\Services;
 
 use TCPDF;
+use TCPDF_FONTS;
 
 class BarcodeLabelPdfService
 {
+    protected static ?array $fontFamilies = null;
+
     public function stream(array $labels, string $filename)
     {
         $pdf = new TCPDF('L', 'mm', [15, 100], true, 'UTF-8', false);
+        $fonts = $this->registerFonts();
 
         $pdf->SetCreator(config('app.name'));
         $pdf->SetAuthor(config('app.name'));
@@ -24,18 +28,18 @@ class BarcodeLabelPdfService
         foreach ($labels as $label) {
             $pdf->AddPage();
 
-            $pdf->SetFont('helvetica', 'B', 7.1);
+            $pdf->SetFont($fonts['bold'], '', 7.2);
             $pdf->SetTextColor(20, 20, 20);
 
             // Left info block
             $pdf->SetXY(5.2, 2.0);
             $pdf->Cell(28.5, 2.8, 'MRTN', 0, 1, 'C', false, '', 0, false, 'T', 'M');
 
-            $pdf->SetFont('helvetica', 'B', 6.2);
+            $pdf->SetFont($fonts['bold'], '', 6.4);
             $pdf->SetXY(2.2, 5.3);
             $pdf->Cell(34, 2.8, 'GW ' . number_format((float) $label['gross_weight'], 3) . 'G', 0, 1, 'C', false, '', 0, false, 'T', 'M');
 
-            $pdf->SetFont('helvetica', 'B', 6.2);
+            $pdf->SetFont($fonts['bold'], '', 6.4);
             $pdf->SetXY(2.2, 8.4);
             $pdf->Cell(34, 2.8, 'NW ' . number_format((float) $label['net_weight'], 3) . 'G', 0, 1, 'C', false, '', 0, false, 'T', 'M');
 
@@ -60,18 +64,18 @@ class BarcodeLabelPdfService
             $pdf->write1DBarcode(
                 $label['code'],
                 'C128',
-                42.0,
+                40.0,
                 1.9,
-                32.5,
-                8.5,
+                42.5,
+                8.6,
                 0.26,
                 $style,
                 'N'
             );
 
-            $pdf->SetFont('courier', 'B', 6.2);
-            $pdf->SetXY(42.0, 11.0);
-            $pdf->Cell(32.5, 2.2, $this->fitText($label['code'], 18), 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $pdf->SetFont($fonts['bold'], '', 6.3);
+            $pdf->SetXY(40.0, 10.7);
+            $pdf->Cell(42.5, 2.2, $this->fitText($label['code'], 18), 0, 1, 'C', false, '', 0, false, 'T', 'M');
         }
 
         return response($pdf->Output($filename, 'S'), 200, [
@@ -87,5 +91,22 @@ class BarcodeLabelPdfService
         return mb_strlen($normalized) > $maxLength
             ? mb_substr($normalized, 0, $maxLength - 1) . '…'
             : $normalized;
+    }
+
+    protected function registerFonts(): array
+    {
+        if (self::$fontFamilies !== null) {
+            return self::$fontFamilies;
+        }
+
+        $regular = resource_path('fonts/Poppins/Poppins-Regular.ttf');
+        $bold = resource_path('fonts/Poppins/Poppins-Bold.ttf');
+
+        self::$fontFamilies = [
+            'regular' => TCPDF_FONTS::addTTFfont($regular, 'TrueTypeUnicode', '', 96) ?: 'helvetica',
+            'bold' => TCPDF_FONTS::addTTFfont($bold, 'TrueTypeUnicode', '', 96) ?: 'helvetica',
+        ];
+
+        return self::$fontFamilies;
     }
 }
