@@ -1,6 +1,5 @@
 <script setup>
 import AppLayout from '@/layouts/AppLayout.vue';
-import { printLabelsViaQz } from '@/utils/qzTray';
 import { router, useForm } from '@inertiajs/vue3';
 import throttle from 'lodash/throttle';
 import { Search } from 'lucide-vue-next';
@@ -180,35 +179,6 @@ const printSelected = () => {
     window.open(route('products.print_barcodes') + '?ids=' + ids, '_blank');
 };
 
-const printSelectedViaQz = async () => {
-    if (selectedProducts.value.length === 0) return;
-
-    try {
-        const printer = await printLabelsViaQz(
-            selectedProducts.value.map((product) => ({
-                name: product.name,
-                weight: product.gross_weight,
-                purity: product.purity?.name || '',
-                code: product.barcode,
-            })),
-        );
-
-        toast.add({
-            severity: 'success',
-            summary: 'QZ Print Sent',
-            detail: `Sent ${selectedProducts.value.length} label(s) to ${printer}.`,
-            life: 3500,
-        });
-    } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: 'QZ Print Failed',
-            detail: error?.message || 'QZ Tray is not ready. Start QZ Tray and try again.',
-            life: 4500,
-        });
-    }
-};
-
 const copyBarcode = async (barcode) => {
     if (!barcode) {
         toast.add({
@@ -334,7 +304,7 @@ const copyBarcode = async (barcode) => {
                                 <InputText v-model="search" placeholder="Search product by name..." class="w-full !pl-10" />
                             </div>
 
-                            <Button label="Print via TSC" severity="contrast" :disabled="selectedProducts.length === 0" @click="printSelectedViaQz" class="!w-auto shrink-0 whitespace-nowrap" />
+                            <Button label="Print Selected Barcodes" severity="warn" outlined :disabled="selectedProducts.length === 0" @click="printSelected" class="!w-auto shrink-0 whitespace-nowrap" />
                             <Button label="New Product" @click="openNew" class="!w-auto shrink-0 whitespace-nowrap" />
                         </div>
                     </div>
@@ -344,7 +314,6 @@ const copyBarcode = async (barcode) => {
                     <div class="flex flex-col items-center justify-center gap-3 text-center text-sm lg:flex-row lg:justify-between lg:text-left">
                         <p class="font-medium text-amber-800">{{ selectedProducts.length }} product{{ selectedProducts.length === 1 ? '' : 's' }} selected for barcode printing.</p>
                         <div class="flex flex-wrap items-center justify-center gap-2 lg:justify-end">
-                            <Button label="Print via TSC" severity="contrast" @click="printSelectedViaQz" class="!w-auto shrink-0 whitespace-nowrap" />
                             <Button label="Print Selected Barcodes" severity="warn" outlined @click="printSelected" class="!w-auto shrink-0 whitespace-nowrap" />
                         </div>
                     </div>

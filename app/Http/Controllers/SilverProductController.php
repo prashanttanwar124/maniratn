@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Category;
 use App\Models\SilverProduct;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Picqer\Barcode\BarcodeGeneratorPNG;
@@ -135,15 +137,18 @@ class SilverProductController extends Controller
             $weight = (float) ($product->net_weight ?: $product->gross_weight ?: 0);
 
             $barcodes[] = [
-                'name' => \Illuminate\Support\Str::limit($product->name, 16),
+                'name' => Str::limit($product->name, 18),
                 'weight' => $weight,
                 'purity' => 'Silver',
                 'code' => $codeStr,
-                'barcode' => base64_encode($generator->getBarcode($codeStr, $generator::TYPE_CODE_128, 3, 80)),
+                'barcode_png' => base64_encode($generator->getBarcode($codeStr, $generator::TYPE_CODE_128, 3, 72)),
             ];
         }
 
-        return view('print.barcodes', ['barcodes' => $barcodes]);
+        $pdf = Pdf::loadView('pdf.barcodes', ['barcodes' => $barcodes])
+            ->setPaper([0, 0, $this->mmToPoints(100), $this->mmToPoints(15)]);
+
+        return $pdf->stream('silver-product-barcodes.pdf');
     }
 
     protected function validatePayload(Request $request): array
@@ -173,5 +178,10 @@ class SilverProductController extends Controller
         }
 
         return $validated;
+    }
+
+    protected function mmToPoints(float $mm): float
+    {
+        return $mm * 2.834645669;
     }
 }

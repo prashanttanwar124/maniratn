@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Purity;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Picqer\Barcode\BarcodeGeneratorPNG;
@@ -136,25 +138,31 @@ class ProductController extends Controller
 
     public function printBarcodes(Request $request)
     {
-        $ids = explode(',', $request->query('ids'));
+        $ids = array_filter(explode(',', (string) $request->query('ids')));
         $products = Product::whereIn('id', $ids)->get();
-
-        // TSC Printer needs high contrast black/white
-        $generator = new \Picqer\Barcode\BarcodeGeneratorPNG();
+        $generator = new BarcodeGeneratorPNG();
 
         $barcodes = [];
         foreach ($products as $product) {
             $codeStr = $product->barcode ?: ('MJ-' . str_pad((string) $product->id, 5, '0', STR_PAD_LEFT));
 
             $barcodes[] = [
-                'name' => \Illuminate\Support\Str::limit($product->name, 16),
+                'name' => Str::limit($product->name, 18),
                 'weight' => $product->gross_weight,
                 'purity' => $product->purity->name ?? '',
                 'code' => $codeStr,
-                'barcode' => base64_encode($generator->getBarcode($codeStr, $generator::TYPE_CODE_128, 3, 80)),
+                'barcode_png' => base64_encode($generator->getBarcode($codeStr, $generator::TYPE_CODE_128, 3, 72)),
             ];
         }
 
-        return view('print.barcodes', ['barcodes' => $barcodes]);
+        $pdf = Pdf::loadView('pdf.barcodes', ['barcodes' => $barcodes])
+            ->setPaper([0, 0, $this->mmToPoints(100), $this->mmToPoints(15)]);
+
+        return $pdf->stream('product-barcodes.pdf');
+    }
+
+    protected function mmToPoints(float $mm): float
+    {
+        return $mm * 2.834645669;
     }
 }
