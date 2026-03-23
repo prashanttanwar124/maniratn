@@ -134,6 +134,7 @@ class SilverProductController extends Controller
             $codeStr = $product->barcode ?: ('MS-' . str_pad((string) $product->id, 5, '0', STR_PAD_LEFT));
 
             $labels[] = [
+                'category' => strtoupper((string) ($product->category?->name ?? 'SILVER')),
                 'gross_weight' => (float) ($product->gross_weight ?: 0),
                 'net_weight' => (float) ($product->net_weight ?: 0),
                 'code' => $codeStr,

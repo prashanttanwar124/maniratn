@@ -34,12 +34,12 @@ class BarcodeLabelPdfService
             $pdf->Line(35, 0.8, 35, 14.2);
             $pdf->Line(74, 0.8, 74, 14.2);
 
-            $pdf->SetFont($fonts['bold'], '', 7.2);
+            $pdf->SetFont($fonts['bold'], '', 6.8);
             $pdf->SetTextColor(20, 20, 20);
 
             // Left info block
-            $pdf->SetXY(5.2, 2.0);
-            $pdf->Cell(28.5, 2.8, 'MRTN', 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $pdf->SetXY(2.0, 2.0);
+            $pdf->Cell(34.0, 2.6, $this->fitText($label['category'] ?? '', 16), 0, 1, 'C', false, '', 0, false, 'T', 'M');
 
             $pdf->SetFont($fonts['bold'], '', 6.4);
             $pdf->SetXY(2.2, 5.3);
@@ -79,9 +79,16 @@ class BarcodeLabelPdfService
                 'N'
             );
 
-            $pdf->SetFont($fonts['bold'], '', 6.3);
-            $pdf->SetXY(40.2, 10.7);
-            $pdf->Cell(49.0, 2.2, $this->fitText($label['code'], 18), 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $pdf->SetFont($fonts['bold'], '', 6.2);
+            $barcodeText = $this->fitText($label['code'], 18) . ' MRTN';
+            $barcodeBlockX = 40.2;
+            $barcodeBlockWidth = 49.0;
+            $barcodeCenterX = $barcodeBlockX + ($barcodeBlockWidth / 2);
+            $textWidth = $pdf->GetStringWidth($barcodeText);
+            $textX = ($barcodeCenterX - ($textWidth / 2)) - 9.6;
+
+            $pdf->SetXY($textX, 10.6);
+            $pdf->Cell($textWidth, 2.0, $barcodeText, 0, 1, 'L', false, '', 0, false, 'T', 'M');
         }
 
         return response($pdf->Output($filename, 'S'), 200, [
