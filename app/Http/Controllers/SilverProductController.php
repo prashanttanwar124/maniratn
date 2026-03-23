@@ -132,12 +132,10 @@ class SilverProductController extends Controller
         $labels = [];
         foreach ($products as $product) {
             $codeStr = $product->barcode ?: ('MS-' . str_pad((string) $product->id, 5, '0', STR_PAD_LEFT));
-            $weight = (float) ($product->net_weight ?: $product->gross_weight ?: 0);
 
             $labels[] = [
-                'name' => Str::limit($product->name, 18),
-                'weight' => $weight,
-                'purity' => 'Silver',
+                'gross_weight' => (float) ($product->gross_weight ?: 0),
+                'net_weight' => (float) ($product->net_weight ?: 0),
                 'code' => $codeStr,
             ];
         }

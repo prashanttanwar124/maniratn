@@ -24,20 +24,20 @@ class BarcodeLabelPdfService
         foreach ($labels as $label) {
             $pdf->AddPage();
 
-            $pdf->SetFont('helvetica', 'B', 6.5);
+            $pdf->SetFont('helvetica', 'B', 7.1);
             $pdf->SetTextColor(20, 20, 20);
 
             // Left info block
-            $pdf->SetXY(4, 2.4);
-            $pdf->Cell(31, 2.6, 'MANIRATN', 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $pdf->SetXY(5.2, 2.0);
+            $pdf->Cell(28.5, 2.8, 'MRTN', 0, 1, 'C', false, '', 0, false, 'T', 'M');
 
-            $pdf->SetFont('helvetica', 'B', 6.3);
-            $pdf->SetXY(2.5, 5.0);
-            $pdf->Cell(34, 3.0, $this->fitText($label['name'], 18), 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $pdf->SetFont('helvetica', 'B', 6.2);
+            $pdf->SetXY(2.2, 5.3);
+            $pdf->Cell(34, 2.8, 'GW ' . number_format((float) $label['gross_weight'], 3) . 'G', 0, 1, 'C', false, '', 0, false, 'T', 'M');
 
-            $pdf->SetFont('helvetica', 'B', 5.7);
-            $pdf->SetXY(2.5, 8.1);
-            $pdf->Cell(34, 2.6, $this->fitText(number_format((float) $label['weight'], 3) . 'g | ' . $label['purity'], 20), 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $pdf->SetFont('helvetica', 'B', 6.2);
+            $pdf->SetXY(2.2, 8.4);
+            $pdf->Cell(34, 2.8, 'NW ' . number_format((float) $label['net_weight'], 3) . 'G', 0, 1, 'C', false, '', 0, false, 'T', 'M');
 
             // Vector barcode in center block
             $style = [

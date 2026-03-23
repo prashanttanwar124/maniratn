@@ -145,9 +145,8 @@ class ProductController extends Controller
             $codeStr = $product->barcode ?: ('MJ-' . str_pad((string) $product->id, 5, '0', STR_PAD_LEFT));
 
             $labels[] = [
-                'name' => Str::limit($product->name, 18),
-                'weight' => $product->gross_weight,
-                'purity' => $product->purity->name ?? '',
+                'gross_weight' => (float) $product->gross_weight,
+                'net_weight' => (float) $product->net_weight,
                 'code' => $codeStr,
             ];
         }
