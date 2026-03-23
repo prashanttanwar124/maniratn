@@ -27,6 +27,12 @@ class BarcodeLabelPdfService
 
         foreach ($labels as $label) {
             $pdf->AddPage();
+            $pdf->SetDrawColor(185, 185, 185);
+            $pdf->SetLineWidth(0.08);
+
+            // Test guides: middle split and tail start.
+            $pdf->Line(35, 0.8, 35, 14.2);
+            $pdf->Line(74, 0.8, 74, 14.2);
 
             $pdf->SetFont($fonts['bold'], '', 7.2);
             $pdf->SetTextColor(20, 20, 20);
@@ -64,9 +70,9 @@ class BarcodeLabelPdfService
             $pdf->write1DBarcode(
                 $label['code'],
                 'C128',
-                38.8,
+                40.2,
                 1.9,
-                44.5,
+                49.0,
                 8.6,
                 0.28,
                 $style,
@@ -74,8 +80,8 @@ class BarcodeLabelPdfService
             );
 
             $pdf->SetFont($fonts['bold'], '', 6.3);
-            $pdf->SetXY(38.8, 10.7);
-            $pdf->Cell(44.5, 2.2, $this->fitText($label['code'], 18), 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $pdf->SetXY(40.2, 10.7);
+            $pdf->Cell(49.0, 2.2, $this->fitText($label['code'], 18), 0, 1, 'C', false, '', 0, false, 'T', 'M');
         }
 
         return response($pdf->Output($filename, 'S'), 200, [
