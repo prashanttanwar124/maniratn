@@ -23,9 +23,15 @@ class SilverProduct extends Model
         parent::boot();
 
         static::creating(function ($product) {
-            $categoryCode = Category::find($product->category_id)?->code ?? 'SLV';
             $nextId = (SilverProduct::max('id') ?? 0) + 1;
-            $product->barcode = 'MS-' . $categoryCode . '-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+            $product->barcode = 'S' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
         });
+    }
+
+    public function legacyBarcode(): string
+    {
+        $categoryCode = $this->category?->code ?? Category::find($this->category_id)?->code ?? 'SLV';
+
+        return 'MS-' . $categoryCode . '-' . str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
     }
 }

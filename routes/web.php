@@ -32,35 +32,91 @@ Route::redirect('/', '/dashboard')->name('home');
 
 // Utility API Route (Used by Frontend to scan barcodes)
 Route::get('/api/products/{barcode}', function ($barcode) {
-    return Product::with(['category', 'purity'])
-        ->where('barcode', $barcode)
-        ->firstOrFail();
+    $normalizedBarcode = strtoupper(trim($barcode));
+
+    $product = Product::with(['category', 'purity'])
+        ->where('barcode', $normalizedBarcode)
+        ->first();
+
+    if (! $product && preg_match('/^G(\d{5})$/', $normalizedBarcode, $matches)) {
+        $product = Product::with(['category', 'purity'])->find((int) $matches[1]);
+    }
+
+    if (! $product && preg_match('/^MJ-[A-Z0-9]+-(\d{5})$/', $normalizedBarcode, $matches)) {
+        $candidate = Product::with(['category', 'purity'])->find((int) $matches[1]);
+        $product = $candidate && strtoupper($candidate->legacyBarcode()) === $normalizedBarcode ? $candidate : null;
+    }
+
+    abort_unless($product, 404);
+
+    return $product;
 });
 
 Route::get('/api/silver-products/{barcode}', function ($barcode) {
-    return SilverProduct::with(['category', 'supplier'])
-        ->where('barcode', $barcode)
-        ->firstOrFail();
+    $normalizedBarcode = strtoupper(trim($barcode));
+
+    $product = SilverProduct::with(['category', 'supplier'])
+        ->where('barcode', $normalizedBarcode)
+        ->first();
+
+    if (! $product && preg_match('/^S(\d{5})$/', $normalizedBarcode, $matches)) {
+        $product = SilverProduct::with(['category', 'supplier'])->find((int) $matches[1]);
+    }
+
+    if (! $product && preg_match('/^MS-[A-Z0-9]+-(\d{5})$/', $normalizedBarcode, $matches)) {
+        $candidate = SilverProduct::with(['category', 'supplier'])->find((int) $matches[1]);
+        $product = $candidate && strtoupper($candidate->legacyBarcode()) === $normalizedBarcode ? $candidate : null;
+    }
+
+    abort_unless($product, 404);
+
+    return $product;
 });
 
 Route::get('/api/inventory/{barcode}', function ($barcode) {
     $normalizedBarcode = strtoupper(trim($barcode));
 
-    $goldQuery = fn () => Product::with(['category', 'purity'])
-        ->where('barcode', $barcode)
-        ->first();
+    $goldQuery = function () use ($normalizedBarcode) {
+        $product = Product::with(['category', 'purity'])
+            ->where('barcode', $normalizedBarcode)
+            ->first();
 
-    $silverQuery = fn () => SilverProduct::with(['category', 'supplier'])
-        ->where('barcode', $barcode)
-        ->first();
+        if (! $product && preg_match('/^G(\d{5})$/', $normalizedBarcode, $matches)) {
+            $product = Product::with(['category', 'purity'])->find((int) $matches[1]);
+        }
+
+        if (! $product && preg_match('/^MJ-[A-Z0-9]+-(\d{5})$/', $normalizedBarcode, $matches)) {
+            $candidate = Product::with(['category', 'purity'])->find((int) $matches[1]);
+            $product = $candidate && strtoupper($candidate->legacyBarcode()) === $normalizedBarcode ? $candidate : null;
+        }
+
+        return $product;
+    };
+
+    $silverQuery = function () use ($normalizedBarcode) {
+        $product = SilverProduct::with(['category', 'supplier'])
+            ->where('barcode', $normalizedBarcode)
+            ->first();
+
+        if (! $product && preg_match('/^S(\d{5})$/', $normalizedBarcode, $matches)) {
+            $product = SilverProduct::with(['category', 'supplier'])->find((int) $matches[1]);
+        }
+
+        if (! $product && preg_match('/^MS-[A-Z0-9]+-(\d{5})$/', $normalizedBarcode, $matches)) {
+            $candidate = SilverProduct::with(['category', 'supplier'])->find((int) $matches[1]);
+            $product = $candidate && strtoupper($candidate->legacyBarcode()) === $normalizedBarcode ? $candidate : null;
+        }
+
+        return $product;
+    };
 
     $record = null;
     $type = null;
 
-    if (str_starts_with($normalizedBarcode, 'MS-')) {
+    if (str_starts_with($normalizedBarcode, 'MS-') || preg_match('/^S\d{5}$/', $normalizedBarcode)) {
         $record = $silverQuery();
         $type = $record ? 'silver_product' : null;
-    } elseif (str_starts_with($normalizedBarcode, 'MJ-')) {
+    } elseif (str_starts_with($normalizedBarcode, 'MJ-') || preg_match('/^G\d{5}$/', $normalizedBarcode)) {
         $record = $goldQuery();
         $type = $record ? 'product' : null;
     }
