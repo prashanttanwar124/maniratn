@@ -11,6 +11,7 @@ use App\Enums\VaultType;
 use App\Models\Customer;
 use App\Models\OrderItem;
 use App\Models\InvoiceItem;
+use App\Models\InvoiceDraft;
 use Illuminate\Http\Request;
 use App\Services\VaultService;
 use App\Services\LedgerImpactService;
@@ -22,6 +23,112 @@ use Illuminate\Support\Str;
 
 class InvoiceController extends Controller
 {
+    private function validateDraftItemsPayload(array $items): array
+    {
+        return collect($items)->map(function (array $item) {
+            $validatedItem = $item;
+            $validatedItem['draft_valid'] = true;
+            $validatedItem['draft_issue'] = null;
+
+            if (($item['type'] ?? null) === 'product') {
+                $product = Product::find($item['id'] ?? 0);
+
+                if (! $product) {
+                    $validatedItem['draft_valid'] = false;
+                    $validatedItem['draft_issue'] = 'This gold stock item no longer exists.';
+                } elseif ($product->is_sold) {
+                    $validatedItem['draft_valid'] = false;
+                    $validatedItem['draft_issue'] = 'This gold stock item has already been sold.';
+                }
+            } elseif (($item['type'] ?? null) === 'silver_product') {
+                $silverProduct = SilverProduct::find($item['id'] ?? 0);
+
+                if (! $silverProduct) {
+                    $validatedItem['draft_valid'] = false;
+                    $validatedItem['draft_issue'] = 'This silver stock item no longer exists.';
+                } elseif ($silverProduct->is_sold) {
+                    $validatedItem['draft_valid'] = false;
+                    $validatedItem['draft_issue'] = 'This silver stock item has already been sold.';
+                } else {
+                    $validatedItem['quantity_available'] = (int) $silverProduct->quantity;
+                    $validatedItem['pricing_mode'] = $silverProduct->pricing_mode;
+
+                    if ($silverProduct->pricing_mode === 'PIECE') {
+                        $requestedQuantity = max(1, (int) ($item['quantity'] ?? 1));
+                        $availableQuantity = (int) $silverProduct->quantity;
+
+                        if ($requestedQuantity > $availableQuantity) {
+                            $validatedItem['draft_valid'] = false;
+                            $validatedItem['draft_issue'] = $availableQuantity > 0
+                                ? "Only {$availableQuantity} piece(s) left in stock."
+                                : 'This silver piece item is now out of stock.';
+                        }
+                    }
+                }
+            } elseif (($item['type'] ?? null) === 'order_item') {
+                $orderItem = OrderItem::find($item['id'] ?? 0);
+
+                if (! $orderItem) {
+                    $validatedItem['draft_valid'] = false;
+                    $validatedItem['draft_issue'] = 'This custom order item no longer exists.';
+                } elseif ($orderItem->status !== 'READY') {
+                    $validatedItem['draft_valid'] = false;
+                    $validatedItem['draft_issue'] = 'This custom order item is no longer ready for billing.';
+                } elseif (! $orderItem->finished_weight || (float) $orderItem->finished_weight <= 0) {
+                    $validatedItem['draft_valid'] = false;
+                    $validatedItem['draft_issue'] = 'This custom order item is missing finished weight.';
+                } else {
+                    $validatedItem['weight'] = (float) $orderItem->finished_weight;
+                    $validatedItem['metal_type'] = strtoupper((string) ($orderItem->metal_type ?? 'GOLD'));
+                }
+            }
+
+            return $validatedItem;
+        })->values()->all();
+    }
+
+    private function getUserDrafts()
+    {
+        return InvoiceDraft::with('customer')
+            ->where('user_id', Auth::id())
+            ->latest('updated_at')
+            ->get();
+    }
+
+    private function transformDraft(InvoiceDraft $draft): array
+    {
+        $data = $draft->draft_data ?? [];
+        $customerObj = $data['customer_obj'] ?? null;
+
+        if (! $customerObj && $draft->customer) {
+            $customerObj = [
+                'id' => $draft->customer->id,
+                'name' => $draft->customer->name,
+                'mobile' => $draft->customer->mobile,
+            ];
+        }
+
+        return [
+            'id' => $draft->id,
+            'customerName' => $draft->customer_name ?: ($draft->customer?->name ?: 'No customer'),
+            'itemCount' => (int) $draft->item_count,
+            'grandTotal' => (float) $draft->grand_total,
+            'savedAt' => optional($draft->updated_at)->toISOString(),
+            'data' => [
+                'customer_id' => $data['customer_id'] ?? null,
+                'date' => $data['date'] ?? now()->toDateString(),
+                'gold_rate' => (float) ($data['gold_rate'] ?? 0),
+                'silver_rate' => (float) ($data['silver_rate'] ?? 0),
+                'discount_type' => $data['discount_type'] ?? 'amount',
+                'discount_value' => (float) ($data['discount_value'] ?? 0),
+                'items' => $data['items'] ?? [],
+                'payment_cash' => (float) ($data['payment_cash'] ?? 0),
+                'payment_card' => (float) ($data['payment_card'] ?? 0),
+                'card_note' => $data['card_note'] ?? '',
+            ],
+            'customerObj' => $customerObj,
+        ];
+    }
 
 
     public function index()
@@ -30,6 +137,8 @@ class InvoiceController extends Controller
             ->with(['items', 'transactions', 'cancelledBy'])
             ->orderBy('created_at', 'desc')
             ->get();
+
+        $drafts = $this->getUserDrafts()->map(fn (InvoiceDraft $draft) => $this->transformDraft($draft))->values();
 
         return Inertia::render('invoices/Index', [
             'invoices' => $invoices->map(function (Invoice $invoice) {
@@ -65,6 +174,7 @@ class InvoiceController extends Controller
                     'cancelled_by' => $invoice->cancelledBy?->name,
                 ];
             })->values(),
+            'drafts' => $drafts,
         ]);
     }
 
@@ -99,6 +209,17 @@ class InvoiceController extends Controller
             $customer = Customer::find($request->integer('customer_id'));
         }
 
+        $draftToLoad = null;
+        if ($request->filled('draft')) {
+            $draft = InvoiceDraft::with('customer')
+                ->where('user_id', Auth::id())
+                ->find($request->integer('draft'));
+
+            if ($draft) {
+                $draftToLoad = $this->transformDraft($draft);
+            }
+        }
+
         return Inertia::render('invoices/Create', [
             'customers'      => \App\Models\Customer::all(),
             'defaultGoldRate' => (float) ($todayRate?->gold_sell ?? 0),
@@ -107,6 +228,124 @@ class InvoiceController extends Controller
             'prefilledItems' => $prefilledItems,
             'prefilledCustomer' => $customer,
             'lockCustomer' => $lockCustomer,
+            'drafts' => $this->getUserDrafts()->map(fn (InvoiceDraft $draft) => $this->transformDraft($draft))->values(),
+            'draftToLoad' => $draftToLoad,
+        ]);
+    }
+
+    public function saveDraft(Request $request)
+    {
+        $validated = $request->validate([
+            'draft_id' => 'nullable|integer',
+            'customer_id' => 'nullable|exists:customers,id',
+            'customer_name' => 'nullable|string|max:255',
+            'customer_obj' => 'nullable|array',
+            'customer_obj.id' => 'nullable|integer',
+            'customer_obj.name' => 'nullable|string|max:255',
+            'customer_obj.mobile' => 'nullable|string|max:50',
+            'date' => 'required|date',
+            'gold_rate' => 'nullable|numeric|min:0',
+            'silver_rate' => 'nullable|numeric|min:0',
+            'discount_type' => 'nullable|in:amount,percentage',
+            'discount_value' => 'nullable|numeric|min:0',
+            'items' => 'nullable|array',
+            'items.*.type' => 'required_with:items|in:product,order_item,silver_product',
+            'items.*.id' => 'required_with:items|integer',
+            'items.*.description' => 'nullable|string',
+            'items.*.weight' => 'nullable|numeric|min:0',
+            'items.*.quantity' => 'nullable|integer|min:1',
+            'items.*.quantity_available' => 'nullable|integer|min:0',
+            'items.*.pricing_mode' => 'nullable|string|max:20',
+            'items.*.purity' => 'nullable',
+            'items.*.rate' => 'nullable|numeric|min:0',
+            'items.*.making_charges' => 'nullable|numeric|min:0',
+            'items.*.final_price' => 'nullable|numeric|min:0',
+            'payment_cash' => 'nullable|numeric|min:0',
+            'payment_card' => 'nullable|numeric|min:0',
+            'card_note' => 'nullable|string|max:100',
+            'grand_total' => 'nullable|numeric|min:0',
+        ]);
+
+        $draft = null;
+        if (! empty($validated['draft_id'])) {
+            $draft = InvoiceDraft::where('user_id', Auth::id())->find($validated['draft_id']);
+        }
+
+        $customer = ! empty($validated['customer_id'])
+            ? Customer::find($validated['customer_id'])
+            : null;
+
+        $draftPayload = [
+            'customer_id' => $validated['customer_id'] ?? null,
+            'date' => $validated['date'],
+            'gold_rate' => (float) ($validated['gold_rate'] ?? 0),
+            'silver_rate' => (float) ($validated['silver_rate'] ?? 0),
+            'discount_type' => $validated['discount_type'] ?? 'amount',
+            'discount_value' => (float) ($validated['discount_value'] ?? 0),
+            'items' => $validated['items'] ?? [],
+            'payment_cash' => (float) ($validated['payment_cash'] ?? 0),
+            'payment_card' => (float) ($validated['payment_card'] ?? 0),
+            'card_note' => $validated['card_note'] ?? '',
+            'customer_obj' => $validated['customer_obj'] ?? ($customer ? [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'mobile' => $customer->mobile,
+            ] : null),
+        ];
+
+        $draft = InvoiceDraft::updateOrCreate(
+            [
+                'id' => $draft?->id,
+            ],
+            [
+                'user_id' => Auth::id(),
+                'customer_id' => $validated['customer_id'] ?? null,
+                'customer_name' => $validated['customer_name'] ?? $customer?->name ?? 'No customer',
+                'item_count' => count($validated['items'] ?? []),
+                'grand_total' => (float) ($validated['grand_total'] ?? 0),
+                'draft_data' => $draftPayload,
+            ],
+        );
+
+        $draft->load('customer');
+
+        return response()->json([
+            'draft' => $this->transformDraft($draft),
+        ]);
+    }
+
+    public function destroyDraft(InvoiceDraft $invoiceDraft)
+    {
+        abort_unless($invoiceDraft->user_id === Auth::id(), 403);
+
+        $invoiceDraft->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function validateDraftItems(Request $request)
+    {
+        $validated = $request->validate([
+            'items' => 'nullable|array',
+            'items.*.type' => 'required_with:items|in:product,order_item,silver_product',
+            'items.*.id' => 'required_with:items|integer',
+            'items.*.quantity' => 'nullable|integer|min:1',
+            'items.*.quantity_available' => 'nullable|integer|min:0',
+            'items.*.pricing_mode' => 'nullable|string|max:20',
+            'items.*.description' => 'nullable|string',
+            'items.*.weight' => 'nullable|numeric|min:0',
+            'items.*.purity' => 'nullable',
+            'items.*.rate' => 'nullable|numeric|min:0',
+            'items.*.making_charges' => 'nullable|numeric|min:0',
+            'items.*.final_price' => 'nullable|numeric|min:0',
+        ]);
+
+        $items = $this->validateDraftItemsPayload($validated['items'] ?? []);
+        $hasInvalidItems = collect($items)->contains(fn (array $item) => ($item['draft_valid'] ?? true) === false);
+
+        return response()->json([
+            'items' => $items,
+            'has_invalid_items' => $hasInvalidItems,
         ]);
     }
 
@@ -153,8 +392,10 @@ class InvoiceController extends Controller
             'items'       => 'required|array',
             'items.*.type' => 'required|in:product,order_item,silver_product', // Identify the type
             'items.*.id'   => 'required|integer', // The ID of the Product or OrderItem
+            'items.*.rate' => 'required|numeric|min:0',
             'items.*.making_charges' => 'required|numeric|min:0', // We need this from frontend
             'items.*.quantity' => 'nullable|integer|min:1',
+            'draft_id' => 'nullable|integer',
 
             'payment_cash' => 'nullable|numeric|min:0',
             'payment_card' => 'nullable|numeric|min:0',
@@ -168,56 +409,24 @@ class InvoiceController extends Controller
             $totalVaultSilverSoldWeight = 0;
             $items = collect($validated['items']);
 
-            $hasGoldPricedItems = $items->contains(function ($item) {
-                if (($item['type'] ?? null) === 'product') {
-                    return true;
-                }
-
-                if (($item['type'] ?? null) !== 'order_item') {
-                    return false;
-                }
-
-                return strtoupper((string) optional(OrderItem::find($item['id']))->metal_type) !== 'SILVER';
-            });
-
-            $hasSilverPricedItems = $items->contains(function ($item) {
-                if (($item['type'] ?? null) === 'silver_product') {
-                    return true;
-                }
-
-                if (($item['type'] ?? null) !== 'order_item') {
-                    return false;
-                }
-
-                return strtoupper((string) optional(OrderItem::find($item['id']))->metal_type) === 'SILVER';
-            });
-
-            if ($hasGoldPricedItems && empty($validated['gold_rate'])) {
+            if ($items->contains(fn ($item) => (float) ($item['rate'] ?? 0) <= 0)) {
                 throw ValidationException::withMessages([
-                    'gold_rate' => "Today's Gold Rate is required for gold invoice items.",
+                    'items' => 'A valid rate is required for every invoice item.',
                 ]);
             }
 
-            if ($hasSilverPricedItems && empty($validated['silver_rate'])) {
-                $hasWeightSilverItems = $items->contains(function ($item) {
-                    if (($item['type'] ?? null) === 'order_item') {
-                        return strtoupper((string) optional(OrderItem::find($item['id']))->metal_type) === 'SILVER';
-                    }
-
-                    if (($item['type'] ?? null) !== 'silver_product') {
-                        return false;
-                    }
-
-                    $silverProduct = SilverProduct::find($item['id']);
-
-                    return $silverProduct?->pricing_mode === 'WEIGHT';
-                });
-
-                if ($hasWeightSilverItems) {
-                    throw ValidationException::withMessages([
-                        'silver_rate' => "Today's Silver Rate is required for weight-based silver invoice items.",
-                    ]);
+            if ($items->contains(function ($item) {
+                if (($item['type'] ?? null) !== 'silver_product') {
+                    return false;
                 }
+
+                $silverProduct = SilverProduct::find($item['id']);
+
+                return $silverProduct?->pricing_mode === 'PIECE' && (float) ($item['rate'] ?? 0) <= 0;
+            })) {
+                throw ValidationException::withMessages([
+                    'items' => 'A valid piece rate is required for every silver piece item.',
+                ]);
             }
 
             // 2. Create Invoice Header
@@ -247,6 +456,7 @@ class InvoiceController extends Controller
                 // --- CASE A: IT IS A STOCK PRODUCT (Ring from Showcase) ---
                 if ($row['type'] === 'product') {
                     $product = Product::findOrFail($row['id']);
+                    $rateApplied = (float) ($row['rate'] ?? 0);
 
                     // Validation: Check if already sold
                     if ($product->is_sold) {
@@ -268,9 +478,9 @@ class InvoiceController extends Controller
                         'quantity'    => 1,
                         'weight'      => $weight,
                         'purity'      => $purity->name,
-                        'rate'        => $validated['gold_rate'],
+                        'rate'        => $rateApplied,
                         'making_charges' => $row['making_charges'],
-                        'final_price' => ($weight * $validated['gold_rate']) + $row['making_charges']
+                        'final_price' => ($weight * $rateApplied) + $row['making_charges']
                     ]);
                 }
 
@@ -292,7 +502,8 @@ class InvoiceController extends Controller
 
                         $weight = (float) ($silverProduct->net_weight ?? 0) * $saleQuantity;
                         $itemName = $silverProduct->name;
-                        $itemTotal = ((float) ($silverProduct->piece_price ?? 0) * $saleQuantity) + (float) $row['making_charges'];
+                        $rateApplied = (float) ($row['rate'] ?? 0);
+                        $itemTotal = ($rateApplied * $saleQuantity) + (float) $row['making_charges'];
 
                         $remainingQuantity = (int) $silverProduct->quantity - $saleQuantity;
                         $silverProduct->update([
@@ -307,7 +518,7 @@ class InvoiceController extends Controller
                             'quantity' => $saleQuantity,
                             'weight' => $weight,
                             'purity' => 'Silver',
-                            'rate' => (float) ($silverProduct->piece_price ?? 0),
+                            'rate' => $rateApplied,
                             'making_charges' => $row['making_charges'],
                             'final_price' => $itemTotal,
                         ]);
@@ -319,8 +530,8 @@ class InvoiceController extends Controller
                     $weight = (float) $silverProduct->net_weight;
                     $originalQuantity = max(1, (int) $silverProduct->quantity);
                     $itemName = $silverProduct->name;
-                    $silverRate = (float) ($validated['silver_rate'] ?? 0);
-                    $itemTotal = ($weight * $silverRate) + (float) $row['making_charges'];
+                    $rateApplied = (float) ($row['rate'] ?? 0);
+                    $itemTotal = ($weight * $rateApplied) + (float) $row['making_charges'];
 
                     $silverProduct->update([
                         'quantity' => 0,
@@ -334,7 +545,7 @@ class InvoiceController extends Controller
                         'quantity' => $originalQuantity,
                         'weight' => $weight,
                         'purity' => 'Silver',
-                        'rate' => $silverRate,
+                        'rate' => $rateApplied,
                         'making_charges' => $row['making_charges'],
                         'final_price' => $itemTotal,
                     ]);
@@ -363,9 +574,7 @@ class InvoiceController extends Controller
                     $purity = $orderItem->purity;
                     $itemName = $orderItem->item_name;
                     $orderItemMetalType = strtoupper((string) ($orderItem->metal_type ?? 'GOLD'));
-                    $rateApplied = $orderItemMetalType === 'SILVER'
-                        ? (float) ($validated['silver_rate'] ?? 0)
-                        : (float) ($validated['gold_rate'] ?? 0);
+                    $rateApplied = (float) ($row['rate'] ?? 0);
 
                     // Mark Item as DELIVERED
                     $orderItem->update([
@@ -398,11 +607,9 @@ class InvoiceController extends Controller
                 $rateForItem = 0;
 
                 if ($row['type'] === 'product') {
-                    $rateForItem = (float) ($validated['gold_rate'] ?? 0);
+                    $rateForItem = (float) ($row['rate'] ?? 0);
                 } elseif ($row['type'] === 'order_item') {
-                    $rateForItem = strtoupper((string) ($orderItem->metal_type ?? 'GOLD')) === 'SILVER'
-                        ? (float) ($validated['silver_rate'] ?? 0)
-                        : (float) ($validated['gold_rate'] ?? 0);
+                    $rateForItem = (float) ($row['rate'] ?? 0);
                 }
 
                 $itemTotal = ($weight * $rateForItem) + $row['making_charges'];
@@ -519,6 +726,10 @@ class InvoiceController extends Controller
 
                 ]);
                 LedgerImpactService::applyCashTransaction($transaction);
+            }
+
+            if (! empty($validated['draft_id'])) {
+                InvoiceDraft::where('user_id', Auth::id())->where('id', $validated['draft_id'])->delete();
             }
 
             return redirect()

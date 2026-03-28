@@ -18,6 +18,10 @@ import { useToast } from 'primevue/usetoast';
 
 const props = defineProps({
     invoices: Array,
+    drafts: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const toast = useToast();
@@ -116,6 +120,35 @@ const submitVoid = () => {
 const printInvoice = (invoice) => {
     window.open(route('invoices.print', invoice.id), '_blank');
 };
+
+const resumeDraft = (draftId) => {
+    router.visit(route('invoices.create', { draft: draftId }));
+};
+
+const deleteDraft = (draftId) => {
+    router.delete(route('invoices.drafts.destroy', draftId), {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            toast.add({ severity: 'info', summary: 'Draft Deleted', life: 1500 });
+        },
+        onError: () => {
+            toast.add({ severity: 'error', summary: 'Delete Failed', detail: 'Unable to delete invoice draft.', life: 2000 });
+        },
+    });
+};
+
+const formatDraftTime = (iso) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+};
+
+const draftFormatCurrency = (val) =>
+    new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 0,
+    }).format(val || 0);
 </script>
 
 <template>
@@ -159,6 +192,38 @@ const printInvoice = (invoice) => {
                 <div class="border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Voided Bills</p>
                     <p class="mt-2 text-2xl font-semibold text-red-600">{{ cancelledCount }}</p>
+                </div>
+            </section>
+
+            <section v-if="props.drafts.length > 0" class="border border-amber-200 bg-amber-50">
+                <div class="flex items-center justify-between border-b border-amber-200 px-5 py-3">
+                    <div class="flex items-center gap-2">
+                        <i class="pi pi-file-edit text-amber-700"></i>
+                        <h2 class="text-sm font-semibold text-amber-800">Saved Drafts ({{ props.drafts.length }})</h2>
+                    </div>
+                    <span class="text-xs text-amber-600">Stored on the server for your login</span>
+                </div>
+                <div class="flex flex-col gap-2 p-4">
+                    <div
+                        v-for="draft in props.drafts"
+                        :key="draft.id"
+                        class="flex items-center justify-between gap-4 border border-amber-200 bg-white px-4 py-3"
+                    >
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate text-sm font-medium text-surface-900">{{ draft.customerName }}</p>
+                            <p class="mt-0.5 text-xs text-surface-500">
+                                {{ draft.itemCount }} item{{ draft.itemCount === 1 ? '' : 's' }}
+                                <span class="mx-1 text-surface-300">&middot;</span>
+                                {{ draftFormatCurrency(draft.grandTotal) }}
+                                <span class="mx-1 text-surface-300">&middot;</span>
+                                {{ formatDraftTime(draft.savedAt) }}
+                            </p>
+                        </div>
+                        <div class="flex shrink-0 items-center gap-2">
+                            <Button label="Resume" icon="pi pi-play" size="small" severity="warn" outlined @click="resumeDraft(draft.id)" />
+                            <Button icon="pi pi-trash" size="small" severity="danger" text @click="deleteDraft(draft.id)" />
+                        </div>
+                    </div>
                 </div>
             </section>
 

@@ -130,6 +130,19 @@ class CustomerController extends Controller
         return back()->with('success', 'Customer deleted successfully.');
     }
 
+    public function quickStore(Request $request)
+    {
+        $validated = $this->validateCustomer($request);
+
+        $customer = Customer::create($validated);
+
+        return response()->json([
+            'id' => $customer->id,
+            'name' => $customer->name,
+            'mobile' => $customer->mobile,
+        ], 201);
+    }
+
     public function search(Request $request)
     {
         $query = $request->input('query');

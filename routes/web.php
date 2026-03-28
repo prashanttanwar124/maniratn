@@ -224,7 +224,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // --- CUSTOMERS ---
     Route::get('/customers', [CustomerController::class, 'index'])->middleware('permission:manage_customers')->name('customers.index');
     Route::post('/customers', [CustomerController::class, 'store'])->middleware(['permission:manage_customers', 'day.open'])->name('customers.store');
-    Route::get('/customers/search', [CustomerController::class, 'search'])->middleware('permission:manage_customers')->name('customers.search');
+    Route::post('/customers/quick-store', [CustomerController::class, 'quickStore'])->middleware(['permission:manage_customers|manage_invoices', 'day.open'])->name('customers.quick-store');
+    Route::get('/customers/search', [CustomerController::class, 'search'])->middleware('permission:manage_customers|manage_invoices')->name('customers.search');
     Route::get('/customers/{id}', [CustomerController::class, 'show'])->middleware('permission:manage_customers')->name('customers.show');
     Route::put('/customers/{customer}', [CustomerController::class, 'update'])->middleware(['permission:manage_customers', 'day.open'])->name('customers.update');
     Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->middleware(['permission:manage_customers', 'day.open'])->name('customers.destroy');
@@ -254,6 +255,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/invoices', [InvoiceController::class, 'index'])->middleware('permission:manage_invoices')->name('invoices.index');
     Route::get('/invoices/create', [InvoiceController::class, 'create'])->middleware('permission:manage_invoices')->name('invoices.create');
     Route::get('/invoices/{invoice}/print', [InvoiceController::class, 'print'])->middleware('permission:manage_invoices')->name('invoices.print');
+    Route::post('/invoices/drafts', [InvoiceController::class, 'saveDraft'])->middleware('permission:manage_invoices')->name('invoices.drafts.store');
+    Route::post('/invoices/drafts/validate', [InvoiceController::class, 'validateDraftItems'])->middleware('permission:manage_invoices')->name('invoices.drafts.validate');
+    Route::delete('/invoices/drafts/{invoiceDraft}', [InvoiceController::class, 'destroyDraft'])->middleware('permission:manage_invoices')->name('invoices.drafts.destroy');
     Route::post('/invoice/store', [InvoiceController::class, 'store'])->middleware(['permission:manage_invoices', 'day.open'])->name('invoices.store');
     Route::post('/invoices/{id}/cancel', [InvoiceController::class, 'cancel'])->middleware(['permission:manage_invoices', 'day.open'])->name('invoices.cancel');
 

@@ -6,6 +6,7 @@ import axios from 'axios';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
+import Dialog from 'primevue/dialog';
 import Divider from 'primevue/divider';
 import IconField from 'primevue/iconfield';
 import InputNumber from 'primevue/inputnumber';
@@ -19,7 +20,6 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
 
 const props = defineProps({
-    customers: Array,
     prefilledItems: {
         type: Array,
         default: () => [],
@@ -35,6 +35,14 @@ const props = defineProps({
     defaultSilverRate: {
         type: Number,
         default: 0,
+    },
+    drafts: {
+        type: Array,
+        default: () => [],
+    },
+    draftToLoad: {
+        type: Object,
+        default: null,
     },
     lockCustomer: {
         type: Boolean,
@@ -66,9 +74,12 @@ const form = useForm({
                   description: item.item_name,
                   weight: parseFloat(item.finished_weight),
                   purity: item.purity,
-                  rate: Number(props.defaultGoldRate || 0),
+                  metal_type: String(item.metal_type || 'GOLD').toUpperCase(),
+                  rate: String(item.metal_type || 'GOLD').toUpperCase() === 'SILVER' ? Number(props.defaultSilverRate || 0) : Number(props.defaultGoldRate || 0),
                   making_charges: 0,
-                  final_price: parseFloat(item.finished_weight || 0) * Number(props.defaultGoldRate || 0),
+                  final_price:
+                      parseFloat(item.finished_weight || 0) *
+                      (String(item.metal_type || 'GOLD').toUpperCase() === 'SILVER' ? Number(props.defaultSilverRate || 0) : Number(props.defaultGoldRate || 0)),
               }))
             : [],
     payment_cash: 0,
@@ -78,12 +89,172 @@ const form = useForm({
 
 const scannedBarcode = ref('');
 const isProcessing = ref(false);
+const showDraftsDialog = ref(false);
+const currentDraftId = ref(props.draftToLoad?.id || null);
+const draftList = ref(props.drafts || []);
+const selectedCustomerObj = ref(props.draftToLoad?.customerObj || props.prefilledCustomer || null);
+const isValidatingDraftItems = ref(false);
+const draftValidationFailed = ref(false);
 
 const lockedCustomerName = computed(() => {
     return props.prefilledCustomer ? props.prefilledCustomer.name : '';
 });
 
-onMounted(() => {
+const onCustomerSelect = (customer) => {
+    selectedCustomerObj.value = customer;
+};
+
+const isSilverOrderItem = (item) => {
+    return item?.type === 'order_item' && String(item.metal_type || 'GOLD').toUpperCase() === 'SILVER';
+};
+
+const isSilverRateDependentItem = (item) => {
+    if (!item) return false;
+    if (item.type === 'silver_product') return item.pricing_mode === 'WEIGHT';
+    return isSilverOrderItem(item);
+};
+
+const invalidDraftItemsCount = computed(() => form.items.filter((item) => item.draft_valid === false).length);
+const hasInvalidDraftItems = computed(() => invalidDraftItemsCount.value > 0);
+
+const validateDraftItems = async ({ showToast = false } = {}) => {
+    if (form.items.length === 0) {
+        draftValidationFailed.value = false;
+        return;
+    }
+
+    isValidatingDraftItems.value = true;
+
+    try {
+        const response = await axios.post(route('invoices.drafts.validate'), {
+            items: form.items,
+        });
+
+        form.items = response.data.items || [];
+        form.items.forEach((item) => recalculateRow(item));
+        draftValidationFailed.value = false;
+
+        if (showToast && response.data.has_invalid_items) {
+            toast.add({
+                severity: 'warn',
+                summary: 'Draft Needs Review',
+                detail: `${invalidDraftItemsCount.value} drafted item(s) need attention before billing.`,
+                life: 3000,
+            });
+        }
+    } catch {
+        draftValidationFailed.value = true;
+        toast.add({
+            severity: 'error',
+            summary: 'Draft Check Failed',
+            detail: 'We could not recheck draft items against live stock right now.',
+            life: 2500,
+        });
+    } finally {
+        isValidatingDraftItems.value = false;
+    }
+};
+
+const hydrateDraft = async (draft) => {
+    if (!draft) return;
+
+    const d = draft.data || {};
+    form.customer_id = props.lockCustomer ? props.prefilledCustomer?.id || null : d.customer_id ?? null;
+    form.date = d.date || new Date().toISOString().split('T')[0];
+    form.gold_rate = Number(d.gold_rate || 0);
+    form.silver_rate = Number(d.silver_rate || 0);
+    form.discount_type = d.discount_type || 'amount';
+    form.discount_value = Number(d.discount_value || 0);
+    form.items = (d.items || []).map((item) => ({
+        ...item,
+        draft_valid: true,
+        draft_issue: null,
+    }));
+    form.payment_cash = Number(d.payment_cash || 0);
+    form.payment_card = Number(d.payment_card || 0);
+    form.card_note = d.card_note || '';
+    currentDraftId.value = draft.id;
+    selectedCustomerObj.value = props.lockCustomer ? props.prefilledCustomer || null : draft.customerObj || null;
+
+    await validateDraftItems({ showToast: true });
+};
+
+const saveCurrentDraft = async () => {
+    if (form.items.length === 0 && !form.customer_id) {
+        toast.add({ severity: 'warn', summary: 'Nothing to save', detail: 'Add items or select a customer first.', life: 2000 });
+        return;
+    }
+
+    try {
+        const response = await axios.post(route('invoices.drafts.store'), {
+            draft_id: currentDraftId.value,
+            customer_id: form.customer_id,
+            customer_name: selectedCustomerObj.value?.name || '',
+            customer_obj: selectedCustomerObj.value
+                ? {
+                      id: selectedCustomerObj.value.id,
+                      name: selectedCustomerObj.value.name,
+                      mobile: selectedCustomerObj.value.mobile,
+                  }
+                : null,
+            date: form.date,
+            gold_rate: form.gold_rate,
+            silver_rate: form.silver_rate,
+            discount_type: form.discount_type,
+            discount_value: form.discount_value,
+            items: form.items.map(({ draft_valid, draft_issue, ...item }) => item),
+            payment_cash: form.payment_cash,
+            payment_card: form.payment_card,
+            card_note: form.card_note,
+            grand_total: grandTotal.value,
+        });
+
+        const savedDraft = response.data.draft;
+        currentDraftId.value = savedDraft.id;
+        const existingIndex = draftList.value.findIndex((draft) => draft.id === savedDraft.id);
+
+        if (existingIndex >= 0) {
+            draftList.value[existingIndex] = savedDraft;
+        } else {
+            draftList.value.unshift(savedDraft);
+        }
+
+        toast.add({ severity: 'success', summary: 'Draft Saved', detail: 'Invoice draft saved on the server.', life: 2000 });
+    } catch {
+        toast.add({ severity: 'error', summary: 'Draft Failed', detail: 'Unable to save invoice draft right now.', life: 2500 });
+    }
+};
+
+const loadDraft = async (draftId) => {
+    const draft = draftList.value.find((item) => item.id === draftId);
+    if (!draft) return;
+
+    await hydrateDraft(draft);
+    showDraftsDialog.value = false;
+    toast.add({ severity: 'info', summary: 'Draft Loaded', detail: `Resumed: ${draft.customerName}`, life: 2000 });
+};
+
+const deleteDraft = async (draftId) => {
+    try {
+        await axios.delete(route('invoices.drafts.destroy', draftId));
+        draftList.value = draftList.value.filter((draft) => draft.id !== draftId);
+        if (currentDraftId.value === draftId) currentDraftId.value = null;
+        toast.add({ severity: 'info', summary: 'Draft Deleted', life: 1500 });
+    } catch {
+        toast.add({ severity: 'error', summary: 'Delete Failed', detail: 'Unable to delete invoice draft.', life: 2000 });
+    }
+};
+
+const formatDraftTime = (iso) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+};
+
+onMounted(async () => {
+    if (props.draftToLoad) {
+        await hydrateDraft(props.draftToLoad);
+    }
+
     if (barcodeInput.value) barcodeInput.value.$el.focus();
 });
 
@@ -96,6 +267,7 @@ const fetchProduct = async () => {
         const response = await axios.get(endpoint);
         const product = response.data.item;
         const inventoryType = response.data.inventory_type;
+        draftValidationFailed.value = false;
 
         if (form.items.find((p) => p.type === inventoryType && p.id === product.id)) {
             toast.add({ severity: 'warn', summary: 'Duplicate', detail: 'Item is already in the list.', life: 2000 });
@@ -113,6 +285,13 @@ const fetchProduct = async () => {
             const silverWeight = parseFloat(product.net_weight || 0);
             const silverRate = form.silver_rate || 0;
             const quantity = product.pricing_mode === 'PIECE' ? 1 : 1;
+
+            if (product.pricing_mode === 'PIECE' && Number(product.quantity || 0) <= 0) {
+                toast.add({ severity: 'error', summary: 'Out of Stock', detail: 'This silver piece item has no available stock.', life: 3000 });
+                scannedBarcode.value = '';
+                return;
+            }
+
             const piecePrice = parseFloat(product.piece_price || 0);
             const makingCharge = parseFloat(product.making_charge || 0);
             const price = product.pricing_mode === 'PIECE'
@@ -162,38 +341,60 @@ const fetchProduct = async () => {
     }
 };
 
-const removeItem = (index) => form.items.splice(index, 1);
+const removeItem = (index) => {
+    form.items.splice(index, 1);
+
+    if (form.items.length === 0) {
+        draftValidationFailed.value = false;
+    }
+};
 
 const onRowInput = (event, item, field) => {
     item[field] = event.value;
+    draftValidationFailed.value = false;
+
+    if (item.type === 'silver_product' && item.pricing_mode === 'PIECE' && field === 'quantity') {
+        const requested = Number(item.quantity || 0);
+        const available = Number(item.quantity_available || 0);
+
+        if (requested > available) {
+            item.draft_valid = false;
+            item.draft_issue = available > 0 ? `Only ${available} piece(s) left in stock.` : 'This silver piece item is now out of stock.';
+        } else {
+            item.draft_valid = true;
+            item.draft_issue = null;
+        }
+    }
+
     recalculateRow(item);
 };
 
-const recalculateRow = (item) => {
-    if (item.type === 'silver_product') {
-        const q = Math.max(1, parseInt(item.quantity || 1, 10));
-        const m = parseFloat(item.making_charges) || 0;
+const calculateRawRowTotal = (item) => {
+    const making = parseFloat(item?.making_charges) || 0;
 
+    if (item?.type === 'silver_product') {
         if (item.pricing_mode === 'PIECE') {
+            const quantity = Math.max(1, parseInt(item.quantity || 1, 10));
             const pieceRate = parseFloat(item.rate) || 0;
-            item.final_price = Number((q * pieceRate + m).toFixed(2));
-            return;
+            return quantity * pieceRate + making;
         }
 
-        const w = parseFloat(item.weight) || 0;
-        const r = parseFloat(item.rate) || 0;
-        item.final_price = Number((w * r + m).toFixed(2));
-        return;
+        const weight = parseFloat(item.weight) || 0;
+        const rate = parseFloat(item.rate) || 0;
+        return weight * rate + making;
     }
 
-    const w = parseFloat(item.weight) || 0;
-    const r = parseFloat(item.rate) || 0;
-    const m = parseFloat(item.making_charges) || 0;
-    item.final_price = Number((w * r + m).toFixed(2));
+    const weight = parseFloat(item?.weight) || 0;
+    const rate = parseFloat(item?.rate) || 0;
+    return weight * rate + making;
+};
+
+const recalculateRow = (item) => {
+    item.final_price = calculateRawRowTotal(item);
 };
 
 const roundMoney = (value) => Number((Number(value || 0)).toFixed(2));
-const subTotal = computed(() => roundMoney(form.items.reduce((acc, item) => acc + (item.final_price || 0), 0)));
+const subTotal = computed(() => roundMoney(form.items.reduce((acc, item) => acc + calculateRawRowTotal(item), 0)));
 const discountAmount = computed(() => {
     const rawValue = Number(form.discount_value || 0);
 
@@ -222,7 +423,7 @@ const formatCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currenc
 watch(
     () => form.gold_rate,
     (rate) => {
-        form.items.filter((item) => item.type !== 'silver_product').forEach((item) => {
+        form.items.filter((item) => !isSilverRateDependentItem(item)).forEach((item) => {
             item.rate = Number(rate || 0);
             recalculateRow(item);
         });
@@ -233,7 +434,7 @@ watch(
     () => form.silver_rate,
     (rate) => {
         form.items
-            .filter((item) => item.type === 'silver_product' && item.pricing_mode === 'WEIGHT')
+            .filter((item) => isSilverRateDependentItem(item))
             .forEach((item) => {
                 item.rate = Number(rate || 0);
                 recalculateRow(item);
@@ -254,16 +455,20 @@ const submitInvoice = () => {
         toast.add({ severity: 'error', summary: 'Missing Customer', detail: 'Select a customer', life: 3000 });
         return;
     }
-    if (form.items.some((item) => item.type !== 'silver_product') && !form.gold_rate) {
-        toast.add({ severity: 'error', summary: 'Missing Rate', detail: "Enter today's Gold Rate", life: 3000 });
-        return;
-    }
-    if (form.items.some((item) => item.type === 'silver_product' && item.pricing_mode === 'WEIGHT') && !form.silver_rate) {
-        toast.add({ severity: 'error', summary: 'Missing Rate', detail: "Enter today's Silver Rate", life: 3000 });
+    if (form.items.some((item) => Number(item.rate || 0) <= 0)) {
+        toast.add({ severity: 'error', summary: 'Missing Rate', detail: 'Enter a valid rate for every invoice item.', life: 3000 });
         return;
     }
     if (form.items.some((item) => item.type === 'silver_product' && item.pricing_mode === 'PIECE' && Number(item.quantity || 0) > Number(item.quantity_available || 0))) {
         toast.add({ severity: 'error', summary: 'Invalid Quantity', detail: 'Silver invoice quantity cannot exceed available stock.', life: 3000 });
+        return;
+    }
+    if (draftValidationFailed.value) {
+        toast.add({ severity: 'error', summary: 'Draft Check Required', detail: 'Please reload the draft check before generating the invoice.', life: 3000 });
+        return;
+    }
+    if (hasInvalidDraftItems.value) {
+        toast.add({ severity: 'error', summary: 'Draft Items Invalid', detail: 'Remove or fix the flagged draft items before generating the invoice.', life: 3000 });
         return;
     }
     if (form.discount_type === 'percentage' && Number(form.discount_value || 0) > 100) {
@@ -281,12 +486,14 @@ const submitInvoice = () => {
 
     form.transform((data) => ({
         ...data,
+        draft_id: currentDraftId.value,
         date: new Date(data.date).toISOString().split('T')[0],
         discount_value: Number(data.discount_value || 0),
         items: data.items.map((item) => ({
             type: item.type,
             id: item.id,
             quantity: item.type === 'silver_product' ? Number(item.quantity || 1) : 1,
+            rate: Number(item.rate || 0),
             making_charges: item.making_charges || 0,
         })),
     })).post(route('invoices.store'), {
@@ -319,6 +526,19 @@ const submitInvoice = () => {
                         <p class="mt-3 max-w-2xl text-sm leading-6 text-surface-600">
                             Build the bill, collect payment, and keep the customer ledger aligned with sale amount and received amount on the same screen.
                         </p>
+                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                            <Button label="Save Draft" icon="pi pi-save" severity="secondary" outlined size="small" @click="saveCurrentDraft" />
+                            <Button
+                                v-if="draftList.length > 0"
+                                :label="`Load Draft (${draftList.length})`"
+                                icon="pi pi-folder-open"
+                                severity="secondary"
+                                text
+                                size="small"
+                                @click="showDraftsDialog = true"
+                            />
+                            <Tag v-if="currentDraftId" value="Editing Draft" severity="warn" />
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -365,7 +585,8 @@ const submitInvoice = () => {
                                     v-model="form.customer_id"
                                     class="w-full"
                                     :errorMessage="form.errors.customer_id"
-                                    :selectedOption="prefilledCustomer"
+                                    :selectedOption="selectedCustomerObj"
+                                    @select="onCustomerSelect"
                                     helperText="Pick the billing customer before scanning stock or adding custom-order items."
                                     placeholder="Search billing customer by name or mobile..."
                                 />
@@ -455,6 +676,29 @@ const submitInvoice = () => {
                         <Button label="Add Item" icon="pi pi-plus" @click="fetchProduct" :loading="isProcessing" />
                     </div>
 
+                    <div v-if="hasInvalidDraftItems" class="border-b border-red-200 bg-red-50 px-4 py-3">
+                        <div class="flex items-start gap-3 text-sm text-red-700">
+                            <i class="pi pi-exclamation-triangle mt-0.5"></i>
+                            <div>
+                                <p class="font-medium">Some draft items are no longer billable.</p>
+                                <p class="mt-1 text-xs text-red-600">Review the flagged rows below and remove them or adjust quantities before generating the invoice.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="draftValidationFailed" class="border-b border-amber-200 bg-amber-50 px-4 py-3">
+                        <div class="flex items-start justify-between gap-3 text-sm text-amber-800">
+                            <div class="flex items-start gap-3">
+                                <i class="pi pi-exclamation-circle mt-0.5"></i>
+                                <div>
+                                    <p class="font-medium">Live draft validation did not complete.</p>
+                                    <p class="mt-1 text-xs text-amber-700">Please recheck the draft against current stock before billing.</p>
+                                </div>
+                            </div>
+                            <Button label="Recheck Draft" icon="pi pi-refresh" size="small" severity="warn" outlined @click="validateDraftItems({ showToast: true })" />
+                        </div>
+                    </div>
+
                     <!-- Table -->
                     <DataTable :value="form.items" scrollable scrollHeight="420px" stripedRows rowHover size="small" dataKey="id" class="text-sm">
                         <!-- Empty -->
@@ -484,6 +728,9 @@ const submitInvoice = () => {
                                     <span v-if="data.type === 'order_item'" class="mt-1 text-xs text-primary"> Custom Work </span>
                                     <span v-else-if="data.type === 'silver_product'" class="mt-1 text-xs text-amber-700">
                                         {{ data.pricing_mode === 'PIECE' ? 'Silver Piece Item' : 'Silver Weight Item' }}
+                                    </span>
+                                    <span v-if="data.draft_valid === false" class="mt-1 text-xs font-medium text-red-600">
+                                        {{ data.draft_issue }}
                                     </span>
                                 </div>
                             </template>
@@ -523,7 +770,6 @@ const submitInvoice = () => {
                                     mode="decimal"
                                     :minFractionDigits="2"
                                     :maxFractionDigits="2"
-                                    :disabled="data.type === 'silver_product' && data.pricing_mode === 'PIECE'"
                                     @input="onRowInput($event, data, 'rate')"
                                 />
                             </template>
@@ -673,10 +919,57 @@ const submitInvoice = () => {
 
                     <!-- Action -->
                     <div class="border-t border-surface-200 bg-white p-4">
-                        <Button label="Generate Invoice" icon="pi pi-print" severity="success" class="w-full" size="large" @click="submitInvoice" :loading="form.processing" :disabled="!isDayOpen" />
+                        <Button
+                            :label="isValidatingDraftItems ? 'Checking Draft...' : 'Generate Invoice'"
+                            icon="pi pi-print"
+                            severity="success"
+                            class="w-full"
+                            size="large"
+                            @click="submitInvoice"
+                            :loading="form.processing || isValidatingDraftItems"
+                            :disabled="!isDayOpen || hasInvalidDraftItems || isValidatingDraftItems || draftValidationFailed"
+                        />
                     </div>
                 </div>
             </div>
         </div>
+
+        <Dialog v-model:visible="showDraftsDialog" header="Saved Drafts" modal :style="{ width: '36rem' }">
+            <div v-if="draftList.length === 0" class="py-8 text-center text-sm text-surface-500">
+                No saved drafts.
+            </div>
+
+            <div v-else class="flex flex-col gap-3 pt-2">
+                <div
+                    v-for="draft in draftList"
+                    :key="draft.id"
+                    class="flex items-center justify-between gap-4 border border-surface-200 px-4 py-3"
+                    :class="currentDraftId === draft.id ? 'border-primary bg-primary/5' : 'bg-white'"
+                >
+                    <div class="min-w-0 flex-1">
+                        <p class="truncate text-sm font-medium text-surface-900">
+                            {{ draft.customerName }}
+                            <Tag v-if="currentDraftId === draft.id" value="Current" severity="info" class="ml-2" />
+                        </p>
+                        <p class="mt-1 text-xs text-surface-500">
+                            {{ draft.itemCount }} item{{ draft.itemCount === 1 ? '' : 's' }}
+                            <span class="mx-1 text-surface-300">&middot;</span>
+                            {{ formatCurrency(draft.grandTotal) }}
+                            <span class="mx-1 text-surface-300">&middot;</span>
+                            {{ formatDraftTime(draft.savedAt) }}
+                        </p>
+                    </div>
+
+                    <div class="flex shrink-0 items-center gap-1">
+                        <Button icon="pi pi-upload" text severity="primary" size="small" v-tooltip.top="'Load draft'" @click="loadDraft(draft.id)" />
+                        <Button icon="pi pi-trash" text severity="danger" size="small" v-tooltip.top="'Delete draft'" @click="deleteDraft(draft.id)" />
+                    </div>
+                </div>
+            </div>
+
+            <template #footer>
+                <Button label="Close" severity="secondary" text @click="showDraftsDialog = false" />
+            </template>
+        </Dialog>
     </AppLayout>
 </template>
