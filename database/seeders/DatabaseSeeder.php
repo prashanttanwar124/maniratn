@@ -19,13 +19,19 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-
-
         // 2. Default Login User
-        User::factory()->create([
-            'name' => 'Test User',
+        $adminUser = User::query()->firstOrCreate([
             'email' => 'prashanttanwar148@gmail.com',
+        ], [
+            'name' => 'Test User',
             'password' => Hash::make('p@@@@@@@@'),
+        ]);
+
+        $staffUser = User::query()->firstOrCreate([
+            'email' => 'staff@maniratn.test',
+        ], [
+            'name' => 'Staff User',
+            'password' => Hash::make('staff@123'),
         ]);
 
         $faker = Faker::create('en_IN'); // Indian Data
@@ -65,12 +71,17 @@ class DatabaseSeeder extends Seeder
         // 4. Create CUSTOMERS & THEIR DATA
         // ---------------------------------------------------------
         foreach (range(1, 50) as $index) {
+            $dob = $faker->optional(0.7)->dateTimeBetween('-60 years', '-18 years');
+            $anniversaryDate = $faker->optional(0.45)->dateTimeBetween('-20 years', '-1 year');
+
             $customer = Customer::create([
                 'name' => $faker->name,
                 'mobile' => '98' . $faker->numerify('########'),
                 'email' => $faker->safeEmail,
                 'city' => $faker->randomElement(['Virar', 'Vasai', 'Borivali', 'Andheri', 'Dadar']),
                 'pan_no' => $faker->regexify('[A-Z]{5}[0-9]{4}[A-Z]{1}'),
+                'dob' => $dob?->format('Y-m-d'),
+                'anniversary_date' => $anniversaryDate?->format('Y-m-d'),
                 'created_at' => $faker->dateTimeBetween('-1 year', 'now'),
             ]);
 
@@ -191,6 +202,9 @@ class DatabaseSeeder extends Seeder
         $this->call(ProductSeeder::class);
         $this->call(SilverProductSeeder::class);
         $this->call(RolesAndPermissionsSeeder::class);
+
+        $adminUser->syncRoles(['admin']);
+        $staffUser->syncRoles(['staff']);
 
         $this->syncSeededVaultBalances();
     }

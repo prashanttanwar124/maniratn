@@ -23,3 +23,36 @@
         top: 100px;
     }
 }
+
+.p-dialog {
+    border-radius: 0;
+
+    .p-dialog-header,
+    .p-dialog-content,
+    .p-dialog-footer {
+        border-radius: 0;
+    }
+
+    .p-dialog-header-actions {
+        gap: 0.5rem;
+    }
+
+    .p-dialog-header-icon,
+    .p-dialog-close-button {
+        border-radius: 0 !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        outline: none !important;
+    }
+
+    .p-dialog-header-actions .p-button,
+    .p-dialog-header-actions .p-button-icon-only,
+    .p-dialog-header-actions .p-dialog-header-icon,
+    .p-dialog-header-actions .p-dialog-close-button {
+        border-radius: 0 !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+}

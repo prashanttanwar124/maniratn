@@ -87,6 +87,40 @@ const totalGoldInPipeline = computed(() => {
     return props.orders?.ASSIGNED?.reduce((acc, item) => acc + parseFloat(item.issued_gold || 0), 0) || 0;
 });
 
+const overdueNew = computed(() => props.orders?.NEW?.filter((item) => new Date(item.order?.due_date) < new Date()).length || 0);
+const dueSoonNew = computed(() => {
+    const today = new Date();
+    const threeDaysFromNow = new Date();
+    threeDaysFromNow.setDate(today.getDate() + 3);
+
+    return (
+        props.orders?.NEW?.filter((item) => {
+            if (!item.order?.due_date) return false;
+            const due = new Date(item.order.due_date);
+            return due >= today && due <= threeDaysFromNow;
+        }).length || 0
+    );
+});
+const totalReadyWeight = computed(() => props.orders?.READY?.reduce((acc, item) => acc + parseFloat(item.finished_weight || 0), 0) || 0);
+
+const pipelineSteps = computed(() => [
+    {
+        label: 'New',
+        value: totalNew.value,
+        hint: overdueNew.value ? `${overdueNew.value} overdue` : dueSoonNew.value ? `${dueSoonNew.value} due soon` : 'Waiting for assignment',
+    },
+    {
+        label: 'Production',
+        value: totalInProduction.value,
+        hint: `${formatWeight(totalGoldInPipeline.value)} g issued`,
+    },
+    {
+        label: 'Ready',
+        value: totalReady.value,
+        hint: `${formatWeight(totalReadyWeight.value)} g ready`,
+    },
+]);
+
 const itemTransactionSummary = computed(() => {
     if (!selectedItem.value?.transactions) return { gold: 0 };
 
@@ -158,6 +192,7 @@ const saveOrder = () => {
 };
 
 const openEdit = (item) => {
+    selectedItem.value = item;
     editForm.reset();
     editForm.clearErrors();
     editForm.id = item.id;
@@ -324,6 +359,16 @@ const metalTagSeverity = (metalType) => (metalType === 'SILVER' ? 'secondary' : 
 const isSilverItem = (item) => item?.metal_type === 'SILVER';
 const defaultPurityForMetal = (metalType) => (metalType === 'SILVER' ? 92.5 : 91.6);
 const metalLabel = (metalType) => (metalType === 'SILVER' ? 'Silver' : 'Gold');
+const purityLabel = (item) => {
+    if (item?.metal_type === 'SILVER') {
+        return `${item?.purity}%`;
+    }
+
+    if (parseFloat(item?.purity) === 91.6) return '22K';
+    if (parseFloat(item?.purity) === 75) return '18K';
+
+    return `${item?.purity}%`;
+};
 
 const completeIssuedGold = computed(() => parseFloat(selectedItem.value?.issued_gold || 0));
 
@@ -386,6 +431,7 @@ const closeEditDialog = () => {
     editDialog.value = false;
     editForm.reset();
     editForm.clearErrors();
+    selectedItem.value = null;
 };
 
 const closeAssignDialog = () => {
@@ -464,16 +510,17 @@ watch(
         <div class="space-y-6">
             <!-- Header -->
             <div class="border-b border-surface-200 bg-white px-5 py-5">
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                        <div class="flex items-center gap-3">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-3">
                             <h1 class="text-2xl font-semibold tracking-tight text-surface-900">Production Pipeline</h1>
                             <Tag value="Workshop" severity="secondary" />
+                            <Tag :value="isDayOpen ? 'Day Open' : 'Day Closed'" :severity="isDayOpen ? 'success' : 'danger'" />
                         </div>
-                        <p class="mt-1 text-sm text-surface-500">Track order items from request to assignment, production, and ready stock</p>
+                        <p class="mt-1 text-sm text-surface-500">Track order items from request to assignment, production movement, and ready-for-billing handoff.</p>
                     </div>
 
-                    <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex shrink-0 flex-wrap items-center gap-2">
                         <Button label="New Order" icon="pi pi-plus" @click="openCreateDialog" :disabled="!isDayOpen" />
                     </div>
                 </div>
@@ -493,6 +540,7 @@ watch(
                             <Clock class="h-4 w-4" />
                         </div>
                     </div>
+                    <p class="mt-3 text-xs text-surface-500">{{ overdueNew }} overdue · {{ dueSoonNew }} due within 3 days</p>
                 </div>
 
                 <div class="border border-surface-200 bg-white px-5 py-4">
@@ -507,6 +555,7 @@ watch(
                             <Hammer class="h-4 w-4" />
                         </div>
                     </div>
+                    <p class="mt-3 text-xs text-surface-500">Assigned to karigars and suppliers with live metal tracking</p>
                 </div>
 
                 <div class="border border-surface-200 bg-white px-5 py-4">
@@ -519,6 +568,7 @@ watch(
                             <Scale class="h-4 w-4" />
                         </div>
                     </div>
+                    <p class="mt-3 text-xs text-surface-500">Net issued into active workshop jobs</p>
                 </div>
 
                 <div class="border border-surface-200 bg-white px-5 py-4">
@@ -533,13 +583,30 @@ watch(
                             <CheckCircle class="h-4 w-4" />
                         </div>
                     </div>
+                    <p class="mt-3 text-xs text-surface-500">{{ formatWeight(totalReadyWeight) }} g available for invoicing</p>
                 </div>
             </div>
 
             <!-- Tabs / Tables -->
-            <div class="card overflow-hidden !p-0">
+            <div class="border border-surface-200 bg-white">
+                <div class="border-b border-surface-200 px-5 py-4">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                            <h3 class="text-base font-semibold text-surface-900">Workshop Control Board</h3>
+                            <p class="mt-1 text-sm text-surface-500">Move items from intake to assignment, production, and ready stock in one place.</p>
+                        </div>
+                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                            <div v-for="step in pipelineSteps" :key="step.label" class="border border-surface-200 bg-surface-50 px-3 py-3">
+                                <p class="text-xs font-medium uppercase tracking-wide text-surface-500">{{ step.label }}</p>
+                                <p class="mt-2 text-xl font-semibold text-surface-900">{{ step.value }}</p>
+                                <p class="mt-1 text-xs text-surface-500">{{ step.hint }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <Tabs value="0">
-                    <TabList class="border-b border-surface-200">
+                    <TabList class="border-b border-surface-200 bg-white">
                         <Tab value="0">
                             <div class="flex items-center gap-2">
                                 <span>New</span>
@@ -565,9 +632,17 @@ watch(
                     <TabPanels>
                         <!-- New -->
                         <TabPanel value="0" class="!p-0">
-                            <div class="border-b border-surface-200 bg-white py-4">
-                                <h3 class="text-base font-semibold text-surface-900">New Order Items</h3>
-                                <p class="mt-1 text-sm text-surface-500">Items waiting to be assigned to workshop or supplier</p>
+                            <div class="border-b border-surface-200 bg-white px-5 py-4">
+                                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                    <div>
+                                        <h3 class="text-base font-semibold text-surface-900">New Order Items</h3>
+                                        <p class="mt-1 text-sm text-surface-500">Items waiting for assignment to workshop or supplier.</p>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2 text-xs text-surface-500">
+                                        <span class="border border-surface-200 bg-surface-50 px-3 py-1.5">{{ orders.NEW.length }} open items</span>
+                                        <span class="border border-red-200 bg-red-50 px-3 py-1.5 text-red-700">{{ overdueNew }} overdue</span>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="bg-white">
@@ -602,9 +677,7 @@ watch(
                                         <template #body="{ data }">
                                             <div>
                                                 <span class="font-semibold text-surface-900"> {{ formatWeight(data.target_weight) }} g </span>
-                                                <span class="ml-1 text-xs text-surface-500">
-                                                    ({{ data.metal_type === 'SILVER' ? `${data.purity}%` : data.purity == 91.6 ? '22K' : '18K' }})
-                                                </span>
+                                                <span class="ml-1 text-xs text-surface-500">({{ purityLabel(data) }})</span>
                                             </div>
                                         </template>
                                     </Column>
@@ -631,9 +704,17 @@ watch(
 
                         <!-- Production -->
                         <TabPanel value="1" class="!p-0">
-                            <div class="border-b border-surface-200 bg-white py-4">
-                                <h3 class="text-base font-semibold text-surface-900">Items in Production</h3>
-                                <p class="mt-1 text-sm text-surface-500">Track metal issue, production movement, and finished receipt</p>
+                            <div class="border-b border-surface-200 bg-white px-5 py-4">
+                                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                    <div>
+                                        <h3 class="text-base font-semibold text-surface-900">Items in Production</h3>
+                                        <p class="mt-1 text-sm text-surface-500">Track issued metal, movement history, and finished receipt.</p>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2 text-xs text-surface-500">
+                                        <span class="border border-surface-200 bg-surface-50 px-3 py-1.5">{{ orders.ASSIGNED.length }} active jobs</span>
+                                        <span class="border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-700">{{ formatWeight(totalGoldInPipeline) }} g issued</span>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="bg-white">
@@ -700,9 +781,17 @@ watch(
 
                         <!-- Ready -->
                         <TabPanel value="2" class="!p-0">
-                            <div class="border-b border-surface-200 bg-white py-4">
-                                <h3 class="text-base font-semibold text-surface-900">Ready for Billing</h3>
-                                <p class="mt-1 text-sm text-surface-500">Completed items available for invoicing</p>
+                            <div class="border-b border-surface-200 bg-white px-5 py-4">
+                                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                    <div>
+                                        <h3 class="text-base font-semibold text-surface-900">Ready for Billing</h3>
+                                        <p class="mt-1 text-sm text-surface-500">Completed items available for invoice creation.</p>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2 text-xs text-surface-500">
+                                        <span class="border border-surface-200 bg-surface-50 px-3 py-1.5">{{ orders.READY.length }} ready items</span>
+                                        <span class="border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-700">{{ formatWeight(totalReadyWeight) }} g ready weight</span>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="bg-white">
@@ -761,6 +850,16 @@ watch(
         <!-- Create Order -->
         <Dialog v-model:visible="createDialog" header="Create New Order" modal :style="{ width: '52rem' }" :breakpoints="{ '640px': '95vw' }" @hide="closeCreateDialog">
             <div class="space-y-5 pt-2">
+                <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-surface-900">Build the order first, then assign item-by-item.</p>
+                            <p class="mt-1 text-sm text-surface-500">Each item becomes its own production track, so add clear item names, metal type, target weight, and notes.</p>
+                        </div>
+                        <Tag :value="`${createForm.items.length} Item${createForm.items.length === 1 ? '' : 's'}`" severity="secondary" />
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <label class="mb-2 block text-sm font-medium text-surface-700">Customer</label>
@@ -791,13 +890,13 @@ watch(
                                 <Button v-if="createForm.items.length > 1" icon="pi pi-trash" text severity="danger" size="small" @click="removeItemRow(idx)" />
                             </div>
 
-                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-12">
-                                <div class="sm:col-span-5">
+                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div>
                                     <InputText v-model="item.item_name" class="w-full" placeholder="Item name" />
                                     <p v-if="itemFieldError(idx, 'item_name')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'item_name') }}</p>
                                 </div>
 
-                                <div class="sm:col-span-3">
+                                <div>
                                     <Select
                                         v-model="item.metal_type"
                                         :options="[
@@ -812,12 +911,12 @@ watch(
                                     <p v-if="itemFieldError(idx, 'metal_type')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'metal_type') }}</p>
                                 </div>
 
-                                <div class="sm:col-span-3">
+                                <div>
                                     <InputNumber v-model="item.target_weight" :minFractionDigits="2" class="w-full" placeholder="Weight (g)" />
                                     <p v-if="itemFieldError(idx, 'target_weight')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'target_weight') }}</p>
                                 </div>
 
-                                <div class="sm:col-span-4">
+                                <div>
                                     <Select
                                         v-model="item.purity"
                                         :options="
@@ -838,7 +937,7 @@ watch(
                                     <p v-if="itemFieldError(idx, 'purity')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'purity') }}</p>
                                 </div>
 
-                                <div class="sm:col-span-12">
+                                <div class="sm:col-span-2">
                                     <InputText v-model="item.notes" class="w-full" placeholder="Notes, sizes, design code..." />
                                     <p v-if="itemFieldError(idx, 'notes')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'notes') }}</p>
                                 </div>
@@ -855,15 +954,44 @@ watch(
         </Dialog>
 
         <!-- Edit -->
-        <Dialog v-model:visible="editDialog" header="Edit Item" modal :style="{ width: '30rem' }" @hide="closeEditDialog">
+        <Dialog v-model:visible="editDialog" header="Edit Item" modal :style="{ width: '34rem' }" @hide="closeEditDialog">
             <div class="space-y-4 pt-2">
+                <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="font-semibold text-surface-900">{{ selectedItem?.item_name || editForm.item_name }}</p>
+                            <p class="mt-1 text-xs text-surface-500">{{ selectedItem?.order?.order_number }} · {{ selectedItem?.order?.customer?.name }}</p>
+                        </div>
+                        <div class="text-right">
+                            <Tag :value="metalLabel(editForm.metal_type).toUpperCase()" :severity="metalTagSeverity(editForm.metal_type)" />
+                            <p class="mt-2 text-sm font-semibold text-surface-900">{{ editForm.target_weight ? formatWeight(editForm.target_weight) : '0.000' }} g</p>
+                            <p class="text-xs text-surface-500">
+                                {{
+                                    editForm.metal_type === 'SILVER'
+                                        ? `${editForm.purity}%`
+                                        : editForm.purity === 91.6
+                                          ? '22K'
+                                          : editForm.purity === 75
+                                            ? '18K'
+                                            : `${editForm.purity}%`
+                                }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                    <p class="text-sm font-semibold text-surface-900">Edit this item before workshop processing changes it.</p>
+                    <p class="mt-1 text-xs text-surface-500">Use this for naming, target weight, purity, and instruction updates before production moves further.</p>
+                </div>
+
                 <div>
                     <label class="mb-2 block text-sm font-medium text-surface-700">Item Name</label>
                     <InputText v-model="editForm.item_name" class="w-full" />
                     <p v-if="formError(editForm, 'item_name')" class="mt-2 text-sm text-red-600">{{ formError(editForm, 'item_name') }}</p>
                 </div>
 
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                         <label class="mb-2 block text-sm font-medium text-surface-700">Metal Type</label>
                         <Select
@@ -886,7 +1014,7 @@ watch(
                         <p v-if="formError(editForm, 'target_weight')" class="mt-2 text-sm text-red-600">{{ formError(editForm, 'target_weight') }}</p>
                     </div>
 
-                    <div>
+                    <div class="sm:col-span-2">
                         <label class="mb-2 block text-sm font-medium text-surface-700">Purity</label>
                         <Select
                             v-model="editForm.purity"
@@ -924,8 +1052,22 @@ watch(
         </Dialog>
 
         <!-- Assign -->
-        <Dialog v-model:visible="assignDialog" header="Assign to Production" modal :style="{ width: '28rem' }" @hide="closeAssignDialog">
+        <Dialog v-model:visible="assignDialog" header="Assign to Production" modal :style="{ width: '30rem' }" @hide="closeAssignDialog">
             <div class="space-y-4 pt-2">
+                <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="font-semibold text-surface-900">{{ selectedItem?.item_name }}</p>
+                            <p class="mt-1 text-xs text-surface-500">{{ selectedItem?.order?.order_number }} · {{ selectedItem?.order?.customer?.name }}</p>
+                        </div>
+                        <div class="text-right">
+                            <Tag :value="metalLabel(selectedItem?.metal_type).toUpperCase()" :severity="metalTagSeverity(selectedItem?.metal_type)" />
+                            <p class="mt-2 text-sm font-semibold text-surface-900">{{ formatWeight(selectedItem?.target_weight) }} g</p>
+                            <p class="text-xs text-surface-500">{{ purityLabel(selectedItem) }}</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="border border-surface-200 bg-surface-50">
                     <div class="grid grid-cols-2">
                         <button
@@ -980,8 +1122,8 @@ watch(
             @hide="closeTransactionDialog"
         >
             <div class="space-y-5 pt-2">
-                <div class="border border-surface-200 bg-surface-50 px-4 py-3">
-                    <div class="flex items-center justify-between gap-4">
+                <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <div>
                             <p class="font-medium text-surface-900">{{ selectedItem?.item_name }}</p>
                             <p class="mt-1 text-xs text-surface-500">
@@ -989,9 +1131,14 @@ watch(
                             </p>
                         </div>
 
-                        <div class="text-right">
+                        <div class="sm:text-center">
                             <p class="text-xs text-surface-500">Target Weight</p>
                             <p class="font-semibold text-surface-900">{{ formatWeight(selectedItem?.target_weight) }} g</p>
+                        </div>
+
+                        <div class="sm:text-right">
+                            <p class="text-xs text-surface-500">Metal Issued So Far</p>
+                            <p class="font-semibold text-surface-900">{{ formatWeight(itemTransactionSummary.gold) }} g</p>
                         </div>
                     </div>
                 </div>
@@ -1064,6 +1211,16 @@ watch(
         <!-- Receive -->
         <Dialog v-model:visible="completeDialog" header="Receive Finished Item" modal :style="{ width: '26rem' }" @hide="closeCompleteDialog">
             <div class="space-y-4 pt-2">
+                <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="font-semibold text-surface-900">{{ selectedItem?.item_name }}</p>
+                            <p class="mt-1 text-xs text-surface-500">{{ selectedItem?.order?.order_number }} · {{ selectedItem?.order?.customer?.name }}</p>
+                        </div>
+                        <Tag :value="metalLabel(selectedItem?.metal_type).toUpperCase()" :severity="metalTagSeverity(selectedItem?.metal_type)" />
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div class="border border-surface-200 bg-surface-50 px-4 py-4 text-center">
                         <p class="text-xs font-medium tracking-wide text-surface-500 uppercase">Target Weight</p>

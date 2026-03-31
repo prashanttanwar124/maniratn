@@ -35,8 +35,42 @@ const deleteDialog = ref(false);
 const product = ref({});
 const isEditing = ref(false);
 const previewImage = ref(null);
-const selectedProducts = ref([]);
+const selectionStorageKey = 'barcode-selection:silver-products';
+const loadStoredSelections = () => {
+    if (typeof window === 'undefined') return [];
+
+    try {
+        return JSON.parse(window.localStorage.getItem(selectionStorageKey) || '[]');
+    } catch {
+        return [];
+    }
+};
+const selectedProducts = ref(loadStoredSelections());
 const search = ref(props.filters?.search || '');
+
+const currentPageSelection = computed({
+    get: () => {
+        const selectedIds = new Set(selectedProducts.value.map((item) => item.id));
+
+        return props.silverProducts.data.filter((item) => selectedIds.has(item.id));
+    },
+    set: (pageSelection) => {
+        const currentPageIds = new Set(props.silverProducts.data.map((item) => item.id));
+        const preservedSelections = selectedProducts.value.filter((item) => !currentPageIds.has(item.id));
+
+        selectedProducts.value = [...preservedSelections, ...pageSelection];
+    },
+});
+
+watch(
+    selectedProducts,
+    (value) => {
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem(selectionStorageKey, JSON.stringify(value));
+        }
+    },
+    { deep: true },
+);
 
 watch(
     search,
@@ -296,7 +330,7 @@ const copyBarcode = async (barcode) => {
                 </div>
 
                 <div class="bg-white p-4">
-                    <DataTable :value="silverProducts.data" v-model:selection="selectedProducts" dataKey="id" stripedRows rowHover tableStyle="min-width: 76rem">
+                    <DataTable :value="silverProducts.data" v-model:selection="currentPageSelection" dataKey="id" stripedRows rowHover tableStyle="min-width: 76rem">
                         <template #empty>
                             <div class="py-12 text-center text-surface-500">No silver products found</div>
                         </template>

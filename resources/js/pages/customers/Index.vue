@@ -13,7 +13,7 @@ import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
 
 const props = defineProps({
@@ -22,14 +22,18 @@ const props = defineProps({
     topDebtors: Array,
     totalCount: Number,
     newThisWeek: Number,
+    birthdaysThisWeek: Number,
+    anniversariesThisWeek: Number,
+    filters: Object,
 });
 
 const page = usePage();
-const search = ref('');
+const search = ref(props.filters?.search || '');
 const toast = useToast();
 const isDayOpen = computed(() => Boolean(page.props.dayStatus?.is_open));
 const customerDialog = ref(false);
 const editingCustomer = ref(null);
+let searchDebounceId = null;
 
 const form = useForm({
     id: null,
@@ -52,20 +56,6 @@ const breadcrumbs = [
     },
 ];
 
-const filteredCustomers = computed(() => {
-    const term = search.value.trim().toLowerCase();
-
-    if (!term) {
-        return props.customers.data;
-    }
-
-    return props.customers.data.filter((customer) => {
-        const haystack = [customer.name, customer.city, customer.mobile, customer.pan_no].filter(Boolean).join(' ').toLowerCase();
-
-        return haystack.includes(term);
-    });
-});
-
 const totalOutstanding = computed(() => props.customers.data.reduce((sum, customer) => sum + Math.max(Number(customer.balance || 0), 0), 0));
 
 const averageSpend = computed(() => {
@@ -80,10 +70,25 @@ const averageSpend = computed(() => {
 const onPageChange = (event) => {
     router.get(
         route('customers.index'),
-        { page: event.page + 1 },
+        { page: event.page + 1, search: search.value.trim() || undefined },
         {
             preserveScroll: true,
             preserveState: true,
+        },
+    );
+};
+
+const performSearch = () => {
+    router.get(
+        route('customers.index'),
+        {
+            search: search.value.trim() || undefined,
+            page: 1,
+        },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            replace: true,
         },
     );
 };
@@ -95,7 +100,47 @@ const formatMoney = (value) =>
         maximumFractionDigits: 0,
     }).format(Number(value || 0));
 
+const formatOccasionDate = (value) => {
+    if (!value) return 'Not set';
+
+    return new Intl.DateTimeFormat('en-IN', {
+        day: 'numeric',
+        month: 'short',
+    }).format(new Date(value));
+};
+
 const balanceSeverity = (balance) => (Number(balance || 0) > 0 ? 'danger' : 'success');
+
+const occasionReminderText = (reminder) => {
+    if (!reminder) return null;
+    if (reminder.is_today) return 'Today';
+
+    return `${reminder.days_until} day${reminder.days_until === 1 ? '' : 's'}`;
+};
+
+const customerRowClass = (data) => {
+    if (!data?.has_upcoming_occasion) return '';
+
+    return 'bg-amber-50/60';
+};
+
+watch(search, (value, oldValue) => {
+    if (value === oldValue) return;
+
+    if (searchDebounceId) {
+        clearTimeout(searchDebounceId);
+    }
+
+    searchDebounceId = window.setTimeout(() => {
+        performSearch();
+    }, 300);
+});
+
+onBeforeUnmount(() => {
+    if (searchDebounceId) {
+        clearTimeout(searchDebounceId);
+    }
+});
 
 const openCreateCustomer = () => {
     if (!isDayOpen.value) {
@@ -220,7 +265,7 @@ const deleteCustomer = (customer) => {
                 </div>
             </section>
 
-            <section class="grid grid-cols-1 gap-4 xl:grid-cols-4">
+            <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <div class="border border-surface-200 bg-white p-5">
                     <div class="flex items-start justify-between gap-4">
                         <div>
@@ -237,7 +282,7 @@ const deleteCustomer = (customer) => {
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-sm text-surface-500">Visible records</p>
-                            <p class="mt-2 text-2xl font-semibold text-surface-900">{{ filteredCustomers.length }}</p>
+                            <p class="mt-2 text-2xl font-semibold text-surface-900">{{ customers.data.length }}</p>
                         </div>
                         <span class="rounded-full bg-surface-100 p-2 text-surface-600">
                             <Users class="h-4 w-4" />
@@ -245,21 +290,26 @@ const deleteCustomer = (customer) => {
                     </div>
                 </div>
 
-                <div class="border border-surface-200 bg-white px-5 py-4 xl:col-span-2">
-                    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div class="border border-surface-200 bg-white p-5">
+                    <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-sm font-medium text-surface-900">Quick search</p>
-                            <p class="mt-1 text-sm text-surface-500">Filter the current page by name, city, phone, or PAN.</p>
+                            <p class="text-sm text-surface-500">Birthdays This Week</p>
+                            <p class="mt-2 text-2xl font-semibold text-emerald-700">{{ birthdaysThisWeek || 0 }}</p>
                         </div>
-
-                        <div class="relative w-full lg:w-96">
-                            <Search class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-surface-400" />
-                            <InputText v-model="search" placeholder="Search customers on this page..." class="w-full !pl-10" />
-                        </div>
-
-                        <Button label="New Customer" icon="pi pi-plus" class="!w-auto shrink-0 whitespace-nowrap" @click="openCreateCustomer" :disabled="!isDayOpen" />
+                        <span class="rounded-full bg-emerald-100 px-3 py-2 text-xs font-semibold text-emerald-700">DOB</span>
                     </div>
                 </div>
+
+                <div class="border border-surface-200 bg-white p-5">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-sm text-surface-500">Anniversaries This Week</p>
+                            <p class="mt-2 text-2xl font-semibold text-rose-700">{{ anniversariesThisWeek || 0 }}</p>
+                        </div>
+                        <span class="rounded-full bg-rose-100 px-3 py-2 text-xs font-semibold text-rose-700">ANN</span>
+                    </div>
+                </div>
+
             </section>
 
             <section class="grid grid-cols-1 gap-6 xl:grid-cols-3">
@@ -271,12 +321,22 @@ const deleteCustomer = (customer) => {
                                 <p class="mt-1 text-sm text-surface-500">Open profile or ledger directly from the table.</p>
                             </div>
 
-                            <Tag :value="`Page ${customers.current_page} of ${customers.last_page}`" severity="secondary" />
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                                <div class="relative w-full sm:w-80">
+                                    <Search class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                                    <InputText v-model="search" placeholder="Search all customers..." class="w-full !pl-10" />
+                                </div>
+
+                                <Button label="New Customer" icon="pi pi-plus" class="!w-auto shrink-0 whitespace-nowrap" @click="openCreateCustomer" :disabled="!isDayOpen" />
+                                <Tag :value="`Page ${customers.current_page} of ${customers.last_page}`" severity="secondary" />
+                            </div>
                         </div>
+
+                        <p class="mt-3 text-sm text-surface-500">Search all customers by name, city, phone, PAN, email, or member ID.</p>
                     </div>
 
                     <div class="bg-white p-4">
-                        <DataTable :value="filteredCustomers" stripedRows rowHover tableStyle="min-width: 62rem">
+                        <DataTable :value="customers.data" :rowClass="customerRowClass" stripedRows rowHover tableStyle="min-width: 62rem">
                             <template #empty>
                                 <div class="py-12 text-center text-surface-500">No customers match the current search.</div>
                             </template>
@@ -300,6 +360,33 @@ const deleteCustomer = (customer) => {
                                     <div class="text-sm">
                                         <p class="font-medium text-surface-800">{{ data.mobile || 'No mobile' }}</p>
                                         <p class="mt-1 text-xs text-surface-500">{{ data.pan_no || 'PAN not available' }}</p>
+                                    </div>
+                                </template>
+                            </Column>
+
+                            <Column header="Occasions">
+                                <template #body="{ data }">
+                                    <div class="space-y-1 text-sm">
+                                        <p class="font-medium text-surface-800">
+                                            DOB:
+                                            <span class="font-normal text-surface-600">{{ formatOccasionDate(data.dob) }}</span>
+                                            <Tag
+                                                v-if="data.dob_reminder"
+                                                :value="occasionReminderText(data.dob_reminder)"
+                                                severity="success"
+                                                class="ml-2 !text-[10px]"
+                                            />
+                                        </p>
+                                        <p class="text-surface-700">
+                                            Anniversary:
+                                            <span class="font-normal text-surface-600">{{ formatOccasionDate(data.anniversary_date) }}</span>
+                                            <Tag
+                                                v-if="data.anniversary_reminder"
+                                                :value="occasionReminderText(data.anniversary_reminder)"
+                                                severity="info"
+                                                class="ml-2 !text-[10px]"
+                                            />
+                                        </p>
                                     </div>
                                 </template>
                             </Column>

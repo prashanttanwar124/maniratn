@@ -23,10 +23,62 @@ use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
+    private function buildCustomerReminders(Carbon $today, int $daysAhead = 7)
+    {
+        $customers = Customer::query()
+            ->whereNotNull('dob')
+            ->orWhereNotNull('anniversary_date')
+            ->get(['id', 'name', 'mobile', 'dob', 'anniversary_date']);
+
+        return $customers
+            ->flatMap(function (Customer $customer) use ($today, $daysAhead) {
+                return collect([
+                    ['type' => 'Birthday', 'date' => $customer->dob],
+                    ['type' => 'Anniversary', 'date' => $customer->anniversary_date],
+                ])->filter(fn ($entry) => ! empty($entry['date']))
+                    ->map(function ($entry) use ($customer, $today, $daysAhead) {
+                        $sourceDate = Carbon::parse($entry['date']);
+                        $month = $sourceDate->month;
+                        $targetDay = min($sourceDate->day, Carbon::create($today->year, $month, 1)->daysInMonth);
+                        $nextDate = Carbon::create($today->year, $month, $targetDay)->startOfDay();
+
+                        if ($nextDate->lt($today->copy()->startOfDay())) {
+                            $nextYear = $today->year + 1;
+                            $targetDay = min($sourceDate->day, Carbon::create($nextYear, $month, 1)->daysInMonth);
+                            $nextDate = Carbon::create($nextYear, $month, $targetDay)->startOfDay();
+                        }
+
+                        $daysUntil = $today->copy()->startOfDay()->diffInDays($nextDate, false);
+
+                        if ($daysUntil < 0 || $daysUntil > $daysAhead) {
+                            return null;
+                        }
+
+                        return [
+                            'customer_id' => $customer->id,
+                            'customer_name' => $customer->name,
+                            'mobile' => $customer->mobile,
+                            'type' => $entry['type'],
+                            'date' => $nextDate->toDateString(),
+                            'days_until' => $daysUntil,
+                            'is_today' => $daysUntil === 0,
+                        ];
+                    })
+                    ->filter();
+            })
+            ->sortBy([
+                ['days_until', 'asc'],
+                ['customer_name', 'asc'],
+            ])
+            ->values()
+            ->all();
+    }
+
     public function index()
     {
         $user = Auth::user();
         $today = Carbon::today();
+        $customerReminders = $this->buildCustomerReminders($today);
         $lastClosedRegister = $this->lastClosedRegister();
         $todayRegister = DailyRegister::query()
             ->whereDate('date', $today)
@@ -177,6 +229,7 @@ class DashboardController extends Controller
                 'recent_vault_movements' => $recentVaultMovements,
                 'recent_invoices' => $recentInvoices,
                 'recent_expenses' => $recentExpenses,
+                'customer_reminders' => $customerReminders,
             ]);
         }
 
@@ -266,6 +319,7 @@ class DashboardController extends Controller
                 ],
                 'recent_invoices' => $recentInvoices,
                 'attention_items' => $orderAttention,
+                'customer_reminders' => $customerReminders,
             ]);
         }
     }

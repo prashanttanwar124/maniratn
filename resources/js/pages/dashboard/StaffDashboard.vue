@@ -12,6 +12,7 @@ const props = defineProps({
     isDayOpen: Boolean,
     recent_invoices: Array,
     attention_items: Array,
+    customer_reminders: Array,
 });
 
 const page = usePage();
@@ -23,6 +24,12 @@ const formatCurrency = (val) =>
         currency: 'INR',
         maximumFractionDigits: 0,
     }).format(val || 0);
+
+const formatReminderDate = (val) =>
+    new Intl.DateTimeFormat('en-IN', {
+        day: 'numeric',
+        month: 'short',
+    }).format(new Date(val));
 
 const statusSeverity = (status) => {
     if (status === 'READY') return 'success';
@@ -111,6 +118,46 @@ const statusSeverity = (status) => {
                 <div class="border border-surface-200 bg-white p-4">
                     <p class="text-sm text-surface-500">In Production</p>
                     <p class="mt-2 text-lg font-semibold text-surface-900">{{ metrics?.in_production || 0 }}</p>
+                </div>
+            </div>
+
+            <div class="overflow-hidden border border-surface-200 bg-white">
+                <div class="border-b border-surface-200 px-5 py-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-base font-semibold text-surface-900">Customer Reminders</h3>
+                            <p class="mt-1 text-sm text-surface-500">Upcoming birthdays and anniversaries for follow-up.</p>
+                        </div>
+                        <Link v-if="can.manage_customers" :href="route('customers.index')" class="text-sm font-medium text-amber-700 hover:text-amber-800">
+                            Open Customers
+                        </Link>
+                    </div>
+                </div>
+
+                <div class="divide-y divide-surface-200">
+                    <template v-if="customer_reminders?.length">
+                        <div v-for="reminder in customer_reminders" :key="`${reminder.type}-${reminder.customer_id}-${reminder.date}`" class="flex items-center justify-between gap-4 px-5 py-4">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <p class="text-sm font-medium text-surface-900">{{ reminder.customer_name }}</p>
+                                    <Tag :value="reminder.type" :severity="reminder.type === 'Birthday' ? 'success' : 'info'" />
+                                    <Tag v-if="reminder.is_today" value="Today" severity="warn" />
+                                </div>
+                                <p class="mt-1 text-sm text-surface-500">{{ reminder.mobile || 'No mobile number' }}</p>
+                            </div>
+
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-surface-900">{{ formatReminderDate(reminder.date) }}</p>
+                                <p class="mt-1 text-xs text-surface-400">
+                                    {{ reminder.is_today ? 'Wish today' : `${reminder.days_until} day${reminder.days_until === 1 ? '' : 's'} left` }}
+                                </p>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div v-else class="py-12 text-center text-sm text-surface-500">
+                        No birthday or anniversary reminders in the next 7 days.
+                    </div>
                 </div>
             </div>
 

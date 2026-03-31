@@ -295,8 +295,8 @@ const fetchProduct = async () => {
             const piecePrice = parseFloat(product.piece_price || 0);
             const makingCharge = parseFloat(product.making_charge || 0);
             const price = product.pricing_mode === 'PIECE'
-                ? piecePrice * quantity + makingCharge
-                : silverWeight * silverRate + makingCharge;
+                ? piecePrice * quantity + silverWeight * quantity * makingCharge
+                : silverWeight * (silverRate + makingCharge);
 
             form.items.push({
                 type: 'silver_product',
@@ -312,16 +312,18 @@ const fetchProduct = async () => {
             });
         } else {
             const currentRate = form.gold_rate || 0;
-            const price = parseFloat(product.net_weight) * currentRate + parseFloat(product.making_charge);
+            const weight = parseFloat(product.net_weight);
+            const makingCharge = parseFloat(product.making_charge);
+            const price = weight * (currentRate + makingCharge);
 
             form.items.push({
                 type: 'product',
                 id: product.id,
                 description: product.name + (product.barcode ? ` (${product.barcode})` : ''),
-                weight: parseFloat(product.net_weight),
+                weight,
                 quantity: 1,
                 rate: currentRate,
-                making_charges: parseFloat(product.making_charge),
+                making_charges: makingCharge,
                 final_price: price,
             });
         }
@@ -376,17 +378,18 @@ const calculateRawRowTotal = (item) => {
         if (item.pricing_mode === 'PIECE') {
             const quantity = Math.max(1, parseInt(item.quantity || 1, 10));
             const pieceRate = parseFloat(item.rate) || 0;
-            return quantity * pieceRate + making;
+            const weight = parseFloat(item.weight) || 0;
+            return quantity * pieceRate + weight * making;
         }
 
         const weight = parseFloat(item.weight) || 0;
         const rate = parseFloat(item.rate) || 0;
-        return weight * rate + making;
+        return weight * (rate + making);
     }
 
     const weight = parseFloat(item?.weight) || 0;
     const rate = parseFloat(item?.rate) || 0;
-    return weight * rate + making;
+    return weight * (rate + making);
 };
 
 const recalculateRow = (item) => {

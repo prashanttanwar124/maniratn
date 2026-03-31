@@ -4,6 +4,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Inertia\Inertia;
 use App\Models\Customer;
 use Illuminate\Support\Facades\DB;
@@ -13,20 +14,37 @@ use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $search = trim((string) $request->input('search', ''));
+        $today = Carbon::today();
+
         // 1. Get All Customers (with calculated Balance & Spend)
         // We use 'withSum' to calculate totals without loading thousands of transaction rows
         $customers = Customer::query()
             ->withSum(['transactions as total_spend' => function ($query) {
                 $query->where('type', 'SALE');
             }], 'amount')
-
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($customerQuery) use ($search) {
+                    $customerQuery
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('mobile', 'like', "%{$search}%")
+                        ->orWhere('city', 'like', "%{$search}%")
+                        ->orWhere('pan_no', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('membership_id', 'like', "%{$search}%");
+                });
+            })
             ->paginate(5)
-            ->through(function ($customer) {
+            ->withQueryString()
+            ->through(function ($customer) use ($today) {
                 $data = $customer->toArray();
 
                 $data['balance'] = $customer->balance;
+                $data['dob_reminder'] = $this->buildOccasionReminder($customer->dob, $today);
+                $data['anniversary_reminder'] = $this->buildOccasionReminder($customer->anniversary_date, $today);
+                $data['has_upcoming_occasion'] = $data['dob_reminder'] !== null || $data['anniversary_reminder'] !== null;
 
                 return $data;
             });
@@ -68,6 +86,11 @@ class CustomerController extends Controller
             'topDebtors'   => $topDebtors,
             'totalCount'   => Customer::count(),
             'newThisWeek'  => Customer::where('created_at', '>=', now()->subDays(7))->count(),
+            'birthdaysThisWeek' => $this->countUpcomingOccasions('dob', $today),
+            'anniversariesThisWeek' => $this->countUpcomingOccasions('anniversary_date', $today),
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 
@@ -176,5 +199,46 @@ class CustomerController extends Controller
             'anniversary_date' => ['nullable', 'date'],
             'membership_id' => ['nullable', 'string', 'max:100'],
         ]);
+    }
+
+    private function countUpcomingOccasions(string $column, Carbon $today, int $daysAhead = 7): int
+    {
+        return Customer::query()
+            ->whereNotNull($column)
+            ->pluck($column)
+            ->filter(function ($value) use ($today, $daysAhead) {
+                return $this->buildOccasionReminder($value, $today, $daysAhead) !== null;
+            })
+            ->count();
+    }
+
+    private function buildOccasionReminder(?string $value, Carbon $today, int $daysAhead = 7): ?array
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        $sourceDate = Carbon::parse($value);
+        $month = $sourceDate->month;
+        $targetDay = min($sourceDate->day, Carbon::create($today->year, $month, 1)->daysInMonth);
+        $nextDate = Carbon::create($today->year, $month, $targetDay)->startOfDay();
+
+        if ($nextDate->lt($today->copy()->startOfDay())) {
+            $nextYear = $today->year + 1;
+            $targetDay = min($sourceDate->day, Carbon::create($nextYear, $month, 1)->daysInMonth);
+            $nextDate = Carbon::create($nextYear, $month, $targetDay)->startOfDay();
+        }
+
+        $daysUntil = $today->copy()->startOfDay()->diffInDays($nextDate, false);
+
+        if ($daysUntil < 0 || $daysUntil > $daysAhead) {
+            return null;
+        }
+
+        return [
+            'date' => $nextDate->toDateString(),
+            'days_until' => $daysUntil,
+            'is_today' => $daysUntil === 0,
+        ];
     }
 }

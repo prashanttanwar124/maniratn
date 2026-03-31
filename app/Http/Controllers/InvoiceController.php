@@ -480,7 +480,7 @@ class InvoiceController extends Controller
                         'purity'      => $purity->name,
                         'rate'        => $rateApplied,
                         'making_charges' => $row['making_charges'],
-                        'final_price' => ($weight * $rateApplied) + $row['making_charges']
+                        'final_price' => $weight * ($rateApplied + (float) $row['making_charges'])
                     ]);
                 }
 
@@ -503,7 +503,7 @@ class InvoiceController extends Controller
                         $weight = (float) ($silverProduct->net_weight ?? 0) * $saleQuantity;
                         $itemName = $silverProduct->name;
                         $rateApplied = (float) ($row['rate'] ?? 0);
-                        $itemTotal = ($rateApplied * $saleQuantity) + (float) $row['making_charges'];
+                        $itemTotal = ($rateApplied * $saleQuantity) + ($weight * (float) $row['making_charges']);
 
                         $remainingQuantity = (int) $silverProduct->quantity - $saleQuantity;
                         $silverProduct->update([
@@ -531,7 +531,7 @@ class InvoiceController extends Controller
                     $originalQuantity = max(1, (int) $silverProduct->quantity);
                     $itemName = $silverProduct->name;
                     $rateApplied = (float) ($row['rate'] ?? 0);
-                    $itemTotal = ($weight * $rateApplied) + (float) $row['making_charges'];
+                    $itemTotal = $weight * ($rateApplied + (float) $row['making_charges']);
 
                     $silverProduct->update([
                         'quantity' => 0,
@@ -593,7 +593,7 @@ class InvoiceController extends Controller
                         'purity'        => $purity,
                         'rate'          => $rateApplied,
                         'making_charges' => $row['making_charges'],
-                        'final_price'   => ($weight * $rateApplied) + $row['making_charges']
+                        'final_price'   => $weight * ($rateApplied + (float) $row['making_charges'])
                     ]);
 
                     if ($orderItemMetalType === 'SILVER') {
@@ -612,7 +612,7 @@ class InvoiceController extends Controller
                     $rateForItem = (float) ($row['rate'] ?? 0);
                 }
 
-                $itemTotal = ($weight * $rateForItem) + $row['making_charges'];
+                $itemTotal = $weight * ($rateForItem + (float) $row['making_charges']);
                 $totalBillAmount += $itemTotal;
             }
 
