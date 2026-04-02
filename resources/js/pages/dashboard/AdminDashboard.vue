@@ -206,6 +206,11 @@ const closeShop = () => {
     });
 };
 
+const openCloseDialog = () => {
+    closeForm.clearErrors();
+    showCloseDialog.value = true;
+};
+
 const saveExpense = () => {
     expenseForm.post(route('expenses.store'), {
         preserveScroll: true,
@@ -309,7 +314,7 @@ const vaultChartItems = computed(() => {
                             <Button v-if="can.manage_vault && isDayOpen" label="Transfer Funds" icon="pi pi-arrow-right-arrow-left" outlined size="small" @click="openVaultTransferDialog" />
                             <Button v-if="can.manage_daily_rates" label="Update Rates" icon="pi pi-pencil" outlined size="small" @click="showRateDialog = true" />
                             <Button v-if="can.manage_vault && !isDayOpen" label="Open Day" icon="pi pi-lock-open" size="small" @click="showDayDialog = true" />
-                            <Button v-if="can.manage_vault && isDayOpen" label="Close Day" icon="pi pi-lock" severity="danger" size="small" @click="showCloseDialog = true" />
+                            <Button v-if="can.manage_vault && isDayOpen" label="Close Day" icon="pi pi-lock" severity="danger" size="small" @click="openCloseDialog" />
                         </div>
                     </div>
                 </div>
@@ -870,18 +875,21 @@ const vaultChartItems = computed(() => {
                     <div>
                         <label class="mb-2 block text-sm font-medium text-surface-700"> Closing Cash </label>
                         <InputNumber v-model="closeForm.closing_cash" mode="currency" currency="INR" locale="en-IN" class="w-full" placeholder="Enter counted cash" />
+                        <small v-if="closeForm.errors.closing_cash" class="mt-1 block text-red-600">{{ closeForm.errors.closing_cash }}</small>
                         <small class="mt-1 block text-xs text-surface-400"> Count physical cash available in drawer and safe. </small>
                     </div>
 
                     <div>
                         <label class="mb-2 block text-sm font-medium text-surface-700"> Closing Gold </label>
                         <InputNumber v-model="closeForm.closing_gold" :minFractionDigits="3" suffix=" g" class="w-full" placeholder="Enter weighed gold" />
+                        <small v-if="closeForm.errors.closing_gold" class="mt-1 block text-red-600">{{ closeForm.errors.closing_gold }}</small>
                         <small class="mt-1 block text-xs text-surface-400"> Enter total physical gold available at day close. </small>
                     </div>
 
                     <div>
                         <label class="mb-2 block text-sm font-medium text-surface-700"> Closing Silver </label>
                         <InputNumber v-model="closeForm.closing_silver" :minFractionDigits="3" suffix=" g" class="w-full" placeholder="Enter weighed silver" />
+                        <small v-if="closeForm.errors.closing_silver" class="mt-1 block text-red-600">{{ closeForm.errors.closing_silver }}</small>
                         <small class="mt-1 block text-xs text-surface-400"> Enter total physical silver available at day close. </small>
                     </div>
                 </div>
