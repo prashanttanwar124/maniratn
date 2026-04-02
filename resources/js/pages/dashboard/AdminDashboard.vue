@@ -13,6 +13,7 @@ import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
+import { formatIndianDate } from '@/utils/indiaTime';
 
 const props = defineProps({
     rates: Object,
@@ -31,7 +32,7 @@ const props = defineProps({
 const page = usePage();
 const can = computed(() => page.props.auth?.can || {});
 const isInitialSetup = computed(() => Boolean(page.props.dayStatus?.is_initial_setup));
-const openingExpectation = computed(() => props.opening_expectation || { cash: 0, gold: 0, date: null });
+const openingExpectation = computed(() => props.opening_expectation || { cash: 0, gold: 0, silver: 0, date: null });
 const rateForm = useForm({
     gold_sell: parseFloat(props.rates?.gold_sell || 0),
     gold_buy: parseFloat(props.rates?.gold_buy || 0),
@@ -41,6 +42,7 @@ const rateForm = useForm({
 const dayForm = useForm({
     opening_cash: parseFloat(openingExpectation.value?.cash || 0),
     opening_gold: parseFloat(openingExpectation.value?.gold || 0),
+    opening_silver: parseFloat(openingExpectation.value?.silver || 0),
     mismatch_reason: '',
     reopen_reason: '',
 });
@@ -48,13 +50,15 @@ const dayForm = useForm({
 const dayOpeningMismatch = computed(() => {
     return !isInitialSetup.value && (
         Math.abs(Number(dayForm.opening_cash || 0) - Number(openingExpectation.value?.cash || 0)) > 0.0001 ||
-        Math.abs(Number(dayForm.opening_gold || 0) - Number(openingExpectation.value?.gold || 0)) > 0.0001
+        Math.abs(Number(dayForm.opening_gold || 0) - Number(openingExpectation.value?.gold || 0)) > 0.0001 ||
+        Math.abs(Number(dayForm.opening_silver || 0) - Number(openingExpectation.value?.silver || 0)) > 0.0001
     );
 });
 
 const closeForm = useForm({
     closing_cash: null,
     closing_gold: null,
+    closing_silver: null,
 });
 
 const expenseForm = useForm({
@@ -110,10 +114,10 @@ const formatCurrency = (val) =>
 
 const formatWeight = (val) => `${Number(val || 0).toFixed(3)} g`;
 const formatReminderDate = (val) =>
-    new Intl.DateTimeFormat('en-IN', {
+    formatIndianDate(val, {
         day: 'numeric',
         month: 'short',
-    }).format(new Date(val));
+    });
 
 const formatVaultMovementAmount = (movement) => {
     return ['GOLD', 'SILVER'].includes(movement.vault_type) ? formatWeight(movement.amount) : formatCurrency(movement.amount);
@@ -133,6 +137,12 @@ const closingGoldDifference = computed(() => {
     if (closeForm.closing_gold === null || closeForm.closing_gold === undefined) return null;
 
     return Number(closeForm.closing_gold || 0) - Number(props.vaults?.gold || 0);
+});
+
+const closingSilverDifference = computed(() => {
+    if (closeForm.closing_silver === null || closeForm.closing_silver === undefined) return null;
+
+    return Number(closeForm.closing_silver || 0) - Number(props.vaults?.silver || 0);
 });
 
 const transferSourceBalance = computed(() => {
@@ -759,6 +769,7 @@ const vaultChartItems = computed(() => {
                     <div class="mt-1 flex items-center justify-between gap-4 text-xs text-surface-500">
                         <span>Cash: {{ formatCurrency(openingExpectation.cash) }}</span>
                         <span>Gold: {{ formatWeight(openingExpectation.gold) }}</span>
+                        <span>Silver: {{ formatWeight(openingExpectation.silver) }}</span>
                     </div>
                     <p v-if="openingExpectation.date" class="mt-1 text-xs text-surface-400">Based on close of {{ openingExpectation.date }}</p>
                 </div>
@@ -773,6 +784,12 @@ const vaultChartItems = computed(() => {
                     <label class="mb-2 block text-sm font-medium text-surface-700">Counted Opening Gold</label>
                     <InputNumber v-model="dayForm.opening_gold" :minFractionDigits="3" suffix=" g" class="w-full" />
                     <small class="mt-1 block text-xs text-surface-500">Enter the physically counted opening gold. Zero is not allowed.</small>
+                </div>
+
+                <div>
+                    <label class="mb-2 block text-sm font-medium text-surface-700">Counted Opening Silver</label>
+                    <InputNumber v-model="dayForm.opening_silver" :minFractionDigits="3" suffix=" g" class="w-full" />
+                    <small class="mt-1 block text-xs text-surface-500">Enter the physically counted opening silver. Zero is not allowed.</small>
                 </div>
 
                 <div v-if="dayOpeningMismatch">
@@ -819,7 +836,7 @@ const vaultChartItems = computed(() => {
                 <!-- Intro -->
                 <div class="border border-surface-200 bg-surface-50 px-4 py-3">
                     <p class="text-sm font-medium text-surface-800">End-of-day reconciliation</p>
-                    <p class="mt-1 text-sm text-surface-500">Enter the physically counted cash and gold weight before closing the day.</p>
+                    <p class="mt-1 text-sm text-surface-500">Enter the physically counted cash, gold, and silver before closing the day.</p>
                 </div>
 
                 <!-- Expected Summary -->
@@ -840,6 +857,11 @@ const vaultChartItems = computed(() => {
                             <span class="text-sm text-surface-500">Expected Gold</span>
                             <span class="text-sm font-semibold text-surface-900"> {{ Number(vaults.gold || 0).toFixed(3) }} g </span>
                         </div>
+
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-surface-500">Expected Silver</span>
+                            <span class="text-sm font-semibold text-surface-900"> {{ Number(vaults.silver || 0).toFixed(3) }} g </span>
+                        </div>
                     </div>
                 </div>
 
@@ -855,6 +877,12 @@ const vaultChartItems = computed(() => {
                         <label class="mb-2 block text-sm font-medium text-surface-700"> Closing Gold </label>
                         <InputNumber v-model="closeForm.closing_gold" :minFractionDigits="3" suffix=" g" class="w-full" placeholder="Enter weighed gold" />
                         <small class="mt-1 block text-xs text-surface-400"> Enter total physical gold available at day close. </small>
+                    </div>
+
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700"> Closing Silver </label>
+                        <InputNumber v-model="closeForm.closing_silver" :minFractionDigits="3" suffix=" g" class="w-full" placeholder="Enter weighed silver" />
+                        <small class="mt-1 block text-xs text-surface-400"> Enter total physical silver available at day close. </small>
                     </div>
                 </div>
 
@@ -906,6 +934,29 @@ const vaultChartItems = computed(() => {
                                     closingGoldDifference === null
                                         ? 'Enter count'
                                         : `${closingGoldDifference >= 0 ? '+' : ''}${formatWeight(closingGoldDifference)}`
+                                }}
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3 text-sm">
+                            <span class="text-surface-500">Silver</span>
+                            <span class="font-medium text-surface-900">{{ closeForm.closing_silver == null ? '—' : formatWeight(closeForm.closing_silver) }}</span>
+                            <span
+                                class="text-right font-semibold"
+                                :class="
+                                    closingSilverDifference === null
+                                        ? 'text-surface-400'
+                                        : closingSilverDifference === 0
+                                          ? 'text-green-600'
+                                          : closingSilverDifference > 0
+                                            ? 'text-orange-600'
+                                            : 'text-red-600'
+                                "
+                            >
+                                {{
+                                    closingSilverDifference === null
+                                        ? 'Enter count'
+                                        : `${closingSilverDifference >= 0 ? '+' : ''}${formatWeight(closingSilverDifference)}`
                                 }}
                             </span>
                         </div>

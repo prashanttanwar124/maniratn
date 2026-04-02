@@ -45,6 +45,8 @@ const model = [
         items: [
             { label: 'Customers', icon: 'pi pi-fw pi-users', to: '/customers', visible: Boolean(can.manage_customers) },
             { label: 'Suppliers', icon: 'pi pi-fw pi-truck', to: '/suppliers', visible: Boolean(can.manage_suppliers) },
+            { label: 'Staff', icon: 'pi pi-fw pi-id-card', to: '/staff', visible: Boolean(can.manage_users) },
+            { label: 'Attendance', icon: 'pi pi-fw pi-calendar-clock', to: '/attendance', visible: Boolean(can.manage_users) },
             { label: 'Karigars', icon: 'pi pi-fw pi-briefcase', to: '/karigars', visible: Boolean(can.manage_orders || can.settle_karigar) },
             { label: 'Users', icon: 'pi pi-fw pi-user-plus', to: '/users', visible: Boolean(can.manage_users) },
         ],
@@ -52,6 +54,7 @@ const model = [
     {
         label: 'Settings',
         items: [
+            { label: 'Business Profile', icon: 'pi pi-fw pi-building', to: '/settings/business-profile', visible: Boolean(can.manage_users) },
             { label: 'Profile', icon: 'pi pi-fw pi-user', to: '/settings/profile' },
             { label: 'Password', icon: 'pi pi-fw pi-key', to: '/settings/password' },
             { label: 'Two-Factor Auth', icon: 'pi pi-fw pi-shield', to: '/settings/two-factor' },

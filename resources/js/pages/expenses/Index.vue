@@ -15,6 +15,7 @@ import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import Tag from 'primevue/tag';
 import { useConfirm } from 'primevue/useconfirm';
+import { formatIndianDate } from '@/utils/indiaTime';
 
 const props = defineProps({
     expenses: Object, // Paginated List
@@ -66,7 +67,7 @@ const deleteExpense = (event, id) => {
 };
 
 const formatCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
-const formatDate = (date) => new Date(date).toLocaleDateString('en-IN');
+const formatDate = (date) => formatIndianDate(date);
 </script>
 
 <template>

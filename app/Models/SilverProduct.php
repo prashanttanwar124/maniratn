@@ -27,11 +27,4 @@ class SilverProduct extends Model
             $product->barcode = 'S' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
         });
     }
-
-    public function legacyBarcode(): string
-    {
-        $categoryCode = $this->category?->code ?? Category::find($this->category_id)?->code ?? 'SLV';
-
-        return 'MS-' . $categoryCode . '-' . str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
-    }
 }

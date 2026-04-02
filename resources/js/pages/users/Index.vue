@@ -36,6 +36,8 @@ const userForm = useForm({
     email: '',
     password: '',
     role: 'staff',
+    attendance_enabled: false,
+    attendance_passcode: '',
     permissions: [],
 });
 
@@ -67,6 +69,8 @@ const openUserDialog = () => {
     userForm.clearErrors();
     userForm.id = null;
     userForm.role = 'staff';
+    userForm.attendance_enabled = false;
+    userForm.attendance_passcode = '';
     userForm.permissions = [];
     editingUser.value = null;
     showUserDialog.value = true;
@@ -112,6 +116,8 @@ const editUser = (user) => {
     userForm.email = user.email;
     userForm.password = '';
     userForm.role = user.roles[0] || 'basic';
+    userForm.attendance_enabled = Boolean(user.attendance_enabled);
+    userForm.attendance_passcode = '';
     userForm.permissions = [...user.permissions];
     editingUser.value = user;
     showUserDialog.value = true;
@@ -347,6 +353,14 @@ const isInheritedPermission = (permission) => inheritedPermissionSet.value.has(p
                                     <span v-else class="text-sm text-surface-500">No direct permissions</span>
                                 </template>
                             </Column>
+                            <Column header="Attendance" style="width: 180px">
+                                <template #body="{ data }">
+                                    <div class="flex flex-wrap gap-2">
+                                        <Tag :value="data.attendance_enabled ? 'Enabled' : 'Disabled'" :severity="data.attendance_enabled ? 'success' : 'secondary'" />
+                                        <Tag v-if="data.has_attendance_passcode" value="Passcode Set" severity="contrast" />
+                                    </div>
+                                </template>
+                            </Column>
                             <Column field="created_at" header="Created" style="width: 180px" />
                             <Column header="" style="width: 160px">
                                 <template #body="{ data }">
@@ -450,6 +464,25 @@ const isInheritedPermission = (permission) => inheritedPermissionSet.value.has(p
                     <small v-else-if="selectedRole" class="mt-1 block text-xs text-surface-500">
                         This role already includes {{ selectedRole.permissions.length }} permission{{ selectedRole.permissions.length === 1 ? '' : 's' }}.
                     </small>
+                </div>
+
+                <div class="md:col-span-2 rounded border border-surface-200 bg-surface-50 p-4">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-sm font-medium text-surface-900">Attendance Terminal Access</p>
+                            <p class="mt-1 text-xs text-surface-500">Enable this user for the separate attendance terminal and set a private passcode.</p>
+                        </div>
+                        <Checkbox v-model="userForm.attendance_enabled" binary inputId="attendance_enabled" />
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Attendance Passcode</label>
+                        <Password v-model="userForm.attendance_passcode" toggleMask fluid :feedback="false" placeholder="Enter passcode for attendance terminal" />
+                        <small class="mt-1 block text-xs text-surface-500">
+                            {{ editingUser ? 'Leave blank to keep the existing passcode.' : 'This passcode will be used on the attendance terminal.' }}
+                        </small>
+                        <small v-if="userForm.errors.attendance_passcode" class="mt-1 block text-xs text-red-500">{{ userForm.errors.attendance_passcode }}</small>
+                    </div>
                 </div>
 
                 <div class="md:col-span-2">

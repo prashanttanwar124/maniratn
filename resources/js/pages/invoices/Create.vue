@@ -18,6 +18,7 @@ import { useToast } from 'primevue/usetoast';
 import Textarea from 'primevue/textarea';
 import { computed, onMounted, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
+import { formatIndianDateTime, toIndianDateInput, todayIndianDate } from '@/utils/indiaTime';
 
 const props = defineProps({
     prefilledItems: {
@@ -61,7 +62,7 @@ const discountTypeOptions = [
 
 const form = useForm({
     customer_id: props.prefilledCustomer?.id || null,
-    date: new Date().toISOString().split('T')[0],
+    date: todayIndianDate(),
     gold_rate: Number(props.defaultGoldRate || 0),
     silver_rate: Number(props.defaultSilverRate || 0),
     discount_type: 'amount',
@@ -160,7 +161,7 @@ const hydrateDraft = async (draft) => {
 
     const d = draft.data || {};
     form.customer_id = props.lockCustomer ? props.prefilledCustomer?.id || null : d.customer_id ?? null;
-    form.date = d.date || new Date().toISOString().split('T')[0];
+    form.date = d.date || todayIndianDate();
     form.gold_rate = Number(d.gold_rate || 0);
     form.silver_rate = Number(d.silver_rate || 0);
     form.discount_type = d.discount_type || 'amount';
@@ -245,10 +246,7 @@ const deleteDraft = async (draftId) => {
     }
 };
 
-const formatDraftTime = (iso) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-};
+const formatDraftTime = (iso) => formatIndianDateTime(iso);
 
 onMounted(async () => {
     if (props.draftToLoad) {
@@ -490,7 +488,7 @@ const submitInvoice = () => {
     form.transform((data) => ({
         ...data,
         draft_id: currentDraftId.value,
-        date: new Date(data.date).toISOString().split('T')[0],
+        date: toIndianDateInput(data.date),
         discount_value: Number(data.discount_value || 0),
         items: data.items.map((item) => ({
             type: item.type,

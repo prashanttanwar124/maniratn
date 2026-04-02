@@ -207,6 +207,7 @@ class DashboardController extends Controller
                 'opening_expectation' => [
                     'cash' => (float) ($lastClosedRegister?->closing_cash ?? 0),
                     'gold' => (float) ($lastClosedRegister?->closing_gold ?? 0),
+                    'silver' => (float) ($lastClosedRegister?->closing_silver ?? 0),
                     'date' => optional($lastClosedRegister?->date)?->toDateString(),
                 ],
                 'vaults' => [
@@ -306,6 +307,7 @@ class DashboardController extends Controller
                 'opening_expectation' => [
                     'cash' => (float) ($lastClosedRegister?->closing_cash ?? 0),
                     'gold' => (float) ($lastClosedRegister?->closing_gold ?? 0),
+                    'silver' => (float) ($lastClosedRegister?->closing_silver ?? 0),
                     'date' => optional($lastClosedRegister?->date)?->toDateString(),
                 ],
                 'metrics' => [
@@ -341,7 +343,7 @@ class DashboardController extends Controller
         return redirect()->back()->with('success', 'Market Rates Updated');
     }
 
-    // OPEN THE DAY (Verify Cash/Gold)
+    // OPEN THE DAY (Verify Cash/Gold/Silver)
     public function openDay(Request $request)
     {
         $isInitialSetup = ! DailyRegister::query()->exists();
@@ -349,6 +351,7 @@ class DashboardController extends Controller
         $validated = $request->validate([
             'opening_cash' => ['required', 'numeric', $isInitialSetup ? 'min:0' : 'gt:0'],
             'opening_gold' => ['required', 'numeric', $isInitialSetup ? 'min:0' : 'gt:0'],
+            'opening_silver' => ['required', 'numeric', $isInitialSetup ? 'min:0' : 'gt:0'],
             'mismatch_reason' => 'nullable|string|max:500',
             'reopen_reason' => 'nullable|string|max:500',
         ]);
@@ -356,12 +359,14 @@ class DashboardController extends Controller
         $lastClosedRegister = $this->lastClosedRegister();
         $expectedOpeningCash = (float) ($lastClosedRegister?->closing_cash ?? 0);
         $expectedOpeningGold = (float) ($lastClosedRegister?->closing_gold ?? 0);
+        $expectedOpeningSilver = (float) ($lastClosedRegister?->closing_silver ?? 0);
         $hasExpectation = $lastClosedRegister !== null;
 
         $cashMatches = ! $hasExpectation || abs((float) $validated['opening_cash'] - $expectedOpeningCash) < 0.0001;
         $goldMatches = ! $hasExpectation || abs((float) $validated['opening_gold'] - $expectedOpeningGold) < 0.0001;
+        $silverMatches = ! $hasExpectation || abs((float) $validated['opening_silver'] - $expectedOpeningSilver) < 0.0001;
 
-        if ((! $cashMatches || ! $goldMatches) && blank(trim((string) ($validated['mismatch_reason'] ?? '')))) {
+        if ((! $cashMatches || ! $goldMatches || ! $silverMatches) && blank(trim((string) ($validated['mismatch_reason'] ?? '')))) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'mismatch_reason' => 'Opening balances differ from the last closed day. Add a reason before opening the day.',
             ]);
@@ -391,15 +396,17 @@ class DashboardController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($validated, $expectedOpeningCash, $expectedOpeningGold, $today, $todayLastRegister, $isReopen, $isInitialSetup) {
+        DB::transaction(function () use ($validated, $expectedOpeningCash, $expectedOpeningGold, $expectedOpeningSilver, $today, $todayLastRegister, $isReopen, $isInitialSetup) {
             $today = Carbon::today();
             DailyRegister::create([
                 'date' => $today,
                 'session_number' => ($todayLastRegister?->session_number ?? 0) + 1,
                 'opening_cash' => $validated['opening_cash'],
                 'opening_gold' => $validated['opening_gold'],
+                'opening_silver' => $validated['opening_silver'],
                 'expected_opening_cash' => $expectedOpeningCash ?: null,
                 'expected_opening_gold' => $expectedOpeningGold ?: null,
+                'expected_opening_silver' => $expectedOpeningSilver ?: null,
                 'opening_mismatch_reason' => blank(trim((string) ($validated['mismatch_reason'] ?? ''))) ? null : trim((string) $validated['mismatch_reason']),
                 'reopen_reason' => $isReopen ? trim((string) $validated['reopen_reason']) : null,
                 'reopened_from_id' => $isReopen ? $todayLastRegister?->id : null,
@@ -408,15 +415,19 @@ class DashboardController extends Controller
 
             $cashVault = Vault::firstOrCreate(['type' => 'CASH'], ['name' => 'CASH', 'balance' => 0]);
             $goldVault = Vault::firstOrCreate(['type' => 'GOLD'], ['name' => 'GOLD', 'balance' => 0]);
+            $silverVault = Vault::firstOrCreate(['type' => 'SILVER'], ['name' => 'SILVER', 'balance' => 0]);
 
             if ($isInitialSetup) {
                 $cashBefore = (float) $cashVault->balance;
                 $goldBefore = (float) $goldVault->balance;
+                $silverBefore = (float) $silverVault->balance;
                 $cashAfter = round((float) $validated['opening_cash'], 2);
                 $goldAfter = round((float) $validated['opening_gold'], 3);
+                $silverAfter = round((float) $validated['opening_silver'], 3);
 
                 $cashVault->update(['balance' => $cashAfter]);
                 $goldVault->update(['balance' => $goldAfter]);
+                $silverVault->update(['balance' => $silverAfter]);
 
                 VaultMovement::create([
                     'vault_id' => $cashVault->id,
@@ -442,6 +453,20 @@ class DashboardController extends Controller
                     'source_type' => DailyRegister::class,
                     'reference' => 'Initial Opening Balance',
                     'note' => 'Initial gold balance created during first-time system setup',
+                    'user_id' => Auth::id(),
+                    'recorded_at' => now(),
+                ]);
+
+                VaultMovement::create([
+                    'vault_id' => $silverVault->id,
+                    'vault_type' => VaultType::SILVER->value,
+                    'direction' => 'CREDIT',
+                    'amount' => $silverAfter,
+                    'balance_before' => $silverBefore,
+                    'balance_after' => $silverAfter,
+                    'source_type' => DailyRegister::class,
+                    'reference' => 'Initial Opening Balance',
+                    'note' => 'Initial silver balance created during first-time system setup',
                     'user_id' => Auth::id(),
                     'recorded_at' => now(),
                 ]);
@@ -480,6 +505,22 @@ class DashboardController extends Controller
                 'user_id' => Auth::id(),
                 'recorded_at' => now(),
             ]);
+
+            VaultMovement::create([
+                'vault_id' => $silverVault->id,
+                'vault_type' => VaultType::SILVER->value,
+                'direction' => 'CREDIT',
+                'amount' => 0,
+                'balance_before' => (float) $silverVault->balance,
+                'balance_after' => (float) $silverVault->balance,
+                'source_type' => DailyRegister::class,
+                'reference' => 'Day Open Snapshot',
+                'note' => blank(trim((string) ($validated['mismatch_reason'] ?? '')))
+                    ? 'Opening silver verified for the day without changing live vault balance'
+                    : 'Opening silver verified with mismatch reason: ' . trim((string) $validated['mismatch_reason']),
+                'user_id' => Auth::id(),
+                'recorded_at' => now(),
+            ]);
         });
 
         return redirect()->back()->with('success', $isInitialSetup
@@ -492,6 +533,7 @@ class DashboardController extends Controller
         $validated = $request->validate([
             'closing_cash' => 'required|numeric',
             'closing_gold' => 'required|numeric',
+            'closing_silver' => 'required|numeric',
         ]);
 
         $today = Carbon::today();
@@ -500,18 +542,22 @@ class DashboardController extends Controller
         // 1. GET SYSTEM BALANCE (What the software thinks you have)
         $systemCash = VaultService::getBalance(VaultType::CASH);
         $systemGold = VaultService::getBalance(VaultType::GOLD);
+        $systemSilver = VaultService::getBalance(VaultType::SILVER);
 
         // 2. CALCULATE DIFFERENCE (Physical - System)
         // If negative, money is missing. If positive, you have extra.
         $diffCash = $validated['closing_cash'] - $systemCash;
         $diffGold = round((float) $validated['closing_gold'] - $systemGold, 3);
+        $diffSilver = round((float) $validated['closing_silver'] - $systemSilver, 3);
 
         // 3. CLOSE THE REGISTER
         $register->update([
             'closing_cash' => $validated['closing_cash'],
             'closing_gold' => $validated['closing_gold'],
+            'closing_silver' => $validated['closing_silver'],
             'difference_cash' => $diffCash,
             'difference_gold' => $diffGold,
+            'difference_silver' => $diffSilver,
             'closed_at' => now(),
             'closed_by' => Auth::id(),
         ]);

@@ -4,6 +4,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
+import { formatIndianDate } from '@/utils/indiaTime';
 
 const props = defineProps({
     user: Object,
@@ -26,10 +27,10 @@ const formatCurrency = (val) =>
     }).format(val || 0);
 
 const formatReminderDate = (val) =>
-    new Intl.DateTimeFormat('en-IN', {
+    formatIndianDate(val, {
         day: 'numeric',
         month: 'short',
-    }).format(new Date(val));
+    });
 
 const statusSeverity = (status) => {
     if (status === 'READY') return 'success';

@@ -9,6 +9,7 @@ import Paginator from 'primevue/paginator';
 import Tag from 'primevue/tag';
 import { computed } from 'vue';
 import { route } from 'ziggy-js';
+import { formatIndianDate } from '@/utils/indiaTime';
 
 const props = defineProps({
     customer: Object,
@@ -47,7 +48,7 @@ const formatMoney = (value) =>
     }).format(Number(value || 0));
 
 const formatDate = (dateString) =>
-    new Date(dateString).toLocaleDateString('en-IN', {
+    formatIndianDate(dateString, {
         day: 'numeric',
         month: 'short',
         year: 'numeric',

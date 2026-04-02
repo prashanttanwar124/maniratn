@@ -3,6 +3,7 @@ import { logout } from '@/routes';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { useLayout } from '@/layout/composables/layout';
+import { formatIndianDate } from '@/utils/indiaTime';
 
 const { toggleMenu } = useLayout();
 const page = usePage();
@@ -12,11 +13,11 @@ const dayStatus = computed(() => page.props.dayStatus ?? { is_open: true });
 const currentPath = computed(() => String(page.url || '/').split('?')[0]);
 
 const currentDate = computed(() =>
-    new Intl.DateTimeFormat('en-IN', {
+    formatIndianDate(new Date(), {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
-    }).format(new Date()),
+    }),
 );
 
 const initials = computed(() => {

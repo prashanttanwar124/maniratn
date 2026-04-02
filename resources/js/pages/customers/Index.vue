@@ -15,6 +15,7 @@ import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
+import { formatIndianDate } from '@/utils/indiaTime';
 
 const props = defineProps({
     customers: Object,
@@ -103,10 +104,10 @@ const formatMoney = (value) =>
 const formatOccasionDate = (value) => {
     if (!value) return 'Not set';
 
-    return new Intl.DateTimeFormat('en-IN', {
+    return formatIndianDate(value, {
         day: 'numeric',
         month: 'short',
-    }).format(new Date(value));
+    });
 };
 
 const balanceSeverity = (balance) => (Number(balance || 0) > 0 ? 'danger' : 'success');

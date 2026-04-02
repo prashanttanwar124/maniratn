@@ -15,6 +15,7 @@ import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
+import { formatIndianDate, formatIndianDateTime } from '@/utils/indiaTime';
 
 const props = defineProps({
     invoices: Array,
@@ -69,7 +70,7 @@ const formatCurrency = (value) =>
     }).format(value || 0);
 
 const formatDate = (dateString) =>
-    new Date(dateString).toLocaleDateString('en-IN', {
+    formatIndianDate(dateString, {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
@@ -138,10 +139,7 @@ const deleteDraft = (draftId) => {
     });
 };
 
-const formatDraftTime = (iso) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-};
+const formatDraftTime = (iso) => formatIndianDateTime(iso);
 
 const draftFormatCurrency = (val) =>
     new Intl.NumberFormat('en-IN', {

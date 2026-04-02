@@ -15,6 +15,7 @@ import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
 import { computed, ref } from 'vue';
 import { route } from 'ziggy-js';
+import { formatIndianDate } from '@/utils/indiaTime';
 // Props from Laravel Controller
 const props = defineProps({
     mortgages: Object,
@@ -171,7 +172,7 @@ const tableData = computed(() => props.customers.data);
 
                 <Column header="Date">
                     <template #body="slotProps">
-                        {{ new Date(slotProps.data.start_date).toLocaleDateString('en-IN') }}
+                        {{ formatIndianDate(slotProps.data.start_date) }}
                     </template>
                 </Column>
 
@@ -285,7 +286,7 @@ const tableData = computed(() => props.customers.data);
                             </thead>
                             <tbody>
                                 <tr v-for="pay in selectedMortgage.payments" :key="pay.id" class="border-t">
-                                    <td class="p-2">{{ new Date(pay.date).toLocaleDateString('en-IN') }}</td>
+                                    <td class="p-2">{{ formatIndianDate(pay.date) }}</td>
                                     <td class="p-2">
                                         <Tag :severity="pay.type === 'INTEREST' ? 'warning' : 'success'" :value="pay.type" />
                                     </td>

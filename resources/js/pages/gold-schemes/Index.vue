@@ -16,6 +16,7 @@ import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
+import { formatIndianDate, todayIndianDate, toIndianDateInput } from '@/utils/indiaTime';
 
 const props = defineProps({
     customerSchemes: Array,
@@ -40,7 +41,7 @@ const statusFilter = ref('ALL');
 const schemeForm = useForm({
     id: null,
     customer_id: null,
-    start_date: new Date().toISOString().split('T')[0],
+    start_date: todayIndianDate(),
     monthly_amount: null,
     total_months: 11,
     bonus_amount: null,
@@ -63,7 +64,7 @@ const importModeOptions = [
 ];
 const installmentForm = useForm({
     amount_paid: null,
-    paid_on: new Date().toISOString().split('T')[0],
+    paid_on: todayIndianDate(),
     payment_method: 'CASH',
     note: '',
 });
@@ -83,7 +84,7 @@ const formatCurrency = (value) =>
 
 const formatDate = (value) =>
     value
-        ? new Date(value).toLocaleDateString('en-IN', {
+        ? formatIndianDate(value, {
               day: 'numeric',
               month: 'short',
               year: 'numeric',
@@ -94,7 +95,7 @@ const openEnrollDialog = () => {
     schemeForm.reset();
     schemeForm.clearErrors();
     schemeForm.id = null;
-    schemeForm.start_date = new Date().toISOString().split('T')[0];
+    schemeForm.start_date = todayIndianDate();
     schemeForm.total_months = 11;
     schemeForm.already_paid_months = 0;
     schemeForm.import_mode = 'HISTORY_ONLY';
@@ -134,9 +135,9 @@ watch(
     (value) => {
         if (schemeForm.id) return;
 
-        const today = new Date();
+        const today = new Date(`${todayIndianDate()}T00:00:00`);
         today.setMonth(today.getMonth() - Number(value || 0));
-        schemeForm.start_date = today.toISOString().split('T')[0];
+        schemeForm.start_date = toIndianDateInput(today);
     }
 );
 
@@ -172,7 +173,7 @@ const openCollectDialog = (installment) => {
     installmentForm.reset();
     installmentForm.clearErrors();
     installmentForm.amount_paid = Number(installment.amount_due);
-    installmentForm.paid_on = new Date().toISOString().split('T')[0];
+    installmentForm.paid_on = todayIndianDate();
     installmentForm.payment_method = 'CASH';
     installmentForm.note = '';
     collectDialog.value = true;

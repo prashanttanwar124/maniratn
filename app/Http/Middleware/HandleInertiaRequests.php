@@ -53,6 +53,7 @@ class HandleInertiaRequests extends Middleware
         $hasAnyRegister = DailyRegister::query()->exists();
         $cashVault = Vault::query()->where('type', 'CASH')->value('balance') ?? 0;
         $goldVault = Vault::query()->where('type', 'GOLD')->value('balance') ?? 0;
+        $silverVault = Vault::query()->where('type', 'SILVER')->value('balance') ?? 0;
 
         return [
             ...parent::share($request),
@@ -70,9 +71,11 @@ class HandleInertiaRequests extends Middleware
                 'is_initial_setup' => ! $hasAnyRegister,
                 'expected_opening_cash' => (float) ($lastClosedRegister?->closing_cash ?? 0),
                 'expected_opening_gold' => (float) ($lastClosedRegister?->closing_gold ?? 0),
+                'expected_opening_silver' => (float) ($lastClosedRegister?->closing_silver ?? 0),
                 'expected_opening_date' => optional($lastClosedRegister?->date)?->toDateString(),
                 'current_vault_cash' => (float) $cashVault,
                 'current_vault_gold' => (float) $goldVault,
+                'current_vault_silver' => (float) $silverVault,
             ],
             'auth' => [
                 'user' => $user,

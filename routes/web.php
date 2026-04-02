@@ -7,6 +7,7 @@ use Laravel\Fortify\Features;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\StaffController;
 use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\InvoiceController;
@@ -18,6 +19,8 @@ use App\Http\Controllers\MortgageController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\KarigarController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AttendanceTerminalController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\MetalTransactionController;
 use App\Http\Controllers\GoldSchemeController;
@@ -30,48 +33,15 @@ use App\Http\Controllers\GoldSchemeController;
 
 Route::redirect('/', '/dashboard')->name('home');
 
-// Utility API Route (Used by Frontend to scan barcodes)
-Route::get('/api/products/{barcode}', function ($barcode) {
-    $normalizedBarcode = strtoupper(trim($barcode));
-
-    $product = Product::with(['category', 'purity'])
-        ->where('barcode', $normalizedBarcode)
-        ->first();
-
-    if (! $product && preg_match('/^G(\d{5})$/', $normalizedBarcode, $matches)) {
-        $product = Product::with(['category', 'purity'])->find((int) $matches[1]);
-    }
-
-    if (! $product && preg_match('/^MJ-[A-Z0-9]+-(\d{5})$/', $normalizedBarcode, $matches)) {
-        $candidate = Product::with(['category', 'purity'])->find((int) $matches[1]);
-        $product = $candidate && strtoupper($candidate->legacyBarcode()) === $normalizedBarcode ? $candidate : null;
-    }
-
-    abort_unless($product, 404);
-
-    return $product;
-});
-
-Route::get('/api/silver-products/{barcode}', function ($barcode) {
-    $normalizedBarcode = strtoupper(trim($barcode));
-
-    $product = SilverProduct::with(['category', 'supplier'])
-        ->where('barcode', $normalizedBarcode)
-        ->first();
-
-    if (! $product && preg_match('/^S(\d{5})$/', $normalizedBarcode, $matches)) {
-        $product = SilverProduct::with(['category', 'supplier'])->find((int) $matches[1]);
-    }
-
-    if (! $product && preg_match('/^MS-[A-Z0-9]+-(\d{5})$/', $normalizedBarcode, $matches)) {
-        $candidate = SilverProduct::with(['category', 'supplier'])->find((int) $matches[1]);
-        $product = $candidate && strtoupper($candidate->legacyBarcode()) === $normalizedBarcode ? $candidate : null;
-    }
-
-    abort_unless($product, 404);
-
-    return $product;
-});
+Route::get('/attendance-terminal', [AttendanceTerminalController::class, 'show'])
+    ->middleware('throttle:60,1')
+    ->name('attendance-terminal.show');
+Route::post('/attendance-terminal/identify', [AttendanceTerminalController::class, 'identify'])
+    ->middleware('throttle:120,1')
+    ->name('attendance-terminal.identify');
+Route::post('/attendance-terminal/act', [AttendanceTerminalController::class, 'act'])
+    ->middleware('throttle:120,1')
+    ->name('attendance-terminal.act');
 
 Route::get('/api/inventory/{barcode}', function ($barcode) {
     $normalizedBarcode = strtoupper(trim($barcode));
@@ -83,11 +53,6 @@ Route::get('/api/inventory/{barcode}', function ($barcode) {
 
         if (! $product && preg_match('/^G(\d{5})$/', $normalizedBarcode, $matches)) {
             $product = Product::with(['category', 'purity'])->find((int) $matches[1]);
-        }
-
-        if (! $product && preg_match('/^MJ-[A-Z0-9]+-(\d{5})$/', $normalizedBarcode, $matches)) {
-            $candidate = Product::with(['category', 'purity'])->find((int) $matches[1]);
-            $product = $candidate && strtoupper($candidate->legacyBarcode()) === $normalizedBarcode ? $candidate : null;
         }
 
         return $product;
@@ -102,21 +67,16 @@ Route::get('/api/inventory/{barcode}', function ($barcode) {
             $product = SilverProduct::with(['category', 'supplier'])->find((int) $matches[1]);
         }
 
-        if (! $product && preg_match('/^MS-[A-Z0-9]+-(\d{5})$/', $normalizedBarcode, $matches)) {
-            $candidate = SilverProduct::with(['category', 'supplier'])->find((int) $matches[1]);
-            $product = $candidate && strtoupper($candidate->legacyBarcode()) === $normalizedBarcode ? $candidate : null;
-        }
-
         return $product;
     };
 
     $record = null;
     $type = null;
 
-    if (str_starts_with($normalizedBarcode, 'MS-') || preg_match('/^S\d{5}$/', $normalizedBarcode)) {
+    if (preg_match('/^S\d{5}$/', $normalizedBarcode)) {
         $record = $silverQuery();
         $type = $record ? 'silver_product' : null;
-    } elseif (str_starts_with($normalizedBarcode, 'MJ-') || preg_match('/^G\d{5}$/', $normalizedBarcode)) {
+    } elseif (preg_match('/^G\d{5}$/', $normalizedBarcode)) {
         $record = $goldQuery();
         $type = $record ? 'product' : null;
     }
@@ -185,6 +145,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/users', [UserManagementController::class, 'store'])->middleware('permission:manage_users')->name('users.store');
         Route::patch('/users/{user}', [UserManagementController::class, 'update'])->middleware('permission:manage_users')->name('users.update');
         Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])->middleware('permission:manage_users')->name('users.destroy');
+        Route::get('/attendance', [AttendanceController::class, 'index'])->middleware('permission:manage_users')->name('attendance.index');
+        Route::post('/attendance/{attendance}/reopen', [AttendanceController::class, 'reopen'])->middleware(['permission:manage_users', 'day.open'])->name('attendance.reopen');
+        Route::post('/attendance/reasons', [AttendanceController::class, 'storeReason'])->middleware(['permission:manage_users', 'day.open'])->name('attendance.reasons.store');
+        Route::patch('/attendance/reasons/{reason}', [AttendanceController::class, 'updateReason'])->middleware(['permission:manage_users', 'day.open'])->name('attendance.reasons.update');
+        Route::delete('/attendance/reasons/{reason}', [AttendanceController::class, 'destroyReason'])->middleware(['permission:manage_users', 'day.open'])->name('attendance.reasons.destroy');
         Route::post('/roles', [UserManagementController::class, 'storeRole'])->middleware('permission:manage_roles_permissions')->name('roles.store');
         Route::patch('/roles/{role}', [UserManagementController::class, 'updateRole'])->middleware('permission:manage_roles_permissions')->name('roles.update');
         Route::delete('/roles/{role}', [UserManagementController::class, 'destroyRole'])->middleware('permission:manage_roles_permissions')->name('roles.destroy');
@@ -280,6 +245,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/karigars', [KarigarController::class, 'store'])->middleware(['permission:manage_orders|settle_karigar', 'day.open'])->name('karigars.store');
     Route::put('/karigars/{karigar}', [KarigarController::class, 'update'])->middleware(['permission:manage_orders|settle_karigar', 'day.open'])->name('karigars.update');
     Route::delete('/karigars/{karigar}', [KarigarController::class, 'destroy'])->middleware(['permission:manage_orders|settle_karigar', 'day.open'])->name('karigars.destroy');
+
+    Route::get('/staff', [StaffController::class, 'index'])->middleware('permission:manage_users')->name('staff.index');
+    Route::post('/staff', [StaffController::class, 'store'])->middleware(['permission:manage_users', 'day.open'])->name('staff.store');
+    Route::put('/staff/{staff}', [StaffController::class, 'update'])->middleware(['permission:manage_users', 'day.open'])->name('staff.update');
+    Route::delete('/staff/{staff}', [StaffController::class, 'destroy'])->middleware(['permission:manage_users', 'day.open'])->name('staff.destroy');
 
 
 

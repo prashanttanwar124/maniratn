@@ -15,6 +15,7 @@ import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
+import { todayIndianDate } from '@/utils/indiaTime';
 
 const props = defineProps({
     party: Object,
@@ -51,7 +52,7 @@ const form = useForm({
     payment_method: 'CASH',
     rate: null,
     description: '',
-    date: new Date().toISOString().split('T')[0],
+    date: todayIndianDate(),
 });
 
 const partyTypeName = computed(() => props.party_type_class.split('\\').pop());
@@ -110,7 +111,7 @@ const openEntryModal = () => {
     form.party_id = props.party?.id;
     form.entry_type = 'ISSUE_GOLD';
     form.payment_method = 'CASH';
-    form.date = new Date().toISOString().split('T')[0];
+    form.date = todayIndianDate();
     showDialog.value = true;
 };
 
@@ -343,7 +344,7 @@ const submitTransaction = () => {
             form.entry_type = 'ISSUE_GOLD';
             form.purity = 91.6;
             form.payment_method = 'CASH';
-            form.date = new Date().toISOString().split('T')[0];
+            form.date = todayIndianDate();
 
             toast.add({
                 severity: 'success',

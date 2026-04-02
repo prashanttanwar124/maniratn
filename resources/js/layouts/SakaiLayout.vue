@@ -41,10 +41,12 @@ const showOpenDayModal = computed(() => !dayStatus.value.is_open);
 const isInitialSetup = computed(() => Boolean(dayStatus.value.is_initial_setup));
 const expectedOpeningCash = computed(() => Number(dayStatus.value.expected_opening_cash || 0));
 const expectedOpeningGold = computed(() => Number(dayStatus.value.expected_opening_gold || 0));
-const hasExpectedOpening = computed(() => expectedOpeningCash.value > 0 || expectedOpeningGold.value > 0);
+const expectedOpeningSilver = computed(() => Number(dayStatus.value.expected_opening_silver || 0));
+const hasExpectedOpening = computed(() => expectedOpeningCash.value > 0 || expectedOpeningGold.value > 0 || expectedOpeningSilver.value > 0);
 const openDayForm = useForm({
     opening_cash: 0,
     opening_gold: 0,
+    opening_silver: 0,
     mismatch_reason: '',
     reopen_reason: '',
 });
@@ -52,7 +54,8 @@ const openDayForm = useForm({
 const openingMismatch = computed(() => {
     return hasExpectedOpening.value && (
         Math.abs(Number(openDayForm.opening_cash || 0) - expectedOpeningCash.value) > 0.0001 ||
-        Math.abs(Number(openDayForm.opening_gold || 0) - expectedOpeningGold.value) > 0.0001
+        Math.abs(Number(openDayForm.opening_gold || 0) - expectedOpeningGold.value) > 0.0001 ||
+        Math.abs(Number(openDayForm.opening_silver || 0) - expectedOpeningSilver.value) > 0.0001
     );
 });
 
@@ -63,6 +66,7 @@ watch(
             openDayForm.defaults({
                 opening_cash: expectedOpeningCash.value,
                 opening_gold: expectedOpeningGold.value,
+                opening_silver: expectedOpeningSilver.value,
                 mismatch_reason: '',
             });
             openDayForm.reset();
@@ -103,7 +107,7 @@ watch(
                 <Toast />
                 <ConfirmDialog />
                 <div v-if="!dayStatus.is_open" class="mb-4 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                    Shop day is closed. Enter opening cash and gold on the dashboard before creating or updating business records.
+                    Shop day is closed. Enter opening cash, gold, and silver on the dashboard before creating or updating business records.
                 </div>
                 <slot />
             </div>
@@ -121,7 +125,7 @@ watch(
             <div class="space-y-4 pt-2">
                 <div class="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                     {{ isInitialSetup
-                        ? 'This is the first time the software is being opened. Enter the business opening cash and gold to initialize the system.'
+                        ? 'This is the first time the software is being opened. Enter the business opening cash, gold, and silver to initialize the system.'
                         : "Record today's counted opening balances before using billing, ledger, order, expense, or recovery actions." }}
                 </div>
 
@@ -137,6 +141,7 @@ watch(
                         <div class="mt-1 flex items-center justify-between gap-4 text-xs text-surface-500">
                             <span>Cash: {{ expectedOpeningCash.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }) }}</span>
                             <span>Gold: {{ expectedOpeningGold.toFixed(3) }} g</span>
+                            <span>Silver: {{ expectedOpeningSilver.toFixed(3) }} g</span>
                         </div>
                         <div v-if="dayStatus.expected_opening_date" class="mt-1 text-xs text-surface-400">
                             Based on close of {{ dayStatus.expected_opening_date }}
@@ -166,6 +171,19 @@ watch(
                         </small>
                         <small v-if="openDayForm.errors.opening_gold" class="mt-1 block text-xs text-red-500">
                             {{ openDayForm.errors.opening_gold }}
+                        </small>
+                    </div>
+
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Counted Opening Silver</label>
+                        <InputNumber v-model="openDayForm.opening_silver" :minFractionDigits="3" suffix=" g" class="w-full" />
+                        <small class="mt-1 block text-xs text-surface-500">
+                            {{ isInitialSetup
+                                ? 'Enter the loose silver physically available in the business when starting the software.'
+                                : 'Enter the physically counted opening silver. Zero is not allowed.' }}
+                        </small>
+                        <small v-if="openDayForm.errors.opening_silver" class="mt-1 block text-xs text-red-500">
+                            {{ openDayForm.errors.opening_silver }}
                         </small>
                     </div>
 

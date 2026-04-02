@@ -4,6 +4,8 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -24,6 +26,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'attendance_enabled',
+        'attendance_passcode',
     ];
 
     /**
@@ -33,6 +37,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
+        'attendance_passcode',
         'remember_token',
     ];
 
@@ -46,6 +51,22 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'attendance_enabled' => 'boolean',
         ];
+    }
+
+    public function staffAttendances(): HasMany
+    {
+        return $this->hasMany(StaffAttendance::class);
+    }
+
+    public function staffPresenceEvents(): HasMany
+    {
+        return $this->hasMany(StaffPresenceEvent::class);
+    }
+
+    public function staffProfile(): HasOne
+    {
+        return $this->hasOne(Staff::class);
     }
 }

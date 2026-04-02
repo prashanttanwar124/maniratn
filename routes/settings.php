@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
+use App\Http\Controllers\Settings\BusinessSettingController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use Illuminate\Support\Facades\Route;
 
@@ -11,6 +12,12 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('settings/business-profile', [BusinessSettingController::class, 'edit'])
+        ->middleware('permission:manage_users')
+        ->name('business-settings.edit');
+    Route::match(['put', 'patch'], 'settings/business-profile', [BusinessSettingController::class, 'update'])
+        ->middleware('permission:manage_users')
+        ->name('business-settings.update');
 
     Route::get('settings/password', [PasswordController::class, 'edit'])->name('user-password.edit');
 
