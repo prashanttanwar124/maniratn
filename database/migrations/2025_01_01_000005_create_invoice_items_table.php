@@ -12,6 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('invoice_items', function (Blueprint $table) {
+            $table->id();
+
             // 1. LINK TO THE BILL (Crucial!)
             $table->foreignId('invoice_id')->constrained()->cascadeOnDelete();
 

@@ -34,4 +34,13 @@ export default defineConfig({
             '@': resolve(__dirname, 'resources/js'),
         },
     },
+    server: {
+        host: '0.0.0.0',
+        port: 5173,
+        strictPort: true,
+        cors: true,
+        hmr: {
+            host: process.env.VITE_DEV_SERVER_HOST || 'localhost',
+        },
+    },
 });

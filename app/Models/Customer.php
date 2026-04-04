@@ -47,6 +47,11 @@ class Customer extends Model
         return $this->hasMany(CustomerGoldScheme::class);
     }
 
+    public function verificationTags()
+    {
+        return $this->hasMany(VerificationTag::class);
+    }
+
     // 2. METAL Transactions (Add This)
     public function metalTransactions(): MorphMany
     {

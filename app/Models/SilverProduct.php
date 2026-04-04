@@ -18,6 +18,11 @@ class SilverProduct extends Model
         return $this->belongsTo(Supplier::class);
     }
 
+    public function verificationTags()
+    {
+        return $this->hasMany(VerificationTag::class);
+    }
+
     protected static function boot()
     {
         parent::boot();

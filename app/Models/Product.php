@@ -25,6 +25,11 @@ class Product extends Model
         return $this->belongsTo(Purity::class);
     }
 
+    public function verificationTags()
+    {
+        return $this->hasMany(VerificationTag::class);
+    }
+
     // AUTO-BARCODE LOGIC
     protected static function boot()
     {

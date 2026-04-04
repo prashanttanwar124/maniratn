@@ -21,6 +21,7 @@ use App\Http\Controllers\KarigarController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AttendanceTerminalController;
+use App\Http\Controllers\VerificationTagController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\MetalTransactionController;
 use App\Http\Controllers\GoldSchemeController;
@@ -225,6 +226,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/invoices/drafts/{invoiceDraft}', [InvoiceController::class, 'destroyDraft'])->middleware('permission:manage_invoices')->name('invoices.drafts.destroy');
     Route::post('/invoice/store', [InvoiceController::class, 'store'])->middleware(['permission:manage_invoices', 'day.open'])->name('invoices.store');
     Route::post('/invoices/{id}/cancel', [InvoiceController::class, 'cancel'])->middleware(['permission:manage_invoices', 'day.open'])->name('invoices.cancel');
+    Route::get('/verification-tags', [VerificationTagController::class, 'index'])->middleware('permission:manage_invoices')->name('verification-tags.index');
+    Route::post('/verification-tags', [VerificationTagController::class, 'store'])->middleware(['permission:manage_invoices', 'day.open'])->name('verification-tags.store');
+    Route::get('/verification-tags/{verificationTag}/qr', [VerificationTagController::class, 'qr'])->middleware('permission:manage_invoices')->name('verification-tags.qr');
+    Route::get('/verification-tags/{verificationTag}/writer', [VerificationTagController::class, 'writer'])->middleware('permission:manage_invoices')->name('verification-tags.writer');
+    Route::post('/verification-tags/{verificationTag}/confirm-written', [VerificationTagController::class, 'confirmWritten'])->middleware(['permission:manage_invoices', 'day.open'])->name('verification-tags.confirm-written');
+    Route::patch('/verification-tags/{verificationTag}/written', [VerificationTagController::class, 'markWritten'])->middleware(['permission:manage_invoices', 'day.open'])->name('verification-tags.written');
+    Route::patch('/verification-tags/{verificationTag}/lock', [VerificationTagController::class, 'lock'])->middleware(['permission:manage_invoices', 'day.open'])->name('verification-tags.lock');
+    Route::patch('/verification-tags/{verificationTag}/deactivate', [VerificationTagController::class, 'deactivate'])->middleware(['permission:manage_invoices', 'day.open'])->name('verification-tags.deactivate');
 
     // --- CATEGORIES ---
     Route::get('categories', [CategoryController::class, 'index'])->middleware('permission:manage_categories')->name('categories');

@@ -8,6 +8,11 @@ class InvoiceItem extends Model
 {
     protected $guarded = [];
 
+    public function verificationTags()
+    {
+        return $this->hasMany(VerificationTag::class);
+    }
+
     public function product()
     {
         return $this->belongsTo(Product::class);
