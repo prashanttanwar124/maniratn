@@ -16,6 +16,7 @@ const model = [
         items: [
             { label: 'New Invoice', icon: 'pi pi-fw pi-file-plus', to: '/invoices/create', visible: Boolean(can.manage_invoices) },
             { label: 'Invoices', icon: 'pi pi-fw pi-file', to: '/invoices', visible: Boolean(can.manage_invoices) },
+            { label: 'Verification Tags', icon: 'pi pi-fw pi-verified', to: '/verification-tags', visible: Boolean(can.manage_invoices) },
         ],
     },
     {
