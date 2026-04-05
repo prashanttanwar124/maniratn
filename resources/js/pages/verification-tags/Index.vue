@@ -17,11 +17,7 @@ const props = defineProps({
 });
 
 const showCreateDialog = ref(false);
-const showQrDialog = ref(false);
 const copiedToken = ref(null);
-const selectedWriterLink = ref('');
-const selectedWriterToken = ref('');
-const selectedQrImageUrl = ref('');
 
 const createForm = useForm({
     invoice_item_id: null,
@@ -85,13 +81,6 @@ const copyToClipboard = async (value, token) => {
     }
 };
 
-const openQrDialog = (tagId, token) => {
-    selectedWriterLink.value = route('verification-tags.writer', tagId);
-    selectedWriterToken.value = token;
-    selectedQrImageUrl.value = route('verification-tags.qr', tagId);
-    showQrDialog.value = true;
-};
-
 const openWriter = (tagId) => {
     const writerUrl = route('verification-tags.writer', tagId);
     window.open(writerUrl, '_blank', 'noopener');
@@ -137,7 +126,7 @@ const openWriter = (tagId) => {
                 <div class="flex flex-col gap-2 border-b border-surface-200 px-5 py-4 md:flex-row md:items-center md:justify-between">
                     <div>
                         <h3 class="text-base font-semibold text-surface-900">Tag Register</h3>
-                        <p class="mt-1 text-sm text-surface-500">Each tag gets a neutral `tag_...` token and a public verification URL. Staff can copy the URL onto mobile for NFC write tools.</p>
+                        <p class="mt-1 text-sm text-surface-500">Each tag gets a neutral `tag_...` token and a public verification URL. Use the desktop writer page with your PC NFC reader/writer to write and then lock the tag.</p>
                     </div>
                 </div>
 
@@ -179,15 +168,7 @@ const openWriter = (tagId) => {
                         <div class="flex flex-wrap gap-2 lg:justify-end">
                             <Button
                                 v-if="tag.is_active"
-                                label="Show QR"
-                                icon="pi pi-qrcode"
-                                outlined
-                                size="small"
-                                @click="openQrDialog(tag.id, tag.token)"
-                            />
-                            <Button
-                                v-if="tag.is_active"
-                                label="Open Writer"
+                                label="Open Desktop Writer"
                                 icon="pi pi-external-link"
                                 size="small"
                                 @click="openWriter(tag.id)"
@@ -254,27 +235,6 @@ const openWriter = (tagId) => {
                 <div class="flex justify-end gap-2 pt-2">
                     <Button label="Cancel" text @click="showCreateDialog = false" />
                     <Button label="Create Tag" icon="pi pi-plus" @click="createTag" :loading="createForm.processing" />
-                </div>
-            </div>
-        </Dialog>
-
-        <Dialog v-model:visible="showQrDialog" header="Show QR for Mobile" modal class="w-full max-w-md">
-            <div class="space-y-4 pt-2">
-                <div class="border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-700">
-                    Scan this QR on the Android phone to open the NFC writer page for
-                    <span class="font-semibold text-surface-900">{{ selectedWriterToken }}</span>.
-                </div>
-
-                <div class="flex justify-center border border-surface-200 bg-white p-4">
-                    <img v-if="selectedQrImageUrl" :src="selectedQrImageUrl" alt="Writer page QR code" class="h-72 w-72 object-contain" />
-                </div>
-
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-surface-700">Writer Link</label>
-                    <div class="flex items-start gap-2">
-                        <InputText :model-value="selectedWriterLink" readonly class="w-full" />
-                        <Button icon="pi pi-copy" outlined @click="copyToClipboard(selectedWriterLink, selectedWriterToken)" />
-                    </div>
                 </div>
             </div>
         </Dialog>

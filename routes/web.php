@@ -231,6 +231,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/verification-tags/{verificationTag}/qr', [VerificationTagController::class, 'qr'])->middleware('permission:manage_invoices')->name('verification-tags.qr');
     Route::get('/verification-tags/{verificationTag}/writer', [VerificationTagController::class, 'writer'])->middleware('permission:manage_invoices')->name('verification-tags.writer');
     Route::post('/verification-tags/{verificationTag}/confirm-written', [VerificationTagController::class, 'confirmWritten'])->middleware(['permission:manage_invoices', 'day.open'])->name('verification-tags.confirm-written');
+    Route::post('/verification-tags/{verificationTag}/confirm-locked', [VerificationTagController::class, 'confirmLocked'])->middleware(['permission:manage_invoices', 'day.open'])->name('verification-tags.confirm-locked');
     Route::patch('/verification-tags/{verificationTag}/written', [VerificationTagController::class, 'markWritten'])->middleware(['permission:manage_invoices', 'day.open'])->name('verification-tags.written');
     Route::patch('/verification-tags/{verificationTag}/lock', [VerificationTagController::class, 'lock'])->middleware(['permission:manage_invoices', 'day.open'])->name('verification-tags.lock');
     Route::patch('/verification-tags/{verificationTag}/deactivate', [VerificationTagController::class, 'deactivate'])->middleware(['permission:manage_invoices', 'day.open'])->name('verification-tags.deactivate');

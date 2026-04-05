@@ -181,6 +181,26 @@ class VerificationTagController extends Controller
         ]);
     }
 
+    public function confirmLocked(Request $request, VerificationTag $verificationTag)
+    {
+        $validated = $request->validate([
+            'nfc_uid' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $verificationTag->update([
+            'status' => 'LOCKED',
+            'written_by' => Auth::id(),
+            'written_at' => $verificationTag->written_at ?: now(),
+            'locked_at' => $verificationTag->locked_at ?: now(),
+            'nfc_uid' => $validated['nfc_uid'] ?? $verificationTag->nfc_uid,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tag locked successfully.',
+        ]);
+    }
+
     public function lock(VerificationTag $verificationTag): RedirectResponse
     {
         $verificationTag->update([
