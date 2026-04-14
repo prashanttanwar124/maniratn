@@ -28,6 +28,7 @@ class User extends Authenticatable
         'password',
         'attendance_enabled',
         'attendance_passcode',
+        'attendance_card_uid',
     ];
 
     /**

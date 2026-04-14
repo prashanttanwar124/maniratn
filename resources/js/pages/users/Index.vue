@@ -1,5 +1,6 @@
 <script setup>
 import AppLayout from '@/layouts/AppLayout.vue';
+import axios from 'axios';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { route } from 'ziggy-js';
@@ -30,6 +31,7 @@ const showPermissionDialog = ref(false);
 const editingUser = ref(null);
 const editingRole = ref(null);
 const editingPermission = ref(null);
+const cardReadLoading = ref(false);
 
 const userForm = useForm({
     name: '',
@@ -38,6 +40,7 @@ const userForm = useForm({
     role: 'staff',
     attendance_enabled: false,
     attendance_passcode: '',
+    attendance_card_uid: '',
     permissions: [],
 });
 
@@ -71,6 +74,7 @@ const openUserDialog = () => {
     userForm.role = 'staff';
     userForm.attendance_enabled = false;
     userForm.attendance_passcode = '';
+    userForm.attendance_card_uid = '';
     userForm.permissions = [];
     editingUser.value = null;
     showUserDialog.value = true;
@@ -118,6 +122,7 @@ const editUser = (user) => {
     userForm.role = user.roles[0] || 'basic';
     userForm.attendance_enabled = Boolean(user.attendance_enabled);
     userForm.attendance_passcode = '';
+    userForm.attendance_card_uid = user.attendance_card_uid || '';
     userForm.permissions = [...user.permissions];
     editingUser.value = user;
     showUserDialog.value = true;
@@ -296,6 +301,121 @@ const deletePermission = (permission) => {
 };
 
 const isInheritedPermission = (permission) => inheritedPermissionSet.value.has(permission.value);
+
+const helperBaseUrl = 'http://127.0.0.1:8090';
+
+const parseHelperError = async (response) => {
+    const fallback = `Local NFC helper request failed (${response.status} ${response.statusText || 'Error'}).`;
+
+    try {
+        const contentType = response.headers.get('content-type') || '';
+
+        if (contentType.includes('application/json')) {
+            const data = await response.json();
+            const message = data?.message || data?.error || data?.detail;
+
+            return message ? `${fallback} ${message}` : fallback;
+        }
+
+        const text = (await response.text()).trim();
+        return text ? `${fallback} ${text}` : fallback;
+    } catch {
+        return fallback;
+    }
+};
+
+const readAttendanceCardIntoForm = async () => {
+    cardReadLoading.value = true;
+
+    try {
+        const response = await fetch(`${helperBaseUrl}/nfc/read`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+            },
+            body: JSON.stringify({
+                context: 'attendance-register',
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(await parseHelperError(response));
+        }
+
+        const payload = await response.json();
+        const cardUid = payload.card_uid || payload.uid || payload.nfc_uid;
+
+        if (!cardUid) {
+            throw new Error('The NFC helper did not return a card UID.');
+        }
+
+        userForm.attendance_card_uid = cardUid;
+        toast.add({ severity: 'success', summary: 'Card Read', detail: 'Attendance card UID captured successfully', life: 3000 });
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Reader Error', detail: error.message || 'Unable to read attendance card', life: 4000 });
+    } finally {
+        cardReadLoading.value = false;
+    }
+};
+
+const assignAttendanceCard = async (user) => {
+    cardReadLoading.value = true;
+
+    try {
+        const helperResponse = await fetch(`${helperBaseUrl}/nfc/read`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+            },
+            body: JSON.stringify({
+                context: 'attendance-register',
+            }),
+        });
+
+        if (!helperResponse.ok) {
+            throw new Error(await parseHelperError(helperResponse));
+        }
+
+        const payload = await helperResponse.json();
+        const cardUid = payload.card_uid || payload.uid || payload.nfc_uid;
+
+        if (!cardUid) {
+            throw new Error('The NFC helper did not return a card UID.');
+        }
+
+        await axios.post(route('users.attendance-card.assign', user.id), {
+            card_uid: cardUid,
+        });
+
+        toast.add({ severity: 'success', summary: 'Card Assigned', detail: `Attendance card assigned to ${user.name}`, life: 3000 });
+        router.reload({ only: ['users'] });
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'Assign Failed',
+            detail: error.response?.data?.message || error.message || 'Unable to assign attendance card',
+            life: 4000,
+        });
+    } finally {
+        cardReadLoading.value = false;
+    }
+};
+
+const clearAttendanceCard = (user) => {
+    if (!window.confirm(`Remove attendance card from "${user.name}"?`)) return;
+
+    router.delete(route('users.attendance-card.clear', user.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            toast.add({ severity: 'success', summary: 'Card Removed', detail: 'Attendance card removed successfully', life: 3000 });
+        },
+        onError: () => {
+            toast.add({ severity: 'error', summary: 'Error', detail: 'Unable to remove attendance card', life: 3000 });
+        },
+    });
+};
 </script>
 
 <template>
@@ -358,6 +478,7 @@ const isInheritedPermission = (permission) => inheritedPermissionSet.value.has(p
                                     <div class="flex flex-wrap gap-2">
                                         <Tag :value="data.attendance_enabled ? 'Enabled' : 'Disabled'" :severity="data.attendance_enabled ? 'success' : 'secondary'" />
                                         <Tag v-if="data.has_attendance_passcode" value="Passcode Set" severity="contrast" />
+                                        <Tag v-if="data.has_attendance_card" value="Card Linked" severity="info" />
                                     </div>
                                 </template>
                             </Column>
@@ -365,6 +486,8 @@ const isInheritedPermission = (permission) => inheritedPermissionSet.value.has(p
                             <Column header="" style="width: 160px">
                                 <template #body="{ data }">
                                     <div class="flex justify-end gap-1">
+                                        <Button icon="pi pi-id-card" text size="small" :disabled="cardReadLoading" @click="assignAttendanceCard(data)" />
+                                        <Button v-if="data.has_attendance_card" icon="pi pi-times" text severity="warn" size="small" :disabled="cardReadLoading" @click="clearAttendanceCard(data)" />
                                         <Button icon="pi pi-pencil" text size="small" @click="editUser(data)" />
                                         <Button icon="pi pi-trash" text severity="danger" size="small" @click="deleteUser(data)" />
                                     </div>
@@ -482,6 +605,21 @@ const isInheritedPermission = (permission) => inheritedPermissionSet.value.has(p
                             {{ editingUser ? 'Leave blank to keep the existing passcode.' : 'This passcode will be used on the attendance terminal.' }}
                         </small>
                         <small v-if="userForm.errors.attendance_passcode" class="mt-1 block text-xs text-red-500">{{ userForm.errors.attendance_passcode }}</small>
+                    </div>
+
+                    <div class="mt-4">
+                        <div class="flex flex-col gap-3 md:flex-row md:items-end">
+                            <div class="flex-1">
+                                <label class="mb-2 block text-sm font-medium text-surface-700">Attendance Card UID</label>
+                                <InputText v-model="userForm.attendance_card_uid" class="w-full" placeholder="Tap a card with the local NFC reader or enter UID manually" />
+                                <small class="mt-1 block text-xs text-surface-500">This UID is used for tap-based attendance on the terminal.</small>
+                                <small v-if="userForm.errors.attendance_card_uid" class="mt-1 block text-xs text-red-500">{{ userForm.errors.attendance_card_uid }}</small>
+                            </div>
+                            <div class="flex gap-2">
+                                <Button label="Read Card" icon="pi pi-id-card" outlined :loading="cardReadLoading" :disabled="cardReadLoading" @click="readAttendanceCardIntoForm" />
+                                <Button v-if="userForm.attendance_card_uid" label="Clear" severity="danger" text :disabled="cardReadLoading" @click="userForm.attendance_card_uid = ''" />
+                            </div>
+                        </div>
                     </div>
                 </div>
 

@@ -6,16 +6,19 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import Tag from 'primevue/tag';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { formatIndianDate } from '@/utils/indiaTime';
 
 const props = defineProps({
     reasons: Array,
 });
 
+const helperBaseUrl = 'http://127.0.0.1:8090';
 const passcode = ref('');
 const notes = ref('');
 const loading = ref(false);
+const cardLoading = ref(false);
+const helperAvailable = ref(false);
 const activeUser = ref(null);
 const availableActions = ref([]);
 const currentState = ref('NOT_CHECKED_IN');
@@ -108,6 +111,39 @@ const resetAll = () => {
     error.value = '';
 };
 
+const parseHelperError = async (response) => {
+    const fallback = `Local NFC helper request failed (${response.status} ${response.statusText || 'Error'}).`;
+
+    try {
+        const contentType = response.headers.get('content-type') || '';
+
+        if (contentType.includes('application/json')) {
+            const data = await response.json();
+            const message = data?.message || data?.error || data?.detail;
+
+            return message ? `${fallback} ${message}` : fallback;
+        }
+
+        const text = (await response.text()).trim();
+        return text ? `${fallback} ${text}` : fallback;
+    } catch {
+        return fallback;
+    }
+};
+
+const applyIdentifyResponse = (response) => {
+    activeUser.value = response.data.user;
+    attendance.value = response.data.attendance;
+    currentState.value = response.data.state;
+    message.value = response.data.message;
+    availableActions.value = response.data.available_actions || [];
+
+    if (response.data.completed) {
+        resetTerminal();
+        message.value = response.data.message;
+    }
+};
+
 const submitPasscode = async () => {
     loading.value = true;
     error.value = '';
@@ -119,20 +155,55 @@ const submitPasscode = async () => {
             passcode: passcode.value,
         });
 
-        activeUser.value = response.data.user;
-        attendance.value = response.data.attendance;
-        currentState.value = response.data.state;
-        message.value = response.data.message;
-        availableActions.value = response.data.available_actions || [];
-
-        if (response.data.completed) {
-            resetTerminal();
-            message.value = response.data.message;
-        }
+        applyIdentifyResponse(response);
     } catch (err) {
         error.value = err.response?.data?.message || 'Unable to process attendance.';
     } finally {
         loading.value = false;
+    }
+};
+
+const readAttendanceCard = async () => {
+    cardLoading.value = true;
+    error.value = '';
+    message.value = '';
+    notes.value = '';
+
+    try {
+        const helperResponse = await fetch(`${helperBaseUrl}/nfc/read`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+            },
+            body: JSON.stringify({
+                context: 'attendance',
+            }),
+        });
+
+        if (!helperResponse.ok) {
+            throw new Error(await parseHelperError(helperResponse));
+        }
+
+        helperAvailable.value = true;
+
+        const helperPayload = await helperResponse.json();
+        const cardUid = helperPayload.card_uid || helperPayload.uid || helperPayload.nfc_uid;
+
+        if (!cardUid) {
+            throw new Error('The NFC helper did not return a card UID.');
+        }
+
+        const response = await axios.post(route('attendance-terminal.identify'), {
+            card_uid: cardUid,
+        });
+
+        applyIdentifyResponse(response);
+    } catch (err) {
+        helperAvailable.value = false;
+        error.value = err.response?.data?.message || err.message || 'Unable to read attendance card.';
+    } finally {
+        cardLoading.value = false;
     }
 };
 
@@ -157,6 +228,19 @@ const submitAction = async (action) => {
         loading.value = false;
     }
 };
+
+const checkHelper = async () => {
+    try {
+        const response = await fetch(`${helperBaseUrl}/health`);
+        helperAvailable.value = response.ok;
+    } catch {
+        helperAvailable.value = false;
+    }
+};
+
+onMounted(() => {
+    checkHelper();
+});
 </script>
 
 <template>
@@ -170,7 +254,7 @@ const submitAction = async (action) => {
                         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-500">Attendance Terminal</p>
                         <h1 class="mt-2 text-2xl font-semibold text-surface-900">Staff Attendance</h1>
                         <p class="mt-2 max-w-2xl text-sm text-surface-500">
-                            This screen is only for attendance. Staff enter their passcode, then choose the correct action shown on screen.
+                            This screen is only for attendance. Staff can enter their passcode or tap their NFC card, then choose the correct action shown on screen.
                         </p>
                     </div>
 
@@ -193,16 +277,35 @@ const submitAction = async (action) => {
 
             <div class="card">
                 <div class="border-b border-surface-200 pb-4">
-                    <div class="border border-primary-100 bg-primary-50 px-4 py-4">
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary-600">Current Step</p>
-                        <h2 class="mt-2 text-xl font-semibold text-surface-900">{{ terminalHeadline }}</h2>
-                        <p class="mt-2 text-sm text-surface-600">{{ terminalInstruction }}</p>
-                    </div>
+                        <div class="border border-primary-100 bg-primary-50 px-4 py-4">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary-600">Current Step</p>
+                            <h2 class="mt-2 text-xl font-semibold text-surface-900">{{ terminalHeadline }}</h2>
+                            <p class="mt-2 text-sm text-surface-600">{{ terminalInstruction }}</p>
+                            <p class="mt-3 text-xs" :class="helperAvailable ? 'text-emerald-700' : 'text-amber-700'">
+                                {{ helperAvailable ? 'Local NFC helper connected. Card tap is ready on this PC.' : 'Local NFC helper not detected. Passcode still works.' }}
+                            </p>
+                        </div>
                 </div>
 
                 <div class="space-y-5 pt-5">
                     <div class="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
                         <div class="space-y-5">
+                            <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div>
+                                        <label class="block text-sm font-medium text-surface-700">Tap Attendance Card</label>
+                                        <p class="mt-2 text-sm text-surface-500">Use the local NFC reader on this PC to identify the staff member without typing the passcode.</p>
+                                    </div>
+                                    <Button
+                                        label="Tap NFC Card"
+                                        icon="pi pi-id-card"
+                                        :loading="cardLoading"
+                                        :disabled="loading || cardLoading || !helperAvailable"
+                                        @click="readAttendanceCard"
+                                    />
+                                </div>
+                            </div>
+
                             <div>
                                 <label class="mb-2 block text-sm font-medium text-surface-700">Attendance Passcode</label>
                                 <InputText
@@ -212,7 +315,7 @@ const submitAction = async (action) => {
                                     placeholder="Enter staff passcode"
                                     @keyup.enter="submitPasscode"
                                 />
-                                <p class="mt-3 text-sm text-surface-500">Use the same passcode for check in, going out, coming back in, and check out.</p>
+                                <p class="mt-3 text-sm text-surface-500">Use the same passcode for check in, going out, coming back in, and check out. This stays available as a fallback if the NFC reader is not available.</p>
                             </div>
 
                             <div class="flex flex-wrap gap-2">

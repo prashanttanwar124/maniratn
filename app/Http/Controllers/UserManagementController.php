@@ -29,6 +29,8 @@ class UserManagementController extends Controller
                     'permissions' => $user->getDirectPermissions()->pluck('name')->values(),
                     'attendance_enabled' => (bool) $user->attendance_enabled,
                     'has_attendance_passcode' => ! empty($user->attendance_passcode),
+                    'attendance_card_uid' => $user->attendance_card_uid,
+                    'has_attendance_card' => filled($user->attendance_card_uid),
                 ];
             });
 
@@ -78,6 +80,7 @@ class UserManagementController extends Controller
             'role' => ['required', 'exists:roles,name'],
             'attendance_enabled' => ['nullable', 'boolean'],
             'attendance_passcode' => ['nullable', 'string', 'min:4', 'max:20'],
+            'attendance_card_uid' => ['nullable', 'string', 'max:255', 'unique:users,attendance_card_uid'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', 'exists:permissions,name'],
         ]);
@@ -94,6 +97,7 @@ class UserManagementController extends Controller
             'attendance_passcode' => filled($validated['attendance_passcode'] ?? null)
                 ? Hash::make($validated['attendance_passcode'])
                 : null,
+            'attendance_card_uid' => $validated['attendance_card_uid'] ?? null,
         ]);
 
         $user->syncRoles([$role->name]);
@@ -111,6 +115,7 @@ class UserManagementController extends Controller
             'role' => ['required', 'exists:roles,name'],
             'attendance_enabled' => ['nullable', 'boolean'],
             'attendance_passcode' => ['nullable', 'string', 'min:4', 'max:20'],
+            'attendance_card_uid' => ['nullable', 'string', 'max:255', 'unique:users,attendance_card_uid,' . $user->id],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', 'exists:permissions,name'],
         ]);
@@ -127,12 +132,37 @@ class UserManagementController extends Controller
             'attendance_passcode' => filled($validated['attendance_passcode'] ?? null)
                 ? Hash::make($validated['attendance_passcode'])
                 : $user->attendance_passcode,
+            'attendance_card_uid' => array_key_exists('attendance_card_uid', $validated)
+                ? ($validated['attendance_card_uid'] ?: null)
+                : $user->attendance_card_uid,
         ]);
 
         $user->syncRoles([$validated['role']]);
         $user->syncPermissions($validated['permissions'] ?? []);
 
         return back()->with('success', 'User updated successfully.');
+    }
+
+    public function assignAttendanceCard(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'card_uid' => ['required', 'string', 'max:255', 'unique:users,attendance_card_uid,' . $user->id],
+        ]);
+
+        $user->update([
+            'attendance_card_uid' => $validated['card_uid'],
+        ]);
+
+        return back()->with('success', 'Attendance card assigned successfully.');
+    }
+
+    public function clearAttendanceCard(User $user)
+    {
+        $user->update([
+            'attendance_card_uid' => null,
+        ]);
+
+        return back()->with('success', 'Attendance card removed successfully.');
     }
 
     public function destroy(User $user, Request $request)

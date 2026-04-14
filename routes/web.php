@@ -146,6 +146,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/users', [UserManagementController::class, 'store'])->middleware('permission:manage_users')->name('users.store');
         Route::patch('/users/{user}', [UserManagementController::class, 'update'])->middleware('permission:manage_users')->name('users.update');
         Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])->middleware('permission:manage_users')->name('users.destroy');
+        Route::post('/users/{user}/attendance-card', [UserManagementController::class, 'assignAttendanceCard'])->middleware(['permission:manage_users', 'day.open'])->name('users.attendance-card.assign');
+        Route::delete('/users/{user}/attendance-card', [UserManagementController::class, 'clearAttendanceCard'])->middleware(['permission:manage_users', 'day.open'])->name('users.attendance-card.clear');
         Route::get('/attendance', [AttendanceController::class, 'index'])->middleware('permission:manage_users')->name('attendance.index');
         Route::post('/attendance/{attendance}/reopen', [AttendanceController::class, 'reopen'])->middleware(['permission:manage_users', 'day.open'])->name('attendance.reopen');
         Route::post('/attendance/reasons', [AttendanceController::class, 'storeReason'])->middleware(['permission:manage_users', 'day.open'])->name('attendance.reasons.store');

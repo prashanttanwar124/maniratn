@@ -12,6 +12,7 @@ use App\Models\StaffAttendance;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Models\StaffPresenceEvent;
+use Illuminate\Validation\ValidationException;
 
 class AttendanceTerminalController extends Controller
 {
@@ -27,22 +28,42 @@ class AttendanceTerminalController extends Controller
     public function identify(Request $request)
     {
         $validated = $request->validate([
-            'passcode' => ['required', 'string'],
+            'passcode' => ['nullable', 'string'],
+            'card_uid' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $user = User::query()
-            ->with('staffProfile')
-            ->where('attendance_enabled', true)
-            ->get()
-            ->first(fn (User $candidate) => ! empty($candidate->attendance_passcode) && Hash::check($validated['passcode'], $candidate->attendance_passcode));
+        if (! filled($validated['passcode'] ?? null) && ! filled($validated['card_uid'] ?? null)) {
+            throw ValidationException::withMessages([
+                'passcode' => 'Enter a passcode or tap an NFC card.',
+            ]);
+        }
+
+        $user = filled($validated['card_uid'] ?? null)
+            ? User::query()
+                ->with('staffProfile')
+                ->where('attendance_enabled', true)
+                ->where('attendance_card_uid', $validated['card_uid'])
+                ->first()
+            : User::query()
+                ->with('staffProfile')
+                ->where('attendance_enabled', true)
+                ->get()
+                ->first(fn (User $candidate) => ! empty($candidate->attendance_passcode) && Hash::check($validated['passcode'], $candidate->attendance_passcode));
 
         if (! $user) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid attendance passcode.',
+                'message' => filled($validated['card_uid'] ?? null)
+                    ? 'This NFC card is not assigned to any attendance-enabled staff member.'
+                    : 'Invalid attendance passcode.',
             ], 422);
         }
 
+        return $this->completeIdentification($user);
+    }
+
+    private function completeIdentification(User $user)
+    {
         if ($user->staffProfile && ! $user->staffProfile->is_active) {
             return response()->json([
                 'success' => false,
@@ -224,6 +245,7 @@ class AttendanceTerminalController extends Controller
             'name' => $user->name,
             'designation' => $user->staffProfile?->designation,
             'staff_mobile' => $user->staffProfile?->mobile,
+            'has_attendance_card' => filled($user->attendance_card_uid),
         ];
     }
 
