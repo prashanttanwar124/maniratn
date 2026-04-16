@@ -2,6 +2,7 @@
 import AppFooter from '@/layout/AppFooter.vue';
 import AppSidebar from '@/layout/AppSidebar.vue';
 import AppTopbar from '@/layout/AppTopbar.vue';
+import AskAiDrawer from '@/components/AskAiDrawer.vue';
 import { useLayout } from '@/layout/composables/layout';
 import type { BreadcrumbItemType } from '@/types';
 import { useForm, usePage } from '@inertiajs/vue3';
@@ -11,7 +12,7 @@ import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
 import Textarea from 'primevue/textarea';
 import Toast from 'primevue/toast';
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
 
 interface Props {
@@ -23,6 +24,7 @@ withDefaults(defineProps<Props>(), {
 });
 
 const { layoutConfig, layoutState, isDesktop } = useLayout();
+const askAiVisible = ref(false);
 
 const containerClass = computed(() => ({
     'layout-overlay': layoutConfig.menuMode === 'overlay',
@@ -98,7 +100,7 @@ watch(
 
 <template>
     <div class="layout-wrapper" :class="containerClass">
-        <AppTopbar />
+        <AppTopbar @openAskAi="askAiVisible = true" />
         <div class="layout-sidebar">
             <AppSidebar />
         </div>
@@ -113,6 +115,7 @@ watch(
             </div>
             <AppFooter />
         </div>
+        <AskAiDrawer v-model:visible="askAiVisible" />
         <div class="layout-mask animate-fadein" />
         <Dialog
             :visible="showOpenDayModal"

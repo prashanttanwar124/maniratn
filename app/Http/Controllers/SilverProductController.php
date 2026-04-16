@@ -75,6 +75,25 @@ class SilverProductController extends Controller
             $validated['image_path'] = $request->file('image')->store('silver-products', 'public');
         }
 
+        if (! empty($validated['batch_items'])) {
+            $batchItems = $validated['batch_items'];
+            unset($validated['batch_items'], $validated['gross_weight'], $validated['net_weight']);
+
+            foreach ($batchItems as $index => $item) {
+                SilverProduct::create([
+                    ...$validated,
+                    'name' => count($batchItems) > 1 ? $validated['name'] . ' #' . ($index + 1) : $validated['name'],
+                    'quantity' => 1,
+                    'gross_weight' => $item['gross_weight'],
+                    'net_weight' => $item['net_weight'],
+                ]);
+            }
+
+            return redirect()->back()->with('message', count($batchItems) . ' Silver Products Created Successfully');
+        }
+
+        unset($validated['batch_items']);
+
         SilverProduct::create($validated);
 
         return redirect()->back()->with('message', 'Silver Product Created Successfully');
@@ -159,7 +178,18 @@ class SilverProductController extends Controller
             'making_charge' => ['required', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'image' => ['nullable', 'image', 'max:2048'],
+            'batch_items' => ['nullable', 'array', 'min:1', 'max:10'],
+            'batch_items.*.gross_weight' => ['required_with:batch_items', 'numeric', 'min:0.001'],
+            'batch_items.*.net_weight' => ['required_with:batch_items', 'numeric', 'min:0.001'],
         ]);
+
+        if (! empty($validated['batch_items'])) {
+            if ($validated['pricing_mode'] === 'PIECE' && empty($validated['piece_price'])) {
+                $validated['piece_price'] = 0;
+            }
+
+            return $validated;
+        }
 
         if ($validated['pricing_mode'] === 'PIECE' && empty($validated['piece_price'])) {
             $validated['piece_price'] = 0;

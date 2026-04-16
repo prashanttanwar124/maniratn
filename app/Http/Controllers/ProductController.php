@@ -69,15 +69,36 @@ class ProductController extends Controller
             'category_id'   => ['required', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('metal_type', 'GOLD'))],
             'purity_id'     => 'required|exists:purities,id',
             'supplier_id'     => 'required|exists:suppliers,id',
-            'gross_weight'  => 'required|numeric',
-            'net_weight'    => 'required|numeric',
+            'gross_weight'  => 'required_without:batch_items|nullable|numeric|min:0.001',
+            'net_weight'    => 'required_without:batch_items|nullable|numeric|min:0.001',
             'making_charge' => 'required|numeric|min:0|max:100',
             'image_path'         => 'nullable|image|max:2048',
+            'batch_items' => ['nullable', 'array', 'min:1', 'max:10'],
+            'batch_items.*.gross_weight' => ['required_with:batch_items', 'numeric', 'min:0.001'],
+            'batch_items.*.net_weight' => ['required_with:batch_items', 'numeric', 'min:0.001'],
         ]);
 
         if ($request->hasFile('image')) {
             $validated['image_path'] = $request->file('image')->store('products', 'public');
         }
+
+        if (! empty($validated['batch_items'])) {
+            $batchItems = $validated['batch_items'];
+            unset($validated['batch_items'], $validated['gross_weight'], $validated['net_weight']);
+
+            foreach ($batchItems as $index => $item) {
+                Product::create([
+                    ...$validated,
+                    'name' => count($batchItems) > 1 ? $validated['name'] . ' #' . ($index + 1) : $validated['name'],
+                    'gross_weight' => $item['gross_weight'],
+                    'net_weight' => $item['net_weight'],
+                ]);
+            }
+
+            return redirect()->back()->with('message', count($batchItems) . ' Products Created Successfully');
+        }
+
+        unset($validated['batch_items']);
 
         Product::create($validated);
 

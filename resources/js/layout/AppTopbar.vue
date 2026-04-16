@@ -6,6 +6,7 @@ import { useLayout } from '@/layout/composables/layout';
 import { formatIndianDate } from '@/utils/indiaTime';
 
 const { toggleMenu } = useLayout();
+const emit = defineEmits(['openAskAi']);
 const page = usePage();
 const pageUser = computed(() => page.props.auth?.user);
 const role = computed(() => page.props.auth?.role || 'user');
@@ -88,6 +89,11 @@ const submitLogout = () => {
         </div>
 
         <div class="layout-topbar-actions">
+            <button type="button" class="layout-topbar-utility" title="Ask AI" @click="emit('openAskAi')">
+                <i class="pi pi-sparkles"></i>
+                <span class="hidden md:inline">Ask AI</span>
+            </button>
+
             <div class="layout-topbar-status" :class="dayStatus.is_open ? 'layout-topbar-status-open' : 'layout-topbar-status-closed'">
                 <span class="layout-topbar-status-dot"></span>
                 <span>{{ dayStatus.is_open ? 'Day Open' : 'Day Closed' }}</span>

@@ -35,6 +35,8 @@ const deleteDialog = ref(false);
 const product = ref({});
 const isEditing = ref(false);
 const previewImage = ref(null);
+const batchMode = ref(false);
+const batchRows = ref([{ gross_weight: null, net_weight: null }]);
 const selectionStorageKey = 'barcode-selection:silver-products';
 const loadStoredSelections = () => {
     if (typeof window === 'undefined') return [];
@@ -96,6 +98,7 @@ const form = useForm({
     piece_price: null,
     making_charge: 0,
     notes: '',
+    batch_items: [],
     image: null,
 });
 
@@ -124,6 +127,9 @@ const resetForm = () => {
     form.pricing_mode = 'PIECE';
     form.quantity = 1;
     form.making_charge = 0;
+    form.batch_items = [];
+    batchMode.value = false;
+    batchRows.value = [{ gross_weight: null, net_weight: null }];
     if (props.categories.length) form.category_id = props.categories[0].id;
     if (props.suppliers.length) form.supplier_id = props.suppliers[0].id;
     previewImage.value = null;
@@ -139,6 +145,8 @@ const openNew = () => {
 const editProduct = (item) => {
     product.value = { ...item };
     isEditing.value = true;
+    batchMode.value = false;
+    batchRows.value = [{ gross_weight: null, net_weight: null }];
     form.clearErrors();
     form.id = item.id;
     form.name = item.name;
@@ -156,6 +164,25 @@ const editProduct = (item) => {
     productDialog.value = true;
 };
 
+const addBatchRow = () => {
+    if (batchRows.value.length >= 10) return;
+    batchRows.value.push({ gross_weight: null, net_weight: null });
+};
+
+const removeBatchRow = (index) => {
+    if (batchRows.value.length === 1) return;
+    batchRows.value.splice(index, 1);
+};
+
+const batchItemsPayload = () => {
+    return batchRows.value
+        .filter((row) => Number(row.gross_weight || 0) > 0 || Number(row.net_weight || 0) > 0)
+        .map((row) => ({
+            gross_weight: row.gross_weight,
+            net_weight: row.net_weight,
+        }));
+};
+
 const saveProduct = () => {
     const options = {
         forceFormData: true,
@@ -170,11 +197,14 @@ const saveProduct = () => {
     };
 
     if (isEditing.value) {
-        form.transform((data) => ({ ...data, _method: 'put' })).post(route('silver-products.update', form.id), options);
+        form.transform((data) => ({ ...data, batch_items: [], _method: 'put' })).post(route('silver-products.update', form.id), options);
         return;
     }
 
-    form.post(route('silver-products.store'), options);
+    form.transform((data) => ({
+        ...data,
+        batch_items: batchMode.value ? batchItemsPayload() : null,
+    })).post(route('silver-products.store'), options);
 };
 
 const confirmDeleteProduct = (item) => {
@@ -446,8 +476,24 @@ const copyBarcode = async (barcode) => {
                 />
             </div>
 
-            <Dialog v-model:visible="productDialog" :header="isEditing ? 'Edit Silver Product' : 'Add Silver Product'" modal :style="{ width: '38rem' }">
+            <Dialog v-model:visible="productDialog" :header="isEditing ? 'Edit Silver Product' : 'Add Silver Product'" modal :style="{ width: '42rem' }">
                 <form @submit.prevent="saveProduct" class="space-y-5 pt-2">
+                    <div v-if="!isEditing" class="border border-surface-200 bg-surface-50 p-4">
+                        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-surface-900">Create Multiple Silver Products</p>
+                                <p class="mt-1 text-xs text-surface-500">Use this when the same details have different gross/net weights. Maximum 10 rows.</p>
+                            </div>
+                            <Button
+                                :label="batchMode ? 'Single Product' : 'Multiple Products'"
+                                :severity="batchMode ? 'secondary' : 'primary'"
+                                outlined
+                                type="button"
+                                @click="batchMode = !batchMode"
+                            />
+                        </div>
+                    </div>
+
                     <div class="border border-surface-200 bg-surface-50 p-4">
                         <div class="flex items-start gap-4">
                             <div class="flex-1">
@@ -505,7 +551,7 @@ const copyBarcode = async (barcode) => {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div v-if="!batchMode" class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="mb-2 block text-sm font-medium text-surface-700">Gross Weight (g)</label>
                             <InputNumber v-model="form.gross_weight" :min="0" :minFractionDigits="3" suffix=" g" class="w-full" />
@@ -516,6 +562,33 @@ const copyBarcode = async (barcode) => {
                             <InputNumber v-model="form.net_weight" :min="0" :minFractionDigits="3" suffix=" g" class="w-full" />
                             <small v-if="form.errors.net_weight" class="mt-1 block text-xs text-red-500">{{ form.errors.net_weight }}</small>
                         </div>
+                    </div>
+
+                    <div v-else class="space-y-3 border border-surface-200 bg-surface-50 p-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-medium text-surface-900">Weight Rows</p>
+                                <p class="mt-1 text-xs text-surface-500">Each row creates one silver product and gets its own barcode.</p>
+                            </div>
+                            <Button label="Add Row" icon="pi pi-plus" size="small" outlined type="button" :disabled="batchRows.length >= 10" @click="addBatchRow" />
+                        </div>
+
+                        <div class="space-y-3">
+                            <div v-for="(row, index) in batchRows" :key="index" class="grid grid-cols-[2rem_1fr_1fr_auto] items-end gap-3">
+                                <div class="pb-3 text-sm font-medium text-surface-500">#{{ index + 1 }}</div>
+                                <div>
+                                    <label class="mb-2 block text-xs font-medium text-surface-600">Gross Weight</label>
+                                    <InputNumber v-model="row.gross_weight" :min="0" :minFractionDigits="3" suffix=" g" class="w-full" />
+                                </div>
+                                <div>
+                                    <label class="mb-2 block text-xs font-medium text-surface-600">Net Weight</label>
+                                    <InputNumber v-model="row.net_weight" :min="0" :minFractionDigits="3" suffix=" g" class="w-full" />
+                                </div>
+                                <Button icon="pi pi-trash" severity="danger" text type="button" :disabled="batchRows.length === 1" @click="removeBatchRow(index)" />
+                            </div>
+                        </div>
+
+                        <small v-if="form.errors.batch_items" class="block text-xs text-red-500">{{ form.errors.batch_items }}</small>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">

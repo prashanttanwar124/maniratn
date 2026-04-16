@@ -35,6 +35,8 @@ const deleteDialog = ref(false);
 const product = ref({});
 const isEditing = ref(false);
 const previewImage = ref(null);
+const batchMode = ref(false);
+const batchRows = ref([{ gross_weight: null, net_weight: null }]);
 const selectedProducts = ref([]);
 
 const search = ref(props.filters?.search || '');
@@ -77,6 +79,7 @@ const form = useForm({
     gross_weight: null,
     net_weight: null,
     making_charge: null,
+    batch_items: [],
     image: null,
 });
 
@@ -103,6 +106,8 @@ const onFileSelect = (event) => {
 const openNew = () => {
     product.value = {};
     isEditing.value = false;
+    batchMode.value = false;
+    batchRows.value = [{ gross_weight: null, net_weight: null }];
     previewImage.value = null;
 
     form.reset();
@@ -117,6 +122,8 @@ const openNew = () => {
 const editProduct = (prod) => {
     product.value = { ...prod };
     isEditing.value = true;
+    batchMode.value = false;
+    batchRows.value = [{ gross_weight: null, net_weight: null }];
 
     previewImage.value = prod.image_path ? `/storage/${prod.image_path}` : null;
 
@@ -134,11 +141,32 @@ const editProduct = (prod) => {
     productDialog.value = true;
 };
 
+const addBatchRow = () => {
+    if (batchRows.value.length >= 10) return;
+    batchRows.value.push({ gross_weight: null, net_weight: null });
+};
+
+const removeBatchRow = (index) => {
+    if (batchRows.value.length === 1) return;
+    batchRows.value.splice(index, 1);
+};
+
+const batchItemsPayload = () => {
+    return batchRows.value
+        .filter((row) => Number(row.gross_weight || 0) > 0 || Number(row.net_weight || 0) > 0)
+        .map((row) => ({
+            gross_weight: row.gross_weight,
+            net_weight: row.net_weight,
+        }));
+};
+
 const saveProduct = () => {
     const options = {
         forceFormData: true,
         onSuccess: () => {
             productDialog.value = false;
+            batchMode.value = false;
+            batchRows.value = [{ gross_weight: null, net_weight: null }];
             toast.add({
                 severity: 'success',
                 summary: 'Saved',
@@ -160,10 +188,14 @@ const saveProduct = () => {
     if (isEditing.value) {
         form.transform((data) => ({
             ...data,
+            batch_items: [],
             _method: 'put',
         })).post(route('products.update', form.id), options);
     } else {
-        form.post(route('products.store'), options);
+        form.transform((data) => ({
+            ...data,
+            batch_items: batchMode.value ? batchItemsPayload() : null,
+        })).post(route('products.store'), options);
     }
 };
 
@@ -439,8 +471,24 @@ const copyBarcode = async (barcode) => {
             </div>
 
             <!-- Product Dialog -->
-            <Dialog v-model:visible="productDialog" :header="isEditing ? 'Edit Product' : 'Add New Product'" modal :style="{ width: '34rem' }">
+            <Dialog v-model:visible="productDialog" :header="isEditing ? 'Edit Product' : 'Add New Product'" modal :style="{ width: '42rem' }">
                 <form @submit.prevent="saveProduct" class="space-y-5 pt-2">
+                    <div v-if="!isEditing" class="border border-surface-200 bg-surface-50 p-4">
+                        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-surface-900">Create Multiple Products</p>
+                                <p class="mt-1 text-xs text-surface-500">Use this when the same product details have different gross/net weights. Maximum 10 rows.</p>
+                            </div>
+                            <Button
+                                :label="batchMode ? 'Single Product' : 'Multiple Products'"
+                                :severity="batchMode ? 'secondary' : 'primary'"
+                                outlined
+                                type="button"
+                                @click="batchMode = !batchMode"
+                            />
+                        </div>
+                    </div>
+
                     <div class="border border-surface-200 bg-surface-50 p-4">
                         <div class="flex items-start gap-4">
                             <div class="flex-1">
@@ -504,7 +552,7 @@ const copyBarcode = async (barcode) => {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div v-if="!batchMode" class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="mb-2 block text-sm font-medium text-surface-700"> Gross Weight (g) </label>
                             <InputNumber v-model="form.gross_weight" :minFractionDigits="2" suffix=" g" class="w-full" />
@@ -520,6 +568,33 @@ const copyBarcode = async (barcode) => {
                                 {{ form.errors.net_weight }}
                             </small>
                         </div>
+                    </div>
+
+                    <div v-else class="space-y-3 border border-surface-200 bg-surface-50 p-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-medium text-surface-900">Weight Rows</p>
+                                <p class="mt-1 text-xs text-surface-500">Each row creates one gold product and gets its own barcode.</p>
+                            </div>
+                            <Button label="Add Row" icon="pi pi-plus" size="small" outlined type="button" :disabled="batchRows.length >= 10" @click="addBatchRow" />
+                        </div>
+
+                        <div class="space-y-3">
+                            <div v-for="(row, index) in batchRows" :key="index" class="grid grid-cols-[2rem_1fr_1fr_auto] items-end gap-3">
+                                <div class="pb-3 text-sm font-medium text-surface-500">#{{ index + 1 }}</div>
+                                <div>
+                                    <label class="mb-2 block text-xs font-medium text-surface-600">Gross Weight</label>
+                                    <InputNumber v-model="row.gross_weight" :minFractionDigits="2" suffix=" g" class="w-full" />
+                                </div>
+                                <div>
+                                    <label class="mb-2 block text-xs font-medium text-surface-600">Net Weight</label>
+                                    <InputNumber v-model="row.net_weight" :minFractionDigits="2" suffix=" g" class="w-full" />
+                                </div>
+                                <Button icon="pi pi-trash" severity="danger" text type="button" :disabled="batchRows.length === 1" @click="removeBatchRow(index)" />
+                            </div>
+                        </div>
+
+                        <small v-if="form.errors.batch_items" class="block text-xs text-red-500">{{ form.errors.batch_items }}</small>
                     </div>
 
                     <div>
