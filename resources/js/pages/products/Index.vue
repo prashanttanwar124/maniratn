@@ -35,17 +35,7 @@ const deleteDialog = ref(false);
 const product = ref({});
 const isEditing = ref(false);
 const previewImage = ref(null);
-const selectionStorageKey = 'barcode-selection:products';
-const loadStoredSelections = () => {
-    if (typeof window === 'undefined') return [];
-
-    try {
-        return JSON.parse(window.localStorage.getItem(selectionStorageKey) || '[]');
-    } catch {
-        return [];
-    }
-};
-const selectedProducts = ref(loadStoredSelections());
+const selectedProducts = ref([]);
 
 const search = ref(props.filters?.search || '');
 
@@ -62,16 +52,6 @@ const currentPageSelection = computed({
         selectedProducts.value = [...preservedSelections, ...pageSelection];
     },
 });
-
-watch(
-    selectedProducts,
-    (value) => {
-        if (typeof window !== 'undefined') {
-            window.localStorage.setItem(selectionStorageKey, JSON.stringify(value));
-        }
-    },
-    { deep: true },
-);
 
 watch(
     search,
@@ -427,7 +407,7 @@ const copyBarcode = async (barcode) => {
                                 <div class="text-sm">
                                     <p class="text-xs uppercase tracking-wide text-surface-500">Making</p>
                                     <p class="mt-1 font-semibold text-surface-900">
-                                        {{ formatCurrency(data.making_charge) }}
+                                        {{ Number(data.making_charge || 0).toFixed(2) }}%
                                     </p>
                                 </div>
                             </template>
@@ -543,8 +523,9 @@ const copyBarcode = async (barcode) => {
                     </div>
 
                     <div>
-                        <label class="mb-2 block text-sm font-medium text-surface-700"> Making Charge </label>
-                        <InputNumber v-model="form.making_charge" mode="currency" currency="INR" locale="en-IN" class="w-full" />
+                        <label class="mb-2 block text-sm font-medium text-surface-700"> Making Charge (%) </label>
+                        <InputNumber v-model="form.making_charge" mode="decimal" suffix=" %" :min="0" :max="100" :minFractionDigits="2" :maxFractionDigits="2" class="w-full" />
+                        <small class="mt-1 block text-xs text-surface-500">Example: enter 10 for 10% making on the gold rate.</small>
                         <small v-if="form.errors.making_charge" class="mt-1 block text-xs text-red-500">
                             {{ form.errors.making_charge }}
                         </small>

@@ -312,7 +312,7 @@ const fetchProduct = async () => {
             const currentRate = form.gold_rate || 0;
             const weight = parseFloat(product.net_weight);
             const makingCharge = parseFloat(product.making_charge);
-            const price = weight * (currentRate + makingCharge);
+            const price = weight * (currentRate + currentRate * (makingCharge / 100));
 
             form.items.push({
                 type: 'product',
@@ -387,6 +387,11 @@ const calculateRawRowTotal = (item) => {
 
     const weight = parseFloat(item?.weight) || 0;
     const rate = parseFloat(item?.rate) || 0;
+
+    if (item?.type === 'product') {
+        return weight * (rate + rate * (making / 100));
+    }
+
     return weight * (rate + making);
 };
 
@@ -784,6 +789,8 @@ const submitInvoice = () => {
                                     inputClass="w-full text-right"
                                     class="w-full"
                                     mode="decimal"
+                                    :suffix="data.type === 'product' ? ' %' : ''"
+                                    :max="data.type === 'product' ? 100 : undefined"
                                     :minFractionDigits="2"
                                     :maxFractionDigits="2"
                                     @input="onRowInput($event, data, 'making_charges')"

@@ -71,7 +71,7 @@ class ProductController extends Controller
             'supplier_id'     => 'required|exists:suppliers,id',
             'gross_weight'  => 'required|numeric',
             'net_weight'    => 'required|numeric',
-            'making_charge' => 'required|numeric',
+            'making_charge' => 'required|numeric|min:0|max:100',
             'image_path'         => 'nullable|image|max:2048',
         ]);
 
@@ -94,7 +94,7 @@ class ProductController extends Controller
             'supplier_id'     => 'required|exists:suppliers,id',
             'gross_weight'  => 'required|numeric',
             'net_weight'    => 'required|numeric',
-            'making_charge' => 'required|numeric',
+            'making_charge' => 'required|numeric|min:0|max:100',
             'image_path'         => 'nullable|image|max:2048',
         ]);
 

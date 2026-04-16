@@ -457,6 +457,13 @@ class InvoiceController extends Controller
                 if ($row['type'] === 'product') {
                     $product = Product::findOrFail($row['id']);
                     $rateApplied = (float) ($row['rate'] ?? 0);
+                    $makingPercent = (float) $row['making_charges'];
+
+                    if ($makingPercent > 100) {
+                        throw ValidationException::withMessages([
+                            'items' => "Making percentage for {$product->name} cannot be greater than 100.",
+                        ]);
+                    }
 
                     // Validation: Check if already sold
                     if ($product->is_sold) {
@@ -466,6 +473,7 @@ class InvoiceController extends Controller
                     $weight = $product->net_weight;
                     $purity = $product->purity; // e.g., 91.6
                     $itemName = $product->name;
+                    $itemTotal = $weight * ($rateApplied + ($rateApplied * ($makingPercent / 100)));
 
                     // Mark Stock as SOLD
                     $product->update(['is_sold' => true]);
@@ -480,7 +488,7 @@ class InvoiceController extends Controller
                         'purity'      => $purity->name,
                         'rate'        => $rateApplied,
                         'making_charges' => $row['making_charges'],
-                        'final_price' => $weight * ($rateApplied + (float) $row['making_charges'])
+                        'final_price' => $itemTotal,
                     ]);
                 }
 
@@ -603,11 +611,14 @@ class InvoiceController extends Controller
                     }
                 }
 
-                // Math: (Weight * Rate) + Making Charge
+                // Product rows use making as a percentage; custom orders keep per-gram making.
                 $rateForItem = 0;
 
                 if ($row['type'] === 'product') {
                     $rateForItem = (float) ($row['rate'] ?? 0);
+                    $itemTotal = $weight * ($rateForItem + ($rateForItem * ((float) $row['making_charges'] / 100)));
+                    $totalBillAmount += $itemTotal;
+                    continue;
                 } elseif ($row['type'] === 'order_item') {
                     $rateForItem = (float) ($row['rate'] ?? 0);
                 }

@@ -80,7 +80,7 @@ class ProductSeeder extends Seeder
                 'name'        => $randomCatName . ' ' . $faker->randomElement(['Classic', 'Modern', 'Royal', 'Antique']),
                 'gross_weight' => $grossWeight,
                 'net_weight'  => $netWeight,
-                'making_charge' => $faker->numberBetween(450, 1200), // Charge per gram logic
+                'making_charge' => $faker->numberBetween(8, 24), // Making percentage
                 'is_sold'     => false,
             ]);
         }
