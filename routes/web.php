@@ -12,6 +12,7 @@ use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\PurityController;
 use App\Http\Controllers\SilverProductController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
@@ -243,6 +244,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('categories', [CategoryController::class, 'store'])->middleware(['permission:manage_categories', 'day.open'])->name('categories.store');
     Route::match(['put', 'patch'], 'categories/{category}', [CategoryController::class, 'update'])->middleware(['permission:manage_categories', 'day.open'])->name('categories.update');
     Route::delete('categories/{category}', [CategoryController::class, 'destroy'])->middleware(['permission:manage_categories', 'day.open'])->name('categories.destroy');
+
+    // --- PURITIES ---
+    Route::get('purities', [PurityController::class, 'index'])->middleware('permission:manage_categories')->name('purities');
+    Route::post('purities', [PurityController::class, 'store'])->middleware(['permission:manage_categories', 'day.open'])->name('purities.store');
+    Route::match(['put', 'patch'], 'purities/{purity}', [PurityController::class, 'update'])->middleware(['permission:manage_categories', 'day.open'])->name('purities.update');
+    Route::delete('purities/{purity}', [PurityController::class, 'destroy'])->middleware(['permission:manage_categories', 'day.open'])->name('purities.destroy');
 
 
     // --- suppliers ---

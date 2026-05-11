@@ -44,6 +44,7 @@ const workspaceLabel = computed(() => {
     if (path.startsWith('/orders')) return 'Orders';
     if (path.startsWith('/customers')) return 'Customers';
     if (path.startsWith('/products')) return 'Products';
+    if (path.startsWith('/purities')) return 'Purities';
     if (path.startsWith('/suppliers')) return 'Suppliers';
     if (path.startsWith('/karigars')) return 'Karigars';
     if (path.startsWith('/expenses')) return 'Expenses';

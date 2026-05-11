@@ -25,6 +25,7 @@ const model = [
             { label: 'Gold Products', icon: 'pi pi-fw pi-box', to: '/products', visible: Boolean(can.manage_products) },
             { label: 'Silver Products', icon: 'pi pi-fw pi-database', to: '/silver-products', visible: Boolean(can.manage_products) },
             { label: 'Categories', icon: 'pi pi-fw pi-tags', to: '/categories', visible: Boolean(can.manage_categories) },
+            { label: 'Purities', icon: 'pi pi-fw pi-shield', to: '/purities', visible: Boolean(can.manage_categories) },
         ],
     },
     {
