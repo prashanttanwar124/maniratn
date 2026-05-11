@@ -157,7 +157,7 @@ watch(
                         <small class="mt-1 block text-xs text-surface-500">
                             {{ isInitialSetup
                                 ? 'Enter the business cash balance available when starting the software.'
-                                : 'Enter the physically counted opening cash. Zero is not allowed.' }}
+                                : 'Enter the physically counted opening cash. Zero is allowed.' }}
                         </small>
                         <small v-if="openDayForm.errors.opening_cash" class="mt-1 block text-xs text-red-500">
                             {{ openDayForm.errors.opening_cash }}
@@ -170,7 +170,7 @@ watch(
                         <small class="mt-1 block text-xs text-surface-500">
                             {{ isInitialSetup
                                 ? 'Enter the loose gold physically available in the business when starting the software.'
-                                : 'Enter the physically counted opening gold. Zero is not allowed.' }}
+                                : 'Enter the physically counted opening gold. Zero is allowed.' }}
                         </small>
                         <small v-if="openDayForm.errors.opening_gold" class="mt-1 block text-xs text-red-500">
                             {{ openDayForm.errors.opening_gold }}
@@ -183,7 +183,7 @@ watch(
                         <small class="mt-1 block text-xs text-surface-500">
                             {{ isInitialSetup
                                 ? 'Enter the loose silver physically available in the business when starting the software.'
-                                : 'Enter the physically counted opening silver. Zero is not allowed.' }}
+                                : 'Enter the physically counted opening silver. Zero is allowed.' }}
                         </small>
                         <small v-if="openDayForm.errors.opening_silver" class="mt-1 block text-xs text-red-500">
                             {{ openDayForm.errors.opening_silver }}

@@ -782,19 +782,19 @@ const vaultChartItems = computed(() => {
                 <div>
                     <label class="mb-2 block text-sm font-medium text-surface-700">Counted Opening Cash</label>
                     <InputNumber v-model="dayForm.opening_cash" mode="currency" currency="INR" locale="en-IN" class="w-full" />
-                    <small class="mt-1 block text-xs text-surface-500">Enter the physically counted opening cash. Zero is not allowed.</small>
+                    <small class="mt-1 block text-xs text-surface-500">Enter the physically counted opening cash. Zero is allowed.</small>
                 </div>
 
                 <div>
                     <label class="mb-2 block text-sm font-medium text-surface-700">Counted Opening Gold</label>
                     <InputNumber v-model="dayForm.opening_gold" :minFractionDigits="3" suffix=" g" class="w-full" />
-                    <small class="mt-1 block text-xs text-surface-500">Enter the physically counted opening gold. Zero is not allowed.</small>
+                    <small class="mt-1 block text-xs text-surface-500">Enter the physically counted opening gold. Zero is allowed.</small>
                 </div>
 
                 <div>
                     <label class="mb-2 block text-sm font-medium text-surface-700">Counted Opening Silver</label>
                     <InputNumber v-model="dayForm.opening_silver" :minFractionDigits="3" suffix=" g" class="w-full" />
-                    <small class="mt-1 block text-xs text-surface-500">Enter the physically counted opening silver. Zero is not allowed.</small>
+                    <small class="mt-1 block text-xs text-surface-500">Enter the physically counted opening silver. Zero is allowed.</small>
                 </div>
 
                 <div v-if="dayOpeningMismatch">

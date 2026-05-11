@@ -349,9 +349,9 @@ class DashboardController extends Controller
         $isInitialSetup = ! DailyRegister::query()->exists();
 
         $validated = $request->validate([
-            'opening_cash' => ['required', 'numeric', $isInitialSetup ? 'min:0' : 'gt:0'],
-            'opening_gold' => ['required', 'numeric', $isInitialSetup ? 'min:0' : 'gt:0'],
-            'opening_silver' => ['required', 'numeric', $isInitialSetup ? 'min:0' : 'gt:0'],
+            'opening_cash' => ['required', 'numeric', 'min:0'],
+            'opening_gold' => ['required', 'numeric', 'min:0'],
+            'opening_silver' => ['required', 'numeric', 'min:0'],
             'mismatch_reason' => 'nullable|string|max:500',
             'reopen_reason' => 'nullable|string|max:500',
         ]);
