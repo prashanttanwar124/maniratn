@@ -99,6 +99,20 @@ const form = useForm({
 
 const formatWeight = (val) => `${Number(val || 0).toFixed(3)} g`;
 
+const formatDate = (val) => {
+    if (!val) return '—';
+
+    const date = new Date(val);
+
+    if (Number.isNaN(date.getTime())) return '—';
+
+    return new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    }).format(date);
+};
+
 const onPageChange = (event) => {
     const newPage = event.page + 1;
     applyFilters(newPage);
@@ -409,6 +423,14 @@ const copyBarcode = async (barcode) => {
                                 >
                                     {{ data.barcode || 'No Barcode' }}
                                 </button>
+                            </template>
+                        </Column>
+
+                        <Column header="Date" sortable style="width: 140px">
+                            <template #body="{ data }">
+                                <div class="text-sm font-medium text-surface-900">
+                                    {{ formatDate(data.created_at) }}
+                                </div>
                             </template>
                         </Column>
 
