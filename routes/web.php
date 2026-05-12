@@ -26,6 +26,8 @@ use App\Http\Controllers\VerificationTagController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\MetalTransactionController;
 use App\Http\Controllers\GoldSchemeController;
+use App\Http\Controllers\Website\ProductCatalogController;
+use App\Http\Controllers\Website\WebsiteApiController;
 
 /*
 |--------------------------------------------------------------------------
@@ -44,6 +46,10 @@ Route::post('/attendance-terminal/identify', [AttendanceTerminalController::clas
 Route::post('/attendance-terminal/act', [AttendanceTerminalController::class, 'act'])
     ->middleware('throttle:120,1')
     ->name('attendance-terminal.act');
+
+Route::get('/api/website/products', [WebsiteApiController::class, 'products'])
+    ->middleware('throttle:60,1')
+    ->name('website-products.index');
 
 Route::get('/api/inventory/{barcode}', function ($barcode) {
     $normalizedBarcode = strtoupper(trim($barcode));
@@ -178,6 +184,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/products', [ProductController::class, 'store'])->middleware(['permission:manage_products', 'day.open'])->name('products.store');
     Route::match(['put', 'patch'], '/products/{product}', [ProductController::class, 'update'])->middleware(['permission:manage_products', 'day.open'])->name('products.update');
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware(['permission:manage_products', 'day.open'])->name('products.destroy');
+
+    Route::get('/website-products', [ProductCatalogController::class, 'index'])
+        ->middleware('permission:manage_products')
+        ->name('website-products.manage');
+    Route::patch('/website-products/{product}', [ProductCatalogController::class, 'update'])
+        ->middleware('permission:manage_products')
+        ->name('website-products.update');
 
     Route::get('silver-products/print-barcodes', [SilverProductController::class, 'printBarcodes'])
         ->middleware('permission:manage_products')

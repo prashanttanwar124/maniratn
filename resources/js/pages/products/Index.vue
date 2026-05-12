@@ -136,6 +136,7 @@ const openNew = () => {
 
     if (props.categories.length) form.category_id = props.categories[0].id;
     if (props.purities.length) form.purity_id = props.purities[0].id;
+    if (props.suppliers.length) form.supplier_id = props.suppliers[0].id;
 
     productDialog.value = true;
 };
@@ -274,7 +275,6 @@ const copyBarcode = async (barcode) => {
         });
     }
 };
-
 </script>
 
 <template>
@@ -367,14 +367,7 @@ const copyBarcode = async (barcode) => {
 
                         <div class="flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center">
                             <div class="grid w-full gap-3 lg:w-auto lg:grid-cols-[15rem_20rem]">
-                                <Select
-                                    v-model="categoryFilter"
-                                    :options="categoryOptions"
-                                    optionLabel="name"
-                                    optionValue="id"
-                                    placeholder="Filter by category"
-                                    class="w-full"
-                                />
+                                <Select v-model="categoryFilter" :options="categoryOptions" optionLabel="name" optionValue="id" placeholder="Filter by category" class="w-full" />
 
                                 <div class="relative w-full">
                                     <Search class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-surface-400" />
@@ -477,22 +470,15 @@ const copyBarcode = async (barcode) => {
                         <Column header="Charges" style="width: 170px">
                             <template #body="{ data }">
                                 <div class="text-sm">
-                                    <p class="text-xs uppercase tracking-wide text-surface-500">Making</p>
-                                    <p class="mt-1 font-semibold text-surface-900">
-                                        {{ Number(data.making_charge || 0).toFixed(2) }}%
-                                    </p>
+                                    <p class="text-xs tracking-wide text-surface-500 uppercase">Making</p>
+                                    <p class="mt-1 font-semibold text-surface-900">{{ Number(data.making_charge || 0).toFixed(2) }}%</p>
                                 </div>
                             </template>
                         </Column>
 
                         <Column header="Status" style="width: 130px">
                             <template #body="{ data }">
-                                <div class="space-y-2">
-                                    <Tag :value="data.is_sold ? 'Sold' : 'In Stock'" :severity="data.is_sold ? 'danger' : 'success'" />
-                                    <p class="text-xs text-surface-500">
-                                        {{ data.is_sold ? 'Already billed out' : 'Available for sale' }}
-                                    </p>
-                                </div>
+                                <Tag :value="data.is_sold ? 'Sold' : 'In Stock'" :severity="data.is_sold ? 'danger' : 'success'" />
                             </template>
                         </Column>
 

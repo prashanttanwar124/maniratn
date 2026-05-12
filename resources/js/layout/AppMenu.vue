@@ -56,6 +56,7 @@ const model = [
     {
         label: 'Settings',
         items: [
+            { label: 'Website Product Catalog', icon: 'pi pi-fw pi-globe', to: '/website-products', visible: Boolean(can.manage_products) },
             { label: 'Business Profile', icon: 'pi pi-fw pi-building', to: '/settings/business-profile', visible: Boolean(can.manage_users) },
             { label: 'Profile', icon: 'pi pi-fw pi-user', to: '/settings/profile' },
             { label: 'Password', icon: 'pi pi-fw pi-key', to: '/settings/password' },
