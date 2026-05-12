@@ -9,7 +9,6 @@ use App\Models\Purity;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -17,17 +16,27 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::query()->with(['category', 'purity']);
+        $query = Product::query()->with(['category', 'purity', 'supplier']);
         $statsBaseQuery = Product::query()->with('category');
 
-        if ($request->search) {
-            $query->where('name', 'like', '%' . $request->search . '%')
-                ->orWhere('barcode', 'like', '%' . $request->search . '%');
+        if ($request->filled('search')) {
+            $search = $request->string('search')->toString();
 
-            $statsBaseQuery->where(function ($productQuery) use ($request) {
-                $productQuery->where('name', 'like', '%' . $request->search . '%')
-                    ->orWhere('barcode', 'like', '%' . $request->search . '%');
+            $query->where(function ($productQuery) use ($search) {
+                $productQuery->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('barcode', 'like', '%' . $search . '%');
             });
+
+            $statsBaseQuery->where(function ($productQuery) use ($search) {
+                $productQuery->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('barcode', 'like', '%' . $search . '%');
+            });
+        }
+
+        if ($request->filled('category_id')) {
+            $categoryId = (int) $request->input('category_id');
+            $query->where('category_id', $categoryId);
+            $statsBaseQuery->where('category_id', $categoryId);
         }
 
         $statsProducts = $statsBaseQuery->get();
@@ -50,7 +59,7 @@ class ProductController extends Controller
             'suppliers'   => Supplier::all(),
             'categories'  => Category::gold()->orderBy('name')->get(),
             'purities'    => Purity::all(),
-            'filters'     => $request->only(['search']), // Pass search term back
+            'filters'     => $request->only(['search', 'category_id']),
             'summary' => [
                 'total_items' => $statsProducts->count(),
                 'sold_items' => $statsProducts->where('is_sold', true)->count(),
@@ -84,14 +93,19 @@ class ProductController extends Controller
 
         if (! empty($validated['batch_items'])) {
             $batchItems = $validated['batch_items'];
+            $baseName = trim((string) $validated['name']);
             unset($validated['batch_items'], $validated['gross_weight'], $validated['net_weight']);
 
-            foreach ($batchItems as $index => $item) {
-                Product::create([
+            foreach ($batchItems as $item) {
+                $product = Product::create([
                     ...$validated,
-                    'name' => count($batchItems) > 1 ? $validated['name'] . ' #' . ($index + 1) : $validated['name'],
+                    'name' => $baseName,
                     'gross_weight' => $item['gross_weight'],
                     'net_weight' => $item['net_weight'],
+                ]);
+
+                $product->updateQuietly([
+                    'name' => $baseName . ' - ' . $product->barcode,
                 ]);
             }
 
@@ -100,7 +114,13 @@ class ProductController extends Controller
 
         unset($validated['batch_items']);
 
-        Product::create($validated);
+        $baseName = trim((string) $validated['name']);
+        $validated['name'] = $baseName;
+
+        $product = Product::create($validated);
+        $product->updateQuietly([
+            'name' => $baseName . ' - ' . $product->barcode,
+        ]);
 
         return redirect()->back()->with('message', 'Product Created Successfully');
     }

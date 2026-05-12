@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import throttle from 'lodash/throttle';
@@ -40,6 +40,24 @@ const batchRows = ref([{ gross_weight: null, net_weight: null }]);
 const selectedProducts = ref([]);
 
 const search = ref(props.filters?.search || '');
+const categoryFilter = ref(props.filters?.category_id ? Number(props.filters.category_id) : null);
+const categoryOptions = computed(() => [{ id: null, name: 'All Categories' }, ...props.categories]);
+
+const applyFilters = (page = 1) => {
+    router.get(
+        route('products.index'),
+        {
+            page,
+            search: search.value || undefined,
+            category_id: categoryFilter.value || undefined,
+        },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        },
+    );
+};
 
 const currentPageSelection = computed({
     get: () => {
@@ -57,18 +75,14 @@ const currentPageSelection = computed({
 
 watch(
     search,
-    throttle((value) => {
-        router.get(
-            route('products.index'),
-            { search: value },
-            {
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-            },
-        );
+    throttle(() => {
+        applyFilters();
     }, 300),
 );
+
+watch(categoryFilter, () => {
+    applyFilters();
+});
 
 const form = useForm({
     id: null,
@@ -83,18 +97,11 @@ const form = useForm({
     image: null,
 });
 
-const formatCurrency = (val) =>
-    new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-        maximumFractionDigits: 0,
-    }).format(val || 0);
-
 const formatWeight = (val) => `${Number(val || 0).toFixed(3)} g`;
 
 const onPageChange = (event) => {
     const newPage = event.page + 1;
-    router.get(route('products.index'), { page: newPage, search: search.value }, { preserveScroll: true, preserveState: true });
+    applyFilters(newPage);
 };
 
 const onFileSelect = (event) => {
@@ -345,9 +352,20 @@ const copyBarcode = async (barcode) => {
                         </div>
 
                         <div class="flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center">
-                            <div class="relative w-full lg:w-80">
-                                <Search class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-surface-400" />
-                                <InputText v-model="search" placeholder="Search product by name..." class="w-full !pl-10" />
+                            <div class="grid w-full gap-3 lg:w-auto lg:grid-cols-[15rem_20rem]">
+                                <Select
+                                    v-model="categoryFilter"
+                                    :options="categoryOptions"
+                                    optionLabel="name"
+                                    optionValue="id"
+                                    placeholder="Filter by category"
+                                    class="w-full"
+                                />
+
+                                <div class="relative w-full">
+                                    <Search class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                                    <InputText v-model="search" placeholder="Search product by name or barcode..." class="w-full !pl-10" />
+                                </div>
                             </div>
 
                             <Button label="Print Selected Barcodes" severity="warn" outlined :disabled="selectedProducts.length === 0" @click="printSelected" class="!w-auto shrink-0 whitespace-nowrap" />
@@ -394,12 +412,12 @@ const copyBarcode = async (barcode) => {
                             </template>
                         </Column>
 
-                        <Column field="name" header="Product" sortable style="min-width: 230px">
+                        <Column header="Category" sortable style="min-width: 230px">
                             <template #body="{ data }">
                                 <div>
-                                    <p class="font-medium text-surface-900">{{ data.name }}</p>
+                                    <p class="font-medium text-surface-900">{{ data.category?.name || '—' }}</p>
                                     <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-surface-500">
-                                        <span>{{ data.category?.name || '—' }}</span>
+                                        <span>{{ data.name }}</span>
                                         <template v-if="data.supplier?.company_name">
                                             <span class="text-surface-300">•</span>
                                             <span>{{ data.supplier.company_name }}</span>
