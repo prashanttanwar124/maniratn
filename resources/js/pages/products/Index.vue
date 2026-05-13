@@ -37,7 +37,7 @@ const isEditing = ref(false);
 const previewImage = ref(null);
 const batchMode = ref(false);
 const batchRows = ref([{ gross_weight: null, net_weight: null }]);
-const selectedProducts = ref([]);
+const selectedProductIds = ref<number[]>([]);
 
 const search = ref(props.filters?.search || '');
 const categoryFilter = ref(props.filters?.category_id ? Number(props.filters.category_id) : null);
@@ -61,15 +61,16 @@ const applyFilters = (page = 1) => {
 
 const currentPageSelection = computed({
     get: () => {
-        const selectedIds = new Set(selectedProducts.value.map((item) => item.id));
+        const selectedIds = new Set(selectedProductIds.value);
 
         return props.products.data.filter((item) => selectedIds.has(item.id));
     },
     set: (pageSelection) => {
         const currentPageIds = new Set(props.products.data.map((item) => item.id));
-        const preservedSelections = selectedProducts.value.filter((item) => !currentPageIds.has(item.id));
+        const preservedSelections = selectedProductIds.value.filter((id) => !currentPageIds.has(id));
+        const nextPageSelections = pageSelection.map((item) => item.id);
 
-        selectedProducts.value = [...preservedSelections, ...pageSelection];
+        selectedProductIds.value = Array.from(new Set([...preservedSelections, ...nextPageSelections]));
     },
 });
 
@@ -242,8 +243,8 @@ const deleteProduct = () => {
 };
 
 const printSelected = () => {
-    if (selectedProducts.value.length === 0) return;
-    const ids = selectedProducts.value.map((p) => p.id).join(',');
+    if (selectedProductIds.value.length === 0) return;
+    const ids = selectedProductIds.value.join(',');
     window.open(route('products.print_barcodes') + '?ids=' + ids, '_blank');
 };
 
@@ -375,15 +376,15 @@ const copyBarcode = async (barcode) => {
                                 </div>
                             </div>
 
-                            <Button label="Print Selected Barcodes" severity="warn" outlined :disabled="selectedProducts.length === 0" @click="printSelected" class="!w-auto shrink-0 whitespace-nowrap" />
+                            <Button label="Print Selected Barcodes" severity="warn" outlined :disabled="selectedProductIds.length === 0" @click="printSelected" class="!w-auto shrink-0 whitespace-nowrap" />
                             <Button label="New Product" @click="openNew" class="!w-auto shrink-0 whitespace-nowrap" />
                         </div>
                     </div>
                 </div>
 
-                <div v-if="selectedProducts.length > 0" class="border-b border-amber-200 bg-amber-50 px-5 py-3">
+                <div v-if="selectedProductIds.length > 0" class="border-b border-amber-200 bg-amber-50 px-5 py-3">
                     <div class="flex flex-col items-center justify-center gap-3 text-center text-sm lg:flex-row lg:justify-between lg:text-left">
-                        <p class="font-medium text-amber-800">{{ selectedProducts.length }} product{{ selectedProducts.length === 1 ? '' : 's' }} selected for barcode printing.</p>
+                        <p class="font-medium text-amber-800">{{ selectedProductIds.length }} product{{ selectedProductIds.length === 1 ? '' : 's' }} selected for barcode printing.</p>
                         <div class="flex flex-wrap items-center justify-center gap-2 lg:justify-end">
                             <Button label="Print Selected Barcodes" severity="warn" outlined @click="printSelected" class="!w-auto shrink-0 whitespace-nowrap" />
                         </div>

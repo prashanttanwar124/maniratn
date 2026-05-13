@@ -55,7 +55,10 @@ class ProductController extends Controller
             ->values();
 
         return Inertia::render('products/Index', [
-            'products'    => $query->latest()->paginate(10),
+            'products'    => $query
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->paginate(10),
             'suppliers'   => Supplier::all(),
             'categories'  => Category::gold()->orderBy('name')->get(),
             'purities'    => Purity::all(),

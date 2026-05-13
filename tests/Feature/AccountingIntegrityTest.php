@@ -580,6 +580,50 @@ it('keeps stock product inventory separate from the loose gold vault', function 
         ->and((float) Vault::where('type', VaultType::GOLD->value)->value('balance'))->toBe(0.0);
 });
 
+it('keeps product inventory pagination stable when many products share same timestamp', function () {
+    $supplier = Supplier::create([
+        'company_name' => 'stock supplier',
+        'contact_person' => 'bharat',
+        'mobile' => '8888888883',
+        'type' => 'GOLD',
+    ]);
+
+    $category = Category::create([
+        'name' => 'Chain',
+        'code' => 'CHN',
+        'metal_type' => 'GOLD',
+    ]);
+
+    $purity = Purity::create(['name' => '22K']);
+
+    for ($index = 1; $index <= 11; $index++) {
+        Product::create([
+            'name' => 'Chain Stock ' . $index,
+            'category_id' => $category->id,
+            'purity_id' => $purity->id,
+            'supplier_id' => $supplier->id,
+            'gross_weight' => 5 + $index,
+            'net_weight' => 4.5 + $index,
+            'making_charge' => 1200,
+        ]);
+    }
+
+    $pageOneResponse = get(route('products.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('products/Index'));
+
+    $pageTwoResponse = get(route('products.index', ['page' => 2]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('products/Index'));
+
+    $pageOneIds = collect($pageOneResponse->viewData('page')['props']['products']['data'])->pluck('id')->all();
+    $pageTwoIds = collect($pageTwoResponse->viewData('page')['props']['products']['data'])->pluck('id')->all();
+
+    expect($pageOneIds)->toHaveCount(10)
+        ->and($pageTwoIds)->toHaveCount(1)
+        ->and(array_intersect($pageOneIds, $pageTwoIds))->toBe([]);
+});
+
 it('transfers money between cash and bank vaults without touching party ledgers', function () {
     openShopDay($this->user, 0, 0);
 
