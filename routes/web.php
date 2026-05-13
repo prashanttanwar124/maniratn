@@ -181,6 +181,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('products', ProductController::class)
         ->only(['index'])
         ->middleware('permission:manage_products');
+    Route::get('/products/scan', [ProductController::class, 'scan'])->middleware('permission:manage_products')->name('products.scan');
+    Route::get('/products/{product}/history', [ProductController::class, 'history'])->middleware('permission:manage_products')->name('products.history');
+    Route::post('/products/bulk-update', [ProductController::class, 'bulkUpdate'])->middleware(['permission:manage_products', 'day.open'])->name('products.bulk-update');
+    Route::post('/products/{product}/duplicate', [ProductController::class, 'duplicate'])->middleware(['permission:manage_products', 'day.open'])->name('products.duplicate');
     Route::post('/products', [ProductController::class, 'store'])->middleware(['permission:manage_products', 'day.open'])->name('products.store');
     Route::match(['put', 'patch'], '/products/{product}', [ProductController::class, 'update'])->middleware(['permission:manage_products', 'day.open'])->name('products.update');
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware(['permission:manage_products', 'day.open'])->name('products.destroy');

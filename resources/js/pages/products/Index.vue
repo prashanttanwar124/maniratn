@@ -2,7 +2,7 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import throttle from 'lodash/throttle';
-import { Search } from 'lucide-vue-next';
+import { Search, ScanLine } from 'lucide-vue-next';
 import { useToast } from 'primevue/usetoast';
 import { computed, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
@@ -11,6 +11,7 @@ import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
+import Drawer from 'primevue/drawer';
 import FileUpload from 'primevue/fileupload';
 import Image from 'primevue/image';
 import InputNumber from 'primevue/inputnumber';
@@ -32,16 +33,43 @@ const props = defineProps({
 const toast = useToast();
 const productDialog = ref(false);
 const deleteDialog = ref(false);
+const duplicateDialog = ref(false);
+const bulkActionDialog = ref(false);
+const historyDrawerVisible = ref(false);
+const historyLoading = ref(false);
+const historyProduct = ref(null);
+const historyTimeline = ref([]);
 const product = ref({});
 const isEditing = ref(false);
 const previewImage = ref(null);
 const batchMode = ref(false);
 const batchRows = ref([{ gross_weight: null, net_weight: null }]);
 const selectedProductIds = ref<number[]>([]);
+const scanBarcode = ref('');
+const isScanning = ref(false);
 
 const search = ref(props.filters?.search || '');
 const categoryFilter = ref(props.filters?.category_id ? Number(props.filters.category_id) : null);
+const supplierFilter = ref(props.filters?.supplier_id ? Number(props.filters.supplier_id) : null);
+const purityFilter = ref(props.filters?.purity_id ? Number(props.filters.purity_id) : null);
+const stockStatusFilter = ref(props.filters?.stock_status || null);
 const categoryOptions = computed(() => [{ id: null, name: 'All Categories' }, ...props.categories]);
+const supplierOptions = computed(() => [{ id: null, company_name: 'All Suppliers' }, ...props.suppliers]);
+const purityOptions = computed(() => [{ id: null, name: 'All Purities' }, ...props.purities]);
+const stockStatusOptions = [
+    { label: 'All Stock', value: null },
+    { label: 'In Stock', value: 'available' },
+    { label: 'Sold', value: 'sold' },
+];
+const activeFilterCount = computed(() => {
+    return [
+        Boolean(search.value),
+        categoryFilter.value !== null,
+        supplierFilter.value !== null,
+        purityFilter.value !== null,
+        stockStatusFilter.value !== null,
+    ].filter(Boolean).length;
+});
 
 const applyFilters = (page = 1) => {
     router.get(
@@ -50,6 +78,9 @@ const applyFilters = (page = 1) => {
             page,
             search: search.value || undefined,
             category_id: categoryFilter.value || undefined,
+            supplier_id: supplierFilter.value || undefined,
+            purity_id: purityFilter.value || undefined,
+            stock_status: stockStatusFilter.value || undefined,
         },
         {
             preserveState: true,
@@ -85,6 +116,10 @@ watch(categoryFilter, () => {
     applyFilters();
 });
 
+watch([supplierFilter, purityFilter, stockStatusFilter], () => {
+    applyFilters();
+});
+
 const form = useForm({
     id: null,
     name: '',
@@ -96,6 +131,14 @@ const form = useForm({
     making_charge: null,
     batch_items: [],
     image: null,
+});
+
+const bulkForm = useForm({
+    product_ids: [],
+    category_id: null,
+    purity_id: null,
+    supplier_id: null,
+    making_charge: null,
 });
 
 const formatWeight = (val) => `${Number(val || 0).toFixed(3)} g`;
@@ -114,9 +157,34 @@ const formatDate = (val) => {
     }).format(date);
 };
 
+const formatDateTime = (val) => {
+    if (!val) return '—';
+
+    const date = new Date(val);
+
+    if (Number.isNaN(date.getTime())) return '—';
+
+    return new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(date);
+};
+
 const onPageChange = (event) => {
     const newPage = event.page + 1;
     applyFilters(newPage);
+};
+
+const resetFilters = () => {
+    search.value = '';
+    categoryFilter.value = null;
+    supplierFilter.value = null;
+    purityFilter.value = null;
+    stockStatusFilter.value = null;
+    applyFilters();
 };
 
 const onFileSelect = (event) => {
@@ -162,6 +230,26 @@ const editProduct = (prod) => {
     form.image = null;
 
     productDialog.value = true;
+};
+
+const confirmDuplicateProduct = (prod) => {
+    product.value = prod;
+    duplicateDialog.value = true;
+};
+
+const duplicateProduct = () => {
+    router.post(route('products.duplicate', product.value.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            duplicateDialog.value = false;
+            toast.add({
+                severity: 'success',
+                summary: 'Duplicated',
+                detail: 'Product duplicated successfully',
+                life: 3000,
+            });
+        },
+    });
 };
 
 const addBatchRow = () => {
@@ -246,6 +334,125 @@ const printSelected = () => {
     if (selectedProductIds.value.length === 0) return;
     const ids = selectedProductIds.value.join(',');
     window.open(route('products.print_barcodes') + '?ids=' + ids, '_blank');
+};
+
+const openBulkActionDialog = () => {
+    bulkForm.reset();
+    bulkForm.clearErrors();
+    bulkForm.product_ids = [...selectedProductIds.value];
+    bulkActionDialog.value = true;
+};
+
+const applyBulkUpdate = () => {
+    bulkForm.transform((data) => ({
+        ...data,
+        product_ids: [...selectedProductIds.value],
+    })).post(route('products.bulk-update'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            bulkActionDialog.value = false;
+            selectedProductIds.value = [];
+            toast.add({
+                severity: 'success',
+                summary: 'Updated',
+                detail: 'Selected products updated successfully',
+                life: 3000,
+            });
+            bulkForm.reset();
+        },
+        onError: () => {
+            toast.add({
+                severity: 'error',
+                summary: 'Bulk Update Failed',
+                detail: 'Please choose at least one field to update.',
+                life: 3000,
+            });
+        },
+    });
+};
+
+const runQuickScan = async () => {
+    const barcode = scanBarcode.value.trim();
+
+    if (!barcode || isScanning.value) return;
+
+    isScanning.value = true;
+
+    try {
+        const response = await fetch(route('products.scan', { barcode }), {
+            headers: {
+                Accept: 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Not found');
+        }
+
+        const payload = await response.json();
+        editProduct(payload.product);
+        scanBarcode.value = '';
+
+        toast.add({
+            severity: 'success',
+            summary: 'Product Found',
+            detail: 'Opened product from barcode scan',
+            life: 2500,
+        });
+    } catch {
+        toast.add({
+            severity: 'warn',
+            summary: 'Not Found',
+            detail: 'No gold product found for this barcode.',
+            life: 3000,
+        });
+    } finally {
+        isScanning.value = false;
+    }
+};
+
+const openHistoryDrawer = async (prod) => {
+    historyDrawerVisible.value = true;
+    historyLoading.value = true;
+    historyProduct.value = null;
+    historyTimeline.value = [];
+
+    try {
+        const response = await fetch(route('products.history', prod.id), {
+            headers: {
+                Accept: 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Unable to load history');
+        }
+
+        const payload = await response.json();
+        historyProduct.value = payload.product;
+        historyTimeline.value = payload.timeline || [];
+    } catch {
+        toast.add({
+            severity: 'error',
+            summary: 'History Unavailable',
+            detail: 'Unable to load product history right now.',
+            life: 3000,
+        });
+        historyDrawerVisible.value = false;
+    } finally {
+        historyLoading.value = false;
+    }
+};
+
+const formatHistoryMeta = (meta) => {
+    if (!meta) return [];
+
+    return Object.entries(meta)
+        .filter(([, value]) => value !== null && value !== undefined && value !== '')
+        .map(([key, value]) => ({
+            key: key.replaceAll('_', ' '),
+            value,
+        }));
 };
 
 const copyBarcode = async (barcode) => {
@@ -360,25 +567,66 @@ const copyBarcode = async (barcode) => {
 
             <div class="card overflow-hidden !p-0">
                 <div class="border-b border-surface-200 bg-white px-5 py-4">
-                    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div>
                             <h3 class="text-base font-semibold text-surface-900">Inventory List</h3>
                             <p class="mt-1 text-sm text-surface-500">Search products, select rows, and print barcode labels from one place.</p>
                         </div>
 
-                        <div class="flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center">
-                            <div class="grid w-full gap-3 lg:w-auto lg:grid-cols-[15rem_20rem]">
-                                <Select v-model="categoryFilter" :options="categoryOptions" optionLabel="name" optionValue="id" placeholder="Filter by category" class="w-full" />
-
-                                <div class="relative w-full">
-                                    <Search class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-surface-400" />
-                                    <InputText v-model="search" placeholder="Search product by name or barcode..." class="w-full !pl-10" />
-                                </div>
-                            </div>
-
+                        <div class="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                             <Button label="Print Selected Barcodes" severity="warn" outlined :disabled="selectedProductIds.length === 0" @click="printSelected" class="!w-auto shrink-0 whitespace-nowrap" />
                             <Button label="New Product" @click="openNew" class="!w-auto shrink-0 whitespace-nowrap" />
                         </div>
+                    </div>
+                </div>
+
+                <div class="border-b border-surface-200 bg-surface-50 px-5 py-4">
+                    <div class="flex flex-col gap-4">
+                        <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+                            <div class="border border-surface-200 bg-white px-4 py-4">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="text-sm font-medium text-surface-900">Filters</p>
+                                        <p class="mt-1 text-xs text-surface-500">Narrow inventory by stock, category, supplier, purity, or barcode search.</p>
+                                    </div>
+
+                                    <div class="flex items-center gap-2">
+                                        <Tag :value="`${activeFilterCount} active`" severity="secondary" />
+                                        <Button label="Reset" text severity="secondary" :disabled="activeFilterCount === 0" @click="resetFilters" class="!w-auto shrink-0 whitespace-nowrap" />
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-[12rem_12rem_12rem_12rem_minmax(0,1fr)]">
+                                    <Select v-model="stockStatusFilter" :options="stockStatusOptions" optionLabel="label" optionValue="value" placeholder="Filter by stock" class="w-full" />
+                                    <Select v-model="categoryFilter" :options="categoryOptions" optionLabel="name" optionValue="id" placeholder="Filter by category" class="w-full" />
+                                    <Select v-model="supplierFilter" :options="supplierOptions" optionLabel="company_name" optionValue="id" placeholder="Filter by supplier" class="w-full" />
+                                    <Select v-model="purityFilter" :options="purityOptions" optionLabel="name" optionValue="id" placeholder="Filter by purity" class="w-full" />
+
+                                    <div class="relative w-full">
+                                        <Search class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                                        <InputText v-model="search" placeholder="Search product by name or barcode..." class="w-full !pl-10" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border border-surface-200 bg-white px-4 py-4">
+                                <div class="flex items-start gap-3">
+                                    <div class="flex h-10 w-10 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                                        <ScanLine class="h-5 w-5" />
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-sm font-medium text-surface-900">Quick Scan</p>
+                                        <p class="mt-1 text-xs text-surface-500">Scan barcode to open matching gold product instantly.</p>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 flex flex-col gap-3 sm:flex-row">
+                                    <InputText v-model="scanBarcode" placeholder="Scan barcode or type product code..." class="w-full" @keydown.enter.prevent="runQuickScan" />
+                                    <Button label="Open" icon="pi pi-arrow-right" :loading="isScanning" @click="runQuickScan" class="!w-auto shrink-0 whitespace-nowrap" />
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
@@ -386,6 +634,7 @@ const copyBarcode = async (barcode) => {
                     <div class="flex flex-col items-center justify-center gap-3 text-center text-sm lg:flex-row lg:justify-between lg:text-left">
                         <p class="font-medium text-amber-800">{{ selectedProductIds.length }} product{{ selectedProductIds.length === 1 ? '' : 's' }} selected for barcode printing.</p>
                         <div class="flex flex-wrap items-center justify-center gap-2 lg:justify-end">
+                            <Button label="Bulk Update" severity="secondary" outlined @click="openBulkActionDialog" class="!w-auto shrink-0 whitespace-nowrap" />
                             <Button label="Print Selected Barcodes" severity="warn" outlined @click="printSelected" class="!w-auto shrink-0 whitespace-nowrap" />
                         </div>
                     </div>
@@ -486,6 +735,8 @@ const copyBarcode = async (barcode) => {
                         <Column header="Action" style="width: 120px">
                             <template #body="{ data }">
                                 <div class="flex justify-end gap-1">
+                                    <Button icon="pi pi-clock" size="small" text severity="secondary" @click="openHistoryDrawer(data)" />
+                                    <Button icon="pi pi-copy" size="small" text severity="secondary" @click="confirmDuplicateProduct(data)" />
                                     <Button icon="pi pi-pencil" size="small" text severity="secondary" @click="editProduct(data)" />
                                     <Button icon="pi pi-trash" size="small" text severity="danger" @click="confirmDeleteProduct(data)" />
                                 </div>
@@ -639,6 +890,144 @@ const copyBarcode = async (barcode) => {
                     </div>
                 </form>
             </Dialog>
+
+            <Dialog v-model:visible="bulkActionDialog" header="Bulk Update Products" modal :style="{ width: '34rem' }">
+                <form @submit.prevent="applyBulkUpdate" class="space-y-5 pt-2">
+                    <div class="border border-surface-200 bg-surface-50 p-4">
+                        <p class="text-sm font-medium text-surface-900">{{ selectedProductIds.length }} product{{ selectedProductIds.length === 1 ? '' : 's' }} selected</p>
+                        <p class="mt-1 text-xs text-surface-500">Choose only fields you want to change. Empty fields will be ignored.</p>
+                    </div>
+
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Supplier</label>
+                        <Select v-model="bulkForm.supplier_id" :options="suppliers" optionLabel="company_name" optionValue="id" placeholder="Leave unchanged" class="w-full" />
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="mb-2 block text-sm font-medium text-surface-700">Category</label>
+                            <Select v-model="bulkForm.category_id" :options="categories" optionLabel="name" optionValue="id" placeholder="Leave unchanged" class="w-full" />
+                        </div>
+
+                        <div>
+                            <label class="mb-2 block text-sm font-medium text-surface-700">Purity</label>
+                            <Select v-model="bulkForm.purity_id" :options="purities" optionLabel="name" optionValue="id" placeholder="Leave unchanged" class="w-full" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Making Charge (%)</label>
+                        <InputNumber v-model="bulkForm.making_charge" mode="decimal" suffix=" %" :min="0" :max="100" :minFractionDigits="2" :maxFractionDigits="2" class="w-full" />
+                    </div>
+
+                    <small v-if="bulkForm.errors.bulk_update" class="block text-xs text-red-500">{{ bulkForm.errors.bulk_update }}</small>
+
+                    <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">
+                        <Button label="Cancel" text severity="secondary" type="button" @click="bulkActionDialog = false" />
+                        <Button label="Apply Changes" type="submit" :loading="bulkForm.processing" />
+                    </div>
+                </form>
+            </Dialog>
+
+            <Dialog v-model:visible="duplicateDialog" header="Duplicate Product" modal :style="{ width: '30rem' }">
+                <div class="space-y-4 pt-2">
+                    <div class="border border-surface-200 bg-surface-50 p-4">
+                        <p class="font-medium text-surface-900">Create copy of this product?</p>
+                        <p class="mt-1 text-sm text-surface-500">
+                            This will create new stock item from
+                            <span class="font-medium text-surface-900">{{ product.name }}</span>.
+                        </p>
+                    </div>
+
+                    <div class="space-y-3 border border-surface-200 bg-white p-4 text-sm">
+                        <div class="flex items-start gap-3">
+                            <i class="pi pi-check-circle mt-0.5 text-emerald-600" />
+                            <p class="text-surface-700">New product will get its own new barcode.</p>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <i class="pi pi-check-circle mt-0.5 text-emerald-600" />
+                            <p class="text-surface-700">Category, purity, supplier, weights, making charge will be copied.</p>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <i class="pi pi-check-circle mt-0.5 text-emerald-600" />
+                            <p class="text-surface-700">Image will not be copied. Add fresh photo to duplicate if needed.</p>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <i class="pi pi-info-circle mt-0.5 text-surface-500" />
+                            <p class="text-surface-700">Original product will stay unchanged.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">
+                        <Button label="Cancel" text severity="secondary" @click="duplicateDialog = false" />
+                        <Button label="Create Duplicate" icon="pi pi-copy" @click="duplicateProduct" />
+                    </div>
+                </div>
+            </Dialog>
+
+            <Drawer v-model:visible="historyDrawerVisible" position="right" class="!w-full md:!w-[34rem]" header="Product History">
+                <div class="flex h-full min-h-0 flex-col">
+                    <div v-if="historyLoading" class="flex flex-1 items-center justify-center text-sm text-surface-500">
+                        Loading history...
+                    </div>
+
+                    <template v-else>
+                        <div v-if="historyProduct" class="space-y-4">
+                            <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="text-sm font-medium text-surface-900">{{ historyProduct.name }}</p>
+                                        <p class="mt-1 text-xs text-surface-500">{{ historyProduct.barcode }} <span class="text-surface-300">•</span> {{ historyProduct.status }}</p>
+                                    </div>
+                                    <Tag :value="historyProduct.status" :severity="historyProduct.status === 'Sold' ? 'danger' : 'success'" />
+                                </div>
+
+                                <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                                    <div class="border border-surface-200 bg-white px-3 py-3">
+                                        <p class="text-xs uppercase tracking-wide text-surface-500">Gross</p>
+                                        <p class="mt-1 font-medium text-surface-900">{{ formatWeight(historyProduct.gross_weight) }}</p>
+                                    </div>
+                                    <div class="border border-surface-200 bg-white px-3 py-3">
+                                        <p class="text-xs uppercase tracking-wide text-surface-500">Net</p>
+                                        <p class="mt-1 font-medium text-surface-900">{{ formatWeight(historyProduct.net_weight) }}</p>
+                                    </div>
+                                    <div class="border border-surface-200 bg-white px-3 py-3">
+                                        <p class="text-xs uppercase tracking-wide text-surface-500">Category</p>
+                                        <p class="mt-1 font-medium text-surface-900">{{ historyProduct.category || '—' }}</p>
+                                    </div>
+                                    <div class="border border-surface-200 bg-white px-3 py-3">
+                                        <p class="text-xs uppercase tracking-wide text-surface-500">Purity</p>
+                                        <p class="mt-1 font-medium text-surface-900">{{ historyProduct.purity || '—' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div v-for="(event, index) in historyTimeline" :key="`${event.type}-${event.occurred_at}-${index}`" class="border border-surface-200 bg-white px-4 py-4">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p class="text-sm font-medium text-surface-900">{{ event.title }}</p>
+                                            <p class="mt-1 text-xs text-surface-500">{{ formatDateTime(event.occurred_at) }}</p>
+                                        </div>
+                                        <Tag :value="event.type.replaceAll('_', ' ')" severity="secondary" />
+                                    </div>
+
+                                    <div v-if="formatHistoryMeta(event.meta).length" class="mt-4 grid gap-2 text-sm">
+                                        <div v-for="item in formatHistoryMeta(event.meta)" :key="item.key" class="flex items-center justify-between gap-3 border-t border-surface-100 pt-2 first:border-t-0 first:pt-0">
+                                            <span class="capitalize text-surface-500">{{ item.key }}</span>
+                                            <span class="text-right font-medium text-surface-900">{{ item.value }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div v-if="!historyTimeline.length" class="border border-dashed border-surface-300 bg-white px-4 py-8 text-center text-sm text-surface-500">
+                                    No timeline events found for this product.
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </Drawer>
 
             <!-- Delete Dialog -->
             <Dialog v-model:visible="deleteDialog" header="Confirm Delete" modal :style="{ width: '28rem' }">

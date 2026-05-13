@@ -30,6 +30,11 @@ class Product extends Model
         return $this->hasMany(VerificationTag::class);
     }
 
+    public function invoiceItems()
+    {
+        return $this->hasMany(InvoiceItem::class);
+    }
+
     // AUTO-BARCODE LOGIC
     protected static function boot()
     {
