@@ -28,6 +28,7 @@ use App\Http\Controllers\MetalTransactionController;
 use App\Http\Controllers\GoldSchemeController;
 use App\Http\Controllers\Website\ProductCatalogController;
 use App\Http\Controllers\Website\WebsiteApiController;
+use App\Http\Controllers\GoldStockCountController;
 
 /*
 |--------------------------------------------------------------------------
@@ -177,6 +178,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('products/print-barcodes', [ProductController::class, 'printBarcodes'])
         ->middleware('permission:manage_products')
         ->name('products.print_barcodes');
+    Route::get('/gold-stock-count', [GoldStockCountController::class, 'index'])
+        ->middleware('permission:manage_stock_counts')
+        ->name('gold-stock-count.index');
+    Route::post('/gold-stock-count/scan', [GoldStockCountController::class, 'scan'])
+        ->middleware(['permission:manage_stock_counts', 'day.open'])
+        ->name('gold-stock-count.scan');
+    Route::post('/gold-stock-count/complete', [GoldStockCountController::class, 'complete'])
+        ->middleware(['permission:manage_stock_counts', 'day.open'])
+        ->name('gold-stock-count.complete');
 
     Route::resource('products', ProductController::class)
         ->only(['index'])
@@ -203,6 +213,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('silver-products', SilverProductController::class)
         ->only(['index'])
         ->middleware('permission:manage_products');
+    Route::get('/silver-products/scan', [SilverProductController::class, 'scan'])->middleware('permission:manage_products')->name('silver-products.scan');
+    Route::get('/silver-products/{silverProduct}/history', [SilverProductController::class, 'history'])->middleware('permission:manage_products')->name('silver-products.history');
+    Route::post('/silver-products/bulk-update', [SilverProductController::class, 'bulkUpdate'])->middleware(['permission:manage_products', 'day.open'])->name('silver-products.bulk-update');
+    Route::post('/silver-products/{silverProduct}/duplicate', [SilverProductController::class, 'duplicate'])->middleware(['permission:manage_products', 'day.open'])->name('silver-products.duplicate');
     Route::post('/silver-products', [SilverProductController::class, 'store'])->middleware(['permission:manage_products', 'day.open'])->name('silver-products.store');
     Route::match(['put', 'patch'], '/silver-products/{silverProduct}', [SilverProductController::class, 'update'])->middleware(['permission:manage_products', 'day.open'])->name('silver-products.update');
     Route::delete('/silver-products/{silverProduct}', [SilverProductController::class, 'destroy'])->middleware(['permission:manage_products', 'day.open'])->name('silver-products.destroy');

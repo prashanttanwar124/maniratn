@@ -23,6 +23,11 @@ class SilverProduct extends Model
         return $this->hasMany(VerificationTag::class);
     }
 
+    public function invoiceItems()
+    {
+        return $this->hasMany(InvoiceItem::class);
+    }
+
     protected static function boot()
     {
         parent::boot();

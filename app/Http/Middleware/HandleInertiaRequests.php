@@ -80,13 +80,9 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user,
                 'role' => $user ? $user->getRoleNames()->first() : null,
-
-                // DYNAMIC PERMISSION LOADING
-                'can' => $user ? (
-                    $user->hasRole('admin')
-                    ? \Spatie\Permission\Models\Permission::all()->mapWithKeys(fn($p) => [$p->name => true])
-                    : $user->getAllPermissions()->mapWithKeys(fn($p) => [$p->name => true])
-                ) : [],
+                'can' => $user
+                    ? $user->getAllPermissions()->mapWithKeys(fn ($permission) => [$permission->name => true])
+                    : [],
             ],
         ];
     }

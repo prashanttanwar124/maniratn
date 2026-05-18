@@ -4,80 +4,27 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        $registrar = app()[\Spatie\Permission\PermissionRegistrar::class];
+        $registrar->forgetCachedPermissions();
 
-        $permissions = [
-            'manage_users',
-            'manage_roles_permissions',
-            'view_dashboard',
-            'manage_daily_rates',
-            'view_vault',
-            'manage_vault',
-            'manage_products',
-            'manage_categories',
-            'manage_customers',
-            'manage_suppliers',
-            'create_order',
-            'manage_orders',
-            'settle_karigar',
-            'manage_invoices',
-            'manage_gold_schemes',
-            'manage_ledgers',
-            'manage_expenses',
-            'manage_mortgages',
-            'view_all_sales',
-        ];
+        $this->resetManagedRolesAndPermissions();
+
+        $permissions = RolePermissionRegistry::permissions();
 
         foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission]);
+            Permission::create(['name' => $permission]);
         }
 
-        $roles = [
-            'admin' => $permissions,
-            'manager' => [
-                'view_dashboard',
-                'manage_daily_rates',
-                'view_vault',
-                'manage_products',
-                'manage_categories',
-                'manage_customers',
-                'manage_suppliers',
-                'create_order',
-                'manage_orders',
-                'manage_invoices',
-                'manage_gold_schemes',
-                'manage_ledgers',
-                'view_all_sales',
-            ],
-            'accountant' => [
-                'view_dashboard',
-                'view_vault',
-                'manage_vault',
-                'manage_ledgers',
-                'manage_expenses',
-                'manage_mortgages',
-                'manage_gold_schemes',
-                'view_all_sales',
-            ],
-            'staff' => [
-                'view_dashboard',
-                'manage_customers',
-                'create_order',
-                'manage_orders',
-                'manage_invoices',
-            ],
-            'basic' => [],
-        ];
-
-        foreach ($roles as $roleName => $rolePermissions) {
-            $role = Role::firstOrCreate(['name' => $roleName]);
+        foreach (RolePermissionRegistry::roles() as $roleName => $rolePermissions) {
+            $role = Role::create(['name' => $roleName]);
             $role->syncPermissions($rolePermissions);
         }
 
@@ -85,5 +32,18 @@ class RolesAndPermissionsSeeder extends Seeder
         if ($user) {
             $user->syncRoles(['admin']);
         }
+
+        $registrar->forgetCachedPermissions();
+    }
+
+    protected function resetManagedRolesAndPermissions(): void
+    {
+        $tableNames = config('permission.table_names');
+
+        DB::table($tableNames['model_has_permissions'])->delete();
+        DB::table($tableNames['model_has_roles'])->delete();
+        DB::table($tableNames['role_has_permissions'])->delete();
+        DB::table($tableNames['permissions'])->delete();
+        DB::table($tableNames['roles'])->delete();
     }
 }

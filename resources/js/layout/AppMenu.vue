@@ -29,6 +29,12 @@ const model = [
         ],
     },
     {
+        label: 'Stock Count',
+        items: [
+            { label: 'Gold Stock Count', icon: 'pi pi-fw pi-check-square', to: '/gold-stock-count', visible: Boolean(can.manage_stock_counts) },
+        ],
+    },
+    {
         label: 'Orders & Karigar',
         items: [
             { label: 'Orders', icon: 'pi pi-fw pi-clipboard', to: '/orders', visible: Boolean(can.create_order || can.manage_orders) },

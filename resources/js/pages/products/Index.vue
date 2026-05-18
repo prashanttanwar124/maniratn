@@ -582,21 +582,21 @@ const copyBarcode = async (barcode) => {
 
                 <div class="border-b border-surface-200 bg-surface-50 px-5 py-4">
                     <div class="flex flex-col gap-4">
-                        <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+                        <div class="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_24rem]">
                             <div class="border border-surface-200 bg-white px-4 py-4">
-                                <div class="flex items-start justify-between gap-3">
-                                    <div>
+                                <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                    <div class="min-w-0">
                                         <p class="text-sm font-medium text-surface-900">Filters</p>
                                         <p class="mt-1 text-xs text-surface-500">Narrow inventory by stock, category, supplier, purity, or barcode search.</p>
                                     </div>
 
-                                    <div class="flex items-center gap-2">
+                                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center lg:shrink-0">
                                         <Tag :value="`${activeFilterCount} active`" severity="secondary" />
-                                        <Button label="Reset" text severity="secondary" :disabled="activeFilterCount === 0" @click="resetFilters" class="!w-auto shrink-0 whitespace-nowrap" />
+                                        <Button label="Reset" text severity="secondary" :disabled="activeFilterCount === 0" @click="resetFilters" class="!w-full sm:!w-auto shrink-0 whitespace-nowrap" />
                                     </div>
                                 </div>
 
-                                <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-[12rem_12rem_12rem_12rem_minmax(0,1fr)]">
+                                <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-[12rem_12rem_12rem_12rem_minmax(0,1fr)]">
                                     <Select v-model="stockStatusFilter" :options="stockStatusOptions" optionLabel="label" optionValue="value" placeholder="Filter by stock" class="w-full" />
                                     <Select v-model="categoryFilter" :options="categoryOptions" optionLabel="name" optionValue="id" placeholder="Filter by category" class="w-full" />
                                     <Select v-model="supplierFilter" :options="supplierOptions" optionLabel="company_name" optionValue="id" placeholder="Filter by supplier" class="w-full" />
@@ -611,18 +611,36 @@ const copyBarcode = async (barcode) => {
 
                             <div class="border border-surface-200 bg-white px-4 py-4">
                                 <div class="flex items-start gap-3">
-                                    <div class="flex h-10 w-10 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
                                         <ScanLine class="h-5 w-5" />
                                     </div>
                                     <div class="min-w-0 flex-1">
-                                        <p class="text-sm font-medium text-surface-900">Quick Scan</p>
-                                        <p class="mt-1 text-xs text-surface-500">Scan barcode to open matching gold product instantly.</p>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <p class="text-sm font-medium text-surface-900">Quick Scan</p>
+                                            <Tag value="Barcode" severity="contrast" />
+                                        </div>
+                                        <p class="mt-1 text-xs text-surface-500">Open matching gold product fast by barcode.</p>
                                     </div>
                                 </div>
 
-                                <div class="mt-4 flex flex-col gap-3 sm:flex-row">
-                                    <InputText v-model="scanBarcode" placeholder="Scan barcode or type product code..." class="w-full" @keydown.enter.prevent="runQuickScan" />
-                                    <Button label="Open" icon="pi pi-arrow-right" :loading="isScanning" @click="runQuickScan" class="!w-auto shrink-0 whitespace-nowrap" />
+                                <div class="mt-4 space-y-3">
+                                    <div class="flex flex-col gap-3 sm:flex-row">
+                                        <div class="relative min-w-0 flex-1">
+                                            <i class="pi pi-barcode pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-surface-400" />
+                                            <InputText
+                                                v-model="scanBarcode"
+                                                placeholder="Scan barcode or type product code..."
+                                                class="w-full !pl-10"
+                                                @keydown.enter.prevent="runQuickScan"
+                                            />
+                                        </div>
+                                        <Button label="Open" icon="pi pi-arrow-right" :loading="isScanning" @click="runQuickScan" class="!w-full sm:!w-auto shrink-0 whitespace-nowrap" />
+                                    </div>
+
+                                    <div class="flex flex-wrap items-center gap-2 text-xs text-surface-500">
+                                        <span class="border border-surface-200 bg-surface-50 px-2 py-1">Example: G00025</span>
+                                        <span>Press Enter after scan</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
