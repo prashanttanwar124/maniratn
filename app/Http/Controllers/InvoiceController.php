@@ -434,6 +434,7 @@ class InvoiceController extends Controller
                 'invoice_number' => 'TMP-' . Str::uuid(),
                 'customer_id'    => $validated['customer_id'],
                 'gold_rate_applied' => (float) ($validated['gold_rate'] ?? 0),
+                'silver_rate_applied' => (float) ($validated['silver_rate'] ?? 0),
                 'discount_type' => $validated['discount_type'] ?? null,
                 'discount_value' => (float) ($validated['discount_value'] ?? 0),
                 'discount_amount' => 0,

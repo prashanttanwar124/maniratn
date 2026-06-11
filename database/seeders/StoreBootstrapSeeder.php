@@ -45,6 +45,7 @@ class StoreBootstrapSeeder extends Seeder
                 'phone' => '9892820518',
                 'email' => 'hello@maniratnjewellers.com',
                 'website' => 'https://maniratnjewellers.com/',
+                'gst_number' => '27MANIRATN1234Z',
             ]
         );
     }

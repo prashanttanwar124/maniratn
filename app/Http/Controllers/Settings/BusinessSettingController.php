@@ -22,6 +22,7 @@ class BusinessSettingController extends Controller
                 'phone' => '',
                 'email' => '',
                 'website' => '',
+                'gst_number' => '',
             ]
         );
 
@@ -32,6 +33,7 @@ class BusinessSettingController extends Controller
                 'phone' => $businessSetting->phone,
                 'email' => $businessSetting->email,
                 'website' => $businessSetting->website,
+                'gst_number' => $businessSetting->gst_number,
                 'logo_path' => $businessSetting->logo_path,
                 'logo_url' => $businessSetting->logo_url,
             ],
@@ -48,6 +50,7 @@ class BusinessSettingController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
             'website' => ['nullable', 'string', 'max:255'],
+            'gst_number' => ['nullable', 'string', 'max:50'],
             'logo' => ['nullable', 'image', 'max:2048'],
             'remove_logo' => ['nullable', 'boolean'],
         ]);

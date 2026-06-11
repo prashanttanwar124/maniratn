@@ -16,6 +16,7 @@ const form = useForm({
     phone: props.businessSetting?.phone || '',
     email: props.businessSetting?.email || '',
     website: props.businessSetting?.website || '',
+    gst_number: props.businessSetting?.gst_number || '',
     logo: null,
     remove_logo: false,
 });
@@ -80,10 +81,16 @@ const saveBusinessProfile = () => {
                             <small v-if="form.errors.email" class="mt-1 block text-xs text-red-500">{{ form.errors.email }}</small>
                         </div>
 
-                        <div class="md:col-span-2">
+                        <div>
                             <label class="mb-2 block text-sm font-medium text-surface-700">Website</label>
                             <InputText v-model="form.website" class="w-full" placeholder="Enter website URL" />
                             <small v-if="form.errors.website" class="mt-1 block text-xs text-red-500">{{ form.errors.website }}</small>
+                        </div>
+
+                        <div>
+                            <label class="mb-2 block text-sm font-medium text-surface-700">GST Number</label>
+                            <InputText v-model="form.gst_number" class="w-full" placeholder="Enter GST number" />
+                            <small v-if="form.errors.gst_number" class="mt-1 block text-xs text-red-500">{{ form.errors.gst_number }}</small>
                         </div>
 
                         <div class="md:col-span-2">
