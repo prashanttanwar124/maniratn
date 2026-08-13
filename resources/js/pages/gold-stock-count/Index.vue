@@ -3,7 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { ScanLine } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { route } from 'ziggy-js';
 
 import Button from 'primevue/button';
@@ -26,6 +26,7 @@ const props = defineProps({
 
 const toast = useToast();
 const scanInput = ref('');
+const scanInputRef = ref(null);
 const scanning = ref(false);
 const completing = ref(false);
 const summary = ref(props.summary);
@@ -37,13 +38,20 @@ const categoryOptions = computed(() => [{ id: null, name: 'All Gold Categories' 
 
 const isCompleteReady = computed(() => props.dayOpen && Number(summary.value?.overall_remaining_items || 0) === 0 && Number(summary.value?.overall_expected_items || 0) > 0);
 const selectedCategoryName = computed(() => props.categories?.find((category) => category.id === selectedCategoryId.value)?.name || 'All Gold Categories');
+const canScan = computed(() => props.dayOpen && session.value?.status !== 'COMPLETED');
+
+const focusScanInput = async () => {
+    if (!canScan.value) return;
+
+    await nextTick();
+    const input = scanInputRef.value?.$el || scanInputRef.value;
+    input?.focus?.();
+};
+
+onMounted(focusScanInput);
 
 const changeCategory = () => {
-    router.get(
-        route('gold-stock-count.index'),
-        { category_id: selectedCategoryId.value || undefined },
-        { preserveScroll: true, replace: true },
-    );
+    router.get(route('gold-stock-count.index'), { category_id: selectedCategoryId.value || undefined }, { preserveScroll: true, replace: true });
 };
 
 const formatWeight = (value) => `${Number(value || 0).toFixed(3)} g`;
@@ -66,8 +74,9 @@ const formatDateTime = (value) => {
 const scanBarcode = async () => {
     const barcode = scanInput.value.trim();
 
-    if (!barcode || scanning.value || !props.dayOpen) return;
+    if (!barcode || scanning.value || !canScan.value) return;
 
+    scanInput.value = '';
     scanning.value = true;
 
     try {
@@ -81,8 +90,6 @@ const scanBarcode = async () => {
         summary.value = payload.summary;
         recentCounted.value = payload.recentCounted || [];
         missingProducts.value = payload.missingProducts || [];
-        scanInput.value = '';
-
         toast.add({
             severity: 'success',
             summary: 'Counted',
@@ -99,6 +106,8 @@ const scanBarcode = async () => {
         });
     } finally {
         scanning.value = false;
+        scanInput.value = '';
+        await focusScanInput();
     }
 };
 
@@ -150,14 +159,7 @@ const markComplete = async () => {
                         <p class="mt-1 text-sm text-surface-500">Scan unsold gold stock before close day and compare counted items with system stock.</p>
                     </div>
 
-                    <Button
-                        label="Mark Complete"
-                        icon="pi pi-check"
-                        :disabled="!isCompleteReady"
-                        :loading="completing"
-                        @click="markComplete"
-                        class="!w-auto shrink-0 whitespace-nowrap"
-                    />
+                    <Button label="Mark Complete" icon="pi pi-check" :disabled="!isCompleteReady" :loading="completing" @click="markComplete" class="!w-auto shrink-0 whitespace-nowrap" />
                 </div>
             </div>
 
@@ -170,14 +172,7 @@ const markComplete = async () => {
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <label class="mb-2 block text-sm font-medium text-surface-700">Count by Category</label>
-                        <Select
-                            v-model="selectedCategoryId"
-                            :options="categoryOptions"
-                            optionLabel="name"
-                            optionValue="id"
-                            class="w-full sm:w-80"
-                            @change="changeCategory"
-                        />
+                        <Select v-model="selectedCategoryId" :options="categoryOptions" optionLabel="name" optionValue="id" class="w-full sm:w-80" @change="changeCategory" />
                     </div>
                     <div class="text-sm text-surface-500">
                         Viewing <span class="font-medium text-surface-900">{{ selectedCategoryName }}</span>
@@ -225,9 +220,17 @@ const markComplete = async () => {
                     <div class="mt-4 flex flex-col gap-3 sm:flex-row">
                         <div class="relative min-w-0 flex-1">
                             <i class="pi pi-barcode pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-surface-400" />
-                            <InputText v-model="scanInput" placeholder="Scan barcode or enter gold product code..." class="w-full !pl-10" @keydown.enter.prevent="scanBarcode" />
+                            <InputText
+                                ref="scanInputRef"
+                                v-model="scanInput"
+                                placeholder="Scan barcode or enter gold product code..."
+                                class="w-full !pl-10"
+                                :disabled="scanning || !canScan"
+                                autofocus
+                                @keydown.enter.prevent="scanBarcode"
+                            />
                         </div>
-                        <Button label="Count Item" icon="pi pi-plus" :loading="scanning" @click="scanBarcode" class="!w-full sm:!w-auto shrink-0 whitespace-nowrap" />
+                        <Button label="Count Item" icon="pi pi-plus" :loading="scanning" :disabled="!canScan" @click="scanBarcode" class="!w-full shrink-0 whitespace-nowrap sm:!w-auto" />
                     </div>
 
                     <div class="mt-4 flex flex-wrap items-center gap-2 text-xs text-surface-500">
