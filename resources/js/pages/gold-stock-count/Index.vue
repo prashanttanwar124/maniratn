@@ -267,7 +267,7 @@ const markComplete = async () => {
                     </div>
 
                     <div class="p-4">
-                        <DataTable :value="recentCounted" stripedRows rowHover tableStyle="min-width: 36rem">
+                        <DataTable :value="recentCounted" stripedRows rowHover tableStyle="min-width: 46rem">
                             <template #empty>
                                 <div class="py-12 text-center text-surface-500">No gold items counted yet</div>
                             </template>
@@ -279,6 +279,16 @@ const markComplete = async () => {
                                         <p class="font-medium text-surface-900">{{ data.name }}</p>
                                         <p class="mt-1 text-xs text-surface-500">{{ data.category || '—' }}</p>
                                     </div>
+                                </template>
+                            </Column>
+                            <Column field="purity" header="Purity" style="width: 100px">
+                                <template #body="{ data }">
+                                    <Tag :value="data.purity || '—'" severity="info" />
+                                </template>
+                            </Column>
+                            <Column header="Net Weight" style="width: 130px">
+                                <template #body="{ data }">
+                                    <span class="font-medium text-surface-900">{{ formatWeight(data.net_weight) }}</span>
                                 </template>
                             </Column>
                             <Column header="Scanned" style="width: 160px">
@@ -297,7 +307,7 @@ const markComplete = async () => {
                     </div>
 
                     <div class="p-4">
-                        <DataTable :value="missingProducts" stripedRows rowHover tableStyle="min-width: 36rem">
+                        <DataTable :value="missingProducts" stripedRows rowHover tableStyle="min-width: 42rem">
                             <template #empty>
                                 <div class="py-12 text-center text-emerald-600">All open gold stock counted</div>
                             </template>
@@ -309,6 +319,11 @@ const markComplete = async () => {
                                         <p class="font-medium text-surface-900">{{ data.name }}</p>
                                         <p class="mt-1 text-xs text-surface-500">{{ data.category || '—' }}</p>
                                     </div>
+                                </template>
+                            </Column>
+                            <Column field="purity" header="Purity" style="width: 100px">
+                                <template #body="{ data }">
+                                    <Tag :value="data.purity || '—'" severity="info" />
                                 </template>
                             </Column>
                             <Column header="Net Weight" style="width: 140px">

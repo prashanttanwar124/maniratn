@@ -25,7 +25,7 @@ class GoldStockCountController extends Controller
         $register = $this->currentOpenRegister();
         $session = $register
             ? GoldStockCountSession::query()
-                ->with(['entries.product.category'])
+                ->with(['entries.product.category', 'entries.product.purity'])
                 ->where('daily_register_id', $register->id)
                 ->first()
             : null;
@@ -75,7 +75,7 @@ class GoldStockCountController extends Controller
         $normalizedBarcode = strtoupper(trim($validated['barcode']));
 
         $product = Product::query()
-            ->with('category')
+            ->with(['category', 'purity'])
             ->where('is_sold', false)
             ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
             ->where(function ($query) use ($normalizedBarcode) {
@@ -106,7 +106,7 @@ class GoldStockCountController extends Controller
             'scanned_at' => now(),
         ]);
 
-        $session->load('entries.product.category');
+        $session->load(['entries.product.category', 'entries.product.purity']);
 
         return response()->json([
             'countedProduct' => [
@@ -114,6 +114,8 @@ class GoldStockCountController extends Controller
                 'barcode' => $product->barcode,
                 'name' => $product->name,
                 'category' => $product->category?->name,
+                'purity' => $product->purity?->name,
+                'net_weight' => (float) $product->net_weight,
             ],
             'summary' => $this->buildSummary($register, $session, $categoryId),
             'recentCounted' => $this->recentCounted($session, $categoryId),
@@ -200,7 +202,7 @@ class GoldStockCountController extends Controller
         }
 
         return $session->entries()
-            ->with(['product.category', 'scannedBy'])
+            ->with(['product.category', 'product.purity', 'scannedBy'])
             ->when($categoryId, fn ($query) => $query->whereHas('product', fn ($productQuery) => $productQuery->where('category_id', $categoryId)))
             ->latest('scanned_at')
             ->take(50)
@@ -210,6 +212,8 @@ class GoldStockCountController extends Controller
                 'barcode' => $entry->product?->barcode,
                 'name' => $entry->product?->name,
                 'category' => $entry->product?->category?->name,
+                'purity' => $entry->product?->purity?->name,
+                'net_weight' => (float) ($entry->product?->net_weight ?? 0),
                 'scanned_at' => optional($entry->scanned_at)->toISOString(),
                 'scanned_by' => $entry->scannedBy?->name,
             ])
@@ -222,7 +226,7 @@ class GoldStockCountController extends Controller
         $countedIds = $session ? $session->entries->pluck('product_id') : collect();
 
         return Product::query()
-            ->with('category')
+            ->with(['category', 'purity'])
             ->where('is_sold', false)
             ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
             ->when($countedIds->isNotEmpty(), fn ($query) => $query->whereNotIn('id', $countedIds))
@@ -234,6 +238,7 @@ class GoldStockCountController extends Controller
                 'barcode' => $product->barcode,
                 'name' => $product->name,
                 'category' => $product->category?->name,
+                'purity' => $product->purity?->name,
                 'gross_weight' => (float) $product->gross_weight,
                 'net_weight' => (float) $product->net_weight,
             ])

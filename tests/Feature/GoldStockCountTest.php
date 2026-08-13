@@ -44,9 +44,14 @@ it('counts an unsold gold product into today session', function () {
 
     $response->assertOk()
         ->assertJsonPath('countedProduct.id', $product->id)
+        ->assertJsonPath('countedProduct.purity', '22K')
+        ->assertJsonPath('countedProduct.net_weight', 9.5)
         ->assertJsonPath('summary.expected_items', 1)
         ->assertJsonPath('summary.counted_items', 1)
         ->assertJsonPath('summary.remaining_items', 0);
+
+    $response->assertJsonPath('recentCounted.0.purity', '22K')
+        ->assertJsonPath('recentCounted.0.net_weight', 9.5);
 
     expect(GoldStockCountSession::count())->toBe(1)
         ->and(GoldStockCountEntry::count())->toBe(1);
@@ -101,7 +106,9 @@ it('counts and summarizes gold stock by selected category', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->where('selectedCategoryId', $chainCategory->id)
             ->where('summary.expected_items', 1)
-            ->where('missingProducts.0.id', $chain->id));
+            ->where('missingProducts.0.id', $chain->id)
+            ->where('missingProducts.0.purity', '22K')
+            ->where('missingProducts.0.net_weight', 9.5));
 
     $this->postJson(route('gold-stock-count.scan'), [
         'barcode' => $ring->barcode,
