@@ -18,6 +18,11 @@ class SilverProduct extends Model
         return $this->belongsTo(Supplier::class);
     }
 
+    public function counter()
+    {
+        return $this->belongsTo(Counter::class);
+    }
+
     public function verificationTags()
     {
         return $this->hasMany(VerificationTag::class);
@@ -34,7 +39,7 @@ class SilverProduct extends Model
 
         static::creating(function ($product) {
             $nextId = (SilverProduct::max('id') ?? 0) + 1;
-            $product->barcode = 'S' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+            $product->barcode = 'S'.str_pad($nextId, 5, '0', STR_PAD_LEFT);
         });
     }
 }

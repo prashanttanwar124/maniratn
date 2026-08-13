@@ -1,5 +1,6 @@
 <script setup>
 import AppLayout from '@/layouts/AppLayout.vue';
+import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { ScanLine } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
@@ -9,6 +10,7 @@ import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import InputText from 'primevue/inputtext';
+import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
 
@@ -18,6 +20,8 @@ const props = defineProps({
     summary: Object,
     recentCounted: Array,
     missingProducts: Array,
+    categories: Array,
+    selectedCategoryId: Number,
 });
 
 const toast = useToast();
@@ -28,8 +32,19 @@ const summary = ref(props.summary);
 const session = ref(props.session);
 const recentCounted = ref(props.recentCounted || []);
 const missingProducts = ref(props.missingProducts || []);
+const selectedCategoryId = ref(props.selectedCategoryId || null);
+const categoryOptions = computed(() => [{ id: null, name: 'All Gold Categories' }, ...(props.categories || [])]);
 
-const isCompleteReady = computed(() => props.dayOpen && Number(summary.value?.remaining_items || 0) === 0 && Number(summary.value?.expected_items || 0) > 0);
+const isCompleteReady = computed(() => props.dayOpen && Number(summary.value?.overall_remaining_items || 0) === 0 && Number(summary.value?.overall_expected_items || 0) > 0);
+const selectedCategoryName = computed(() => props.categories?.find((category) => category.id === selectedCategoryId.value)?.name || 'All Gold Categories');
+
+const changeCategory = () => {
+    router.get(
+        route('gold-stock-count.index'),
+        { category_id: selectedCategoryId.value || undefined },
+        { preserveScroll: true, replace: true },
+    );
+};
 
 const formatWeight = (value) => `${Number(value || 0).toFixed(3)} g`;
 const formatDateTime = (value) => {
@@ -58,6 +73,7 @@ const scanBarcode = async () => {
     try {
         const response = await axios.post(route('gold-stock-count.scan'), {
             barcode,
+            category_id: selectedCategoryId.value,
         });
 
         const payload = response.data || {};
@@ -150,7 +166,27 @@ const markComplete = async () => {
                 <p class="mt-1 text-sm text-amber-800">Open today’s shop day before scanning gold stock count.</p>
             </div>
 
-            <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <div v-else class="border border-surface-200 bg-white px-5 py-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Count by Category</label>
+                        <Select
+                            v-model="selectedCategoryId"
+                            :options="categoryOptions"
+                            optionLabel="name"
+                            optionValue="id"
+                            class="w-full sm:w-80"
+                            @change="changeCategory"
+                        />
+                    </div>
+                    <div class="text-sm text-surface-500">
+                        Viewing <span class="font-medium text-surface-900">{{ selectedCategoryName }}</span>
+                        <span v-if="selectedCategoryId"> · {{ summary?.overall_remaining_items || 0 }} item(s) remain across all categories</span>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="dayOpen" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
                 <div class="border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Expected Items</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ summary?.expected_items || 0 }}</p>

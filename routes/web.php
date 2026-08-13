@@ -1,34 +1,33 @@
 <?php
 
-use Inertia\Inertia;
-use App\Models\Product;
-use App\Models\SilverProduct;
-use Laravel\Fortify\Features;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\UserManagementController;
-use App\Http\Controllers\StaffController;
-use App\Http\Controllers\LedgerController;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AttendanceTerminalController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CounterController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\GoldSchemeController;
+use App\Http\Controllers\GoldStockCountController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\KarigarController;
+use App\Http\Controllers\LedgerController;
+use App\Http\Controllers\MetalTransactionController;
+use App\Http\Controllers\MortgageController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurityController;
 use App\Http\Controllers\SilverProductController;
-use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\MortgageController;
+use App\Http\Controllers\StaffController;
 use App\Http\Controllers\SupplierController;
-use App\Http\Controllers\KarigarController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\AttendanceController;
-use App\Http\Controllers\AttendanceTerminalController;
-use App\Http\Controllers\VerificationTagController;
 use App\Http\Controllers\TransactionController;
-use App\Http\Controllers\MetalTransactionController;
-use App\Http\Controllers\GoldSchemeController;
+use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\VerificationTagController;
 use App\Http\Controllers\Website\ProductCatalogController;
 use App\Http\Controllers\Website\WebsiteApiController;
-use App\Http\Controllers\GoldStockCountController;
+use App\Models\Product;
+use App\Models\SilverProduct;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -133,7 +132,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/dashboard/close-day', [DashboardController::class, 'closeDay'])
             ->middleware('permission:manage_vault')
             ->name('dashboard.close-day');
-
 
         // Update Gold/Silver Market Rates
         Route::post('/dashboard/update-rates', [DashboardController::class, 'updateRates'])
@@ -276,12 +274,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::match(['put', 'patch'], 'categories/{category}', [CategoryController::class, 'update'])->middleware(['permission:manage_categories', 'day.open'])->name('categories.update');
     Route::delete('categories/{category}', [CategoryController::class, 'destroy'])->middleware(['permission:manage_categories', 'day.open'])->name('categories.destroy');
 
+    Route::get('counters', [CounterController::class, 'index'])->middleware('permission:manage_categories')->name('counters.index');
+    Route::post('counters', [CounterController::class, 'store'])->middleware(['permission:manage_categories', 'day.open'])->name('counters.store');
+    Route::match(['put', 'patch'], 'counters/{counter}', [CounterController::class, 'update'])->middleware(['permission:manage_categories', 'day.open'])->name('counters.update');
+    Route::delete('counters/{counter}', [CounterController::class, 'destroy'])->middleware(['permission:manage_categories', 'day.open'])->name('counters.destroy');
+
     // --- PURITIES ---
     Route::get('purities', [PurityController::class, 'index'])->middleware('permission:manage_categories')->name('purities');
     Route::post('purities', [PurityController::class, 'store'])->middleware(['permission:manage_categories', 'day.open'])->name('purities.store');
     Route::match(['put', 'patch'], 'purities/{purity}', [PurityController::class, 'update'])->middleware(['permission:manage_categories', 'day.open'])->name('purities.update');
     Route::delete('purities/{purity}', [PurityController::class, 'destroy'])->middleware(['permission:manage_categories', 'day.open'])->name('purities.destroy');
-
 
     // --- suppliers ---
     Route::resource('suppliers', SupplierController::class)
@@ -301,8 +303,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/staff/{staff}', [StaffController::class, 'update'])->middleware(['permission:manage_users', 'day.open'])->name('staff.update');
     Route::delete('/staff/{staff}', [StaffController::class, 'destroy'])->middleware(['permission:manage_users', 'day.open'])->name('staff.destroy');
 
-
-
     Route::get('/{type}/ledger/{id}', [LedgerController::class, 'show'])
         ->middleware('permission:manage_ledgers')
         ->where('type', 'suppliers|karigars|customers') // Limit to valid types
@@ -317,7 +317,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->where('category', 'cash|metal')
         ->name('ledger.update-entry');
 
-
     // --- suppliers ---
     // Standard Resource Routes (Index, Store, etc.)
     Route::get('/orders', [OrderController::class, 'index'])->middleware('permission:create_order|manage_orders')->name('orders.index');
@@ -328,8 +327,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('orders/{orderItem}/assign', [OrderController::class, 'assign'])->middleware(['permission:create_order|manage_orders', 'day.open'])->name('orders.assign');
     Route::post('orders/{orderItem}/complete', [OrderController::class, 'complete'])->middleware(['permission:create_order|manage_orders', 'day.open'])->name('orders.complete');
     Route::post('orders/{orderItem}/transaction', [OrderController::class, 'addTransaction'])->middleware(['permission:create_order|manage_orders', 'day.open'])->name('orders.transaction');
-
-
 
     // 1. Route for CASH Entries (Money)
     Route::post('/transactions', [TransactionController::class, 'store'])
@@ -342,4 +339,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('metal-transactions.store');
 });
 
-require __DIR__ . '/settings.php';
+require __DIR__.'/settings.php';

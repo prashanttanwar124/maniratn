@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\BarcodeLabelPdfService;
 use App\Models\Category;
+use App\Models\Counter;
 use App\Models\SilverProduct;
 use App\Models\Supplier;
+use App\Services\BarcodeLabelPdfService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -16,15 +17,15 @@ class SilverProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = SilverProduct::query()->with(['category', 'supplier']);
+        $query = SilverProduct::query()->with(['category', 'supplier', 'counter']);
         $statsBaseQuery = SilverProduct::query()->with('category');
         $applyFilters = function ($builder) use ($request) {
             if ($request->filled('search')) {
                 $search = $request->string('search')->toString();
 
                 $builder->where(function ($silverQuery) use ($search) {
-                    $silverQuery->where('name', 'like', '%' . $search . '%')
-                        ->orWhere('barcode', 'like', '%' . $search . '%');
+                    $silverQuery->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('barcode', 'like', '%'.$search.'%');
                 });
             }
 
@@ -34,6 +35,10 @@ class SilverProductController extends Controller
 
             if ($request->filled('supplier_id')) {
                 $builder->where('supplier_id', (int) $request->input('supplier_id'));
+            }
+
+            if ($request->filled('counter_id')) {
+                $builder->where('counter_id', (int) $request->input('counter_id'));
             }
 
             if ($request->filled('stock_status')) {
@@ -72,7 +77,8 @@ class SilverProductController extends Controller
                 ->paginate(10),
             'suppliers' => Supplier::all(),
             'categories' => Category::silver()->orderBy('name')->get(),
-            'filters' => $request->only(['search', 'category_id', 'supplier_id', 'stock_status', 'pricing_mode']),
+            'counters' => Counter::query()->orderBy('name')->get(),
+            'filters' => $request->only(['search', 'category_id', 'supplier_id', 'counter_id', 'stock_status', 'pricing_mode']),
             'summary' => [
                 'total_items' => $statsProducts->count(),
                 'sold_items' => $statsProducts->where('is_sold', true)->count(),
@@ -94,13 +100,13 @@ class SilverProductController extends Controller
         $normalizedBarcode = strtoupper(trim($validated['barcode']));
 
         $product = SilverProduct::query()
-            ->with(['category', 'supplier'])
+            ->with(['category', 'supplier', 'counter'])
             ->where('barcode', $normalizedBarcode)
             ->first();
 
         if (! $product && preg_match('/^S(\d{5})$/', $normalizedBarcode, $matches)) {
             $product = SilverProduct::query()
-                ->with(['category', 'supplier'])
+                ->with(['category', 'supplier', 'counter'])
                 ->find((int) $matches[1]);
         }
 
@@ -127,14 +133,14 @@ class SilverProductController extends Controller
             foreach ($batchItems as $index => $item) {
                 SilverProduct::create([
                     ...$validated,
-                    'name' => count($batchItems) > 1 ? $validated['name'] . ' #' . ($index + 1) : $validated['name'],
+                    'name' => count($batchItems) > 1 ? $validated['name'].' #'.($index + 1) : $validated['name'],
                     'quantity' => 1,
                     'gross_weight' => $item['gross_weight'],
                     'net_weight' => $item['net_weight'],
                 ]);
             }
 
-            return redirect()->back()->with('message', count($batchItems) . ' Silver Products Created Successfully');
+            return redirect()->back()->with('message', count($batchItems).' Silver Products Created Successfully');
         }
 
         unset($validated['batch_items']);
@@ -178,6 +184,7 @@ class SilverProductController extends Controller
             'product_ids.*' => ['required', 'integer', 'exists:silver_products,id'],
             'category_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('metal_type', 'SILVER'))],
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
+            'counter_id' => ['nullable', 'exists:counters,id'],
             'pricing_mode' => ['nullable', 'in:PIECE,WEIGHT'],
             'making_charge' => ['nullable', 'numeric', 'min:0'],
             'piece_price' => ['nullable', 'numeric', 'min:0'],
@@ -185,7 +192,7 @@ class SilverProductController extends Controller
         ]);
 
         $updates = collect($validated)
-            ->only(['category_id', 'supplier_id', 'pricing_mode', 'making_charge', 'piece_price', 'notes'])
+            ->only(['category_id', 'supplier_id', 'counter_id', 'pricing_mode', 'making_charge', 'piece_price', 'notes'])
             ->filter(fn ($value) => $value !== null)
             ->all();
 
@@ -199,7 +206,7 @@ class SilverProductController extends Controller
             ->whereIn('id', $validated['product_ids'])
             ->update($updates);
 
-        return back()->with('message', count($validated['product_ids']) . ' silver products updated successfully.');
+        return back()->with('message', count($validated['product_ids']).' silver products updated successfully.');
     }
 
     public function history(SilverProduct $silverProduct): JsonResponse
@@ -207,6 +214,7 @@ class SilverProductController extends Controller
         $silverProduct->load([
             'category',
             'supplier',
+            'counter',
             'invoiceItems.invoice.customer',
             'verificationTags.customer',
             'verificationTags.createdBy',
@@ -222,6 +230,7 @@ class SilverProductController extends Controller
                     'barcode' => $silverProduct->barcode,
                     'category' => $silverProduct->category?->name,
                     'supplier' => $silverProduct->supplier?->company_name,
+                    'counter' => $silverProduct->counter?->name,
                     'pricing_mode' => $silverProduct->pricing_mode,
                 ],
             ],
@@ -296,6 +305,7 @@ class SilverProductController extends Controller
                 'name' => $silverProduct->name,
                 'category' => $silverProduct->category?->name,
                 'supplier' => $silverProduct->supplier?->company_name,
+                'counter' => $silverProduct->counter?->name,
                 'pricing_mode' => $silverProduct->pricing_mode,
                 'quantity' => (int) $silverProduct->quantity,
                 'gross_weight' => (float) ($silverProduct->gross_weight ?? 0),
@@ -314,6 +324,7 @@ class SilverProductController extends Controller
             'name' => $silverProduct->name,
             'category_id' => $silverProduct->category_id,
             'supplier_id' => $silverProduct->supplier_id,
+            'counter_id' => $silverProduct->counter_id,
             'pricing_mode' => $silverProduct->pricing_mode,
             'quantity' => $silverProduct->quantity,
             'gross_weight' => $silverProduct->gross_weight,
@@ -350,7 +361,7 @@ class SilverProductController extends Controller
 
         $labels = [];
         foreach ($products as $product) {
-            $codeStr = $product->barcode ?: ('MS-' . str_pad((string) $product->id, 5, '0', STR_PAD_LEFT));
+            $codeStr = $product->barcode ?: ('MS-'.str_pad((string) $product->id, 5, '0', STR_PAD_LEFT));
 
             $labels[] = [
                 'category' => strtoupper((string) ($product->category?->name ?? 'SILVER')),
@@ -370,6 +381,7 @@ class SilverProductController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'category_id' => ['required', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('metal_type', 'SILVER'))],
             'supplier_id' => ['required', 'exists:suppliers,id'],
+            'counter_id' => ['nullable', 'exists:counters,id'],
             'pricing_mode' => ['required', 'in:PIECE,WEIGHT'],
             'quantity' => ['required', 'integer', 'min:1'],
             'gross_weight' => ['nullable', 'numeric', 'min:0'],

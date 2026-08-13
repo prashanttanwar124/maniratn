@@ -25,6 +25,7 @@ const props = defineProps({
     categories: Array,
     purities: Array,
     suppliers: Array,
+    counters: Array,
     filters: Object,
     summary: Object,
     category_breakdown: Array,
@@ -51,10 +52,12 @@ const isScanning = ref(false);
 const search = ref(props.filters?.search || '');
 const categoryFilter = ref(props.filters?.category_id ? Number(props.filters.category_id) : null);
 const supplierFilter = ref(props.filters?.supplier_id ? Number(props.filters.supplier_id) : null);
+const counterFilter = ref(props.filters?.counter_id ? Number(props.filters.counter_id) : null);
 const purityFilter = ref(props.filters?.purity_id ? Number(props.filters.purity_id) : null);
 const stockStatusFilter = ref(props.filters?.stock_status || null);
 const categoryOptions = computed(() => [{ id: null, name: 'All Categories' }, ...props.categories]);
 const supplierOptions = computed(() => [{ id: null, company_name: 'All Suppliers' }, ...props.suppliers]);
+const counterOptions = computed(() => [{ id: null, name: 'All Counters' }, ...props.counters]);
 const purityOptions = computed(() => [{ id: null, name: 'All Purities' }, ...props.purities]);
 const stockStatusOptions = [
     { label: 'All Stock', value: null },
@@ -66,6 +69,7 @@ const activeFilterCount = computed(() => {
         Boolean(search.value),
         categoryFilter.value !== null,
         supplierFilter.value !== null,
+        counterFilter.value !== null,
         purityFilter.value !== null,
         stockStatusFilter.value !== null,
     ].filter(Boolean).length;
@@ -79,6 +83,7 @@ const applyFilters = (page = 1) => {
             search: search.value || undefined,
             category_id: categoryFilter.value || undefined,
             supplier_id: supplierFilter.value || undefined,
+            counter_id: counterFilter.value || undefined,
             purity_id: purityFilter.value || undefined,
             stock_status: stockStatusFilter.value || undefined,
         },
@@ -116,7 +121,7 @@ watch(categoryFilter, () => {
     applyFilters();
 });
 
-watch([supplierFilter, purityFilter, stockStatusFilter], () => {
+watch([supplierFilter, counterFilter, purityFilter, stockStatusFilter], () => {
     applyFilters();
 });
 
@@ -126,6 +131,7 @@ const form = useForm({
     category_id: null,
     purity_id: null,
     supplier_id: null,
+    counter_id: null,
     gross_weight: null,
     net_weight: null,
     making_charge: null,
@@ -138,6 +144,7 @@ const bulkForm = useForm({
     category_id: null,
     purity_id: null,
     supplier_id: null,
+    counter_id: null,
     making_charge: null,
 });
 
@@ -182,6 +189,7 @@ const resetFilters = () => {
     search.value = '';
     categoryFilter.value = null;
     supplierFilter.value = null;
+    counterFilter.value = null;
     purityFilter.value = null;
     stockStatusFilter.value = null;
     applyFilters();
@@ -206,6 +214,7 @@ const openNew = () => {
     if (props.categories.length) form.category_id = props.categories[0].id;
     if (props.purities.length) form.purity_id = props.purities[0].id;
     if (props.suppliers.length) form.supplier_id = props.suppliers[0].id;
+    if (props.counters.length) form.counter_id = props.counters[0].id;
 
     productDialog.value = true;
 };
@@ -224,6 +233,7 @@ const editProduct = (prod) => {
     form.category_id = prod.category_id;
     form.purity_id = prod.purity_id;
     form.supplier_id = prod.supplier_id;
+    form.counter_id = prod.counter_id;
     form.gross_weight = parseFloat(prod.gross_weight);
     form.net_weight = parseFloat(prod.net_weight);
     form.making_charge = parseFloat(prod.making_charge);
@@ -596,10 +606,11 @@ const copyBarcode = async (barcode) => {
                                     </div>
                                 </div>
 
-                                <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-[12rem_12rem_12rem_12rem_minmax(0,1fr)]">
+                                <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-[11rem_11rem_11rem_11rem_11rem_minmax(0,1fr)]">
                                     <Select v-model="stockStatusFilter" :options="stockStatusOptions" optionLabel="label" optionValue="value" placeholder="Filter by stock" class="w-full" />
                                     <Select v-model="categoryFilter" :options="categoryOptions" optionLabel="name" optionValue="id" placeholder="Filter by category" class="w-full" />
                                     <Select v-model="supplierFilter" :options="supplierOptions" optionLabel="company_name" optionValue="id" placeholder="Filter by supplier" class="w-full" />
+                                    <Select v-model="counterFilter" :options="counterOptions" optionLabel="name" optionValue="id" placeholder="Filter by counter" class="w-full" />
                                     <Select v-model="purityFilter" :options="purityOptions" optionLabel="name" optionValue="id" placeholder="Filter by purity" class="w-full" />
 
                                     <div class="relative w-full">
@@ -713,6 +724,12 @@ const copyBarcode = async (barcode) => {
                         <Column field="purity.name" header="Purity" sortable style="width: 130px">
                             <template #body="{ data }">
                                 <Tag :value="data.purity?.name || '—'" severity="info" />
+                            </template>
+                        </Column>
+
+                        <Column header="Counter" style="width: 150px">
+                            <template #body="{ data }">
+                                <span class="font-medium text-surface-900">{{ data.counter?.name || '—' }}</span>
                             </template>
                         </Column>
 
@@ -830,6 +847,12 @@ const copyBarcode = async (barcode) => {
                         </small>
                     </div>
 
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700"> Counter Name </label>
+                        <Select v-model="form.counter_id" :options="counters" optionLabel="name" optionValue="id" placeholder="Select counter" showClear class="w-full" />
+                        <small v-if="form.errors.counter_id" class="mt-1 block text-xs text-red-500">{{ form.errors.counter_id }}</small>
+                    </div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="mb-2 block text-sm font-medium text-surface-700"> Category </label>
@@ -919,6 +942,11 @@ const copyBarcode = async (barcode) => {
                     <div>
                         <label class="mb-2 block text-sm font-medium text-surface-700">Supplier</label>
                         <Select v-model="bulkForm.supplier_id" :options="suppliers" optionLabel="company_name" optionValue="id" placeholder="Leave unchanged" class="w-full" />
+                    </div>
+
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Counter</label>
+                        <Select v-model="bulkForm.counter_id" :options="counters" optionLabel="name" optionValue="id" placeholder="Leave unchanged" class="w-full" />
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">

@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
-
     protected $guarded = [];
 
     // RELATIONSHIPS
@@ -18,6 +17,11 @@ class Product extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function counter()
+    {
+        return $this->belongsTo(Counter::class);
     }
 
     public function purity()
@@ -42,7 +46,7 @@ class Product extends Model
 
         static::creating(function ($product) {
             $nextId = (Product::max('id') ?? 0) + 1;
-            $product->barcode = 'G' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+            $product->barcode = 'G'.str_pad($nextId, 5, '0', STR_PAD_LEFT);
         });
     }
 }

@@ -82,6 +82,43 @@ it('does not count sold gold product', function () {
     ])->assertStatus(422);
 });
 
+it('counts and summarizes gold stock by selected category', function () {
+    openShopDayForGoldCount($this->user);
+
+    $ring = goldCountProduct(['name' => 'Category Ring']);
+    $chainCategory = Category::create([
+        'name' => 'Chain',
+        'code' => 'CHN',
+        'metal_type' => 'GOLD',
+    ]);
+    $chain = goldCountProduct([
+        'name' => 'Category Chain',
+        'category_id' => $chainCategory->id,
+    ]);
+
+    $this->get(route('gold-stock-count.index', ['category_id' => $chainCategory->id]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('selectedCategoryId', $chainCategory->id)
+            ->where('summary.expected_items', 1)
+            ->where('missingProducts.0.id', $chain->id));
+
+    $this->postJson(route('gold-stock-count.scan'), [
+        'barcode' => $ring->barcode,
+        'category_id' => $chainCategory->id,
+    ])->assertStatus(422);
+
+    $this->postJson(route('gold-stock-count.scan'), [
+        'barcode' => $chain->barcode,
+        'category_id' => $chainCategory->id,
+    ])->assertOk()
+        ->assertJsonPath('summary.counted_items', 1)
+        ->assertJsonPath('summary.remaining_items', 0)
+        ->assertJsonPath('summary.overall_remaining_items', 1);
+
+    $this->postJson(route('gold-stock-count.complete'))->assertStatus(422);
+});
+
 function goldCountProduct(array $overrides = []): Product
 {
     $category = Category::firstOrCreate([

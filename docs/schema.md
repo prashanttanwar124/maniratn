@@ -16,6 +16,7 @@
 ## Data Structure
 - `business_settings`: store name, address, phone, email, website, logo.
 - `categories`: product groups; `metal_type = GOLD|SILVER`.
+- `counters`: reusable shop counter names selected on gold and silver products.
 - `purities`: gold purity options.
 - `products`: gold items; barcode `G00001`.
 - `silver_products`: silver items; barcode `S00001`.
