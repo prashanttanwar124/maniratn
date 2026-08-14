@@ -205,7 +205,14 @@ class WebsiteApiController extends Controller
 
     public function downloadInvoice(string $token, string $invoiceKey)
     {
-        $customer = Customer::where('vault_token', $token)->firstOrFail();
+        $customer = Customer::where('vault_token', $token)->first();
+
+        if (! $customer || $customer->vault_status === 'DISABLED') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vault card is inactive or not found.',
+            ], 404);
+        }
 
         // 1. Resolve invoice ID and verify signature if HMAC format
         if (preg_match('/^inv_(\d+)_([a-f0-9]+)$/', $invoiceKey, $matches)) {
@@ -214,19 +221,28 @@ class WebsiteApiController extends Controller
             $expectedSign = substr(hash_hmac('sha256', "invoice_{$invoiceId}_{$token}", config('app.key') ?: 'maniratn_vault_secret'), 0, 12);
 
             if (! hash_equals($expectedSign, $providedSign)) {
-                abort(403, 'Invalid or tampered invoice signature.');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid or tampered invoice signature.',
+                ], 403);
             }
         } elseif (is_numeric($invoiceKey)) {
             $invoiceId = (int) $invoiceKey;
         } else {
-            abort(404, 'Invalid invoice identifier.');
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid invoice identifier format.',
+            ], 404);
         }
 
-        $invoice = Invoice::findOrFail($invoiceId);
+        $invoice = Invoice::find($invoiceId);
 
         // 2. Strict IDOR ownership verification: invoice MUST belong to this customer
-        if ($invoice->customer_id !== $customer->id) {
-            abort(403, 'Unauthorized access: this invoice does not belong to your account.');
+        if (! $invoice || $invoice->customer_id !== $customer->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access: this invoice does not belong to your account.',
+            ], 403);
         }
 
         $invoice->load([
