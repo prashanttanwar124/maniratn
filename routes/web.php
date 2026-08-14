@@ -47,9 +47,18 @@ Route::post('/attendance-terminal/act', [AttendanceTerminalController::class, 'a
     ->middleware('throttle:120,1')
     ->name('attendance-terminal.act');
 
+// --- WEBSITE PUBLIC API ENDPOINTS ---
 Route::get('/api/website/products', [WebsiteApiController::class, 'products'])
     ->middleware('throttle:60,1')
     ->name('website-products.index');
+
+Route::get('/api/website/vault/{token}', [WebsiteApiController::class, 'vault'])
+    ->middleware('throttle:60,1')
+    ->name('website.vault.show');
+
+Route::get('/api/website/vault/{token}/invoices/{invoice}/print', [WebsiteApiController::class, 'downloadInvoice'])
+    ->middleware('throttle:60,1')
+    ->name('website.vault.invoice-print');
 
 Route::get('/api/inventory/{barcode}', function ($barcode) {
     $normalizedBarcode = strtoupper(trim($barcode));
@@ -227,6 +236,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/customers/{id}', [CustomerController::class, 'show'])->middleware('permission:manage_customers')->name('customers.show');
     Route::put('/customers/{customer}', [CustomerController::class, 'update'])->middleware(['permission:manage_customers', 'day.open'])->name('customers.update');
     Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->middleware(['permission:manage_customers', 'day.open'])->name('customers.destroy');
+
+    // Customer Smart Vault Card & NFC Actions
+    Route::post('/customers/{customer}/vault/issue', [CustomerController::class, 'issueVaultCard'])->middleware(['permission:manage_customers', 'day.open'])->name('customers.vault.issue');
+    Route::get('/customers/{customer}/vault/writer', [CustomerController::class, 'cardWriter'])->middleware('permission:manage_customers')->name('customers.vault.writer');
+    Route::post('/customers/{customer}/vault/confirm-written', [CustomerController::class, 'confirmCardWritten'])->middleware(['permission:manage_customers', 'day.open'])->name('customers.vault.confirm-written');
+    Route::post('/customers/{customer}/vault/confirm-locked', [CustomerController::class, 'confirmCardLocked'])->middleware(['permission:manage_customers', 'day.open'])->name('customers.vault.confirm-locked');
+    Route::patch('/customers/{customer}/vault/lock', [CustomerController::class, 'lockCard'])->middleware(['permission:manage_customers', 'day.open'])->name('customers.vault.lock');
+    Route::patch('/customers/{customer}/vault/deactivate', [CustomerController::class, 'deactivateCard'])->middleware(['permission:manage_customers', 'day.open'])->name('customers.vault.deactivate');
+    Route::post('/customers/{customer}/vault/reissue', [CustomerController::class, 'reissueVaultCard'])->middleware(['permission:manage_customers', 'day.open'])->name('customers.vault.reissue');
 
     // --- GOLD SCHEMES ---
     Route::get('/gold-schemes', [GoldSchemeController::class, 'index'])->middleware('permission:manage_gold_schemes')->name('gold-schemes.index');

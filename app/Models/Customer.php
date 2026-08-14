@@ -22,7 +22,42 @@ class Customer extends Model
         'dob',
         'anniversary_date',
         'membership_id',
+        'vault_token',
+        'nfc_card_uid',
+        'card_status',
+        'card_issued_at',
+        'card_written_at',
+        'card_locked_at',
+        'card_last_accessed_at',
+        'card_access_count',
+        'card_pin',
+        'card_notes',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'card_issued_at' => 'datetime',
+            'card_written_at' => 'datetime',
+            'card_locked_at' => 'datetime',
+            'card_last_accessed_at' => 'datetime',
+            'card_access_count' => 'integer',
+        ];
+    }
+
+    public static function generateVaultToken(): string
+    {
+        do {
+            $token = 'vault_' . strtoupper(Str::random(12));
+        } while (static::query()->where('vault_token', $token)->exists());
+
+        return $token;
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
 
     public function mortgages()
     {

@@ -347,9 +347,14 @@ const deleteCustomer = (customer) => {
                                     <div class="flex items-center gap-3">
                                         <Avatar :label="data.name.charAt(0)" shape="circle" class="bg-amber-100 text-amber-700" />
                                         <div class="min-w-0">
-                                            <Link :href="route('customers.show', data.id)" class="truncate font-medium text-surface-900 hover:text-amber-700">
-                                                {{ data.name }}
-                                            </Link>
+                                            <div class="flex items-center gap-1.5">
+                                                <Link :href="route('customers.show', data.id)" class="truncate font-medium text-surface-900 hover:text-amber-700">
+                                                    {{ data.name }}
+                                                </Link>
+                                                <span v-if="data.vault_token && data.card_status !== 'DISABLED'" class="inline-flex items-center text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded" title="Smart Vault Card Issued">
+                                                    💳 Card
+                                                </span>
+                                            </div>
                                             <p class="mt-1 truncate text-xs text-surface-500">{{ data.city || 'City not set' }}</p>
                                         </div>
                                     </div>

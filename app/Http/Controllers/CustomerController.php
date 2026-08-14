@@ -120,6 +120,9 @@ class CustomerController extends Controller
             ->paginate(5) // <--- This is the Magic
             ->withQueryString(); // Keeps filters if you add them later
 
+        $baseUrl = $this->publicBaseUrl();
+        $vaultUrl = $customer->vault_token ? ($baseUrl . '/vault/' . $customer->vault_token) : null;
+
         return Inertia::render('customers/Show', [
             'customer' => $customer,
             'transactions' => $transactions, // Send the Paginator object, not just array
@@ -127,8 +130,130 @@ class CustomerController extends Controller
                 'total_sales' => $totalSales,
                 'total_paid'  => $totalPaid,
                 'current_balance' => $totalSales - $totalPaid // Calculate explicitly here
-            ]
+            ],
+            'vault' => [
+                'has_card' => (bool) $customer->vault_token,
+                'vault_token' => $customer->vault_token,
+                'vault_url' => $vaultUrl,
+                'card_status' => $customer->card_status ?? 'NOT_ISSUED',
+                'nfc_card_uid' => $customer->nfc_card_uid,
+                'card_issued_at' => optional($customer->card_issued_at)?->toDateTimeString(),
+                'card_written_at' => optional($customer->card_written_at)?->toDateTimeString(),
+                'card_locked_at' => optional($customer->card_locked_at)?->toDateTimeString(),
+                'card_last_accessed_at' => optional($customer->card_last_accessed_at)?->toDateTimeString(),
+                'card_access_count' => (int) $customer->card_access_count,
+                'invoices_count' => $customer->invoices()->where('status', '!=', 'CANCELLED')->count(),
+                'schemes_count' => $customer->goldSchemes()->count(),
+            ],
         ]);
+    }
+
+    public function issueVaultCard(Customer $customer)
+    {
+        if (! $customer->vault_token) {
+            $customer->vault_token = Customer::generateVaultToken();
+        }
+
+        $customer->card_status = 'ISSUED';
+        $customer->card_issued_at = now();
+        $customer->save();
+
+        return back()->with('success', 'Customer Smart Vault Card issued successfully.');
+    }
+
+    public function cardWriter(Customer $customer)
+    {
+        if (! $customer->vault_token) {
+            $customer->vault_token = Customer::generateVaultToken();
+            $customer->card_status = 'ISSUED';
+            $customer->card_issued_at = now();
+            $customer->save();
+        }
+
+        $vaultUrl = $this->publicBaseUrl() . '/vault/' . $customer->vault_token;
+
+        return view('customers.card-writer', [
+            'customer' => $customer,
+            'vaultUrl' => $vaultUrl,
+            'token' => $customer->vault_token,
+        ]);
+    }
+
+    public function confirmCardWritten(Request $request, Customer $customer)
+    {
+        $validated = $request->validate([
+            'nfc_uid' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $customer->update([
+            'card_status' => $customer->card_locked_at ? 'LOCKED' : 'WRITTEN',
+            'card_written_at' => $customer->card_written_at ?: now(),
+            'nfc_card_uid' => $validated['nfc_uid'] ?? $customer->nfc_card_uid,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Customer Card written successfully.',
+        ]);
+    }
+
+    public function confirmCardLocked(Request $request, Customer $customer)
+    {
+        $validated = $request->validate([
+            'nfc_uid' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $customer->update([
+            'card_status' => 'LOCKED',
+            'card_written_at' => $customer->card_written_at ?: now(),
+            'card_locked_at' => $customer->card_locked_at ?: now(),
+            'nfc_card_uid' => $validated['nfc_uid'] ?? $customer->nfc_card_uid,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Customer Card locked successfully.',
+        ]);
+    }
+
+    public function lockCard(Customer $customer)
+    {
+        $customer->update([
+            'card_status' => 'LOCKED',
+            'card_locked_at' => $customer->card_locked_at ?: now(),
+        ]);
+
+        return back()->with('success', 'Customer Card marked as locked.');
+    }
+
+    public function deactivateCard(Customer $customer)
+    {
+        $customer->update([
+            'card_status' => 'DISABLED',
+        ]);
+
+        return back()->with('success', 'Customer Card deactivated.');
+    }
+
+    public function reissueVaultCard(Customer $customer)
+    {
+        $customer->update([
+            'vault_token' => Customer::generateVaultToken(),
+            'card_status' => 'ISSUED',
+            'card_issued_at' => now(),
+            'card_written_at' => null,
+            'card_locked_at' => null,
+            'nfc_card_uid' => null,
+        ]);
+
+        return back()->with('success', 'New Smart Vault Card generated. Old card will no longer work.');
+    }
+
+    private function publicBaseUrl(): string
+    {
+        $website = trim((string) \App\Models\BusinessSetting::query()->value('website'));
+
+        return rtrim($website !== '' ? $website : config('app.url'), '/');
     }
 
     public function update(Request $request, Customer $customer)

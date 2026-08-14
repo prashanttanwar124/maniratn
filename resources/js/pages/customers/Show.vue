@@ -1,13 +1,13 @@
 <script setup>
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ArrowRight, Landmark, MapPin, Phone, ShieldCheck, WalletCards } from 'lucide-vue-next';
+import { ArrowRight, CreditCard, Landmark, MapPin, Phone, ShieldCheck, WalletCards } from 'lucide-vue-next';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Paginator from 'primevue/paginator';
 import Tag from 'primevue/tag';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { route } from 'ziggy-js';
 import { formatIndianDate } from '@/utils/indiaTime';
 
@@ -15,7 +15,74 @@ const props = defineProps({
     customer: Object,
     transactions: Object,
     stats: Object,
+    vault: Object,
 });
+
+const copied = ref(false);
+
+const copyVaultLink = async () => {
+    if (!props.vault?.vault_url) return;
+    try {
+        await navigator.clipboard.writeText(props.vault.vault_url);
+        copied.value = true;
+        setTimeout(() => { copied.value = false; }, 2000);
+    } catch {
+        // ignore
+    }
+};
+
+const issueCard = () => {
+    router.post(route('customers.vault.issue', props.customer.id), {}, {
+        preserveScroll: true,
+    });
+};
+
+const lockCard = () => {
+    router.patch(route('customers.vault.lock', props.customer.id), {}, {
+        preserveScroll: true,
+    });
+};
+
+const deactivateCard = () => {
+    if (confirm('Are you sure you want to deactivate this customer smart card?')) {
+        router.patch(route('customers.vault.deactivate', props.customer.id), {}, {
+            preserveScroll: true,
+        });
+    }
+};
+
+const reissueCard = () => {
+    if (confirm('Reissuing will generate a new token. The previous physical card will stop working until reprogrammed. Continue?')) {
+        router.post(route('customers.vault.reissue', props.customer.id), {}, {
+            preserveScroll: true,
+        });
+    }
+};
+
+const openWriter = () => {
+    window.open(route('customers.vault.writer', props.customer.id), '_blank', 'noopener');
+};
+
+const openVault = () => {
+    if (props.vault?.vault_url) {
+        window.open(props.vault.vault_url, '_blank', 'noopener');
+    }
+};
+
+const shareOnWhatsapp = () => {
+    if (!props.vault?.vault_url) return;
+    const phone = props.customer.mobile ? props.customer.mobile.replace(/[^0-9]/g, '') : '';
+    const text = `Hello ${props.customer.name},\n\nHere is your personal Maniratn Digital Jewellery Vault link:\n${props.vault.vault_url}\n\nYou can access your jewellery certificates, purchase invoices, and gold schemes anytime!`;
+    const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'noopener');
+};
+
+const cardStatusSeverity = (status) => {
+    if (status === 'LOCKED') return 'success';
+    if (status === 'WRITTEN' || status === 'ISSUED') return 'info';
+    if (status === 'DISABLED') return 'contrast';
+    return 'warn';
+};
 
 const breadcrumbs = [
     {
@@ -115,6 +182,132 @@ const getSeverity = (type) => {
                         </Link>
                         <Button label="New Bill" icon="pi pi-plus" @click="$inertia.visit(route('invoices.create', { customer_id: customer.id }))" />
                     </div>
+                </div>
+            </section>
+
+            <!-- Customer Digital Vault & NFC Smart Card Section -->
+            <section class="border border-surface-200 bg-white">
+                <div class="flex flex-col gap-3 border-b border-surface-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="rounded-lg bg-amber-50 p-2 text-amber-600 border border-amber-200">
+                            <CreditCard class="h-5 w-5" />
+                        </span>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-base font-semibold text-surface-900">Digital Vault & NFC Smart Card</h3>
+                                <Tag :value="vault?.card_status || 'NOT_ISSUED'" :severity="cardStatusSeverity(vault?.card_status)" />
+                            </div>
+                            <p class="text-xs text-surface-500 mt-0.5">One-tap NFC Smart Card giving the customer real-time access to all their jewellery certificates, invoices, and schemes.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <Button
+                            v-if="!vault?.has_card || vault?.card_status === 'DISABLED'"
+                            label="Issue Smart Card"
+                            icon="pi pi-plus"
+                            @click="issueCard"
+                        />
+                        <template v-else>
+                            <Button
+                                label="Open Desktop Writer"
+                                icon="pi pi-desktop"
+                                size="small"
+                                @click="openWriter"
+                            />
+                            <Button
+                                label="View Vault"
+                                icon="pi pi-external-link"
+                                outlined
+                                size="small"
+                                @click="openVault"
+                            />
+                            <Button
+                                label="WhatsApp Share"
+                                icon="pi pi-whatsapp"
+                                severity="success"
+                                outlined
+                                size="small"
+                                @click="shareOnWhatsapp"
+                            />
+                            <Button
+                                v-if="vault?.card_status !== 'LOCKED'"
+                                label="Lock Card"
+                                icon="pi pi-lock"
+                                severity="warn"
+                                outlined
+                                size="small"
+                                @click="lockCard"
+                            />
+                            <Button
+                                label="Re-issue"
+                                icon="pi pi-refresh"
+                                severity="secondary"
+                                text
+                                size="small"
+                                @click="reissueCard"
+                            />
+                            <Button
+                                label="Deactivate"
+                                icon="pi pi-ban"
+                                severity="danger"
+                                text
+                                size="small"
+                                @click="deactivateCard"
+                            />
+                        </template>
+                    </div>
+                </div>
+
+                <div v-if="vault?.has_card && vault?.card_status !== 'DISABLED'" class="p-5">
+                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
+                        <div class="space-y-3">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-surface-500">Public Customer Vault URL</label>
+                            <div class="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    :value="vault?.vault_url"
+                                    readonly
+                                    class="w-full rounded border border-surface-300 bg-surface-50 px-3 py-2 text-xs font-mono text-surface-800 focus:outline-none"
+                                />
+                                <Button
+                                    :icon="copied ? 'pi pi-check' : 'pi pi-copy'"
+                                    :label="copied ? 'Copied' : 'Copy'"
+                                    :severity="copied ? 'success' : 'secondary'"
+                                    size="small"
+                                    outlined
+                                    @click="copyVaultLink"
+                                />
+                            </div>
+                            <p class="text-xs text-surface-500">
+                                This link is permanently linked to this customer. Whenever new purchases are billed, they automatically reflect in their vault.
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
+                            <div class="rounded border border-surface-200 bg-surface-50 p-3">
+                                <p class="text-xs text-surface-500">Card Scans / Taps</p>
+                                <p class="mt-1 text-lg font-semibold text-surface-900">{{ vault?.card_access_count || 0 }}</p>
+                            </div>
+                            <div class="rounded border border-surface-200 bg-surface-50 p-3">
+                                <p class="text-xs text-surface-500">Last Tapped</p>
+                                <p class="mt-1 text-xs font-medium text-surface-800">{{ vault?.card_last_accessed_at ? formatDate(vault.card_last_accessed_at) : 'Never' }}</p>
+                            </div>
+                            <div class="rounded border border-surface-200 bg-surface-50 p-3">
+                                <p class="text-xs text-surface-500">Invoices In Vault</p>
+                                <p class="mt-1 text-lg font-semibold text-surface-900">{{ vault?.invoices_count || 0 }}</p>
+                            </div>
+                            <div class="rounded border border-surface-200 bg-surface-50 p-3">
+                                <p class="text-xs text-surface-500">Active Schemes</p>
+                                <p class="mt-1 text-lg font-semibold text-surface-900">{{ vault?.schemes_count || 0 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else class="p-6 text-center text-surface-500">
+                    <p class="text-sm">No Smart Card issued to {{ customer.name }} yet.</p>
+                    <p class="text-xs text-surface-400 mt-1">Click <strong>Issue Smart Card</strong> above to generate a unique vault token and program an NFC card.</p>
                 </div>
             </section>
 
