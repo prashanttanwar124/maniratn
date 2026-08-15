@@ -60,7 +60,11 @@
             right: 20mm;
             z-index: 10;
             text-align: center;
-            background: transparent;
+            background: #ffffff;
+            padding: 4px;
+            border-radius: 4px;
+            border: 1px solid var(--surface-200);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
 
         .head,
