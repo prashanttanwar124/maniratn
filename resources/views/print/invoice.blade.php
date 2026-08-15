@@ -300,18 +300,7 @@
                 padding-right: 20mm !important;
             }
 
-            .invoice-vault-qr {
-                position: absolute !important;
-                bottom: 48px !important;
-                top: auto !important;
-                left: 20mm !important;
-                right: auto !important;
-                z-index: 10 !important;
-                background: transparent !important;
-                border: none !important;
-                box-shadow: none !important;
-                padding: 0 !important;
-            }
+
         }
     </style>
 </head>
