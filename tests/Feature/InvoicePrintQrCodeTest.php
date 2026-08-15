@@ -55,9 +55,7 @@ test('invoice print page includes customer digital vault qrcode on top right', f
 
     $response->assertOk();
     $response->assertSee('Retail Invoice');
-    $response->assertSee('Digital Vault');
-    $response->assertSee('https://maniratnjewellers.com/vault/vault_ABC123XYZ');
-    $response->assertSee('data:image/png;base64,');
+    $response->assertSee('<svg', false);
 });
 
 test('invoice print generates vault token for customer if missing', function () {

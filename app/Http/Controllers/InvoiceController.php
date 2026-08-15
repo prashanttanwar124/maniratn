@@ -377,6 +377,7 @@ class InvoiceController extends Controller
 
         $vaultUrl = null;
         $qrCodeBase64 = null;
+        $qrSvg = null;
 
         if ($invoice->customer) {
             $customer = $invoice->customer;
@@ -393,6 +394,9 @@ class InvoiceController extends Controller
 
             try {
                 $barcode = new \TCPDF2DBarcode($vaultUrl, 'QRCODE,M');
+                $rawSvg = $barcode->getBarcodeSVGcode(2.1, 2.1, 'black');
+                $qrSvg = preg_replace('/^<\?xml[^>]*\?>\s*(<!DOCTYPE[^>]*>)?\s*/i', '', (string) $rawSvg);
+
                 $pngData = $barcode->getBarcodePngData(4, 4);
                 if ($pngData) {
                     $qrCodeBase64 = 'data:image/png;base64,' . base64_encode($pngData);
@@ -408,6 +412,7 @@ class InvoiceController extends Controller
             'balanceDue' => $balanceDue,
             'vaultUrl' => $vaultUrl,
             'qrCodeBase64' => $qrCodeBase64,
+            'qrSvg' => $qrSvg,
         ]);
     }
 

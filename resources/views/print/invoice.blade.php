@@ -60,9 +60,7 @@
             right: 20mm;
             z-index: 10;
             text-align: center;
-            background: #ffffff;
-            padding: 4px;
-            border-radius: 4px;
+            background: transparent;
         }
 
         .head,
@@ -303,9 +301,10 @@
                 top: 54px !important;
                 right: 20mm !important;
                 z-index: 10 !important;
-                background: #ffffff !important;
-                padding: 4px !important;
-                border-radius: 4px !important;
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
             }
         }
     </style>
@@ -333,17 +332,20 @@
     </div>
 
     <div class="page">
-        @if (!empty($qrCodeBase64))
+        @if (!empty($qrSvg) || !empty($qrCodeBase64))
             <div class="invoice-vault-qr">
                 <a href="{{ $vaultUrl }}" target="_blank" title="Scan or click to view Customer Digital Vault"
-                    style="display: inline-flex; flex-direction: column; align-items: center; text-decoration: none; color: inherit;">
-                    <div
-                        style="padding: 2px; background: #ffffff; border: 1px solid var(--surface-200); border-radius: 4px; display: inline-block; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-                        <img src="{{ $qrCodeBase64 }}" alt="Customer Digital Vault QR Code"
-                            style="width: 66px; height: 66px; display: block;" />
+                    style="display: inline-flex; flex-direction: column; align-items: center; text-decoration: none; color: inherit; background: transparent;">
+                    <div style="display: block; line-height: 0; background: transparent;">
+                        @if (!empty($qrSvg))
+                            {!! $qrSvg !!}
+                        @else
+                            <img src="{{ $qrCodeBase64 }}" alt="Customer Digital Vault QR Code"
+                                style="width: 60px; height: 60px; display: block; background: transparent;" />
+                        @endif
                     </div>
                     <span
-                        style="font-size: 7.5px; font-weight: 700; color: var(--brand-maroon); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 2px; line-height: 1;">Digital
+                        style="font-size: 7px; font-weight: 700; color: var(--brand-maroon); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 2px; line-height: 1;">Digital
                         Vault</span>
                 </a>
             </div>
