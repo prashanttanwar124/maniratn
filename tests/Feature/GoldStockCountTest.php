@@ -126,6 +126,49 @@ it('counts and summarizes gold stock by selected category', function () {
     $this->postJson(route('gold-stock-count.complete'))->assertStatus(422);
 });
 
+it('allows viewing past gold stock count records by date', function () {
+    $pastDate = now()->subDays(2)->toDateString();
+
+    $pastRegister = DailyRegister::create([
+        'date' => $pastDate,
+        'opening_cash' => 0,
+        'opening_gold' => 0,
+        'opening_silver' => 0,
+        'opened_by' => $this->user->id,
+        'closed_at' => now()->subDays(2)->setTime(21, 0),
+    ]);
+
+    $pastSession = GoldStockCountSession::create([
+        'daily_register_id' => $pastRegister->id,
+        'count_date' => $pastDate,
+        'status' => 'COMPLETED',
+        'started_by' => $this->user->id,
+        'started_at' => now()->subDays(2)->setTime(20, 0),
+        'completed_by' => $this->user->id,
+        'completed_at' => now()->subDays(2)->setTime(20, 30),
+    ]);
+
+    $product = goldCountProduct(['name' => 'Past Counted Ring']);
+
+    GoldStockCountEntry::create([
+        'session_id' => $pastSession->id,
+        'product_id' => $product->id,
+        'scanned_barcode' => $product->barcode,
+        'scanned_by' => $this->user->id,
+        'scanned_at' => now()->subDays(2)->setTime(20, 15),
+    ]);
+
+    $this->get(route('gold-stock-count.index', ['date' => $pastDate]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('isToday', false)
+            ->where('selectedDate', $pastDate)
+            ->where('session.status', 'COMPLETED')
+            ->where('summary.counted_items', 1)
+            ->where('recentCounted.0.barcode', $product->barcode)
+            ->where('recentCounted.0.id', $product->id));
+});
+
 function goldCountProduct(array $overrides = []): Product
 {
     $category = Category::firstOrCreate([

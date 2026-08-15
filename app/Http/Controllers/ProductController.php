@@ -103,6 +103,7 @@ class ProductController extends Controller
             'gross_weight' => 'required_without:batch_items|nullable|numeric|min:0.001',
             'net_weight' => 'required_without:batch_items|nullable|numeric|min:0.001',
             'making_charge' => 'required|numeric|min:0|max:100',
+            'image' => 'nullable|image|max:2048',
             'image_path' => 'nullable|image|max:2048',
             'batch_items' => ['nullable', 'array', 'min:1', 'max:10'],
             'batch_items.*.gross_weight' => ['required_with:batch_items', 'numeric', 'min:0.001'],
@@ -344,6 +345,7 @@ class ProductController extends Controller
             'gross_weight' => 'required|numeric',
             'net_weight' => 'required|numeric',
             'making_charge' => 'required|numeric|min:0|max:100',
+            'image' => 'nullable|image|max:2048',
             'image_path' => 'nullable|image|max:2048',
         ]);
 

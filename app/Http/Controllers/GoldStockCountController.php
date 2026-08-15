@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\Counter;
 use App\Models\DailyRegister;
 use App\Models\GoldStockCountEntry;
 use App\Models\GoldStockCountSession;
 use App\Models\Product;
+use App\Models\Purity;
+use App\Models\Supplier;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,30 +22,56 @@ class GoldStockCountController extends Controller
 {
     public function index(Request $request): Response
     {
+        $selectedDate = $request->filled('date')
+            ? Carbon::parse($request->input('date'))->toDateString()
+            : Carbon::today()->toDateString();
+
+        $isToday = ($selectedDate === Carbon::today()->toDateString());
+
         $categoryId = $request->filled('category_id')
             ? Category::query()->gold()->whereKey((int) $request->input('category_id'))->value('id')
             : null;
-        $register = $this->currentOpenRegister();
-        $session = $register
-            ? GoldStockCountSession::query()
-                ->with(['entries.product.category', 'entries.product.purity'])
-                ->where('daily_register_id', $register->id)
-                ->first()
-            : null;
+
+        $openRegisterToday = $this->currentOpenRegister();
+
+        $register = DailyRegister::query()
+            ->whereDate('date', $selectedDate)
+            ->latest('id')
+            ->first();
+
+        $session = GoldStockCountSession::query()
+            ->with(['entries.product.category', 'entries.product.purity'])
+            ->where(function ($query) use ($register, $selectedDate) {
+                if ($register) {
+                    $query->where('daily_register_id', $register->id);
+                } else {
+                    $query->whereDate('count_date', $selectedDate);
+                }
+            })
+            ->first();
+
+        $dayOpen = $isToday ? (bool) $openRegisterToday : ((bool) $register && is_null($register->closed_at));
 
         return Inertia::render('gold-stock-count/Index', [
-            'dayOpen' => (bool) $register,
+            'dayOpen' => $dayOpen,
+            'isToday' => $isToday,
+            'selectedDate' => $selectedDate,
             'session' => $session ? [
                 'id' => $session->id,
                 'status' => $session->status,
+                'count_date' => optional($session->count_date)->toDateString() ?? $selectedDate,
                 'started_at' => optional($session->started_at)->toISOString(),
                 'completed_at' => optional($session->completed_at)->toISOString(),
             ] : null,
             'categories' => Category::query()->gold()->orderBy('name')->get(['id', 'name']),
+            'purities' => Purity::query()->orderBy('name')->get(['id', 'name']),
+            'suppliers' => Supplier::query()->orderBy('company_name')->get(['id', 'company_name', 'contact_person']),
+            'counters' => Counter::query()->orderBy('name')->get(['id', 'name']),
             'selectedCategoryId' => $categoryId,
-            'summary' => $register ? $this->buildSummary($register, $session, $categoryId) : null,
-            'recentCounted' => $register ? $this->recentCounted($session, $categoryId) : [],
-            'missingProducts' => $register ? $this->missingProducts($session, $categoryId) : [],
+            'summary' => ($register || $session) ? $this->buildSummary($register, $session, $categoryId, $selectedDate) : null,
+            'categoryBreakdown' => ($register || $session) ? $this->buildCategoryBreakdown($session) : [],
+            'recentCounted' => ($register || $session) ? $this->recentCounted($session, $categoryId) : [],
+            'missingProducts' => ($register || $session) ? $this->missingProducts($session, $categoryId) : [],
         ]);
     }
 
@@ -118,6 +147,7 @@ class GoldStockCountController extends Controller
                 'net_weight' => (float) $product->net_weight,
             ],
             'summary' => $this->buildSummary($register, $session, $categoryId),
+            'categoryBreakdown' => $this->buildCategoryBreakdown($session),
             'recentCounted' => $this->recentCounted($session, $categoryId),
             'missingProducts' => $this->missingProducts($session, $categoryId),
         ]);
@@ -161,16 +191,17 @@ class GoldStockCountController extends Controller
             ->first();
     }
 
-    private function buildSummary(DailyRegister $register, ?GoldStockCountSession $session, ?int $categoryId = null): array
+    private function buildSummary(?DailyRegister $register, ?GoldStockCountSession $session, ?int $categoryId = null, ?string $date = null): array
     {
         $expectedProducts = Product::query()
             ->where('is_sold', false)
             ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
             ->get(['id', 'gross_weight', 'net_weight']);
 
+        $allCountedIds = $session ? $session->entries()->pluck('product_id') : collect();
         $countedProducts = $session
             ? Product::query()
-                ->whereIn('id', $session->entries->pluck('product_id'))
+                ->whereIn('id', $allCountedIds)
                 ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
                 ->get(['id', 'gross_weight', 'net_weight'])
             : collect();
@@ -178,10 +209,9 @@ class GoldStockCountController extends Controller
         $expectedCount = $expectedProducts->count();
         $countedCount = $countedProducts->count();
         $allExpectedIds = Product::query()->where('is_sold', false)->pluck('id');
-        $allCountedIds = $session ? $session->entries->pluck('product_id') : collect();
 
         return [
-            'register_date' => optional($register->date)->toDateString(),
+            'register_date' => $register ? optional($register->date)->toDateString() : ($date ?? Carbon::today()->toDateString()),
             'expected_items' => $expectedCount,
             'counted_items' => $countedCount,
             'remaining_items' => max($expectedCount - $countedCount, 0),
@@ -208,12 +238,21 @@ class GoldStockCountController extends Controller
             ->take(50)
             ->get()
             ->map(fn (GoldStockCountEntry $entry) => [
-                'id' => $entry->id,
+                'id' => $entry->product?->id ?? $entry->product_id,
+                'entry_id' => $entry->id,
+                'product_id' => $entry->product_id,
                 'barcode' => $entry->product?->barcode,
                 'name' => $entry->product?->name,
                 'category' => $entry->product?->category?->name,
+                'category_id' => $entry->product?->category_id,
                 'purity' => $entry->product?->purity?->name,
+                'purity_id' => $entry->product?->purity_id,
+                'supplier_id' => $entry->product?->supplier_id,
+                'counter_id' => $entry->product?->counter_id,
+                'gross_weight' => (float) ($entry->product?->gross_weight ?? 0),
                 'net_weight' => (float) ($entry->product?->net_weight ?? 0),
+                'making_charge' => (float) ($entry->product?->making_charge ?? 0),
+                'image_path' => $entry->product?->image_path,
                 'scanned_at' => optional($entry->scanned_at)->toISOString(),
                 'scanned_by' => $entry->scannedBy?->name,
             ])
@@ -223,7 +262,7 @@ class GoldStockCountController extends Controller
 
     private function missingProducts(?GoldStockCountSession $session, ?int $categoryId = null): array
     {
-        $countedIds = $session ? $session->entries->pluck('product_id') : collect();
+        $countedIds = $session ? $session->entries()->pluck('product_id') : collect();
 
         return Product::query()
             ->with(['category', 'purity'])
@@ -238,11 +277,46 @@ class GoldStockCountController extends Controller
                 'barcode' => $product->barcode,
                 'name' => $product->name,
                 'category' => $product->category?->name,
+                'category_id' => $product->category_id,
                 'purity' => $product->purity?->name,
+                'purity_id' => $product->purity_id,
+                'supplier_id' => $product->supplier_id,
+                'counter_id' => $product->counter_id,
                 'gross_weight' => (float) $product->gross_weight,
                 'net_weight' => (float) $product->net_weight,
+                'making_charge' => (float) $product->making_charge,
+                'image_path' => $product->image_path,
             ])
             ->values()
             ->all();
+    }
+
+    private function buildCategoryBreakdown(?GoldStockCountSession $session): array
+    {
+        $categories = Category::query()->gold()->orderBy('name')->get(['id', 'name']);
+        $allCountedIds = $session ? $session->entries()->pluck('product_id') : collect();
+
+        $openProducts = Product::query()
+            ->where('is_sold', false)
+            ->get(['id', 'category_id', 'gross_weight', 'net_weight']);
+
+        return $categories->map(function (Category $category) use ($openProducts, $allCountedIds) {
+            $catProducts = $openProducts->where('category_id', $category->id);
+            $expectedCount = $catProducts->count();
+            $catCountedProducts = $catProducts->whereIn('id', $allCountedIds);
+            $countedCount = $catCountedProducts->count();
+            $remainingCount = max($expectedCount - $countedCount, 0);
+
+            return [
+                'id' => $category->id,
+                'name' => $category->name,
+                'expected_items' => $expectedCount,
+                'counted_items' => $countedCount,
+                'remaining_items' => $remainingCount,
+                'expected_net_weight' => round((float) $catProducts->sum('net_weight'), 3),
+                'counted_net_weight' => round((float) $catCountedProducts->sum('net_weight'), 3),
+                'is_complete' => $expectedCount > 0 && $remainingCount === 0,
+            ];
+        })->values()->all();
     }
 }
