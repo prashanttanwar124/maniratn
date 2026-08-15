@@ -56,8 +56,8 @@
 
         .invoice-vault-qr {
             position: absolute;
-            top: 54px;
-            right: 20mm;
+            bottom: 48px;
+            left: 20mm;
             z-index: 10;
             text-align: center;
             background: #ffffff;
@@ -302,8 +302,10 @@
 
             .invoice-vault-qr {
                 position: absolute !important;
-                top: 54px !important;
-                right: 20mm !important;
+                bottom: 48px !important;
+                top: auto !important;
+                left: 20mm !important;
+                right: auto !important;
                 z-index: 10 !important;
                 background: transparent !important;
                 border: none !important;
