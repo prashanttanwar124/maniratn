@@ -56,10 +56,13 @@
 
         .invoice-vault-qr {
             position: absolute;
-            top: 44px;
+            top: 54px;
             right: 20mm;
             z-index: 10;
             text-align: center;
+            background: #ffffff;
+            padding: 4px;
+            border-radius: 4px;
         }
 
         .head,
@@ -297,9 +300,12 @@
 
             .invoice-vault-qr {
                 position: absolute !important;
-                top: 44px !important;
+                top: 54px !important;
                 right: 20mm !important;
                 z-index: 10 !important;
+                background: #ffffff !important;
+                padding: 4px !important;
+                border-radius: 4px !important;
             }
         }
     </style>
