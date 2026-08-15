@@ -297,7 +297,7 @@
 
             .invoice-vault-qr {
                 position: absolute !important;
-                top: var(--preprinted-top-offset, 58mm) !important;
+                top: 44px !important;
                 right: 20mm !important;
                 z-index: 10 !important;
             }
