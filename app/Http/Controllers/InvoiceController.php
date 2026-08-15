@@ -349,6 +349,13 @@ class InvoiceController extends Controller
         ]);
     }
 
+    private function publicBaseUrl(): string
+    {
+        $website = trim((string) \App\Models\BusinessSetting::query()->value('website'));
+
+        return rtrim($website !== '' ? $website : config('app.url'), '/');
+    }
+
     public function print(Invoice $invoice)
     {
         $invoice->load([
@@ -368,10 +375,39 @@ class InvoiceController extends Controller
             ? 0
             : max((float) $invoice->total_amount - $paidAmount, 0);
 
+        $vaultUrl = null;
+        $qrCodeBase64 = null;
+
+        if ($invoice->customer) {
+            $customer = $invoice->customer;
+            if (! $customer->vault_token) {
+                $customer->vault_token = Customer::generateVaultToken();
+                if (! $customer->card_status || $customer->card_status === 'NOT_ISSUED') {
+                    $customer->card_status = 'ISSUED';
+                    $customer->card_issued_at = now();
+                }
+                $customer->save();
+            }
+
+            $vaultUrl = $this->publicBaseUrl() . '/vault/' . $customer->vault_token;
+
+            try {
+                $barcode = new \TCPDF2DBarcode($vaultUrl, 'QRCODE,M');
+                $pngData = $barcode->getBarcodePngData(4, 4);
+                if ($pngData) {
+                    $qrCodeBase64 = 'data:image/png;base64,' . base64_encode($pngData);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Failed generating invoice QR code: ' . $e->getMessage());
+            }
+        }
+
         return view('print.invoice', [
             'invoice' => $invoice,
             'paidAmount' => $paidAmount,
             'balanceDue' => $balanceDue,
+            'vaultUrl' => $vaultUrl,
+            'qrCodeBase64' => $qrCodeBase64,
         ]);
     }
 
