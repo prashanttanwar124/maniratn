@@ -55,16 +55,13 @@
         }
 
         .invoice-vault-qr {
-            position: absolute;
-            bottom: 48px;
-            left: 20mm;
-            z-index: 10;
             text-align: center;
             background: #ffffff;
             padding: 4px;
             border-radius: 4px;
             border: 1px solid var(--surface-200);
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            display: inline-block;
         }
 
         .head,
@@ -327,25 +324,6 @@
     </div>
 
     <div class="page">
-        @if (!empty($qrSvg) || !empty($qrCodeBase64))
-            <div class="invoice-vault-qr">
-                <a href="{{ $vaultUrl }}" target="_blank" title="Scan or click to view Customer Digital Vault"
-                    style="display: inline-flex; flex-direction: column; align-items: center; text-decoration: none; color: inherit; background: transparent;">
-                    <div style="display: block; line-height: 0; background: transparent;">
-                        @if (!empty($qrSvg))
-                            {!! $qrSvg !!}
-                        @else
-                            <img src="{{ $qrCodeBase64 }}" alt="Customer Digital Vault QR Code"
-                                style="width: 60px; height: 60px; display: block; background: transparent;" />
-                        @endif
-                    </div>
-                    <span
-                        style="font-size: 7px; font-weight: 700; color: var(--brand-maroon); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 2px; line-height: 1;">Digital
-                        Vault</span>
-                </a>
-            </div>
-        @endif
-
         <div class="invoice-body">
             <table class="head">
                 <tr>
@@ -435,8 +413,28 @@
 
             <div class="section"
                 style="display: flex; justify-content: space-between; align-items: flex-end; position: relative; z-index: 1;">
-                <div style="font-size: 11px; font-style: italic; color: var(--surface-500); padding-bottom: 8px;">
-                    Thank you for shopping with us!
+                <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px;">
+                    @if (!empty($qrSvg) || !empty($qrCodeBase64))
+                        <div class="invoice-vault-qr">
+                            <a href="{{ $vaultUrl }}" target="_blank" title="Scan or click to view Customer Digital Vault"
+                                style="display: inline-flex; flex-direction: column; align-items: center; text-decoration: none; color: inherit;">
+                                <div style="display: block; line-height: 0;">
+                                    @if (!empty($qrSvg))
+                                        {!! $qrSvg !!}
+                                    @else
+                                        <img src="{{ $qrCodeBase64 }}" alt="Customer Digital Vault QR Code"
+                                            style="width: 60px; height: 60px; display: block;" />
+                                    @endif
+                                </div>
+                                <span
+                                    style="font-size: 7px; font-weight: 700; color: var(--brand-maroon); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 2px; line-height: 1;">Digital
+                                    Vault</span>
+                            </a>
+                        </div>
+                    @endif
+                    <div style="font-size: 11px; font-style: italic; color: var(--surface-500);">
+                        Thank you for shopping with us!
+                    </div>
                 </div>
                 <div class="totals-wrap" style="margin: 0; width: 300px;">
                     @php
