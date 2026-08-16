@@ -43,11 +43,13 @@ class GoldStockCountController extends Controller
             ->with(['entries.product.category', 'entries.product.purity'])
             ->where(function ($query) use ($register, $selectedDate) {
                 if ($register) {
-                    $query->where('daily_register_id', $register->id);
+                    $query->where('daily_register_id', $register->id)
+                        ->orWhereDate('count_date', $selectedDate);
                 } else {
                     $query->whereDate('count_date', $selectedDate);
                 }
             })
+            ->latest('id')
             ->first();
 
         $dayOpen = $isToday ? (bool) $openRegisterToday : ((bool) $register && is_null($register->closed_at));
@@ -101,20 +103,35 @@ class GoldStockCountController extends Controller
             abort(422, 'Today\'s gold stock count is already marked complete.');
         }
 
-        $normalizedBarcode = strtoupper(trim($validated['barcode']));
+        $rawBarcode = trim((string) $validated['barcode']);
+        $normalizedBarcode = strtoupper($rawBarcode);
+        $cleanCode = preg_replace('/[^A-Z0-9\-]/', '', $normalizedBarcode);
 
-        $product = Product::query()
+        $productQuery = Product::query()
             ->with(['category', 'purity'])
             ->where('is_sold', false)
-            ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
-            ->where(function ($query) use ($normalizedBarcode) {
-                $query->where('barcode', $normalizedBarcode);
+            ->when($categoryId, fn ($q) => $q->where('category_id', $categoryId));
 
-                if (preg_match('/^G(\d{5})$/', $normalizedBarcode, $matches)) {
-                    $query->orWhere('id', (int) $matches[1]);
-                }
-            })
-            ->first();
+        // 1. Direct barcode match
+        $product = (clone $productQuery)->where('barcode', $cleanCode)->first();
+
+        // 2. Flexible variations match (G00025, G25, MJ-00025, MJ-25, numeric 25)
+        if (! $product) {
+            if (preg_match('/^(?:G|MJ-)?0*(\d+)$/', $cleanCode, $matches)) {
+                $id = (int) $matches[1];
+                $paddedG = 'G' . str_pad((string) $id, 5, '0', STR_PAD_LEFT);
+                $paddedMJ = 'MJ-' . str_pad((string) $id, 5, '0', STR_PAD_LEFT);
+
+                $product = (clone $productQuery)
+                    ->where(function ($q) use ($id, $paddedG, $paddedMJ, $cleanCode) {
+                        $q->where('id', $id)
+                            ->orWhere('barcode', $paddedG)
+                            ->orWhere('barcode', $paddedMJ)
+                            ->orWhere('barcode', $cleanCode);
+                    })
+                    ->first();
+            }
+        }
 
         abort_unless($product, 422, $categoryId
             ? 'Gold product not found in the selected category and current open stock.'
@@ -125,7 +142,7 @@ class GoldStockCountController extends Controller
             ->where('product_id', $product->id)
             ->exists();
 
-        abort_if($alreadyCounted, 422, 'This gold product is already counted.');
+        abort_if($alreadyCounted, 422, "Product {$product->barcode} is already counted.");
 
         GoldStockCountEntry::query()->create([
             'session_id' => $session->id,
@@ -137,19 +154,25 @@ class GoldStockCountController extends Controller
 
         $session->load(['entries.product.category', 'entries.product.purity']);
 
+        // If filtering by a specific category and scanned product is in that category, keep it;
+        // if user scanned an item in a different category, switch effective category to that item's category so it shows immediately
+        $effectiveCategoryId = ($categoryId && $product->category_id === $categoryId) ? $categoryId : ($categoryId ? $product->category_id : null);
+
         return response()->json([
+            'category_id' => $effectiveCategoryId,
             'countedProduct' => [
                 'id' => $product->id,
                 'barcode' => $product->barcode,
                 'name' => $product->name,
+                'category_id' => $product->category_id,
                 'category' => $product->category?->name,
                 'purity' => $product->purity?->name,
                 'net_weight' => (float) $product->net_weight,
             ],
-            'summary' => $this->buildSummary($register, $session, $categoryId),
+            'summary' => $this->buildSummary($register, $session, $effectiveCategoryId),
             'categoryBreakdown' => $this->buildCategoryBreakdown($session),
-            'recentCounted' => $this->recentCounted($session, $categoryId),
-            'missingProducts' => $this->missingProducts($session, $categoryId),
+            'recentCounted' => $this->recentCounted($session, $effectiveCategoryId),
+            'missingProducts' => $this->missingProducts($session, $effectiveCategoryId),
         ]);
     }
 
@@ -163,9 +186,12 @@ class GoldStockCountController extends Controller
             ->where('daily_register_id', $register->id)
             ->firstOrFail();
 
-        $expectedIds = Product::query()->where('is_sold', false)->pluck('id');
-        $countedIds = $session->entries->pluck('product_id');
-        abort_if($expectedIds->diff($countedIds)->isNotEmpty(), 422, 'Count all open gold stock before marking the session complete.');
+        $allExpectedCount = Product::query()->where('is_sold', false)->count();
+        $countedCount = $session->entries()->count();
+
+        if ($countedCount < $allExpectedCount) {
+            abort(422, "Cannot mark complete: {$countedCount} of {$allExpectedCount} gold items counted.");
+        }
 
         $session->update([
             'status' => 'COMPLETED',
@@ -193,14 +219,16 @@ class GoldStockCountController extends Controller
 
     private function buildSummary(?DailyRegister $register, ?GoldStockCountSession $session, ?int $categoryId = null, ?string $date = null): array
     {
-        $expectedProducts = Product::query()
-            ->where('is_sold', false)
+        $expectedProductsQuery = Product::query()
+            ->where('is_sold', false);
+
+        $expectedProducts = (clone $expectedProductsQuery)
             ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
             ->get(['id', 'gross_weight', 'net_weight']);
 
         $allCountedIds = $session ? $session->entries()->pluck('product_id') : collect();
-        $countedProducts = $session
-            ? Product::query()
+        $countedProducts = ($session && $allCountedIds->isNotEmpty())
+            ? (clone $expectedProductsQuery)
                 ->whereIn('id', $allCountedIds)
                 ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
                 ->get(['id', 'gross_weight', 'net_weight'])
@@ -208,7 +236,7 @@ class GoldStockCountController extends Controller
 
         $expectedCount = $expectedProducts->count();
         $countedCount = $countedProducts->count();
-        $allExpectedIds = Product::query()->where('is_sold', false)->pluck('id');
+        $allExpectedIds = (clone $expectedProductsQuery)->pluck('id');
 
         return [
             'register_date' => $register ? optional($register->date)->toDateString() : ($date ?? Carbon::today()->toDateString()),
@@ -235,7 +263,8 @@ class GoldStockCountController extends Controller
             ->with(['product.category', 'product.purity', 'scannedBy'])
             ->when($categoryId, fn ($query) => $query->whereHas('product', fn ($productQuery) => $productQuery->where('category_id', $categoryId)))
             ->latest('scanned_at')
-            ->take(50)
+            ->latest('id')
+            ->take(100)
             ->get()
             ->map(fn (GoldStockCountEntry $entry) => [
                 'id' => $entry->product?->id ?? $entry->product_id,

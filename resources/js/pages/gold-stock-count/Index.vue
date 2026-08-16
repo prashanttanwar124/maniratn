@@ -295,10 +295,15 @@ const scanBarcode = async () => {
         categoryBreakdown.value = payload.categoryBreakdown || [];
         recentCounted.value = payload.recentCounted || [];
         missingProducts.value = payload.missingProducts || [];
+
+        if (payload.category_id && selectedCategoryId.value && selectedCategoryId.value !== payload.category_id) {
+            selectedCategoryId.value = payload.category_id;
+        }
+
         toast.add({
             severity: 'success',
             summary: 'Counted',
-            detail: `${payload.countedProduct?.barcode} added to counted stock.`,
+            detail: `${payload.countedProduct?.barcode} (${payload.countedProduct?.category || 'Gold'}) added to counted stock.`,
             life: 2500,
         });
     } catch (error) {
