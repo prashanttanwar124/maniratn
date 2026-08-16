@@ -275,50 +275,66 @@ const deleteProduct = () => {
     });
 };
 
-const scanBarcode = async () => {
+const scanQueue = ref([]);
+const isProcessingQueue = ref(false);
+
+const scanBarcode = () => {
     const barcode = scanInput.value.trim();
 
-    if (!barcode || scanning.value || !canScan.value) return;
+    if (!barcode || !canScan.value) return;
 
     scanInput.value = '';
+    scanQueue.value.push(barcode);
+    processScanQueue();
+};
+
+const processScanQueue = async () => {
+    if (isProcessingQueue.value || scanQueue.value.length === 0) return;
+
+    isProcessingQueue.value = true;
     scanning.value = true;
 
-    try {
-        const response = await axios.post(route('gold-stock-count.scan'), {
-            barcode,
-            category_id: selectedCategoryId.value,
-        });
+    while (scanQueue.value.length > 0) {
+        const barcode = scanQueue.value.shift();
+        if (!barcode) continue;
 
-        const payload = response.data || {};
+        try {
+            const response = await axios.post(route('gold-stock-count.scan'), {
+                barcode,
+                category_id: selectedCategoryId.value,
+            });
 
-        summary.value = payload.summary;
-        categoryBreakdown.value = payload.categoryBreakdown || [];
-        recentCounted.value = payload.recentCounted || [];
-        missingProducts.value = payload.missingProducts || [];
+            const payload = response.data || {};
 
-        if (payload.category_id && selectedCategoryId.value && selectedCategoryId.value !== payload.category_id) {
-            selectedCategoryId.value = payload.category_id;
+            summary.value = payload.summary;
+            categoryBreakdown.value = payload.categoryBreakdown || [];
+            recentCounted.value = payload.recentCounted || [];
+            missingProducts.value = payload.missingProducts || [];
+
+            if (payload.category_id && selectedCategoryId.value && selectedCategoryId.value !== payload.category_id) {
+                selectedCategoryId.value = payload.category_id;
+            }
+
+            toast.add({
+                severity: 'success',
+                summary: 'Counted',
+                detail: `${payload.countedProduct?.barcode} (${payload.countedProduct?.category || 'Gold'}) added to counted stock.`,
+                life: 2500,
+            });
+        } catch (error) {
+            const message = error?.response?.data?.message || `Unable to count barcode ${barcode}.`;
+            toast.add({
+                severity: 'warn',
+                summary: 'Scan Stopped',
+                detail: message,
+                life: 3000,
+            });
         }
-
-        toast.add({
-            severity: 'success',
-            summary: 'Counted',
-            detail: `${payload.countedProduct?.barcode} (${payload.countedProduct?.category || 'Gold'}) added to counted stock.`,
-            life: 2500,
-        });
-    } catch (error) {
-        const message = error?.response?.data?.message || 'Unable to count this barcode.';
-        toast.add({
-            severity: 'warn',
-            summary: 'Scan Stopped',
-            detail: message,
-            life: 3000,
-        });
-    } finally {
-        scanning.value = false;
-        scanInput.value = '';
-        await focusScanInput();
     }
+
+    scanning.value = false;
+    isProcessingQueue.value = false;
+    await focusScanInput();
 };
 
 const markComplete = async () => {
@@ -543,7 +559,7 @@ const markComplete = async () => {
                                 v-model="scanInput"
                                 placeholder="Scan barcode or enter gold product code..."
                                 class="w-full !pl-10"
-                                :disabled="scanning || !canScan"
+                                :disabled="!canScan"
                                 autofocus
                                 @keydown.enter.prevent="scanBarcode"
                             />
