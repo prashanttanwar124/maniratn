@@ -113,6 +113,7 @@ class ProductController extends Controller
         if ($request->hasFile('image')) {
             $validated['image_path'] = $request->file('image')->store('products', 'public');
         }
+        unset($validated['image']);
 
         if (! empty($validated['batch_items'])) {
             $batchItems = $validated['batch_items'];
@@ -356,6 +357,7 @@ class ProductController extends Controller
             }
             $validated['image_path'] = $request->file('image')->store('products', 'public');
         }
+        unset($validated['image']);
 
         if ($product->is_sold && (float) $product->net_weight !== (float) $validated['net_weight']) {
             return redirect()->back()->withErrors([

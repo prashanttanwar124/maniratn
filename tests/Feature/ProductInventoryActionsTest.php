@@ -95,6 +95,35 @@ it('duplicates a product with a new barcode', function () {
         ->and((float) $duplicate->net_weight)->toBe((float) $product->net_weight);
 });
 
+it('creates a new gold product successfully with and without image', function () {
+    openShopDayForProductActions($this->user);
+
+    [$category, $purity, $supplier] = productActionDependencies();
+
+    \Illuminate\Support\Facades\Storage::fake('public');
+
+    $file = \Illuminate\Http\UploadedFile::fake()->image('gold_ring.jpg');
+
+    $this->post(route('products.store'), [
+        'name' => 'Royal Gold Ring',
+        'category_id' => $category->id,
+        'purity_id' => $purity->id,
+        'supplier_id' => $supplier->id,
+        'gross_weight' => 8.5,
+        'net_weight' => 8.2,
+        'making_charge' => 14,
+        'image' => $file,
+    ])->assertRedirect();
+
+    $product = Product::latest('id')->firstOrFail();
+    expect($product->name)->toContain('Royal Gold Ring')
+        ->and((float) $product->gross_weight)->toBe(8.5)
+        ->and((float) $product->net_weight)->toBe(8.2)
+        ->and($product->image_path)->not->toBeNull();
+
+    \Illuminate\Support\Facades\Storage::disk('public')->assertExists($product->image_path);
+});
+
 it('finds a product by barcode in quick scan route', function () {
     [$category, $purity, $supplier] = productActionDependencies();
 
