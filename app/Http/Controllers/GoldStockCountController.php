@@ -82,25 +82,41 @@ class GoldStockCountController extends Controller
         $validated = $request->validate([
             'barcode' => ['required', 'string'],
             'category_id' => ['nullable', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('metal_type', 'GOLD'))],
+            'date' => ['nullable', 'date'],
         ]);
 
         $categoryId = isset($validated['category_id']) ? (int) $validated['category_id'] : null;
+        $targetDate = isset($validated['date'])
+            ? Carbon::parse($validated['date'])->toDateString()
+            : Carbon::today()->toDateString();
 
-        $register = $this->currentOpenRegister();
-        abort_unless($register, 422, 'Open the shop day before counting stock.');
+        $register = DailyRegister::query()->whereDate('date', $targetDate)->latest('id')->first()
+            ?: $this->currentOpenRegister();
 
-        $session = GoldStockCountSession::query()->firstOrCreate(
-            ['daily_register_id' => $register->id],
-            [
-                'count_date' => $register->date,
+        $session = GoldStockCountSession::query()
+            ->where(function ($query) use ($register, $targetDate) {
+                if ($register) {
+                    $query->where('daily_register_id', $register->id)
+                        ->orWhereDate('count_date', $targetDate);
+                } else {
+                    $query->whereDate('count_date', $targetDate);
+                }
+            })
+            ->latest('id')
+            ->first();
+
+        if (! $session) {
+            $session = GoldStockCountSession::query()->create([
+                'daily_register_id' => $register?->id,
+                'count_date' => $targetDate,
                 'status' => 'OPEN',
                 'started_by' => Auth::id(),
                 'started_at' => now(),
-            ]
-        );
+            ]);
+        }
 
         if ($session->status === 'COMPLETED') {
-            abort(422, 'Today\'s gold stock count is already marked complete.');
+            abort(422, "The gold stock count for {$targetDate} is already marked complete.");
         }
 
         $rawBarcode = trim((string) $validated['barcode']);
@@ -142,7 +158,7 @@ class GoldStockCountController extends Controller
             ->where('product_id', $product->id)
             ->exists();
 
-        abort_if($alreadyCounted, 422, "Product {$product->barcode} is already counted.");
+        abort_if($alreadyCounted, 422, "Product {$product->barcode} is already counted in this session.");
 
         GoldStockCountEntry::query()->create([
             'session_id' => $session->id,
@@ -169,22 +185,44 @@ class GoldStockCountController extends Controller
                 'purity' => $product->purity?->name,
                 'net_weight' => (float) $product->net_weight,
             ],
-            'summary' => $this->buildSummary($register, $session, $effectiveCategoryId),
+            'summary' => $this->buildSummary($register, $session, $effectiveCategoryId, $targetDate),
             'categoryBreakdown' => $this->buildCategoryBreakdown($session),
             'recentCounted' => $this->recentCounted($session, $effectiveCategoryId),
             'missingProducts' => $this->missingProducts($session, $effectiveCategoryId),
         ]);
     }
 
-    public function complete(): JsonResponse
+    public function complete(Request $request): JsonResponse
     {
-        $register = $this->currentOpenRegister();
-        abort_unless($register, 422, 'Open the shop day before completing stock count.');
+        $validated = $request->validate([
+            'date' => ['nullable', 'date'],
+        ]);
+
+        $targetDate = isset($validated['date'])
+            ? Carbon::parse($validated['date'])->toDateString()
+            : Carbon::today()->toDateString();
+
+        $register = DailyRegister::query()->whereDate('date', $targetDate)->latest('id')->first()
+            ?: $this->currentOpenRegister();
 
         $session = GoldStockCountSession::query()
             ->with('entries:id,session_id,product_id')
-            ->where('daily_register_id', $register->id)
-            ->firstOrFail();
+            ->where(function ($query) use ($register, $targetDate) {
+                if ($register) {
+                    $query->where('daily_register_id', $register->id)
+                        ->orWhereDate('count_date', $targetDate);
+                } else {
+                    $query->whereDate('count_date', $targetDate);
+                }
+            })
+            ->latest('id')
+            ->first();
+
+        abort_unless($session, 422, "No gold stock count session found for {$targetDate}.");
+
+        if ($session->status === 'COMPLETED') {
+            abort(422, "The stock count for {$targetDate} is already marked complete.");
+        }
 
         $allExpectedCount = Product::query()->where('is_sold', false)->count();
         $countedCount = $session->entries()->count();

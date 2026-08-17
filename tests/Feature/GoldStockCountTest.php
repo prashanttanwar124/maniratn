@@ -169,6 +169,37 @@ it('allows viewing past gold stock count records by date', function () {
             ->where('recentCounted.0.id', $product->id));
 });
 
+it('allows continuing scanning and marking complete on a past open session', function () {
+    openShopDayForGoldCount($this->user);
+
+    $pastDate = now()->subDay()->toDateString();
+
+    $product1 = goldCountProduct(['name' => 'Gold Bangles 1']);
+    $product2 = goldCountProduct(['name' => 'Gold Bangles 2']);
+
+    // Scan product 1 on past date
+    $this->postJson(route('gold-stock-count.scan'), [
+        'barcode' => $product1->barcode,
+        'date' => $pastDate,
+    ])->assertOk()
+        ->assertJsonPath('countedProduct.barcode', $product1->barcode);
+
+    // Scan product 2 on past date
+    $this->postJson(route('gold-stock-count.scan'), [
+        'barcode' => $product2->barcode,
+        'date' => $pastDate,
+    ])->assertOk()
+        ->assertJsonPath('summary.remaining_items', 0);
+
+    // Complete past date session
+    $this->postJson(route('gold-stock-count.complete'), [
+        'date' => $pastDate,
+    ])->assertOk()
+        ->assertJsonPath('session.status', 'COMPLETED');
+
+    expect(GoldStockCountSession::whereDate('count_date', $pastDate)->first()->status)->toBe('COMPLETED');
+});
+
 function goldCountProduct(array $overrides = []): Product
 {
     $category = Category::firstOrCreate([

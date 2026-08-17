@@ -49,11 +49,10 @@ const selectedDate = ref(props.selectedDate || new Date().toISOString().split('T
 const datePickerValue = ref(props.selectedDate ? new Date(props.selectedDate) : new Date());
 
 const categoryOptions = computed(() => [{ id: null, name: 'All Gold Categories' }, ...(props.categories || [])]);
-
 const isToday = computed(() => props.isToday ?? (selectedDate.value === new Date().toISOString().split('T')[0]));
-const isCompleteReady = computed(() => isToday.value && props.dayOpen && Number(summary.value?.overall_remaining_items || 0) === 0 && Number(summary.value?.overall_expected_items || 0) > 0);
+const isCompleteReady = computed(() => Number(summary.value?.overall_remaining_items || 0) === 0 && Number(summary.value?.overall_expected_items || 0) > 0 && session.value?.status !== 'COMPLETED');
 const selectedCategoryName = computed(() => props.categories?.find((category) => category.id === selectedCategoryId.value)?.name || 'All Gold Categories');
-const canScan = computed(() => isToday.value && props.dayOpen && session.value?.status !== 'COMPLETED');
+const canScan = computed(() => session.value?.status !== 'COMPLETED');
 
 // Edit & Delete product state
 const editDialog = ref(false);
@@ -302,6 +301,7 @@ const processScanQueue = async () => {
             const response = await axios.post(route('gold-stock-count.scan'), {
                 barcode,
                 category_id: selectedCategoryId.value,
+                date: selectedDate.value,
             });
 
             const payload = response.data || {};
@@ -343,7 +343,9 @@ const markComplete = async () => {
     completing.value = true;
 
     try {
-        const response = await axios.post(route('gold-stock-count.complete'));
+        const response = await axios.post(route('gold-stock-count.complete'), {
+            date: selectedDate.value,
+        });
         const payload = response.data || {};
 
         session.value = {
@@ -354,7 +356,7 @@ const markComplete = async () => {
         toast.add({
             severity: 'success',
             summary: 'Count Complete',
-            detail: 'Gold stock count marked complete for today.',
+            detail: `Gold stock count marked complete for ${formatDate(selectedDate.value)}.`,
             life: 3000,
         });
     } catch (error) {
@@ -380,17 +382,17 @@ const markComplete = async () => {
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-3">
                             <h1 class="text-2xl font-semibold tracking-tight text-surface-900">Gold Stock Count</h1>
-                            <Tag :value="isToday ? 'Night Count' : 'Archive'" :severity="isToday ? 'warn' : 'secondary'" />
+                            <Tag :value="isToday ? 'Today' : 'Date Session'" :severity="isToday ? 'info' : 'secondary'" />
                             <Tag v-if="session?.status === 'COMPLETED'" value="Completed" severity="success" />
-                            <Tag v-else-if="session?.status === 'OPEN'" value="In Progress" severity="info" />
-                            <Tag v-else-if="!session && !isToday" value="No Session on this Date" severity="secondary" />
+                            <Tag v-else-if="session?.status === 'OPEN'" value="In Progress" severity="warn" />
+                            <Tag v-else value="Ready to Count" severity="info" />
                         </div>
                         <p class="mt-1 text-sm text-surface-500">
-                            {{ isToday ? 'Scan unsold gold stock before close day and compare counted items with system stock.' : `Reviewing past gold stock count records for ${formatDate(selectedDate)}.` }}
+                            {{ session?.status === 'COMPLETED' ? `Reviewing completed gold stock count records for ${formatDate(selectedDate)}.` : (isToday ? 'Scan unsold gold stock before close day and compare counted items with system stock.' : `Count in progress for ${formatDate(selectedDate)}. Scan unsold gold stock to complete this session.`) }}
                         </p>
                     </div>
 
-                    <div v-if="isToday">
+                    <div v-if="session?.status !== 'COMPLETED'">
                         <Button label="Mark Complete" icon="pi pi-check" :disabled="!isCompleteReady" :loading="completing" @click="markComplete" class="!w-auto shrink-0 whitespace-nowrap" />
                     </div>
                 </div>
@@ -539,15 +541,15 @@ const markComplete = async () => {
 
             <!-- Scanner & Session Info Grid -->
             <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
-                <!-- Scanner block (only active for today) -->
-                <div v-if="isToday" class="border border-surface-200 bg-white px-5 py-5">
+                <!-- Scanner block (active whenever session is open) -->
+                <div v-if="session?.status !== 'COMPLETED'" class="border border-surface-200 bg-white px-5 py-5">
                     <div class="flex items-start gap-3">
                         <div class="flex h-11 w-11 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
                             <ScanLine class="h-5 w-5" />
                         </div>
                         <div class="min-w-0 flex-1">
-                            <p class="text-sm font-medium text-surface-900">Scanner</p>
-                            <p class="mt-1 text-xs text-surface-500">Scan gold barcode and it will be added to counted list once only.</p>
+                            <p class="text-sm font-medium text-surface-900">Scanner ({{ isToday ? 'Today' : formatDate(selectedDate) }})</p>
+                            <p class="mt-1 text-xs text-surface-500">Scan gold barcode to add into this date's count session.</p>
                         </div>
                     </div>
 
@@ -573,16 +575,16 @@ const markComplete = async () => {
                     </div>
                 </div>
 
-                <!-- Past date notice -->
-                <div v-else class="flex items-center gap-4 border border-surface-200 bg-surface-50 p-5">
-                    <div class="flex h-11 w-11 shrink-0 items-center justify-center border border-surface-200 bg-white text-surface-500">
-                        <i class="pi pi-history text-lg" />
+                <!-- Completed session archive notice -->
+                <div v-else class="flex items-center gap-4 border border-surface-200 bg-emerald-50/50 p-5">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center border border-emerald-200 bg-white text-emerald-600">
+                        <i class="pi pi-check-circle text-lg" />
                     </div>
                     <div class="min-w-0 flex-1">
-                        <p class="text-sm font-medium text-surface-900">Viewing Historical Count Record</p>
-                        <p class="mt-1 text-xs text-surface-500">Date: <strong class="text-surface-700">{{ formatDate(selectedDate) }}</strong>. Scanning new barcodes is only active on today's session.</p>
+                        <p class="text-sm font-medium text-surface-900">Count Session Completed</p>
+                        <p class="mt-1 text-xs text-surface-500">Stock count for <strong class="text-surface-700">{{ formatDate(selectedDate) }}</strong> was completed on {{ formatDateTime(session?.completed_at) }}.</p>
                     </div>
-                    <Button label="Go to Today" icon="pi pi-arrow-right" size="small" outlined @click="goToToday" class="shrink-0" />
+                    <Button v-if="!isToday" label="Go to Today" icon="pi pi-arrow-right" size="small" outlined @click="goToToday" class="shrink-0" />
                 </div>
 
                 <!-- Session info card -->
