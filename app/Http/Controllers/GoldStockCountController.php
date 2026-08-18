@@ -116,7 +116,10 @@ class GoldStockCountController extends Controller
         }
 
         if ($session->status === 'COMPLETED') {
-            abort(422, "The gold stock count for {$targetDate} is already marked complete.");
+            return response()->json([
+                'message' => "The gold stock count for {$targetDate} is already marked complete.",
+                'error_type' => 'SESSION_COMPLETED',
+            ], 422);
         }
 
         $rawBarcode = trim((string) $validated['barcode']);
@@ -149,16 +152,31 @@ class GoldStockCountController extends Controller
             }
         }
 
-        abort_unless($product, 422, $categoryId
-            ? 'Gold product not found in the selected category and current open stock.'
-            : 'Gold product not found in current open stock.');
+        if (! $product) {
+            return response()->json([
+                'message' => $categoryId
+                    ? 'Gold product not found in the selected category and current open stock.'
+                    : 'Gold product not found in current open stock.',
+                'error_type' => 'NOT_FOUND',
+            ], 422);
+        }
 
         $alreadyCounted = GoldStockCountEntry::query()
             ->where('session_id', $session->id)
             ->where('product_id', $product->id)
             ->exists();
 
-        abort_if($alreadyCounted, 422, "Product {$product->barcode} is already counted in this session.");
+        if ($alreadyCounted) {
+            return response()->json([
+                'message' => "Product {$product->barcode} is already counted in this session.",
+                'error_type' => 'ALREADY_COUNTED',
+                'product' => [
+                    'id' => $product->id,
+                    'barcode' => $product->barcode,
+                    'name' => $product->name,
+                ],
+            ], 422);
+        }
 
         GoldStockCountEntry::query()->create([
             'session_id' => $session->id,
@@ -218,17 +236,28 @@ class GoldStockCountController extends Controller
             ->latest('id')
             ->first();
 
-        abort_unless($session, 422, "No gold stock count session found for {$targetDate}.");
+        if (! $session) {
+            return response()->json([
+                'message' => "No gold stock count session found for {$targetDate}.",
+                'error_type' => 'NOT_FOUND',
+            ], 422);
+        }
 
         if ($session->status === 'COMPLETED') {
-            abort(422, "The stock count for {$targetDate} is already marked complete.");
+            return response()->json([
+                'message' => "The stock count for {$targetDate} is already marked complete.",
+                'error_type' => 'SESSION_COMPLETED',
+            ], 422);
         }
 
         $allExpectedCount = Product::query()->where('is_sold', false)->count();
         $countedCount = $session->entries()->count();
 
         if ($countedCount < $allExpectedCount) {
-            abort(422, "Cannot mark complete: {$countedCount} of {$allExpectedCount} gold items counted.");
+            return response()->json([
+                'message' => "Cannot mark complete: {$countedCount} of {$allExpectedCount} gold items counted.",
+                'error_type' => 'INCOMPLETE',
+            ], 422);
         }
 
         $session->update([

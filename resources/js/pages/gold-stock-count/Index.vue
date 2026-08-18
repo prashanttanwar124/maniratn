@@ -18,6 +18,16 @@ import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
 
+import {
+    getAudioContext,
+    isSoundEnabled,
+    playAlreadyAddedSound,
+    playCompleteSound,
+    playNotFoundSound,
+    playSuccessSound,
+    setSoundEnabled,
+} from '@/utils/stockCountSound';
+
 const props = defineProps({
     dayOpen: Boolean,
     isToday: Boolean,
@@ -39,6 +49,7 @@ const scanInput = ref('');
 const scanInputRef = ref(null);
 const scanning = ref(false);
 const completing = ref(false);
+const soundEnabled = ref(true);
 const summary = ref(props.summary);
 const session = ref(props.session);
 const categoryBreakdown = ref(props.categoryBreakdown || []);
@@ -101,6 +112,28 @@ watch(() => props.selectedDate, (val) => {
     }
 });
 
+const toggleSound = () => {
+    soundEnabled.value = !soundEnabled.value;
+    setSoundEnabled(soundEnabled.value);
+    if (soundEnabled.value) {
+        getAudioContext();
+        playSuccessSound();
+        toast.add({
+            severity: 'info',
+            summary: 'Sound Enabled',
+            detail: 'Audio cues enabled for counted, duplicate, and missing items.',
+            life: 2000,
+        });
+    } else {
+        toast.add({
+            severity: 'secondary',
+            summary: 'Sound Muted',
+            detail: 'Audio feedback has been muted.',
+            life: 2000,
+        });
+    }
+};
+
 const focusScanInput = async () => {
     if (!canScan.value) return;
 
@@ -109,7 +142,10 @@ const focusScanInput = async () => {
     input?.focus?.();
 };
 
-onMounted(focusScanInput);
+onMounted(() => {
+    soundEnabled.value = isSoundEnabled();
+    focusScanInput();
+});
 
 const onDatePickerChange = (val) => {
     if (!val) return;
@@ -315,20 +351,66 @@ const processScanQueue = async () => {
                 selectedCategoryId.value = payload.category_id;
             }
 
+            // Success sound feedback
+            playSuccessSound();
+
             toast.add({
                 severity: 'success',
                 summary: 'Counted',
                 detail: `${payload.countedProduct?.barcode} (${payload.countedProduct?.category || 'Gold'}) added to counted stock.`,
                 life: 2500,
             });
+
+            // If all items are now counted, trigger completion fanfare
+            if (
+                Number(summary.value?.overall_remaining_items || 0) === 0 &&
+                Number(summary.value?.overall_expected_items || 0) > 0
+            ) {
+                setTimeout(() => {
+                    playCompleteSound();
+                }, 350);
+            }
         } catch (error) {
-            const message = error?.response?.data?.message || `Unable to count barcode ${barcode}.`;
-            toast.add({
-                severity: 'warn',
-                summary: 'Scan Stopped',
-                detail: message,
-                life: 3000,
-            });
+            const errorData = error?.response?.data || {};
+            const errorType = errorData.error_type;
+            const message = errorData.message || `Unable to count barcode ${barcode}.`;
+
+            if (
+                errorType === 'ALREADY_COUNTED' ||
+                message.toLowerCase().includes('already counted') ||
+                message.toLowerCase().includes('duplicate')
+            ) {
+                // Distinct sound for already counted / duplicate item
+                playAlreadyAddedSound();
+                toast.add({
+                    severity: 'warn',
+                    summary: 'Already Added',
+                    detail: message,
+                    life: 3500,
+                });
+            } else if (
+                errorType === 'NOT_FOUND' ||
+                message.toLowerCase().includes('not found') ||
+                error?.response?.status === 404
+            ) {
+                // Distinct sound for missing / not found item
+                playNotFoundSound();
+                toast.add({
+                    severity: 'error',
+                    summary: 'Item Not Found / Missing',
+                    detail: message,
+                    life: 3500,
+                });
+            } else {
+                // Other scan error
+                playNotFoundSound();
+                toast.add({
+                    severity: 'warn',
+                    summary: 'Scan Stopped',
+                    detail: message,
+                    life: 3000,
+                });
+            }
         }
     }
 
@@ -353,6 +435,8 @@ const markComplete = async () => {
             ...(payload.session || {}),
         };
 
+        playCompleteSound();
+
         toast.add({
             severity: 'success',
             summary: 'Count Complete',
@@ -361,6 +445,7 @@ const markComplete = async () => {
         });
     } catch (error) {
         const message = error?.response?.data?.message || 'Unable to complete gold stock count.';
+        playNotFoundSound();
         toast.add({
             severity: 'error',
             summary: 'Complete Failed',
@@ -392,8 +477,21 @@ const markComplete = async () => {
                         </p>
                     </div>
 
-                    <div v-if="session?.status !== 'COMPLETED'">
-                        <Button label="Mark Complete" icon="pi pi-check" :disabled="!isCompleteReady" :loading="completing" @click="markComplete" class="!w-auto shrink-0 whitespace-nowrap" />
+                    <div class="flex items-center gap-2">
+                        <Button
+                            :icon="soundEnabled ? 'pi pi-volume-up' : 'pi pi-volume-off'"
+                            :label="soundEnabled ? 'Sound On' : 'Muted'"
+                            :severity="soundEnabled ? 'secondary' : 'secondary'"
+                            :outlined="!soundEnabled"
+                            size="small"
+                            type="button"
+                            @click="toggleSound"
+                            class="!h-10 !w-auto shrink-0 whitespace-nowrap"
+                            :title="soundEnabled ? 'Audio feedback active (Click to mute)' : 'Audio feedback muted (Click to enable)'"
+                        />
+                        <div v-if="session?.status !== 'COMPLETED'">
+                            <Button label="Mark Complete" icon="pi pi-check" :disabled="!isCompleteReady" :loading="completing" @click="markComplete" class="!w-auto shrink-0 whitespace-nowrap" />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -543,13 +641,24 @@ const markComplete = async () => {
             <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
                 <!-- Scanner block (active whenever session is open) -->
                 <div v-if="session?.status !== 'COMPLETED'" class="border border-surface-200 bg-white px-5 py-5">
-                    <div class="flex items-start gap-3">
-                        <div class="flex h-11 w-11 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
-                            <ScanLine class="h-5 w-5" />
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <p class="text-sm font-medium text-surface-900">Scanner ({{ isToday ? 'Today' : formatDate(selectedDate) }})</p>
-                            <p class="mt-1 text-xs text-surface-500">Scan gold barcode to add into this date's count session.</p>
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-start gap-3">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                                <ScanLine class="h-5 w-5" />
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-2">
+                                    <p class="text-sm font-medium text-surface-900">Scanner ({{ isToday ? 'Today' : formatDate(selectedDate) }})</p>
+                                    <span
+                                        class="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors"
+                                        :class="soundEnabled ? 'border border-emerald-200 bg-emerald-50 text-emerald-700' : 'border border-surface-200 bg-surface-100 text-surface-500'"
+                                    >
+                                        <i :class="soundEnabled ? 'pi pi-volume-up' : 'pi pi-volume-off'" class="text-[10px]" />
+                                        {{ soundEnabled ? 'Sound On' : 'Muted' }}
+                                    </span>
+                                </div>
+                                <p class="mt-1 text-xs text-surface-500">Scan gold barcode to add into this date's count session.</p>
+                            </div>
                         </div>
                     </div>
 
@@ -569,9 +678,22 @@ const markComplete = async () => {
                         <Button label="Count Item" icon="pi pi-plus" :loading="scanning" :disabled="!canScan" @click="scanBarcode" class="!w-full shrink-0 whitespace-nowrap sm:!w-auto" />
                     </div>
 
-                    <div class="mt-4 flex flex-wrap items-center gap-2 text-xs text-surface-500">
-                        <span class="border border-surface-200 bg-surface-50 px-2 py-1">Example: G00025</span>
-                        <span>Duplicate scan will be blocked</span>
+                    <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-surface-500 border-t border-surface-100 pt-3">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="border border-surface-200 bg-surface-50 px-2 py-1">Example: G00025</span>
+                            <span class="border border-surface-200 bg-surface-50 px-2 py-1">Duplicate scan blocked</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3 text-[11px]">
+                            <span class="inline-flex items-center gap-1.5 font-medium text-emerald-700">
+                                <span class="h-2 w-2 rounded-full bg-emerald-500"></span> Counted (Chime)
+                            </span>
+                            <span class="inline-flex items-center gap-1.5 font-medium text-amber-700">
+                                <span class="h-2 w-2 rounded-full bg-amber-500"></span> Already Added (Alert)
+                            </span>
+                            <span class="inline-flex items-center gap-1.5 font-medium text-red-700">
+                                <span class="h-2 w-2 rounded-full bg-red-500"></span> Missing / Not Found (Buzzer)
+                            </span>
+                        </div>
                     </div>
                 </div>
 
