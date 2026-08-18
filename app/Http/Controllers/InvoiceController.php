@@ -18,6 +18,7 @@ use App\Services\LedgerImpactService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Transaction; // <--- The Ledger Model
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 
@@ -907,5 +908,65 @@ class InvoiceController extends Controller
             : 'Invoice voided, stock restored, and paid amount kept as customer advance.';
 
         return back()->with('success', $message);
+    }
+
+    public function addPayment(Request $request, Invoice $invoice)
+    {
+        if ($invoice->status === 'CANCELLED') {
+            return back()->withErrors([
+                'amount' => 'Cannot add payment to a voided invoice.',
+            ]);
+        }
+
+        $paidAmount = (float) $invoice->transactions()
+            ->where('type', 'PAYMENT')
+            ->sum('amount');
+
+        $pendingAmount = max((float) $invoice->total_amount - $paidAmount, 0);
+
+        if ($pendingAmount <= 0) {
+            return back()->withErrors([
+                'amount' => 'This invoice is already fully paid.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01', 'max:' . $pendingAmount],
+            'payment_method' => ['required', 'string', Rule::in(['CASH', 'CARD', 'UPI', 'BANK'])],
+            'date' => ['required', 'date'],
+            'note' => ['nullable', 'string', 'max:255'],
+        ], [
+            'amount.max' => 'Payment amount cannot exceed the pending balance of ₹' . number_format($pendingAmount, 2),
+        ]);
+
+        try {
+            DB::transaction(function () use ($invoice, $validated) {
+                $paymentMethod = strtoupper($validated['payment_method']);
+                $note = trim($validated['note'] ?? '');
+                $description = "Payment for Invoice #{$invoice->invoice_number}" . ($note !== '' ? " ({$note})" : '');
+
+                $transaction = Transaction::create([
+                    'transactable_type' => Customer::class,
+                    'transactable_id'   => $invoice->customer_id,
+                    'invoice_id'        => $invoice->id,
+                    'type'              => 'PAYMENT',
+                    'amount'            => (float) $validated['amount'],
+                    'description'       => $description,
+                    'date'              => $validated['date'],
+                    'user_id'           => Auth::id(),
+                    'payment_method'    => $paymentMethod,
+                    'entry_source'      => 'MANUAL',
+                    'entry_type_code'   => 'INVOICE_PAYMENT',
+                ]);
+
+                LedgerImpactService::applyCashTransaction($transaction);
+            });
+        } catch (\Throwable $e) {
+            return back()->withErrors([
+                'amount' => 'Failed to record payment: ' . $e->getMessage(),
+            ]);
+        }
+
+        return back()->with('success', "Payment of ₹" . number_format($validated['amount'], 2) . " recorded for {$invoice->invoice_number}.");
     }
 }

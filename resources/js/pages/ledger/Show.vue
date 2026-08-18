@@ -21,6 +21,10 @@ const props = defineProps({
     party: Object,
     party_type_class: String,
     transactions: Array,
+    pending_invoices: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const page = usePage();
@@ -50,6 +54,7 @@ const form = useForm({
     purity: 91.6,
     cash_amount: null,
     payment_method: 'CASH',
+    invoice_id: null,
     rate: null,
     description: '',
     date: todayIndianDate(),
@@ -64,6 +69,23 @@ const partyDisplayName = computed(() => {
 const partySubInfo = computed(() => {
     return props.party?.contact_person || props.party?.phone || '';
 });
+
+const invoiceOptions = computed(() => {
+    return (props.pending_invoices || []).map((inv) => ({
+        label: `${inv.invoice_number} (Pending: ${formatCurrency(inv.pending_amount)})`,
+        value: inv.id,
+        pending: inv.pending_amount,
+    }));
+});
+
+const onInvoiceSelected = (event) => {
+    if (event?.value) {
+        const selected = (props.pending_invoices || []).find((inv) => inv.id === event.value);
+        if (selected && (!form.cash_amount || form.cash_amount > selected.pending_amount)) {
+            form.cash_amount = selected.pending_amount;
+        }
+    }
+};
 
 const needsGold = computed(() =>
     ['ISSUE_GOLD', 'RECEIVE_GOLD', 'ISSUE_SILVER', 'RECEIVE_SILVER', 'GOLD_TO_CASH', 'SILVER_TO_CASH'].includes(form.entry_type),
@@ -111,6 +133,7 @@ const openEntryModal = () => {
     form.party_id = props.party?.id;
     form.entry_type = 'ISSUE_GOLD';
     form.payment_method = 'CASH';
+    form.invoice_id = null;
     form.date = todayIndianDate();
     showDialog.value = true;
 };
@@ -126,6 +149,7 @@ const openEditModal = (row) => {
     form.purity = row.category === 'METAL' ? Number(row.purity || 91.6) : 91.6;
     form.cash_amount = row.category === 'CASH' ? Number(row.amount || 0) : null;
     form.payment_method = row.payment_method || 'CASH';
+    form.invoice_id = null;
     form.rate = null;
     form.description = row.description || '';
     form.date = row.date;
@@ -571,6 +595,26 @@ const submitTransaction = () => {
                 <div v-if="needsGold" class="border border-surface-200 bg-surface-50 px-4 py-3">
                     <p class="text-sm text-surface-500">Fine {{ selectedMetalLabel }}</p>
                     <p class="mt-1 text-lg font-semibold text-surface-900">{{ calculatedFineWeight.toFixed(3) }} g</p>
+                </div>
+
+                <div v-if="partyTypeName === 'Customer' && form.entry_type === 'RECEIVE_CASH' && !editingRow && (props.pending_invoices || []).length > 0">
+                    <label class="mb-2 block text-sm font-medium text-surface-700"> Settle Against Invoice (Optional) </label>
+                    <Select
+                        v-model="form.invoice_id"
+                        :options="invoiceOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="None (General Customer Credit)"
+                        showClear
+                        class="w-full"
+                        @change="onInvoiceSelected"
+                    />
+                    <small class="mt-1 block text-xs text-surface-500">
+                        Linking to an invoice clears its pending balance in Invoice History.
+                    </small>
+                    <small v-if="form.errors.invoice_id" class="mt-1 block text-xs text-red-500">
+                        {{ form.errors.invoice_id }}
+                    </small>
                 </div>
 
                 <div v-if="needsCash">

@@ -9,13 +9,14 @@ import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
+import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
-import { formatIndianDate, formatIndianDateTime } from '@/utils/indiaTime';
+import { formatIndianDate, formatIndianDateTime, todayIndianDate } from '@/utils/indiaTime';
 
 const props = defineProps({
     invoices: Array,
@@ -28,12 +29,28 @@ const props = defineProps({
 const toast = useToast();
 const selectedInvoice = ref(null);
 const showVoidDialog = ref(false);
+const showPaymentDialog = ref(false);
+const paymentInvoice = ref(null);
 const search = ref('');
 
 const voidForm = useForm({
     mode: 'keep_advance',
     reason: '',
 });
+
+const paymentForm = useForm({
+    amount: null,
+    payment_method: 'CASH',
+    date: todayIndianDate(),
+    note: '',
+});
+
+const paymentMethodOptions = [
+    { label: 'Cash', value: 'CASH' },
+    { label: 'Bank', value: 'BANK' },
+    { label: 'UPI', value: 'UPI' },
+    { label: 'Card', value: 'CARD' },
+];
 
 const totalSales = computed(() => props.invoices?.filter((invoice) => invoice.status !== 'CANCELLED').reduce((sum, invoice) => sum + Number(invoice.total_amount || 0), 0) || 0);
 const totalCollected = computed(() => props.invoices?.filter((invoice) => invoice.status !== 'CANCELLED').reduce((sum, invoice) => sum + Number(invoice.paid_amount || 0), 0) || 0);
@@ -75,6 +92,49 @@ const formatDate = (dateString) =>
         month: 'short',
         year: 'numeric',
     });
+
+const openPaymentDialog = (invoice) => {
+    paymentInvoice.value = invoice;
+    paymentForm.reset();
+    paymentForm.clearErrors();
+    paymentForm.amount = Number(invoice.pending_amount || 0);
+    paymentForm.payment_method = 'CASH';
+    paymentForm.date = todayIndianDate();
+    paymentForm.note = '';
+    showPaymentDialog.value = true;
+};
+
+const closePaymentDialog = () => {
+    showPaymentDialog.value = false;
+    paymentInvoice.value = null;
+    paymentForm.reset();
+    paymentForm.clearErrors();
+};
+
+const submitPayment = () => {
+    if (!paymentInvoice.value) return;
+
+    paymentForm.post(route('invoices.payment', paymentInvoice.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            toast.add({
+                severity: 'success',
+                summary: 'Payment Recorded',
+                detail: `Payment of ₹${Number(paymentForm.amount).toLocaleString('en-IN')} recorded successfully.`,
+                life: 3000,
+            });
+            closePaymentDialog();
+        },
+        onError: () => {
+            toast.add({
+                severity: 'error',
+                summary: 'Payment Failed',
+                detail: 'Please check the payment fields and try again.',
+                life: 3000,
+            });
+        },
+    });
+};
 
 const openVoidDialog = (invoice) => {
     selectedInvoice.value = invoice;
@@ -321,9 +381,19 @@ const draftFormatCurrency = (val) =>
                             </template>
                         </Column>
 
-                        <Column header="Actions" style="width: 140px">
+                        <Column header="Actions" style="width: 200px">
                             <template #body="{ data }">
-                                <div class="flex justify-end gap-2">
+                                <div class="flex justify-end gap-1.5">
+                                    <Button
+                                        v-if="data.status !== 'CANCELLED' && data.pending_amount > 0"
+                                        label="Collect"
+                                        icon="pi pi-wallet"
+                                        severity="success"
+                                        text
+                                        size="small"
+                                        @click="openPaymentDialog(data)"
+                                        title="Collect pending balance"
+                                    />
                                     <Button label="Print" icon="pi pi-print" severity="secondary" text size="small" @click="printInvoice(data)" />
                                     <Button
                                         v-if="data.status !== 'CANCELLED'"
@@ -365,6 +435,87 @@ const draftFormatCurrency = (val) =>
                 </div>
             </section>
         </div>
+
+        <!-- Collect Payment Dialog -->
+        <Dialog v-model:visible="showPaymentDialog" header="Collect Invoice Payment" modal :style="{ width: '32rem' }" @hide="closePaymentDialog">
+            <form @submit.prevent="submitPayment" class="space-y-4 pt-2">
+                <div class="border border-surface-200 bg-surface-50 p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-surface-500">Invoice Number</p>
+                            <p class="font-semibold text-surface-900">{{ paymentInvoice?.invoice_number }}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-surface-500">Customer</p>
+                            <p class="font-medium text-surface-900">{{ paymentInvoice?.customer?.name || 'Walk-in' }}</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between border-t border-surface-200 pt-2 text-xs">
+                        <span class="text-surface-500">Total: <strong>{{ formatCurrency(paymentInvoice?.total_amount) }}</strong></span>
+                        <span class="text-emerald-700">Paid: <strong>{{ formatCurrency(paymentInvoice?.paid_amount) }}</strong></span>
+                        <span class="font-semibold text-amber-700">Pending: <strong>{{ formatCurrency(paymentInvoice?.pending_amount) }}</strong></span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="mb-2 block text-sm font-medium text-surface-700">Amount to Collect (₹) *</label>
+                    <InputNumber
+                        v-model="paymentForm.amount"
+                        mode="currency"
+                        currency="INR"
+                        locale="en-IN"
+                        :max="Number(paymentInvoice?.pending_amount || 0)"
+                        :min="0.01"
+                        required
+                        class="w-full"
+                        :class="{ 'p-invalid': paymentForm.errors.amount }"
+                    />
+                    <small v-if="paymentForm.errors.amount" class="mt-1 block text-xs text-red-500">{{ paymentForm.errors.amount }}</small>
+                    <small v-else class="mt-1 block text-xs text-surface-400">Max collectable: {{ formatCurrency(paymentInvoice?.pending_amount) }}</small>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Payment Mode *</label>
+                        <Select
+                            v-model="paymentForm.payment_method"
+                            :options="paymentMethodOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            class="w-full"
+                        />
+                        <small v-if="paymentForm.errors.payment_method" class="mt-1 block text-xs text-red-500">{{ paymentForm.errors.payment_method }}</small>
+                    </div>
+
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Payment Date *</label>
+                        <InputText
+                            v-model="paymentForm.date"
+                            type="date"
+                            required
+                            class="w-full"
+                            :class="{ 'p-invalid': paymentForm.errors.date }"
+                        />
+                        <small v-if="paymentForm.errors.date" class="mt-1 block text-xs text-red-500">{{ paymentForm.errors.date }}</small>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="mb-2 block text-sm font-medium text-surface-700">Note / Reference (Optional)</label>
+                    <InputText
+                        v-model="paymentForm.note"
+                        placeholder="e.g., UPI ref, check no, or receipt note"
+                        class="w-full"
+                    />
+                    <small v-if="paymentForm.errors.note" class="mt-1 block text-xs text-red-500">{{ paymentForm.errors.note }}</small>
+                </div>
+
+                <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">
+                    <Button label="Cancel" text severity="secondary" type="button" @click="closePaymentDialog" />
+                    <Button label="Record Payment" icon="pi pi-check" type="submit" :loading="paymentForm.processing" severity="success" />
+                </div>
+            </form>
+        </Dialog>
 
         <Dialog v-model:visible="showVoidDialog" header="Void Invoice" modal :style="{ width: '34rem' }" @hide="closeVoidDialog">
             <div class="space-y-5 pt-2">

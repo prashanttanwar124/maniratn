@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Invoice;
 use App\Models\Karigar;
 use App\Models\MetalTransaction;
 use App\Models\Supplier;
@@ -35,6 +36,31 @@ class LedgerController extends Controller
         };
 
         $party = $modelClass::findOrFail($id);
+
+        $pendingInvoices = [];
+        if ($modelClass === Customer::class) {
+            $pendingInvoices = Invoice::with('transactions')
+                ->where('customer_id', $id)
+                ->where('status', '!=', 'CANCELLED')
+                ->latest('date')
+                ->get()
+                ->map(function (Invoice $inv) {
+                    $paid = (float) $inv->transactions->where('type', 'PAYMENT')->sum('amount');
+                    $pending = max((float) $inv->total_amount - $paid, 0);
+
+                    return [
+                        'id' => $inv->id,
+                        'invoice_number' => $inv->invoice_number,
+                        'date' => $inv->date,
+                        'total_amount' => (float) $inv->total_amount,
+                        'paid_amount' => $paid,
+                        'pending_amount' => $pending,
+                    ];
+                })
+                ->filter(fn ($inv) => $inv['pending_amount'] > 0)
+                ->values()
+                ->all();
+        }
 
         $cashTxns = Transaction::where('transactable_type', $modelClass)
             ->where('transactable_id', $id)
@@ -109,6 +135,7 @@ class LedgerController extends Controller
             'party' => $party,
             'party_type_class' => $modelClass,
             'transactions' => $mergedTransactions,
+            'pending_invoices' => $pendingInvoices,
         ]);
     }
 
@@ -273,6 +300,7 @@ class LedgerController extends Controller
             'gold_weight' => ['nullable', 'numeric', 'min:0.001'],
             'cash_amount' => ['nullable', 'numeric', 'min:0.01'],
             'payment_method' => ['nullable', Rule::in(['CASH', 'BANK', 'UPI'])],
+            'invoice_id' => ['nullable', 'integer', 'exists:invoices,id'],
             'rate' => ['nullable', 'numeric', 'min:0.01'],
             'purity' => ['nullable', 'numeric', 'min:0.01', 'max:100'],
             'description' => ['nullable', 'string', 'max:500'],
@@ -414,16 +442,41 @@ class LedgerController extends Controller
                     break;
 
                 case 'RECEIVE_CASH':
+                    $invoiceId = ! empty($validated['invoice_id']) ? (int) $validated['invoice_id'] : null;
+                    $isInvoicePayment = false;
+
+                    if ($invoiceId && $partyType === Customer::class) {
+                        $invoice = Invoice::with('transactions')->where('customer_id', $partyId)->findOrFail($invoiceId);
+                        if ($invoice->status === 'CANCELLED') {
+                            throw ValidationException::withMessages([
+                                'invoice_id' => 'Cannot allocate payment to a cancelled invoice.',
+                            ]);
+                        }
+
+                        $paid = (float) $invoice->transactions->where('type', 'PAYMENT')->sum('amount');
+                        $pending = max((float) $invoice->total_amount - $paid, 0);
+
+                        if ($cashAmount > $pending) {
+                            throw ValidationException::withMessages([
+                                'cash_amount' => "Payment amount (₹{$cashAmount}) exceeds invoice pending balance (₹" . number_format($pending, 2) . ").",
+                            ]);
+                        }
+
+                        $isInvoicePayment = true;
+                        $description = $description ?: "Payment for Invoice #{$invoice->invoice_number}";
+                    }
+
                     $cashTransaction = Transaction::create([
                         'transactable_type' => $partyType,
                         'transactable_id' => $partyId,
-                        'type' => 'RECEIPT',
+                        'invoice_id' => $isInvoicePayment ? $invoiceId : null,
+                        'type' => $isInvoicePayment ? 'PAYMENT' : 'RECEIPT',
                         'amount' => $cashAmount,
                         'payment_method' => $validated['payment_method'],
                         'description' => $description ?: 'Cash received',
                         'date' => $date,
                         'entry_source' => 'MANUAL',
-                        'entry_type_code' => 'RECEIVE_CASH',
+                        'entry_type_code' => $isInvoicePayment ? 'INVOICE_PAYMENT' : 'RECEIVE_CASH',
                     ]);
                     LedgerImpactService::applyCashTransaction($cashTransaction);
                     break;

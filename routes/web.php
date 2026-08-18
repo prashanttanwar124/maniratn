@@ -275,6 +275,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/invoices/drafts/validate', [InvoiceController::class, 'validateDraftItems'])->middleware('permission:manage_invoices')->name('invoices.drafts.validate');
     Route::delete('/invoices/drafts/{invoiceDraft}', [InvoiceController::class, 'destroyDraft'])->middleware('permission:manage_invoices')->name('invoices.drafts.destroy');
     Route::post('/invoice/store', [InvoiceController::class, 'store'])->middleware(['permission:manage_invoices', 'day.open'])->name('invoices.store');
+    Route::post('/invoices/{invoice}/payment', [InvoiceController::class, 'addPayment'])->middleware(['permission:manage_invoices', 'day.open'])->name('invoices.payment');
     Route::post('/invoices/{id}/cancel', [InvoiceController::class, 'cancel'])->middleware(['permission:manage_invoices', 'day.open'])->name('invoices.cancel');
     Route::get('/verification-tags', [VerificationTagController::class, 'index'])->middleware('permission:manage_invoices')->name('verification-tags.index');
     Route::post('/verification-tags', [VerificationTagController::class, 'store'])->middleware(['permission:manage_invoices', 'day.open'])->name('verification-tags.store');
