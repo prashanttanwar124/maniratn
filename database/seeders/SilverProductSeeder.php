@@ -35,9 +35,21 @@ class SilverProductSeeder extends Seeder
             }
         }
 
-        foreach (range(1, 10) as $index) {
+        $supplierIds = \App\Models\Supplier::query()->pluck('id')->all();
+        if (empty($supplierIds)) {
+            $supplier = \App\Models\Supplier::create([
+                'company_name' => 'Choksi Silver Works',
+                'contact_person' => 'Ketan Shah',
+                'mobile' => '9820044556',
+                'type' => 'SILVER',
+            ]);
+            $supplierIds = [$supplier->id];
+        }
+
+        foreach (range(1, 20) as $index) {
             $randomCategoryName = array_rand($categoriesList);
             $selectedCategory = $categoryMap[$randomCategoryName];
+            $randomSupplierId = $supplierIds[array_rand($supplierIds)];
             $pricingMode = $faker->randomElement(['PIECE', 'WEIGHT']);
             $quantity = $pricingMode === 'PIECE' ? $faker->numberBetween(1, 6) : 1;
 
@@ -53,7 +65,7 @@ class SilverProductSeeder extends Seeder
 
             SilverProduct::create([
                 'category_id' => $selectedCategory->id,
-                'supplier_id' => $faker->numberBetween(1, 10),
+                'supplier_id' => $randomSupplierId,
                 'pricing_mode' => $pricingMode,
                 'name' => $faker->randomElement([
                     'Classic',

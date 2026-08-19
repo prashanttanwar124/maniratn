@@ -49,7 +49,19 @@ class ProductSeeder extends Seeder
             $purityIds[] = $purity->id;
         }
 
-        // 4. Generate 50 Dummy Products
+        // 4. Ensure Suppliers exist
+        $supplierIds = \App\Models\Supplier::query()->pluck('id')->all();
+        if (empty($supplierIds)) {
+            $supplier = \App\Models\Supplier::create([
+                'company_name' => 'Arihant Gold & Jewels',
+                'contact_person' => 'Ramesh Jain',
+                'mobile' => '9820011223',
+                'type' => 'GOLD',
+            ]);
+            $supplierIds = [$supplier->id];
+        }
+
+        // 5. Generate 50 Dummy Products
         foreach (range(1, 50) as $index) {
 
             // Pick a random category name (e.g. "Ring")
@@ -58,21 +70,20 @@ class ProductSeeder extends Seeder
 
             // Pick a random purity
             $randomPurityId = $purityIds[array_rand($purityIds)];
-
-
+            $randomSupplierId = $supplierIds[array_rand($supplierIds)];
 
             // Logic: Rings are lighter (2-8g), Chains are heavier (15-50g)
             $grossWeight = ($randomCatName == 'Ring' || $randomCatName == 'Earrings')
                 ? $faker->randomFloat(3, 2, 8)
                 : $faker->randomFloat(3, 10, 60);
 
-            $netWeight = $grossWeight * 0.95; // 5% weight loss for stones/dust
+            $netWeight = round($grossWeight * 0.95, 3); // 5% weight loss for stones/dust
 
             Product::create([
                 // The Foreign Keys
                 'category_id' => $selectedCategory->id,
                 'purity_id'   => $randomPurityId,
-                'supplier_id'   => $faker->numberBetween(1, 10),
+                'supplier_id' => $randomSupplierId,
 
                 // The Barcode logic: CODE + NUMBER (e.g., RNG-1001)
                 'barcode'     => $selectedCategory->code . '-' . (1000 + $index),
