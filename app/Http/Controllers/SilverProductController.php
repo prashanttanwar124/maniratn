@@ -98,6 +98,7 @@ class SilverProductController extends Controller
                             'customer_city' => $activeItem->invoice->customer?->city,
                             'rate' => (float) $activeItem->rate,
                             'making_charges' => (float) $activeItem->making_charges,
+                            'making_charge_type' => $activeItem->making_charge_type ?: 'per_gram',
                             'weight' => (float) $activeItem->weight,
                             'quantity' => (int) ($activeItem->quantity ?? 1),
                             'total_price' => (float) ($activeItem->final_price ?? $activeItem->total_price ?? 0),

@@ -1251,7 +1251,17 @@ const copyBarcode = async (barcode) => {
                                 </div>
                                 <div class="border border-surface-100 bg-surface-50 p-2">
                                     <p class="text-surface-500">Making</p>
-                                    <p class="mt-1 font-semibold text-surface-900">{{ Number(selectedSoldProduct.sold_invoice.making_charges || 0).toFixed(2) }}%</p>
+                                    <p class="mt-1 font-semibold text-surface-900">
+                                        <span v-if="selectedSoldProduct.sold_invoice.making_charge_type === 'flat'">
+                                            ₹{{ Number(selectedSoldProduct.sold_invoice.making_charges || 0).toLocaleString('en-IN') }}
+                                        </span>
+                                        <span v-else-if="selectedSoldProduct.sold_invoice.making_charge_type === 'per_gram'">
+                                            ₹{{ Number(selectedSoldProduct.sold_invoice.making_charges || 0).toLocaleString('en-IN') }}/g
+                                        </span>
+                                        <span v-else>
+                                            {{ Number(selectedSoldProduct.sold_invoice.making_charges || 0).toFixed(2) }}%
+                                        </span>
+                                    </p>
                                 </div>
                                 <div class="border border-surface-100 bg-surface-50 p-2">
                                     <p class="text-surface-500">Item Total</p>

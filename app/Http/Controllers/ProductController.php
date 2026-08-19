@@ -99,6 +99,7 @@ class ProductController extends Controller
                             'customer_city' => $activeItem->invoice->customer?->city,
                             'rate' => (float) $activeItem->rate,
                             'making_charges' => (float) $activeItem->making_charges,
+                            'making_charge_type' => $activeItem->making_charge_type ?: 'percentage',
                             'weight' => (float) $activeItem->weight,
                             'total_price' => (float) ($activeItem->final_price ?? $activeItem->total_price ?? 0),
                             'billed_by' => $activeItem->invoice->user?->name,
