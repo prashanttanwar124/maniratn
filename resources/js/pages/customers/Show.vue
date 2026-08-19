@@ -187,30 +187,31 @@ const getSeverity = (type) => {
 
             <!-- Customer Digital Vault & NFC Smart Card Section -->
             <section class="border border-surface-200 bg-white">
-                <div class="flex flex-col gap-3 border-b border-surface-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex flex-col gap-3 border-b border-surface-200 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-3">
-                        <span class="rounded-lg bg-amber-50 p-2 text-amber-600 border border-amber-200">
-                            <CreditCard class="h-5 w-5" />
+                        <span class="flex h-9 w-9 shrink-0 items-center justify-center border border-amber-200 bg-amber-50 text-amber-600">
+                            <CreditCard class="h-4 w-4" />
                         </span>
                         <div>
                             <div class="flex items-center gap-2">
-                                <h3 class="text-base font-semibold text-surface-900">Digital Vault & NFC Smart Card</h3>
-                                <Tag :value="vault?.card_status || 'NOT_ISSUED'" :severity="cardStatusSeverity(vault?.card_status)" />
+                                <h3 class="text-sm font-bold text-surface-900">Digital Vault & NFC Smart Card</h3>
+                                <Tag :value="vault?.card_status || 'NOT_ISSUED'" :severity="cardStatusSeverity(vault?.card_status)" class="!text-[10px] !px-1.5 !py-0.5" />
                             </div>
-                            <p class="text-xs text-surface-500 mt-0.5">One-tap NFC Smart Card giving the customer real-time access to all their jewellery certificates, invoices, and schemes.</p>
+                            <p class="mt-0.5 text-xs text-surface-500">One-tap NFC Smart Card for real-time certificates, bills, and schemes.</p>
                         </div>
                     </div>
 
-                    <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-1.5 shrink-0">
                         <Button
                             v-if="!vault?.has_card || vault?.card_status === 'DISABLED'"
                             label="Issue Smart Card"
                             icon="pi pi-plus"
+                            size="small"
                             @click="issueCard"
                         />
                         <template v-else>
                             <Button
-                                label="Open Desktop Writer"
+                                label="Desktop Writer"
                                 icon="pi pi-desktop"
                                 size="small"
                                 @click="openWriter"
@@ -223,7 +224,7 @@ const getSeverity = (type) => {
                                 @click="openVault"
                             />
                             <Button
-                                label="WhatsApp Share"
+                                label="WhatsApp"
                                 icon="pi pi-whatsapp"
                                 severity="success"
                                 outlined
@@ -232,74 +233,77 @@ const getSeverity = (type) => {
                             />
                             <Button
                                 v-if="vault?.card_status !== 'LOCKED'"
-                                label="Lock Card"
                                 icon="pi pi-lock"
                                 severity="warn"
-                                outlined
+                                text
                                 size="small"
+                                v-tooltip.top="'Lock Card'"
                                 @click="lockCard"
                             />
                             <Button
-                                label="Re-issue"
                                 icon="pi pi-refresh"
                                 severity="secondary"
                                 text
                                 size="small"
+                                v-tooltip.top="'Re-issue Card'"
                                 @click="reissueCard"
                             />
                             <Button
-                                label="Deactivate"
                                 icon="pi pi-ban"
                                 severity="danger"
                                 text
                                 size="small"
+                                v-tooltip.top="'Deactivate Card'"
                                 @click="deactivateCard"
                             />
                         </template>
                     </div>
                 </div>
 
-                <div v-if="vault?.has_card && vault?.card_status !== 'DISABLED'" class="p-5">
-                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
-                        <div class="space-y-3">
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-surface-500">Public Customer Vault URL</label>
-                            <div class="flex items-center gap-2">
-                                <input
-                                    type="text"
-                                    :value="vault?.vault_url"
-                                    readonly
-                                    class="w-full rounded border border-surface-300 bg-surface-50 px-3 py-2 text-xs font-mono text-surface-800 focus:outline-none"
-                                />
-                                <Button
-                                    :icon="copied ? 'pi pi-check' : 'pi pi-copy'"
-                                    :label="copied ? 'Copied' : 'Copy'"
-                                    :severity="copied ? 'success' : 'secondary'"
-                                    size="small"
-                                    outlined
-                                    @click="copyVaultLink"
-                                />
+                <div v-if="vault?.has_card && vault?.card_status !== 'DISABLED'" class="p-4 sm:p-5">
+                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr]">
+                        <div class="flex flex-col justify-between border border-surface-200 bg-surface-50 p-4">
+                            <div>
+                                <label class="block text-xs font-semibold tracking-wider text-surface-600 uppercase">Public Customer Vault URL</label>
+                                <div class="mt-2 flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        :value="vault?.vault_url"
+                                        readonly
+                                        class="w-full border border-surface-200 bg-white px-3 py-2 text-xs font-mono text-surface-800 focus:outline-none"
+                                    />
+                                    <Button
+                                        :icon="copied ? 'pi pi-check' : 'pi pi-copy'"
+                                        :label="copied ? 'Copied' : 'Copy'"
+                                        :severity="copied ? 'success' : 'secondary'"
+                                        size="small"
+                                        outlined
+                                        class="shrink-0"
+                                        @click="copyVaultLink"
+                                    />
+                                </div>
                             </div>
-                            <p class="text-xs text-surface-500">
-                                This link is permanently linked to this customer. Whenever new purchases are billed, they automatically reflect in their vault.
+                            <p class="mt-3 text-xs text-surface-500">
+                                This link is permanently assigned to this customer. New purchases automatically reflect in their vault.
                             </p>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
-                            <div class="rounded border border-surface-200 bg-surface-50 p-3">
-                                <p class="text-xs text-surface-500">Card Scans / Taps</p>
-                                <p class="mt-1 text-lg font-semibold text-surface-900">{{ vault?.card_access_count || 0 }}</p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="border border-surface-200 bg-white p-3">
+                                <p class="text-xs font-medium text-surface-500">Card Scans / Taps</p>
+                                <p class="mt-1 font-mono text-lg font-bold text-surface-900">{{ vault?.card_access_count || 0 }}</p>
                             </div>
-                            <div class="rounded border border-surface-200 bg-surface-50 p-3">
-                                <p class="text-xs text-surface-500">Last Tapped</p>
-                                <p class="mt-1 text-xs font-medium text-surface-800">{{ vault?.card_last_accessed_at ? formatDate(vault.card_last_accessed_at) : 'Never' }}</p>
+                            <div class="border border-surface-200 bg-white p-3">
+                                <p class="text-xs font-medium text-surface-500">Last Tapped</p>
+                                <p class="mt-1 text-xs font-semibold text-surface-800">{{ vault?.card_last_accessed_at ? formatDate(vault.card_last_accessed_at) : 'Never' }}</p>
                             </div>
-                            <div class="rounded border border-surface-200 bg-surface-50 p-3">
-                                <p class="text-xs text-surface-500">Invoices In Vault</p>
-                                <p class="mt-1 text-lg font-semibold text-surface-900">{{ vault?.invoices_count || 0 }}</p>
+                            <div class="border border-surface-200 bg-white p-3">
+                                <p class="text-xs font-medium text-surface-500">Invoices In Vault</p>
+                                <p class="mt-1 font-mono text-lg font-bold text-surface-900">{{ vault?.invoices_count || 0 }}</p>
                             </div>
-                            <div class="rounded border border-surface-200 bg-surface-50 p-3">
-                                <p class="text-xs text-surface-500">Active Schemes</p>
-                                <p class="mt-1 text-lg font-semibold text-surface-900">{{ vault?.schemes_count || 0 }}</p>
+                            <div class="border border-surface-200 bg-white p-3">
+                                <p class="text-xs font-medium text-surface-500">Active Schemes</p>
+                                <p class="mt-1 font-mono text-lg font-bold text-surface-900">{{ vault?.schemes_count || 0 }}</p>
                             </div>
                         </div>
                     </div>
@@ -307,7 +311,7 @@ const getSeverity = (type) => {
 
                 <div v-else class="p-6 text-center text-surface-500">
                     <p class="text-sm">No Smart Card issued to {{ customer.name }} yet.</p>
-                    <p class="text-xs text-surface-400 mt-1">Click <strong>Issue Smart Card</strong> above to generate a unique vault token and program an NFC card.</p>
+                    <p class="mt-1 text-xs text-surface-400">Click <strong>Issue Smart Card</strong> above to generate a unique vault token and program an NFC card.</p>
                 </div>
             </section>
 

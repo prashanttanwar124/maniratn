@@ -36,6 +36,8 @@ const productDialog = ref(false);
 const deleteDialog = ref(false);
 const duplicateDialog = ref(false);
 const bulkActionDialog = ref(false);
+const soldInvoiceDialog = ref(false);
+const selectedSoldProduct = ref(null);
 const historyDrawerVisible = ref(false);
 const historyLoading = ref(false);
 const historyProduct = ref(null);
@@ -326,7 +328,19 @@ const confirmDeleteProduct = (prod) => {
 };
 
 const deleteProduct = () => {
+    if (product.value.is_sold) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Action Blocked',
+            detail: 'Sold products cannot be deleted because they are linked to invoice accounting history.',
+            life: 4000,
+        });
+        deleteDialog.value = false;
+        return;
+    }
+
     router.delete(route('products.destroy', product.value.id), {
+        preserveScroll: true,
         onSuccess: () => {
             deleteDialog.value = false;
             product.value = {};
@@ -337,7 +351,26 @@ const deleteProduct = () => {
                 life: 3000,
             });
         },
+        onError: (errors) => {
+            toast.add({
+                severity: 'error',
+                summary: 'Delete Failed',
+                detail: errors.product || errors.message || 'Unable to delete product.',
+                life: 4000,
+            });
+        },
     });
+};
+
+const viewSoldInvoice = (prod) => {
+    selectedSoldProduct.value = prod;
+    soldInvoiceDialog.value = true;
+};
+
+const printSoldInvoice = (invoiceId) => {
+    if (invoiceId) {
+        window.open(route('invoices.print', invoiceId), '_blank');
+    }
 };
 
 const printSelected = () => {
@@ -761,19 +794,46 @@ const copyBarcode = async (barcode) => {
                             </template>
                         </Column>
 
-                        <Column header="Status" style="width: 130px">
+                        <Column header="Status" style="width: 140px">
                             <template #body="{ data }">
-                                <Tag :value="data.is_sold ? 'Sold' : 'In Stock'" :severity="data.is_sold ? 'danger' : 'success'" />
+                                <div
+                                    v-if="data.is_sold"
+                                    class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-100 hover:border-red-300"
+                                    @click="viewSoldInvoice(data)"
+                                    title="Sold — Click to view sale invoice details"
+                                >
+                                    <span class="h-1.5 w-1.5 rounded-full bg-red-600"></span>
+                                    <span>Sold</span>
+                                    <i class="pi pi-file-check text-[10px] text-red-500"></i>
+                                </div>
+                                <Tag v-else value="In Stock" severity="success" />
                             </template>
                         </Column>
 
-                        <Column header="Action" style="width: 120px">
+                        <Column header="Action" style="width: 150px">
                             <template #body="{ data }">
                                 <div class="flex justify-end gap-1">
-                                    <Button icon="pi pi-clock" size="small" text severity="secondary" @click="openHistoryDrawer(data)" />
-                                    <Button icon="pi pi-copy" size="small" text severity="secondary" @click="confirmDuplicateProduct(data)" />
-                                    <Button icon="pi pi-pencil" size="small" text severity="secondary" @click="editProduct(data)" />
-                                    <Button icon="pi pi-trash" size="small" text severity="danger" @click="confirmDeleteProduct(data)" />
+                                    <Button
+                                        v-if="data.is_sold"
+                                        icon="pi pi-receipt"
+                                        size="small"
+                                        text
+                                        severity="info"
+                                        title="View Sale Bill"
+                                        @click="viewSoldInvoice(data)"
+                                    />
+                                    <Button icon="pi pi-clock" size="small" text severity="secondary" title="View Timeline History" @click="openHistoryDrawer(data)" />
+                                    <Button icon="pi pi-copy" size="small" text severity="secondary" title="Duplicate" @click="confirmDuplicateProduct(data)" />
+                                    <Button icon="pi pi-pencil" size="small" text severity="secondary" title="Edit" @click="editProduct(data)" />
+                                    <Button
+                                        icon="pi pi-trash"
+                                        size="small"
+                                        text
+                                        :severity="data.is_sold ? 'secondary' : 'danger'"
+                                        :disabled="data.is_sold"
+                                        :title="data.is_sold ? 'Sold items cannot be deleted to protect accounting records' : 'Delete Product'"
+                                        @click="confirmDeleteProduct(data)"
+                                    />
                                 </div>
                             </template>
                         </Column>
@@ -1078,21 +1138,118 @@ const copyBarcode = async (barcode) => {
             <!-- Delete Dialog -->
             <Dialog v-model:visible="deleteDialog" header="Confirm Delete" modal :style="{ width: '28rem' }">
                 <div class="space-y-4 pt-2">
-                    <div class="flex items-start gap-3 border border-surface-200 bg-surface-50 p-4">
+                    <div v-if="product.is_sold" class="border border-amber-200 bg-amber-50 p-4">
+                        <div class="flex items-start gap-3">
+                            <i class="pi pi-exclamation-circle mt-0.5 text-lg text-amber-600" />
+                            <div>
+                                <p class="font-semibold text-amber-900">Sold Product Cannot Be Deleted</p>
+                                <p class="mt-1 text-xs text-amber-700">
+                                    <strong>{{ product.name }}</strong> ({{ product.barcode }}) has already been sold in an invoice. Deleting sold items is restricted to preserve financial and inventory audit records.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="flex items-start gap-3 border border-surface-200 bg-surface-50 p-4">
                         <i class="pi pi-exclamation-triangle mt-0.5 text-xl text-red-500" />
                         <div>
                             <p class="font-medium text-surface-900">Delete product</p>
                             <p class="mt-1 text-sm text-surface-500">
                                 Are you sure you want to delete
-                                <span class="font-medium text-surface-900">{{ product.name }}</span
-                                >?
+                                <span class="font-medium text-surface-900">{{ product.name }}</span> ({{ product.barcode }})?
                             </p>
                         </div>
                     </div>
 
                     <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">
-                        <Button label="No" text severity="secondary" @click="deleteDialog = false" />
-                        <Button label="Yes, Delete" severity="danger" @click="deleteProduct" />
+                        <Button label="Cancel" text severity="secondary" @click="deleteDialog = false" />
+                        <Button v-if="!product.is_sold" label="Yes, Delete" severity="danger" @click="deleteProduct" />
+                    </div>
+                </div>
+            </Dialog>
+
+            <!-- Sold Product Sale Invoice Details Dialog -->
+            <Dialog v-model:visible="soldInvoiceDialog" header="Sale Invoice Details" modal :style="{ width: '32rem' }">
+                <div v-if="selectedSoldProduct" class="space-y-4 pt-2">
+                    <!-- Product Snapshot -->
+                    <div class="border border-surface-200 bg-surface-50 p-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="font-semibold text-surface-900">{{ selectedSoldProduct.name }}</p>
+                                <p class="mt-0.5 text-xs text-surface-500">
+                                    Barcode: <span class="font-mono font-medium text-surface-700">{{ selectedSoldProduct.barcode }}</span>
+                                    <span class="mx-1 text-surface-300">•</span>
+                                    {{ selectedSoldProduct.purity?.name || '22K' }}
+                                    <span class="mx-1 text-surface-300">•</span>
+                                    {{ Number(selectedSoldProduct.net_weight || 0).toFixed(3) }} g
+                                </p>
+                            </div>
+                            <Tag value="Sold" severity="danger" />
+                        </div>
+                    </div>
+
+                    <!-- Invoice Info Card -->
+                    <div v-if="selectedSoldProduct.sold_invoice" class="space-y-3">
+                        <div class="border border-surface-200 bg-white p-4">
+                            <div class="flex items-center justify-between border-b border-surface-100 pb-3">
+                                <div>
+                                    <p class="text-xs text-surface-500">Invoice Number</p>
+                                    <p class="text-base font-bold text-surface-900">{{ selectedSoldProduct.sold_invoice.invoice_number }}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs text-surface-500">Billed Date</p>
+                                    <p class="text-sm font-medium text-surface-900">{{ selectedSoldProduct.sold_invoice.date }}</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3 py-3 text-sm border-b border-surface-100">
+                                <div>
+                                    <p class="text-xs text-surface-500">Customer</p>
+                                    <p class="font-medium text-surface-900">{{ selectedSoldProduct.sold_invoice.customer_name }}</p>
+                                    <p v-if="selectedSoldProduct.sold_invoice.customer_mobile" class="text-xs text-surface-500">
+                                        {{ selectedSoldProduct.sold_invoice.customer_mobile }}
+                                    </p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs text-surface-500">Billed By</p>
+                                    <p class="font-medium text-surface-900">{{ selectedSoldProduct.sold_invoice.billed_by || 'Staff' }}</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-2 pt-3 text-center text-xs">
+                                <div class="border border-surface-100 bg-surface-50 p-2">
+                                    <p class="text-surface-500">Gold Rate</p>
+                                    <p class="mt-1 font-semibold text-surface-900">₹{{ Number(selectedSoldProduct.sold_invoice.rate || 0).toLocaleString('en-IN') }}/g</p>
+                                </div>
+                                <div class="border border-surface-100 bg-surface-50 p-2">
+                                    <p class="text-surface-500">Making</p>
+                                    <p class="mt-1 font-semibold text-surface-900">{{ Number(selectedSoldProduct.sold_invoice.making_charges || 0).toFixed(2) }}%</p>
+                                </div>
+                                <div class="border border-surface-100 bg-surface-50 p-2">
+                                    <p class="text-surface-500">Item Total</p>
+                                    <p class="mt-1 font-bold text-emerald-700">₹{{ Number(selectedSoldProduct.sold_invoice.total_price || 0).toLocaleString('en-IN') }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between border border-surface-200 bg-surface-50 px-4 py-3 text-xs text-surface-600">
+                            <span>Full Invoice Total: <strong>₹{{ Number(selectedSoldProduct.sold_invoice.invoice_total || 0).toLocaleString('en-IN') }}</strong></span>
+                            <span v-if="selectedSoldProduct.sold_invoice.invoice_status === 'CANCELLED'" class="font-semibold text-red-600">Invoice Voided</span>
+                            <span v-else class="font-semibold text-emerald-700">Valid Invoice</span>
+                        </div>
+                    </div>
+
+                    <div v-else class="border border-dashed border-surface-200 p-6 text-center text-sm text-surface-500">
+                        No active invoice details found for this sold item.
+                    </div>
+
+                    <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">
+                        <Button label="Close" text severity="secondary" @click="soldInvoiceDialog = false" />
+                        <Button
+                            v-if="selectedSoldProduct.sold_invoice?.invoice_id"
+                            label="Print Bill"
+                            icon="pi pi-print"
+                            @click="printSoldInvoice(selectedSoldProduct.sold_invoice.invoice_id)"
+                        />
                     </div>
                 </div>
             </Dialog>

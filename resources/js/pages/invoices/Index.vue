@@ -30,6 +30,8 @@ const toast = useToast();
 const selectedInvoice = ref(null);
 const showVoidDialog = ref(false);
 const showPaymentDialog = ref(false);
+const showViewDialog = ref(false);
+const viewInvoice = ref(null);
 const paymentInvoice = ref(null);
 const search = ref('');
 
@@ -151,6 +153,16 @@ const closeVoidDialog = () => {
     voidForm.reset();
     voidForm.clearErrors();
     voidForm.mode = 'keep_advance';
+};
+
+const openViewDialog = (invoice) => {
+    viewInvoice.value = invoice;
+    showViewDialog.value = true;
+};
+
+const closeViewDialog = () => {
+    showViewDialog.value = false;
+    viewInvoice.value = null;
 };
 
 const submitVoid = () => {
@@ -306,10 +318,17 @@ const draftFormatCurrency = (val) =>
                             <div class="py-12 text-center text-surface-500">No invoices recorded yet.</div>
                         </template>
 
-                        <Column field="invoice_number" header="Bill" sortable style="width: 190px">
+                        <Column field="invoice_number" header="Bill" sortable style="width: 200px">
                             <template #body="{ data }">
                                 <div>
-                                    <p class="font-semibold text-surface-900">{{ data.invoice_number }}</p>
+                                    <p
+                                        class="font-semibold text-surface-900 hover:text-indigo-600 cursor-pointer inline-flex items-center gap-1.5 transition-colors"
+                                        @click="openViewDialog(data)"
+                                        title="Click to view full bill details"
+                                    >
+                                        <span>{{ data.invoice_number }}</span>
+                                        <i class="pi pi-eye text-[11px] text-surface-400"></i>
+                                    </p>
                                     <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-surface-500">
                                         <span>{{ formatDate(data.date) }}</span>
                                         <span class="text-surface-300">•</span>
@@ -381,9 +400,18 @@ const draftFormatCurrency = (val) =>
                             </template>
                         </Column>
 
-                        <Column header="Actions" style="width: 200px">
+                        <Column header="Actions" style="width: 250px">
                             <template #body="{ data }">
-                                <div class="flex justify-end gap-1.5">
+                                <div class="flex justify-end gap-1">
+                                    <Button
+                                        label="View"
+                                        icon="pi pi-eye"
+                                        severity="info"
+                                        text
+                                        size="small"
+                                        @click="openViewDialog(data)"
+                                        title="View bill breakdown and receipts"
+                                    />
                                     <Button
                                         v-if="data.status !== 'CANCELLED' && data.pending_amount > 0"
                                         label="Collect"
@@ -565,6 +593,195 @@ const draftFormatCurrency = (val) =>
                         @click="submitVoid"
                         :loading="voidForm.processing"
                     />
+                </div>
+            </div>
+        </Dialog>
+
+        <!-- Invoice Details Modal -->
+        <Dialog v-model:visible="showViewDialog" header="Invoice Details" modal :style="{ width: '52rem', maxWidth: '95vw' }" @hide="closeViewDialog">
+            <div v-if="viewInvoice" class="space-y-4 pt-1 text-sm">
+                <!-- Top Banner / Header -->
+                <div class="border border-surface-200 bg-surface-50 p-4">
+                    <div class="flex flex-col gap-3 border-b border-surface-200 pb-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono text-lg font-bold text-surface-900">{{ viewInvoice.invoice_number }}</span>
+                                <Tag :severity="viewInvoice.status === 'CANCELLED' ? 'danger' : 'success'" :value="viewInvoice.status === 'CANCELLED' ? 'Voided' : 'Valid'" />
+                            </div>
+                            <p class="mt-1 text-xs text-surface-500">
+                                Billed on {{ formatDate(viewInvoice.date) }}
+                                <span v-if="viewInvoice.created_at" class="text-surface-400"> ({{ viewInvoice.created_at }})</span>
+                                <span v-if="viewInvoice.created_by" class="ml-2 font-medium text-surface-700">• Billed by: {{ viewInvoice.created_by }}</span>
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <Button label="Print Bill" icon="pi pi-print" size="small" outlined @click="printInvoice(viewInvoice)" />
+                            <Button
+                                v-if="viewInvoice.status !== 'CANCELLED' && viewInvoice.pending_amount > 0"
+                                label="Collect Payment"
+                                icon="pi pi-wallet"
+                                severity="success"
+                                size="small"
+                                @click="openPaymentDialog(viewInvoice); showViewDialog = false;"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Customer Snapshot -->
+                    <div class="grid grid-cols-1 gap-3 pt-3 text-xs md:grid-cols-2">
+                        <div>
+                            <p class="font-semibold tracking-wider text-surface-500 uppercase">Customer Details</p>
+                            <p class="mt-1 text-sm font-semibold text-surface-900">{{ viewInvoice.customer?.name || 'Walk-in Customer' }}</p>
+                            <p v-if="viewInvoice.customer?.mobile" class="text-surface-600">Mobile: {{ viewInvoice.customer.mobile }}</p>
+                            <p v-if="viewInvoice.customer?.city" class="text-surface-600">City: {{ viewInvoice.customer.city }}</p>
+                        </div>
+                        <div class="space-y-1 md:text-right">
+                            <p class="font-semibold tracking-wider text-surface-500 uppercase">Rates Applied</p>
+                            <p v-if="viewInvoice.gold_rate_applied > 0" class="text-surface-700">Gold Rate: <strong class="font-mono">₹{{ Number(viewInvoice.gold_rate_applied).toLocaleString('en-IN') }}/g</strong></p>
+                            <p v-if="viewInvoice.silver_rate_applied > 0" class="text-surface-700">Silver Rate: <strong class="font-mono">₹{{ Number(viewInvoice.silver_rate_applied).toLocaleString('en-IN') }}/g</strong></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Void Alert if Cancelled -->
+                <div v-if="viewInvoice.status === 'CANCELLED'" class="border border-red-200 bg-red-50 p-3.5 text-xs text-red-800">
+                    <div class="flex items-start gap-2.5">
+                        <i class="pi pi-times-circle mt-0.5 text-base text-red-600"></i>
+                        <div>
+                            <p class="font-bold text-red-900">This invoice has been voided</p>
+                            <p class="mt-0.5">
+                                Mode: <strong>{{ viewInvoice.cancellation_mode === 'refund' ? 'Refunded to customer' : 'Kept as customer advance' }}</strong>
+                                <span v-if="viewInvoice.cancelled_by"> • By: {{ viewInvoice.cancelled_by }}</span>
+                                <span v-if="viewInvoice.cancelled_at"> • On: {{ viewInvoice.cancelled_at }}</span>
+                            </p>
+                            <p v-if="viewInvoice.cancellation_reason" class="mt-1 italic text-red-700">
+                                "{{ viewInvoice.cancellation_reason }}"
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Billed Items Table -->
+                <div>
+                    <div class="mb-2 flex items-center justify-between">
+                        <p class="text-xs font-bold tracking-wider text-surface-600 uppercase">Billed Items ({{ viewInvoice.items?.length || 0 }})</p>
+                    </div>
+                    <div class="overflow-x-auto border border-surface-200">
+                        <table class="w-full text-left text-xs">
+                            <thead class="border-b border-surface-200 bg-surface-50 font-semibold tracking-wider text-surface-600 uppercase">
+                                <tr>
+                                    <th class="px-3 py-2">#</th>
+                                    <th class="px-3 py-2">Item</th>
+                                    <th class="px-3 py-2 text-right">Weight</th>
+                                    <th class="px-3 py-2">Purity</th>
+                                    <th class="px-3 py-2 text-right">Rate</th>
+                                    <th class="px-3 py-2 text-right">Making</th>
+                                    <th class="px-3 py-2 text-right">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-surface-100 bg-white">
+                                <tr v-for="(item, idx) in viewInvoice.items" :key="item.id || idx" class="hover:bg-surface-50/50">
+                                    <td class="px-3 py-2 text-surface-400">{{ idx + 1 }}</td>
+                                    <td class="px-3 py-2 font-medium text-surface-900">
+                                        <div>{{ item.item_name }}</div>
+                                        <div v-if="item.product_barcode || item.silver_product_barcode" class="font-mono text-[10px] text-surface-500">
+                                            {{ item.product_barcode || item.silver_product_barcode }}
+                                        </div>
+                                    </td>
+                                    <td class="px-3 py-2 text-right font-mono text-surface-700">
+                                        {{ item.weight > 0 ? Number(item.weight).toFixed(3) + ' g' : (item.quantity ? item.quantity + ' pcs' : '—') }}
+                                    </td>
+                                    <td class="px-3 py-2 text-surface-600">{{ item.purity || '—' }}</td>
+                                    <td class="px-3 py-2 text-right font-mono text-surface-700">₹{{ Number(item.rate || 0).toLocaleString('en-IN') }}</td>
+                                    <td class="px-3 py-2 text-right text-surface-700">{{ Number(item.making_charges || 0).toFixed(2) }}%</td>
+                                    <td class="px-3 py-2 text-right font-mono font-bold text-surface-900">₹{{ Number(item.total_price || 0).toLocaleString('en-IN') }}</td>
+                                </tr>
+                                <tr v-if="!viewInvoice.items?.length">
+                                    <td colspan="7" class="px-4 py-6 text-center text-xs text-surface-400">No item details recorded for this invoice.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Financial Summary & Payment Breakdown -->
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <!-- Payment Timeline -->
+                    <div class="border border-surface-200 bg-white p-3.5">
+                        <div class="mb-2.5 flex items-center justify-between border-b border-surface-100 pb-2">
+                            <p class="text-xs font-bold tracking-wider text-surface-600 uppercase">Payment Receipts</p>
+                            <span class="text-[11px] font-medium text-surface-500">{{ viewInvoice.payments?.length || 0 }} received</span>
+                        </div>
+
+                        <div v-if="viewInvoice.payments?.length" class="max-h-40 space-y-2 overflow-y-auto pr-1">
+                            <div
+                                v-for="pmt in viewInvoice.payments"
+                                :key="pmt.id"
+                                class="flex items-center justify-between border border-surface-100 bg-surface-50/80 px-2.5 py-1.5 text-xs"
+                            >
+                                <div>
+                                    <div class="flex items-center gap-1.5">
+                                        <Tag :value="pmt.payment_method || 'CASH'" severity="secondary" class="!px-1.5 !py-0.5 !text-[10px]" />
+                                        <span class="text-surface-700">{{ formatDate(pmt.date) }}</span>
+                                    </div>
+                                    <p v-if="pmt.description" class="mt-0.5 max-w-[13rem] truncate text-[11px] text-surface-500">{{ pmt.description }}</p>
+                                </div>
+                                <span class="font-mono font-bold text-emerald-700">₹{{ Number(pmt.amount || 0).toLocaleString('en-IN') }}</span>
+                            </div>
+                        </div>
+                        <div v-else class="py-5 text-center text-xs text-surface-400">
+                            No separate payment transactions found.
+                        </div>
+                    </div>
+
+                    <!-- Calculations Card -->
+                    <div class="space-y-1.5 border border-surface-200 bg-surface-50 p-3.5 text-xs">
+                        <div class="flex justify-between text-surface-600">
+                            <span>Subtotal</span>
+                            <span class="font-mono font-medium text-surface-900">
+                                {{ formatCurrency(Number(viewInvoice.total_amount || 0) - Number(viewInvoice.tax_amount || 0) + Number(viewInvoice.discount_amount || 0)) }}
+                            </span>
+                        </div>
+                        <div v-if="Number(viewInvoice.discount_amount || 0) > 0" class="flex justify-between text-emerald-700">
+                            <span>Discount</span>
+                            <span class="font-mono font-medium">- {{ formatCurrency(viewInvoice.discount_amount) }}</span>
+                        </div>
+                        <div v-if="Number(viewInvoice.tax_amount || 0) > 0" class="flex justify-between text-surface-600">
+                            <span>GST (3%)</span>
+                            <span class="font-mono font-medium text-surface-900">{{ formatCurrency(viewInvoice.tax_amount) }}</span>
+                        </div>
+                        <div class="flex justify-between border-t border-surface-200 pt-1.5 text-sm font-bold text-surface-900">
+                            <span>Grand Total</span>
+                            <span class="font-mono">{{ formatCurrency(viewInvoice.total_amount) }}</span>
+                        </div>
+                        <div class="flex justify-between font-medium text-emerald-700">
+                            <span>Total Paid</span>
+                            <span class="font-mono font-bold">{{ formatCurrency(viewInvoice.paid_amount) }}</span>
+                        </div>
+                        <div class="flex justify-between font-bold" :class="viewInvoice.pending_amount > 0 ? 'text-amber-700' : 'text-surface-500'">
+                            <span>Pending Balance</span>
+                            <span class="font-mono">{{ formatCurrency(viewInvoice.pending_amount) }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="flex items-center justify-between border-t border-surface-200 pt-3">
+                    <div>
+                        <Button
+                            v-if="viewInvoice.status !== 'CANCELLED'"
+                            label="Void Invoice"
+                            icon="pi pi-times"
+                            severity="danger"
+                            text
+                            size="small"
+                            @click="openVoidDialog(viewInvoice); showViewDialog = false;"
+                        />
+                    </div>
+                    <div class="flex gap-2">
+                        <Button label="Close" text severity="secondary" size="small" @click="closeViewDialog" />
+                        <Button label="Print Bill" icon="pi pi-print" size="small" @click="printInvoice(viewInvoice)" />
+                    </div>
                 </div>
             </div>
         </Dialog>

@@ -143,6 +143,82 @@ it('finds a product by barcode in quick scan route', function () {
         ->assertJsonPath('product.barcode', $product->barcode);
 });
 
+it('blocks deletion of sold products with error', function () {
+    openShopDayForProductActions($this->user);
+
+    [$category, $purity, $supplier] = productActionDependencies();
+
+    $product = Product::create([
+        'name' => 'Sold Gold Ring',
+        'category_id' => $category->id,
+        'purity_id' => $purity->id,
+        'supplier_id' => $supplier->id,
+        'gross_weight' => 5,
+        'net_weight' => 5,
+        'making_charge' => 10,
+        'is_sold' => true,
+    ]);
+
+    $response = $this->delete(route('products.destroy', $product));
+
+    $response->assertSessionHasErrors(['product']);
+    expect(Product::whereKey($product->id)->exists())->toBeTrue();
+});
+
+it('includes sold invoice details in products index', function () {
+    openShopDayForProductActions($this->user);
+
+    [$category, $purity, $supplier] = productActionDependencies();
+
+    $customer = \App\Models\Customer::create([
+        'name' => 'Test Customer',
+        'mobile' => '9988776655',
+    ]);
+
+    $product = Product::create([
+        'name' => 'Sold Gold Chain',
+        'category_id' => $category->id,
+        'purity_id' => $purity->id,
+        'supplier_id' => $supplier->id,
+        'gross_weight' => 8,
+        'net_weight' => 8,
+        'making_charge' => 12,
+        'is_sold' => true,
+    ]);
+
+    $invoice = \App\Models\Invoice::create([
+        'invoice_number' => 'INV-2026-TEST01',
+        'customer_id' => $customer->id,
+        'user_id' => $this->user->id,
+        'gold_rate_applied' => 7000,
+        'date' => today()->toDateString(),
+        'total_amount' => 56000,
+        'status' => 'PAID',
+    ]);
+
+    \App\Models\InvoiceItem::create([
+        'invoice_id' => $invoice->id,
+        'product_id' => $product->id,
+        'description' => 'Sold Gold Chain',
+        'weight' => 8,
+        'purity' => '22K',
+        'rate' => 7000,
+        'making_charges' => 12,
+        'final_price' => 56000,
+    ]);
+
+    $response = $this->get(route('products.index'));
+    $response->assertOk();
+
+    $products = $response->viewData('page')['props']['products']['data'];
+    $soldProd = collect($products)->firstWhere('id', $product->id);
+
+    expect($soldProd)->not->toBeNull()
+        ->and($soldProd['sold_invoice'])->not->toBeNull()
+        ->and($soldProd['sold_invoice']['invoice_number'])->toBe('INV-2026-TEST01')
+        ->and($soldProd['sold_invoice']['customer_name'])->toBe('Test Customer');
+});
+
 function productActionDependencies(): array
 {
     $category = Category::firstOrCreate([

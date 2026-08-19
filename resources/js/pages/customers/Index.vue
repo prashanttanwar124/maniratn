@@ -316,24 +316,26 @@ const deleteCustomer = (customer) => {
             <section class="grid grid-cols-1 gap-6 xl:grid-cols-3">
                 <div class="card overflow-hidden !p-0 xl:col-span-2">
                     <div class="border-b border-surface-200 bg-white px-5 py-4">
-                        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                                <h3 class="text-base font-semibold text-surface-900">Customer list</h3>
-                                <p class="mt-1 text-sm text-surface-500">Open profile or ledger directly from the table.</p>
+                                <div class="flex items-center gap-2.5">
+                                    <h3 class="text-base font-bold text-surface-900">Customer List</h3>
+                                    <span class="rounded-full bg-surface-100 px-2 py-0.5 text-xs font-semibold text-surface-600">
+                                        {{ customers.total || customers.data?.length || 0 }} total
+                                    </span>
+                                </div>
+                                <p class="mt-0.5 text-xs text-surface-500">Search by name, city, phone, PAN, email, or member ID.</p>
                             </div>
 
-                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                                <div class="relative w-full sm:w-80">
+                            <div class="flex items-center gap-2.5">
+                                <div class="relative w-full sm:w-72">
                                     <Search class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-surface-400" />
-                                    <InputText v-model="search" placeholder="Search all customers..." class="w-full !pl-10" />
+                                    <InputText v-model="search" placeholder="Search all customers..." class="w-full !pl-9 !py-2 text-xs" />
                                 </div>
 
-                                <Button label="New Customer" icon="pi pi-plus" class="!w-auto shrink-0 whitespace-nowrap" @click="openCreateCustomer" :disabled="!isDayOpen" />
-                                <Tag :value="`Page ${customers.current_page} of ${customers.last_page}`" severity="secondary" />
+                                <Button label="New Customer" icon="pi pi-plus" size="small" class="shrink-0 whitespace-nowrap" @click="openCreateCustomer" :disabled="!isDayOpen" />
                             </div>
                         </div>
-
-                        <p class="mt-3 text-sm text-surface-500">Search all customers by name, city, phone, PAN, email, or member ID.</p>
                     </div>
 
                     <div class="bg-white p-4">

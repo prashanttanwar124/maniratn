@@ -18,7 +18,14 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::query()->with(['category', 'purity', 'supplier', 'counter']);
+        $query = Product::query()->with([
+            'category',
+            'purity',
+            'supplier',
+            'counter',
+            'invoiceItems.invoice.customer',
+            'invoiceItems.invoice.user',
+        ]);
         $statsBaseQuery = Product::query()->with('category');
         $applyFilters = function ($builder) use ($request) {
             if ($request->filled('search')) {
@@ -70,11 +77,45 @@ class ProductController extends Controller
             ->sortByDesc('items_count')
             ->values();
 
+        $paginatedProducts = $query
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate(10)
+            ->through(function (Product $product) {
+                $soldInvoice = null;
+                if ($product->is_sold) {
+                    $activeItem = $product->invoiceItems
+                        ->filter(fn ($item) => $item->invoice && $item->invoice->status !== 'CANCELLED')
+                        ->sortByDesc('created_at')
+                        ->first();
+
+                    if ($activeItem && $activeItem->invoice) {
+                        $soldInvoice = [
+                            'invoice_id' => $activeItem->invoice->id,
+                            'invoice_number' => $activeItem->invoice->invoice_number,
+                            'date' => $activeItem->invoice->date,
+                            'customer_name' => $activeItem->invoice->customer?->name ?? 'Walk-in',
+                            'customer_mobile' => $activeItem->invoice->customer?->mobile,
+                            'customer_city' => $activeItem->invoice->customer?->city,
+                            'rate' => (float) $activeItem->rate,
+                            'making_charges' => (float) $activeItem->making_charges,
+                            'weight' => (float) $activeItem->weight,
+                            'total_price' => (float) ($activeItem->final_price ?? $activeItem->total_price ?? 0),
+                            'billed_by' => $activeItem->invoice->user?->name,
+                            'invoice_total' => (float) $activeItem->invoice->total_amount,
+                            'invoice_status' => $activeItem->invoice->status,
+                        ];
+                    }
+                }
+
+                $productData = $product->toArray();
+                $productData['sold_invoice'] = $soldInvoice;
+
+                return $productData;
+            });
+
         return Inertia::render('products/Index', [
-            'products' => $query
-                ->orderByDesc('created_at')
-                ->orderByDesc('id')
-                ->paginate(10),
+            'products' => $paginatedProducts,
             'suppliers' => Supplier::all(),
             'categories' => Category::gold()->orderBy('name')->get(),
             'purities' => Purity::all(),

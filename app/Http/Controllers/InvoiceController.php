@@ -135,7 +135,7 @@ class InvoiceController extends Controller
     public function index()
     {
         $invoices = Invoice::with('customer')
-            ->with(['items', 'transactions', 'cancelledBy'])
+            ->with(['items.product', 'items.silverProduct', 'items.orderItem', 'transactions', 'cancelledBy', 'user'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -157,8 +157,15 @@ class InvoiceController extends Controller
                     'customer' => [
                         'id' => $invoice->customer?->id,
                         'name' => $invoice->customer?->name,
+                        'mobile' => $invoice->customer?->mobile,
+                        'city' => $invoice->customer?->city,
+                        'address' => $invoice->customer?->address,
                     ],
                     'date' => $invoice->date,
+                    'created_at' => optional($invoice->created_at)->toDateTimeString(),
+                    'created_by' => $invoice->user?->name,
+                    'gold_rate_applied' => (float) ($invoice->gold_rate_applied ?? 0),
+                    'silver_rate_applied' => (float) ($invoice->silver_rate_applied ?? 0),
                     'status' => $invoice->status,
                     'total_amount' => (float) $invoice->total_amount,
                     'discount_type' => $invoice->discount_type,
@@ -169,6 +176,30 @@ class InvoiceController extends Controller
                     'pending_amount' => $pendingAmount,
                     'void_amount' => $invoice->status === 'CANCELLED' ? $paidAmount : 0,
                     'item_count' => $invoice->items->count(),
+                    'items' => $invoice->items->map(function ($item) {
+                        return [
+                            'id' => $item->id,
+                            'item_name' => $item->description ?: ($item->product?->name ?? $item->silverProduct?->name ?? 'Jewellery Item'),
+                            'weight' => (float) $item->weight,
+                            'purity' => $item->purity,
+                            'rate' => (float) $item->rate,
+                            'making_charges' => (float) $item->making_charges,
+                            'quantity' => (int) ($item->quantity ?? 1),
+                            'total_price' => (float) ($item->final_price ?? $item->total_price ?? 0),
+                            'product_barcode' => $item->product?->barcode,
+                            'silver_product_barcode' => $item->silverProduct?->barcode,
+                        ];
+                    })->values()->all(),
+                    'payments' => $invoice->transactions->where('type', 'PAYMENT')->map(function ($txn) {
+                        return [
+                            'id' => $txn->id,
+                            'amount' => (float) $txn->amount,
+                            'payment_method' => $txn->payment_method ?: 'CASH',
+                            'date' => $txn->date,
+                            'description' => $txn->description,
+                            'created_at' => optional($txn->created_at)->toDateTimeString(),
+                        ];
+                    })->values()->all(),
                     'cancellation_mode' => $invoice->cancellation_mode,
                     'cancellation_reason' => $invoice->cancellation_reason,
                     'cancelled_at' => optional($invoice->cancelled_at)?->toDateTimeString(),
