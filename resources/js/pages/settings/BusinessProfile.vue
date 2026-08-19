@@ -16,6 +16,7 @@ const form = useForm({
     phone: props.businessSetting?.phone || '',
     email: props.businessSetting?.email || '',
     website: props.businessSetting?.website || '',
+    google_review_url: props.businessSetting?.google_review_url || '',
     gst_number: props.businessSetting?.gst_number || '',
     logo: null,
     remove_logo: false,
@@ -47,6 +48,10 @@ const saveBusinessProfile = () => {
     })).post(route('business-settings.update'), {
         forceFormData: true,
     });
+};
+
+const openStandee = () => {
+    window.open(route('business-settings.standee.print'), '_blank', 'noopener');
 };
 </script>
 
@@ -83,7 +88,7 @@ const saveBusinessProfile = () => {
 
                         <div>
                             <label class="mb-2 block text-sm font-medium text-surface-700">Website</label>
-                            <InputText v-model="form.website" class="w-full" placeholder="Enter website URL" />
+                            <InputText v-model="form.website" class="w-full" placeholder="https://maniratnjewellers.com" />
                             <small v-if="form.errors.website" class="mt-1 block text-xs text-red-500">{{ form.errors.website }}</small>
                         </div>
 
@@ -91,6 +96,43 @@ const saveBusinessProfile = () => {
                             <label class="mb-2 block text-sm font-medium text-surface-700">GST Number</label>
                             <InputText v-model="form.gst_number" class="w-full" placeholder="Enter GST number" />
                             <small v-if="form.errors.gst_number" class="mt-1 block text-xs text-red-500">{{ form.errors.gst_number }}</small>
+                        </div>
+
+                        <div class="md:col-span-2 border border-surface-200 bg-surface-50 p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="block text-sm font-semibold text-surface-900">
+                                    ⭐ Google Maps Review URL & Counter Display
+                                </label>
+                                <div class="flex items-center gap-3">
+                                    <a
+                                        v-if="form.google_review_url"
+                                        :href="form.google_review_url"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="text-xs font-medium text-amber-700 hover:text-amber-800 flex items-center gap-1"
+                                    >
+                                        <i class="pi pi-external-link text-[10px]"></i> Test Link
+                                    </a>
+                                    <Button
+                                        v-if="form.google_review_url"
+                                        label="Print Counter Standee"
+                                        icon="pi pi-print"
+                                        severity="secondary"
+                                        size="small"
+                                        type="button"
+                                        @click="openStandee"
+                                    />
+                                </div>
+                            </div>
+                            <InputText
+                                v-model="form.google_review_url"
+                                class="w-full bg-white"
+                                placeholder="e.g. https://g.page/r/your-shop/review or https://maps.app.goo.gl/..."
+                            />
+                            <p class="mt-2 text-xs text-surface-600">
+                                When entered, a <strong>scannable Google Review QR Code</strong> appears on printed invoices, in the Customer Digital Vault, and in WhatsApp bills. You can also print a beautiful <strong>tabletop counter standee</strong> for your showroom counter!
+                            </p>
+                            <small v-if="form.errors.google_review_url" class="mt-1 block text-xs text-red-500">{{ form.errors.google_review_url }}</small>
                         </div>
 
                         <div class="md:col-span-2">

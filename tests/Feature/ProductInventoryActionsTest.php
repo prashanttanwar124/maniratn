@@ -219,6 +219,36 @@ it('includes sold invoice details in products index', function () {
         ->and($soldProd['sold_invoice']['customer_name'])->toBe('Test Customer');
 });
 
+it('blocks editing of sold products with validation error', function () {
+    openShopDayForProductActions($this->user);
+    [$category, $purity, $supplier] = productActionDependencies();
+
+    $product = Product::create([
+        'name' => 'Sold Gold Bangle',
+        'barcode' => 'GB99999',
+        'category_id' => $category->id,
+        'purity_id' => $purity->id,
+        'supplier_id' => $supplier->id,
+        'gross_weight' => 10,
+        'net_weight' => 10,
+        'making_charge' => 10,
+        'is_sold' => true,
+    ]);
+
+    $response = $this->put(route('products.update', $product), [
+        'name' => 'Modified Name',
+        'category_id' => $category->id,
+        'purity_id' => $purity->id,
+        'supplier_id' => $supplier->id,
+        'gross_weight' => 10,
+        'net_weight' => 10,
+        'making_charge' => 10,
+    ]);
+
+    $response->assertSessionHasErrors(['product' => 'Sold products cannot be edited.']);
+    expect($product->fresh()->name)->toBe('Sold Gold Bangle');
+});
+
 function productActionDependencies(): array
 {
     $category = Category::firstOrCreate([

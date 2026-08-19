@@ -309,3 +309,69 @@ it('records payment from customer ledger entry with linked invoice_id', function
     expect($paidAmount)->toBe(14420.0)
         ->and((float) $customer->fresh()->balance)->toBe(0.0);
 });
+
+it('correctly voids an unpaid invoice without creating phantom advance', function () {
+    openShopDayForTest($this->user, 1000, 10);
+
+    $customer = Customer::create([
+        'name' => 'Zero Paid Customer',
+        'mobile' => '9876543299',
+        'city' => 'Delhi',
+    ]);
+
+    $supplier = Supplier::create([
+        'company_name' => 'Supplier Gold',
+        'contact_person' => 'Supplier Person',
+        'mobile' => '9999999998',
+        'type' => 'GOLD',
+    ]);
+
+    $category = Category::create(['name' => 'Ring', 'code' => 'RNG']);
+    $purity = Purity::create(['name' => '22K']);
+
+    $product = Product::create([
+        'name' => 'Gold Ring 22K',
+        'category_id' => $category->id,
+        'purity_id' => $purity->id,
+        'supplier_id' => $supplier->id,
+        'gross_weight' => 1.0,
+        'net_weight' => 1.0,
+        'making_charge' => 0,
+    ]);
+
+    // Create invoice with 0 payment: 1g * 7000 = 7000 + 3% GST (210) = 7210.
+    post(route('invoices.store'), [
+        'customer_id' => $customer->id,
+        'gold_rate' => 7000,
+        'date' => today()->toDateString(),
+        'items' => [
+            [
+                'type' => 'product',
+                'id' => $product->id,
+                'rate' => 7000,
+                'making_charges' => 0,
+            ],
+        ],
+        'payment_cash' => 0,
+        'payment_card' => 0,
+    ])->assertRedirect();
+
+    $invoice = Invoice::latest('id')->firstOrFail();
+    expect((bool) $product->fresh()->is_sold)->toBeTrue()
+        ->and((float) $customer->fresh()->balance)->toBe(7210.0);
+
+    // Void the unpaid invoice
+    $voidResponse = post(route('invoices.cancel', $invoice->id), [
+        'mode' => 'none',
+        'reason' => 'Customer changed mind before payment',
+    ]);
+
+    $voidResponse->assertRedirect();
+    $voidResponse->assertSessionHas('success');
+
+    // Verify invoice cancelled, stock restored, and customer balance reset to 0
+    expect($invoice->fresh()->status)->toBe('CANCELLED')
+        ->and($invoice->fresh()->cancellation_mode)->toBe('none')
+        ->and((bool) $product->fresh()->is_sold)->toBeFalse()
+        ->and((float) $customer->fresh()->balance)->toBe(0.0);
+});

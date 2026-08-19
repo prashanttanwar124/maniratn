@@ -22,6 +22,7 @@ class BusinessSettingController extends Controller
                 'phone' => '',
                 'email' => '',
                 'website' => '',
+                'google_review_url' => '',
                 'gst_number' => '',
             ]
         );
@@ -33,6 +34,7 @@ class BusinessSettingController extends Controller
                 'phone' => $businessSetting->phone,
                 'email' => $businessSetting->email,
                 'website' => $businessSetting->website,
+                'google_review_url' => $businessSetting->google_review_url,
                 'gst_number' => $businessSetting->gst_number,
                 'logo_path' => $businessSetting->logo_path,
                 'logo_url' => $businessSetting->logo_url,
@@ -50,6 +52,7 @@ class BusinessSettingController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
             'website' => ['nullable', 'string', 'max:255'],
+            'google_review_url' => ['nullable', 'string', 'max:500'],
             'gst_number' => ['nullable', 'string', 'max:50'],
             'logo' => ['nullable', 'image', 'max:2048'],
             'remove_logo' => ['nullable', 'boolean'],
@@ -73,5 +76,37 @@ class BusinessSettingController extends Controller
         $businessSetting->update($validated);
 
         return to_route('business-settings.edit')->with('success', 'Business profile updated successfully.');
+    }
+
+    public function printStandee()
+    {
+        $businessSetting = BusinessSetting::firstOrCreate(['id' => 1]);
+        $googleReviewUrl = $businessSetting->google_review_url;
+
+        $qrCodeBase64 = null;
+        $qrSvg = null;
+
+        if ($googleReviewUrl) {
+            try {
+                $reviewBarcode = new \TCPDF2DBarcode($googleReviewUrl, 'QRCODE,H');
+                $rawReviewSvg = $reviewBarcode->getBarcodeSVGcode(4.5, 4.5, 'black');
+                $qrSvg = preg_replace('/^<\?xml[^>]*\?>\s*(<!DOCTYPE[^>]*>)?\s*/i', '', (string) $rawReviewSvg);
+                $qrSvg = preg_replace('/(<svg[^>]*>)/i', '$1<rect width="100%" height="100%" fill="#ffffff"/>', (string) $qrSvg);
+
+                $reviewPngData = $reviewBarcode->getBarcodePngData(8, 8);
+                if ($reviewPngData) {
+                    $qrCodeBase64 = 'data:image/png;base64,' . base64_encode($reviewPngData);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Failed generating Google Review Standee QR code: ' . $e->getMessage());
+            }
+        }
+
+        return view('print.standee', [
+            'business' => $businessSetting,
+            'googleReviewUrl' => $googleReviewUrl,
+            'qrCodeBase64' => $qrCodeBase64,
+            'qrSvg' => $qrSvg,
+        ]);
     }
 }

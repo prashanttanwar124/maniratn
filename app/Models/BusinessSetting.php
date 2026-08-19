@@ -13,6 +13,7 @@ class BusinessSetting extends Model
         'phone',
         'email',
         'website',
+        'google_review_url',
         'gst_number',
         'logo_path',
     ];

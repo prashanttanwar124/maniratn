@@ -12,6 +12,7 @@ use App\Models\Customer;
 use App\Models\OrderItem;
 use App\Models\InvoiceItem;
 use App\Models\InvoiceDraft;
+use App\Models\BusinessSetting;
 use Illuminate\Http\Request;
 use App\Services\VaultService;
 use App\Services\LedgerImpactService;
@@ -204,9 +205,15 @@ class InvoiceController extends Controller
                     'cancellation_reason' => $invoice->cancellation_reason,
                     'cancelled_at' => optional($invoice->cancelled_at)?->toDateTimeString(),
                     'cancelled_by' => $invoice->cancelledBy?->name,
+                    'vault_url' => $invoice->customer?->vault_token ? ($this->publicBaseUrl() . '/vault/' . $invoice->customer->vault_token) : null,
                 ];
             })->values(),
             'drafts' => $drafts,
+            'business' => [
+                'store_name' => BusinessSetting::first()?->store_name ?? 'Maniratn Jewellers',
+                'google_review_url' => BusinessSetting::first()?->google_review_url,
+                'phone' => BusinessSetting::first()?->phone,
+            ],
         ]);
     }
 
@@ -428,6 +435,7 @@ class InvoiceController extends Controller
                 $barcode = new \TCPDF2DBarcode($vaultUrl, 'QRCODE,M');
                 $rawSvg = $barcode->getBarcodeSVGcode(2.1, 2.1, 'black');
                 $qrSvg = preg_replace('/^<\?xml[^>]*\?>\s*(<!DOCTYPE[^>]*>)?\s*/i', '', (string) $rawSvg);
+                $qrSvg = preg_replace('/(<svg[^>]*>)/i', '$1<rect width="100%" height="100%" fill="#ffffff"/>', (string) $qrSvg);
 
                 $pngData = $barcode->getBarcodePngData(4, 4);
                 if ($pngData) {
@@ -438,6 +446,27 @@ class InvoiceController extends Controller
             }
         }
 
+        $business = BusinessSetting::first();
+        $googleReviewUrl = $business?->google_review_url;
+        $googleReviewQrBase64 = null;
+        $googleReviewQrSvg = null;
+
+        if ($googleReviewUrl) {
+            try {
+                $reviewBarcode = new \TCPDF2DBarcode($googleReviewUrl, 'QRCODE,M');
+                $rawReviewSvg = $reviewBarcode->getBarcodeSVGcode(1.8, 1.8, 'black');
+                $googleReviewQrSvg = preg_replace('/^<\?xml[^>]*\?>\s*(<!DOCTYPE[^>]*>)?\s*/i', '', (string) $rawReviewSvg);
+                $googleReviewQrSvg = preg_replace('/(<svg[^>]*>)/i', '$1<rect width="100%" height="100%" fill="#ffffff"/>', (string) $googleReviewQrSvg);
+
+                $reviewPngData = $reviewBarcode->getBarcodePngData(4, 4);
+                if ($reviewPngData) {
+                    $googleReviewQrBase64 = 'data:image/png;base64,' . base64_encode($reviewPngData);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Failed generating Google Review QR code: ' . $e->getMessage());
+            }
+        }
+
         return view('print.invoice', [
             'invoice' => $invoice,
             'paidAmount' => $paidAmount,
@@ -445,6 +474,9 @@ class InvoiceController extends Controller
             'vaultUrl' => $vaultUrl,
             'qrCodeBase64' => $qrCodeBase64,
             'qrSvg' => $qrSvg,
+            'googleReviewUrl' => $googleReviewUrl,
+            'googleReviewQrBase64' => $googleReviewQrBase64,
+            'googleReviewQrSvg' => $googleReviewQrSvg,
         ]);
     }
 
@@ -827,7 +859,7 @@ class InvoiceController extends Controller
     public function cancel(Request $request, $id)
     {
         $validated = $request->validate([
-            'mode' => 'required|in:keep_advance,refund',
+            'mode' => 'nullable|in:keep_advance,refund,none',
             'reason' => 'required|string|max:500',
         ]);
 
@@ -837,11 +869,14 @@ class InvoiceController extends Controller
             return back()->with('error', 'This invoice is already cancelled.');
         }
 
+        $paidAmount = (float) $invoice->transactions->where('type', 'PAYMENT')->sum('amount');
+        $effectiveMode = $paidAmount > 0 ? ($validated['mode'] ?? 'keep_advance') : 'none';
+
         try {
-            DB::transaction(function () use ($invoice, $validated) {
+            DB::transaction(function () use ($invoice, $validated, $effectiveMode) {
             $invoice->update([
                 'status' => 'CANCELLED',
-                'cancellation_mode' => $validated['mode'],
+                'cancellation_mode' => $effectiveMode,
                 'cancellation_reason' => $validated['reason'],
                 'cancelled_by' => Auth::id(),
                 'cancelled_at' => now(),
@@ -913,7 +948,7 @@ class InvoiceController extends Controller
                     continue;
                 }
 
-                if ($validated['mode'] === 'refund') {
+                if ($effectiveMode === 'refund') {
                     LedgerImpactService::reverseCashTransaction($transaction);
 
                     $transaction->update([
@@ -934,9 +969,13 @@ class InvoiceController extends Controller
             ]);
         }
 
-        $message = $validated['mode'] === 'refund'
-            ? 'Invoice voided, stock restored, and paid amount refunded.'
-            : 'Invoice voided, stock restored, and paid amount kept as customer advance.';
+        if ($paidAmount <= 0) {
+            $message = 'Invoice voided and stock restored (No payment was collected on this bill).';
+        } else {
+            $message = $effectiveMode === 'refund'
+                ? 'Invoice voided, stock restored, and paid amount refunded.'
+                : 'Invoice voided, stock restored, and paid amount kept as customer advance.';
+        }
 
         return back()->with('success', $message);
     }

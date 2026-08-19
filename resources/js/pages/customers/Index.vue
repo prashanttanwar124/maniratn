@@ -26,6 +26,10 @@ const props = defineProps({
     birthdaysThisWeek: Number,
     anniversariesThisWeek: Number,
     filters: Object,
+    business: {
+        type: Object,
+        default: () => ({}),
+    },
 });
 
 const page = usePage();
@@ -111,6 +115,32 @@ const formatOccasionDate = (value) => {
 };
 
 const balanceSeverity = (balance) => (Number(balance || 0) > 0 ? 'danger' : 'success');
+
+const sendOccasionWish = (customer, type) => {
+    if (!customer) return;
+    const phone = customer.mobile ? customer.mobile.replace(/[^0-9]/g, '') : '';
+    const storeName = props.business?.store_name || 'Maniratn Jewellers';
+
+    let text = '';
+    if (type === 'birthday') {
+        text = `Dear ${customer.name},\n\nWarmest birthday wishes from all of us at *${storeName}*! 🎂🎉✨\n\nMay this year bring you abundant joy, good health, and sparkling moments. We look forward to celebrating with you!`;
+    } else {
+        text = `Dear ${customer.name},\n\nHappy Wedding Anniversary from all of us at *${storeName}*! 💍💐✨\n\nWishing you a lifetime of love, happiness, and prosperity together.`;
+    }
+
+    if (customer.vault_url) {
+        text += `\n\n✨ View your Digital Jewellery Vault:\n${customer.vault_url}`;
+    }
+
+    if (props.business?.google_review_url) {
+        text += `\n\n⭐ We'd love your love & blessings! Rate your experience on Google:\n${props.business.google_review_url}`;
+    }
+
+    text += `\n\nWarm regards,\n*${storeName}*`;
+
+    const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'noopener');
+};
 
 const occasionReminderText = (reminder) => {
     if (!reminder) return null;
@@ -384,6 +414,15 @@ const deleteCustomer = (customer) => {
                                                 severity="success"
                                                 class="ml-2 !text-[10px]"
                                             />
+                                            <button
+                                                v-if="data.dob_reminder"
+                                                type="button"
+                                                class="ml-1 text-emerald-600 hover:text-emerald-700"
+                                                title="Send Birthday Greeting on WhatsApp"
+                                                @click="sendOccasionWish(data, 'birthday')"
+                                            >
+                                                <i class="pi pi-whatsapp text-xs"></i>
+                                            </button>
                                         </p>
                                         <p class="text-surface-700">
                                             Anniversary:
@@ -394,6 +433,15 @@ const deleteCustomer = (customer) => {
                                                 severity="info"
                                                 class="ml-2 !text-[10px]"
                                             />
+                                            <button
+                                                v-if="data.anniversary_reminder"
+                                                type="button"
+                                                class="ml-1 text-emerald-600 hover:text-emerald-700"
+                                                title="Send Anniversary Greeting on WhatsApp"
+                                                @click="sendOccasionWish(data, 'anniversary')"
+                                            >
+                                                <i class="pi pi-whatsapp text-xs"></i>
+                                            </button>
                                         </p>
                                     </div>
                                 </template>

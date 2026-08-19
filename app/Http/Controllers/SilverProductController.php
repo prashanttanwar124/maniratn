@@ -193,6 +193,12 @@ class SilverProductController extends Controller
 
     public function update(Request $request, SilverProduct $silverProduct)
     {
+        if ($silverProduct->is_sold) {
+            return redirect()->back()->withErrors([
+                'silver_product' => 'Sold silver products cannot be edited.',
+            ]);
+        }
+
         $validated = $this->validatePayload($request);
         unset($validated['image']);
 
@@ -245,6 +251,7 @@ class SilverProductController extends Controller
 
         SilverProduct::query()
             ->whereIn('id', $validated['product_ids'])
+            ->where('is_sold', false)
             ->update($updates);
 
         return back()->with('message', count($validated['product_ids']).' silver products updated successfully.');

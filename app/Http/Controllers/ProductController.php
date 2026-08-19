@@ -241,6 +241,7 @@ class ProductController extends Controller
 
         Product::query()
             ->whereIn('id', $validated['product_ids'])
+            ->where('is_sold', false)
             ->update($updates);
 
         return back()->with('message', count($validated['product_ids']).' products updated successfully.');
@@ -377,6 +378,12 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        if ($product->is_sold) {
+            return redirect()->back()->withErrors([
+                'product' => 'Sold products cannot be edited.',
+            ]);
+        }
+
         // Note: Rules are sometimes 'nullable' on update so user doesn't have to re-upload image
         $validated = $request->validate([
             'name' => 'required',

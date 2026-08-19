@@ -193,6 +193,7 @@ class WebsiteApiController extends Controller
                 'email' => $business?->email,
                 'address' => $business?->address,
                 'website' => $business?->website,
+                'google_review_url' => $business?->google_review_url,
                 'gst_number' => $business?->gst_number,
             ],
             'latest_rate' => $latestRate ? [

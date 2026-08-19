@@ -64,6 +64,35 @@
             display: inline-block;
         }
 
+        .google-review-banner {
+            border: 1px solid var(--surface-200);
+            border-left: 3px solid var(--brand-gold);
+            background: #ffffff;
+            padding: 9px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: 4px;
+        }
+
+        .google-review-qr-box {
+            background: #ffffff;
+            padding: 4px;
+            border: 1px solid var(--surface-200);
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .google-review-qr-box svg,
+        .google-review-qr-box img {
+            width: 46px;
+            height: 46px;
+            display: block;
+        }
+
         .head,
         .meta,
         .totals {
@@ -473,7 +502,7 @@
                     <div class="section-title">Void Details</div>
                     <div class="panel">
                         <div><strong>Mode:</strong> <span
-                                class="accent">{{ $invoice->cancellation_mode === 'refund' ? 'Refunded' : 'Kept As Advance' }}</span>
+                                class="accent">{{ $invoice->cancellation_mode === 'refund' ? 'Refunded' : ($invoice->cancellation_mode === 'keep_advance' ? 'Kept As Advance' : 'Unpaid Bill (No Payments Collected)') }}</span>
                         </div>
                         <div><strong>Reason:</strong> {{ $invoice->cancellation_reason }}</div>
                         <div><strong>Cancelled At:</strong>
@@ -482,8 +511,35 @@
                 </div>
             @endif
 
+            @if (!empty($googleReviewUrl) && (!empty($googleReviewQrSvg) || !empty($googleReviewQrBase64)))
+                <div class="section" style="margin-top: 25px; margin-bottom: 10px;">
+                    <div class="google-review-banner">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="google-review-qr-box">
+                                @if (!empty($googleReviewQrSvg))
+                                    {!! $googleReviewQrSvg !!}
+                                @elseif (!empty($googleReviewQrBase64))
+                                    <img src="{{ $googleReviewQrBase64 }}" alt="Google Review QR" />
+                                @endif
+                            </div>
+                            <div>
+                                <div style="font-size: 11px; font-weight: 700; color: var(--brand-maroon); letter-spacing: 0.04em;">
+                                    ⭐ RATE YOUR EXPERIENCE ON GOOGLE
+                                </div>
+                                <div style="font-size: 9.5px; color: var(--surface-700); margin-top: 2px;">
+                                    Scan QR code to leave us a 5-star review on Google Maps!
+                                </div>
+                            </div>
+                        </div>
+                        <div style="font-size: 14px; letter-spacing: 3px; color: #f59e0b; font-weight: bold; padding-right: 4px;">
+                            ★★★★★
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <div class="section"
-                style="margin-top: 90px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; position: relative; z-index: 1;">
+                style="margin-top: {{ !empty($googleReviewUrl) ? '45px' : '80px' }}; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; position: relative; z-index: 1;">
                 <div style="text-align: center; width: 180px;">
                     <div style="border-bottom: 1px solid var(--surface-400); margin-bottom: 6px;"></div>
                     <div

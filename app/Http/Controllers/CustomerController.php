@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use Carbon\Carbon;
 use Inertia\Inertia;
 use App\Models\Customer;
+use App\Models\BusinessSetting;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -42,6 +43,7 @@ class CustomerController extends Controller
                 $data = $customer->toArray();
 
                 $data['balance'] = $customer->balance;
+                $data['vault_url'] = $customer->vault_token ? ($this->publicBaseUrl() . '/vault/' . $customer->vault_token) : null;
                 $data['dob_reminder'] = $this->buildOccasionReminder($customer->dob, $today);
                 $data['anniversary_reminder'] = $this->buildOccasionReminder($customer->anniversary_date, $today);
                 $data['has_upcoming_occasion'] = $data['dob_reminder'] !== null || $data['anniversary_reminder'] !== null;
@@ -90,6 +92,10 @@ class CustomerController extends Controller
             'anniversariesThisWeek' => $this->countUpcomingOccasions('anniversary_date', $today),
             'filters' => [
                 'search' => $search,
+            ],
+            'business' => [
+                'store_name' => BusinessSetting::first()?->store_name ?? 'Maniratn Jewellers',
+                'google_review_url' => BusinessSetting::first()?->google_review_url,
             ],
         ]);
     }
@@ -144,6 +150,7 @@ class CustomerController extends Controller
                 'card_access_count' => (int) $customer->card_access_count,
                 'invoices_count' => $customer->invoices()->where('status', '!=', 'CANCELLED')->count(),
                 'schemes_count' => $customer->goldSchemes()->count(),
+                'google_review_url' => BusinessSetting::first()?->google_review_url,
             ],
         ]);
     }

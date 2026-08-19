@@ -72,7 +72,10 @@ const openVault = () => {
 const shareOnWhatsapp = () => {
     if (!props.vault?.vault_url) return;
     const phone = props.customer.mobile ? props.customer.mobile.replace(/[^0-9]/g, '') : '';
-    const text = `Hello ${props.customer.name},\n\nHere is your personal Maniratn Digital Jewellery Vault link:\n${props.vault.vault_url}\n\nYou can access your jewellery certificates, purchase invoices, and gold schemes anytime!`;
+    let text = `Hello ${props.customer.name},\n\nHere is your personal Maniratn Digital Jewellery Vault link:\n${props.vault.vault_url}\n\nYou can access your jewellery certificates, purchase invoices, and gold schemes anytime!`;
+    if (props.vault?.google_review_url) {
+        text += `\n\n⭐ We'd love your feedback! Please rate your experience with us on Google:\n${props.vault.google_review_url}`;
+    }
     const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener');
 };

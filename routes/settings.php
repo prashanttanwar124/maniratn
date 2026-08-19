@@ -15,6 +15,9 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/business-profile', [BusinessSettingController::class, 'edit'])
         ->middleware('permission:manage_users')
         ->name('business-settings.edit');
+    Route::get('settings/business-profile/standee', [BusinessSettingController::class, 'printStandee'])
+        ->middleware('permission:manage_users')
+        ->name('business-settings.standee.print');
     Route::match(['put', 'patch'], 'settings/business-profile', [BusinessSettingController::class, 'update'])
         ->middleware('permission:manage_users')
         ->name('business-settings.update');

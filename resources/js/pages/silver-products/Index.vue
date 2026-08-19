@@ -240,6 +240,16 @@ const openNew = () => {
 };
 
 const editProduct = (item) => {
+    if (item?.is_sold) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Sold Product',
+            detail: 'Sold silver products cannot be edited to preserve accounting and invoice records.',
+            life: 4000,
+        });
+        return;
+    }
+
     product.value = { ...item };
     isEditing.value = true;
     batchMode.value = false;
@@ -416,6 +426,17 @@ const runQuickScan = async () => {
         }
 
         const payload = await response.json();
+        if (payload.product?.is_sold) {
+            viewSoldInvoice(payload.product);
+            scanBarcode.value = '';
+            toast.add({
+                severity: 'info',
+                summary: 'Sold Product',
+                detail: `Product ${payload.product.barcode} has already been sold. Opened sale bill details.`,
+                life: 3500,
+            });
+            return;
+        }
         editProduct(payload.product);
         scanBarcode.value = '';
 
@@ -791,7 +812,15 @@ const copyBarcode = async (barcode) => {
                                     />
                                     <Button icon="pi pi-clock" size="small" text severity="secondary" title="View Timeline History" @click="openHistoryDrawer(data)" />
                                     <Button icon="pi pi-copy" size="small" text severity="secondary" title="Duplicate" @click="confirmDuplicateProduct(data)" />
-                                    <Button icon="pi pi-pencil" size="small" text severity="secondary" title="Edit" @click="editProduct(data)" />
+                                    <Button
+                                        icon="pi pi-pencil"
+                                        size="small"
+                                        text
+                                        severity="secondary"
+                                        :disabled="data.is_sold"
+                                        :title="data.is_sold ? 'Sold items cannot be edited to protect accounting records' : 'Edit Silver Product'"
+                                        @click="editProduct(data)"
+                                    />
                                     <Button
                                         icon="pi pi-trash"
                                         size="small"

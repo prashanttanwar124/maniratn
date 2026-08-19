@@ -24,6 +24,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    business: {
+        type: Object,
+        default: () => ({}),
+    },
 });
 
 const toast = useToast();
@@ -142,7 +146,7 @@ const openVoidDialog = (invoice) => {
     selectedInvoice.value = invoice;
     voidForm.reset();
     voidForm.clearErrors();
-    voidForm.mode = 'keep_advance';
+    voidForm.mode = Number(invoice.paid_amount || 0) > 0 ? 'keep_advance' : 'none';
     voidForm.reason = '';
     showVoidDialog.value = true;
 };
@@ -163,6 +167,31 @@ const openViewDialog = (invoice) => {
 const closeViewDialog = () => {
     showViewDialog.value = false;
     viewInvoice.value = null;
+};
+
+const shareInvoiceOnWhatsapp = (invoice) => {
+    if (!invoice) return;
+    const phone = invoice.customer?.mobile ? invoice.customer.mobile.replace(/[^0-9]/g, '') : '';
+    const storeName = props.business?.store_name || 'Maniratn Jewellers';
+    const customerName = invoice.customer?.name || 'Customer';
+    const total = formatCurrency(invoice.total_amount);
+    const paid = formatCurrency(invoice.paid_amount);
+    const pending = Number(invoice.pending_amount || 0) > 0 ? `\n⏳ Pending: ${formatCurrency(invoice.pending_amount)}` : '';
+
+    let text = `Namaste ${customerName},\n\nThank you for shopping at *${storeName}*! Here are your bill details:\n\n🧾 *Invoice No:* ${invoice.invoice_number}\n📅 *Date:* ${formatDate(invoice.date)}\n💎 *Items:* ${invoice.items?.length || invoice.item_count || 1} jewellery item(s)\n💰 *Total Amount:* ${total}\n💳 *Paid Amount:* ${paid}${pending}`;
+
+    if (invoice.vault_url) {
+        text += `\n\n✨ *Access your Digital Vault & Certificates:*\n${invoice.vault_url}`;
+    }
+
+    if (props.business?.google_review_url) {
+        text += `\n\n⭐ *We value your feedback!* Please rate your experience with us on Google:\n${props.business.google_review_url}`;
+    }
+
+    text += `\n\nWarm regards,\n*${storeName}*`;
+
+    const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'noopener');
 };
 
 const submitVoid = () => {
@@ -378,7 +407,7 @@ const draftFormatCurrency = (val) =>
                                         {{ data.pending_amount > 0 ? 'Payment pending' : 'Fully settled' }}
                                     </p>
                                     <p v-else class="text-xs text-surface-500">
-                                        {{ data.cancellation_mode === 'refund' ? 'Refunded to customer' : 'Kept as advance' }}
+                                        {{ Number(data.void_amount || 0) > 0 ? (data.cancellation_mode === 'refund' ? 'Refunded to customer' : 'Kept as advance') : 'No payments collected' }}
                                     </p>
                                 </div>
                             </template>
@@ -387,8 +416,11 @@ const draftFormatCurrency = (val) =>
                         <Column header="Void / Notes" style="min-width: 250px">
                             <template #body="{ data }">
                                 <div v-if="data.status === 'CANCELLED'" class="space-y-1">
-                                    <p class="text-xs font-medium" :class="data.cancellation_mode === 'refund' ? 'text-red-600' : 'text-amber-700'">
+                                    <p v-if="Number(data.void_amount || 0) > 0" class="text-xs font-medium" :class="data.cancellation_mode === 'refund' ? 'text-red-600' : 'text-amber-700'">
                                         {{ formatCurrency(data.void_amount) }} {{ data.cancellation_mode === 'refund' ? 'refunded' : 'kept as advance' }}
+                                    </p>
+                                    <p v-else class="text-xs font-medium text-surface-600">
+                                        Unpaid bill voided (Stock restored)
                                     </p>
                                     <p v-if="data.cancelled_by" class="text-xs text-surface-500">
                                         {{ data.cancelled_by }} on {{ formatDate(data.cancelled_at || data.date) }}
@@ -423,6 +455,14 @@ const draftFormatCurrency = (val) =>
                                         title="Collect pending balance"
                                     />
                                     <Button label="Print" icon="pi pi-print" severity="secondary" text size="small" @click="printInvoice(data)" />
+                                    <Button
+                                        icon="pi pi-whatsapp"
+                                        severity="success"
+                                        text
+                                        size="small"
+                                        title="Share Bill & Review on WhatsApp"
+                                        @click="shareInvoiceOnWhatsapp(data)"
+                                    />
                                     <Button
                                         v-if="data.status !== 'CANCELLED'"
                                         label="Void"
@@ -566,8 +606,15 @@ const draftFormatCurrency = (val) =>
                     </div>
                 </div>
 
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-surface-700">Void Mode</label>
+                <!-- If paid amount is 0 -->
+                <div v-if="Number(selectedInvoice?.paid_amount || 0) <= 0" class="border border-surface-200 bg-surface-50 px-4 py-3 text-xs text-surface-700">
+                    <p class="font-semibold text-surface-900">No Payments Received (Paid: ₹0)</p>
+                    <p class="mt-1 text-surface-500">Voiding this invoice will cancel the bill and restore all stock back to active inventory without creating ledger advance or refund entries.</p>
+                </div>
+
+                <!-- If paid amount > 0 -->
+                <div v-else>
+                    <label class="mb-2 block text-sm font-medium text-surface-700">Void Mode (Collected: {{ formatCurrency(selectedInvoice?.paid_amount) }})</label>
                     <Select v-model="voidForm.mode" :options="voidModeOptions" optionLabel="label" optionValue="value" class="w-full" />
                     <p class="mt-2 text-xs text-surface-500">
                         {{ voidModeOptions.find((option) => option.value === voidForm.mode)?.hint }}
@@ -576,18 +623,21 @@ const draftFormatCurrency = (val) =>
 
                 <div>
                     <label class="mb-2 block text-sm font-medium text-surface-700">Reason</label>
-                    <Textarea v-model="voidForm.reason" rows="4" class="w-full" placeholder="Why is this bill being voided?" />
+                    <Textarea v-model="voidForm.reason" rows="3" class="w-full" placeholder="Why is this bill being voided?" />
                     <small v-if="voidForm.errors.reason" class="mt-1 block text-xs text-red-500">{{ voidForm.errors.reason }}</small>
                 </div>
 
-                <div class="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    Stock and custom order items will be restored. If you choose refund, received money will also be reversed from the vault.
+                <div class="border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                    Stock and custom order items will be restored.
+                    <span v-if="Number(selectedInvoice?.paid_amount || 0) > 0">
+                        If you choose refund, received money will also be reversed from the vault.
+                    </span>
                 </div>
 
                 <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">
                     <Button label="Close" severity="secondary" text @click="closeVoidDialog" />
                     <Button
-                        :label="voidForm.mode === 'refund' ? 'Void And Refund' : 'Void To Advance'"
+                        :label="Number(selectedInvoice?.paid_amount || 0) <= 0 ? 'Void Invoice' : (voidForm.mode === 'refund' ? 'Void And Refund (' + formatCurrency(selectedInvoice?.paid_amount) + ')' : 'Void & Keep Advance (' + formatCurrency(selectedInvoice?.paid_amount) + ')')"
                         icon="pi pi-check"
                         severity="danger"
                         @click="submitVoid"
@@ -650,7 +700,7 @@ const draftFormatCurrency = (val) =>
                         <div>
                             <p class="font-bold text-red-900">This invoice has been voided</p>
                             <p class="mt-0.5">
-                                Mode: <strong>{{ viewInvoice.cancellation_mode === 'refund' ? 'Refunded to customer' : 'Kept as customer advance' }}</strong>
+                                Mode: <strong>{{ Number(viewInvoice.paid_amount || 0) > 0 ? (viewInvoice.cancellation_mode === 'refund' ? 'Refunded to customer (' + formatCurrency(viewInvoice.paid_amount) + ')' : 'Kept as customer advance (' + formatCurrency(viewInvoice.paid_amount) + ')') : 'Unpaid bill voided (No payments were collected)' }}</strong>
                                 <span v-if="viewInvoice.cancelled_by"> • By: {{ viewInvoice.cancelled_by }}</span>
                                 <span v-if="viewInvoice.cancelled_at"> • On: {{ viewInvoice.cancelled_at }}</span>
                             </p>
@@ -780,6 +830,13 @@ const draftFormatCurrency = (val) =>
                     </div>
                     <div class="flex gap-2">
                         <Button label="Close" text severity="secondary" size="small" @click="closeViewDialog" />
+                        <Button
+                            label="WhatsApp Bill"
+                            icon="pi pi-whatsapp"
+                            severity="success"
+                            size="small"
+                            @click="shareInvoiceOnWhatsapp(viewInvoice)"
+                        />
                         <Button label="Print Bill" icon="pi pi-print" size="small" @click="printInvoice(viewInvoice)" />
                     </div>
                 </div>
