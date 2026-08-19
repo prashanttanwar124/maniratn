@@ -77,19 +77,22 @@
 
         .google-review-qr-box {
             background: #ffffff;
-            padding: 4px;
+            padding: 3px;
             border: 1px solid var(--surface-200);
             border-radius: 4px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            overflow: hidden;
         }
 
         .google-review-qr-box svg,
         .google-review-qr-box img {
-            width: 46px;
-            height: 46px;
+            width: 44px;
+            height: 44px;
+            max-width: 44px;
+            max-height: 44px;
             display: block;
         }
 
@@ -511,15 +514,36 @@
                 </div>
             @endif
 
-            @if (!empty($googleReviewUrl) && (!empty($googleReviewQrSvg) || !empty($googleReviewQrBase64)))
-                <div class="section" style="margin-top: 25px; margin-bottom: 10px;">
+            <!-- Signatures Section -->
+            <div class="section"
+                style="margin-top: 55px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; position: relative; z-index: 1;">
+                <div style="text-align: center; width: 180px;">
+                    <div style="border-bottom: 1px solid var(--surface-400); margin-bottom: 6px;"></div>
+                    <div
+                        style="font-size: 10px; font-weight: 600; color: var(--surface-700); text-transform: uppercase; letter-spacing: 0.05em;">
+                        Customer's Signature</div>
+                </div>
+
+                <div style="text-align: center; width: 180px;">
+                    <div style="border-bottom: 1px solid var(--surface-400); margin-bottom: 6px;"></div>
+                    <div
+                        style="font-size: 10px; font-weight: 600; color: var(--surface-700); text-transform: uppercase; letter-spacing: 0.05em;">
+                        Authorized Signature</div>
+                </div>
+            </div>
+
+            <!-- Rate Us On Google Banner (After Signature) -->
+            @if (!empty($googleReviewUrl) && (!empty($googleReviewQrBase64) || !empty($googleReviewQrSvg)))
+                <div class="section" style="margin-top: 15px; margin-bottom: 0;">
                     <div class="google-review-banner">
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <div class="google-review-qr-box">
-                                @if (!empty($googleReviewQrSvg))
-                                    {!! $googleReviewQrSvg !!}
-                                @elseif (!empty($googleReviewQrBase64))
-                                    <img src="{{ $googleReviewQrBase64 }}" alt="Google Review QR" />
+                                @if (!empty($googleReviewQrBase64))
+                                    <img src="{{ $googleReviewQrBase64 }}" alt="Google Review QR" style="width: 42px; height: 42px; display: block;" />
+                                @elseif (!empty($googleReviewQrSvg))
+                                    <div style="width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                        {!! $googleReviewQrSvg !!}
+                                    </div>
                                 @endif
                             </div>
                             <div>
@@ -537,23 +561,6 @@
                     </div>
                 </div>
             @endif
-
-            <div class="section"
-                style="margin-top: {{ !empty($googleReviewUrl) ? '45px' : '80px' }}; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; position: relative; z-index: 1;">
-                <div style="text-align: center; width: 180px;">
-                    <div style="border-bottom: 1px solid var(--surface-400); margin-bottom: 6px;"></div>
-                    <div
-                        style="font-size: 10px; font-weight: 600; color: var(--surface-700); text-transform: uppercase; letter-spacing: 0.05em;">
-                        Customer's Signature</div>
-                </div>
-
-                <div style="text-align: center; width: 180px;">
-                    <div style="border-bottom: 1px solid var(--surface-400); margin-bottom: 6px;"></div>
-                    <div
-                        style="font-size: 10px; font-weight: 600; color: var(--surface-700); text-transform: uppercase; letter-spacing: 0.05em;">
-                        Authorized Signature</div>
-                </div>
-            </div>
         </div>
     </div>
 
