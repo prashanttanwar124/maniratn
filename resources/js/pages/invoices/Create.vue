@@ -61,9 +61,9 @@ const discountTypeOptions = [
 ];
 
 const makingChargeTypeOptions = [
-    { label: '%', value: 'percentage' },
-    { label: '₹ Flat', value: 'flat' },
-    { label: '₹/g', value: 'per_gram' },
+    { label: '%', title: 'Percentage (%)', subtitle: '% of metal value', value: 'percentage', icon: '%' },
+    { label: '₹ Flat', title: 'Flat Lump Sum (₹)', subtitle: 'Fixed making amount', value: 'flat', icon: '₹' },
+    { label: '₹/g', title: 'Per Gram (₹/g)', subtitle: 'Rate × Net weight', value: 'per_gram', icon: '₹/g' },
 ];
 
 const form = useForm({
@@ -416,6 +416,34 @@ const calculateRawRowTotal = (item) => {
     }
 
     return metalValue + makingAmount;
+};
+
+const calculateRowMakingAmount = (item) => {
+    const making = parseFloat(item?.making_charges) || 0;
+    const makingType = item?.making_charge_type || (item?.type === 'product' ? 'percentage' : 'per_gram');
+    const weight = parseFloat(item?.weight) || 0;
+    const rate = parseFloat(item?.rate) || 0;
+
+    if (item?.type === 'silver_product' && item.pricing_mode === 'PIECE') {
+        const quantity = Math.max(1, parseInt(item.quantity || 1, 10));
+        const base = rate * quantity;
+        if (makingType === 'percentage') {
+            return base * (making / 100);
+        } else if (makingType === 'flat' || makingType === 'lump_sum') {
+            return making;
+        } else {
+            return weight * making;
+        }
+    }
+
+    const metalValue = weight * rate;
+    if (makingType === 'flat' || makingType === 'lump_sum') {
+        return making;
+    } else if (makingType === 'per_gram') {
+        return weight * making;
+    } else {
+        return metalValue * (making / 100);
+    }
 };
 
 const recalculateRow = (item) => {
@@ -806,35 +834,53 @@ const submitInvoice = () => {
                         </Column>
 
                         <!-- Making -->
-                        <Column header="Making" style="width: 220px">
+                        <Column header="Making" style="width: 235px">
                             <template #body="{ data }">
-                                <InputGroup class="w-full">
-                                    <InputNumber
-                                        v-model="data.making_charges"
-                                        inputClass="text-right !px-2 font-mono"
-                                        class="w-full min-w-0"
-                                        mode="decimal"
-                                        :max="data.making_charge_type === 'percentage' ? 100 : undefined"
-                                        :minFractionDigits="0"
-                                        :maxFractionDigits="2"
-                                        @input="onRowInput($event, data, 'making_charges')"
-                                    />
-                                    <Select
-                                        v-model="data.making_charge_type"
-                                        :options="makingChargeTypeOptions"
-                                        optionLabel="label"
-                                        optionValue="value"
-                                        class="!w-[96px] shrink-0"
-                                        title="Making charge type: % (Percentage), ₹ Flat (Lump sum), ₹/g (Per gram)"
-                                        @change="onMakingTypeChange(data)"
-                                    >
-                                        <template #value="slotProps">
-                                            <span class="text-xs font-semibold text-surface-800 whitespace-nowrap">
-                                                {{ slotProps.value === 'percentage' ? '%' : slotProps.value === 'flat' ? '₹ Flat' : '₹/g' }}
-                                            </span>
-                                        </template>
-                                    </Select>
-                                </InputGroup>
+                                <div class="space-y-1">
+                                    <InputGroup class="w-full">
+                                        <InputNumber
+                                            v-model="data.making_charges"
+                                            inputClass="text-right !px-2 font-mono text-sm"
+                                            class="w-full min-w-0"
+                                            mode="decimal"
+                                            :max="data.making_charge_type === 'percentage' ? 100 : undefined"
+                                            :minFractionDigits="0"
+                                            :maxFractionDigits="2"
+                                            placeholder="0"
+                                            @input="onRowInput($event, data, 'making_charges')"
+                                        />
+                                        <Select
+                                            v-model="data.making_charge_type"
+                                            :options="makingChargeTypeOptions"
+                                            optionLabel="label"
+                                            optionValue="value"
+                                            class="!w-[96px] shrink-0 !bg-surface-50"
+                                            :panelClass="'!min-w-[210px] !shadow-xl !rounded-lg !border !border-surface-200'"
+                                            title="Making charge type: % (Percentage), ₹ Flat (Lump sum), ₹/g (Per gram)"
+                                            @change="onMakingTypeChange(data)"
+                                        >
+                                            <template #value="slotProps">
+                                                <span class="text-xs font-bold text-surface-800 whitespace-nowrap">
+                                                    {{ slotProps.value === 'percentage' ? '%' : slotProps.value === 'flat' ? '₹ Flat' : '₹/g' }}
+                                                </span>
+                                            </template>
+                                            <template #option="{ option }">
+                                                <div class="flex items-center gap-2.5 py-1 px-1">
+                                                    <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-amber-50 text-[11px] font-bold text-amber-800 border border-amber-200/70 shrink-0">
+                                                        {{ option.icon }}
+                                                    </span>
+                                                    <div class="flex flex-col min-w-0 text-left">
+                                                        <span class="text-xs font-semibold text-surface-900 leading-snug">{{ option.title }}</span>
+                                                        <span class="text-[10px] text-surface-500 font-normal leading-tight">{{ option.subtitle }}</span>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </Select>
+                                    </InputGroup>
+                                    <div v-if="calculateRowMakingAmount(data) > 0 && data.making_charge_type !== 'flat'" class="flex items-center justify-end gap-1 text-[11px] text-surface-500 font-medium px-0.5">
+                                        <span>= ₹{{ Number(calculateRowMakingAmount(data)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
+                                    </div>
+                                </div>
                             </template>
                         </Column>
 
