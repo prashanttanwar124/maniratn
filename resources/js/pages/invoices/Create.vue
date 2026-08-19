@@ -60,6 +60,12 @@ const discountTypeOptions = [
     { label: 'Percentage', value: 'percentage' },
 ];
 
+const makingChargeTypeOptions = [
+    { label: '%', value: 'percentage' },
+    { label: '₹ Flat', value: 'flat' },
+    { label: '₹/g', value: 'per_gram' },
+];
+
 const form = useForm({
     customer_id: props.prefilledCustomer?.id || null,
     date: todayIndianDate(),
@@ -800,9 +806,9 @@ const submitInvoice = () => {
                         </Column>
 
                         <!-- Making -->
-                        <Column header="Making" style="width: 175px">
+                        <Column header="Making" style="width: 205px">
                             <template #body="{ data }">
-                                <div class="flex items-center gap-1">
+                                <div class="flex items-center gap-1.5">
                                     <InputNumber
                                         v-model="data.making_charges"
                                         inputClass="w-full text-right !px-2"
@@ -813,16 +819,15 @@ const submitInvoice = () => {
                                         :maxFractionDigits="2"
                                         @input="onRowInput($event, data, 'making_charges')"
                                     />
-                                    <select
+                                    <Select
                                         v-model="data.making_charge_type"
-                                        class="h-[38px] shrink-0 rounded border border-surface-300 bg-surface-50 px-1.5 text-xs font-semibold text-surface-700 hover:bg-surface-100 focus:border-amber-500 focus:outline-none"
-                                        @change="onMakingTypeChange(data)"
+                                        :options="makingChargeTypeOptions"
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        class="!w-[88px] shrink-0"
                                         title="Making charge type: % (Percentage), ₹ (Flat lump sum), ₹/g (Per gram)"
-                                    >
-                                        <option value="percentage">%</option>
-                                        <option value="flat">₹ Flat</option>
-                                        <option value="per_gram">₹/g</option>
-                                    </select>
+                                        @change="onMakingTypeChange(data)"
+                                    />
                                 </div>
                             </template>
                         </Column>
