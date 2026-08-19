@@ -123,17 +123,17 @@ const sendOccasionWish = (customer, type) => {
 
     let text = '';
     if (type === 'birthday') {
-        text = `Dear ${customer.name},\n\nWarmest birthday wishes from all of us at *${storeName}*! 🎂🎉✨\n\nMay this year bring you abundant joy, good health, and sparkling moments. We look forward to celebrating with you!`;
+        text = `Dear ${customer.name},\n\nWarmest birthday wishes from all of us at *${storeName}*!\n\nMay this special day and the year ahead bring you abundant happiness, health, and prosperity. We look forward to celebrating with you!`;
     } else {
-        text = `Dear ${customer.name},\n\nHappy Wedding Anniversary from all of us at *${storeName}*! 💍💐✨\n\nWishing you a lifetime of love, happiness, and prosperity together.`;
+        text = `Dear ${customer.name},\n\nHappy Wedding Anniversary from all of us at *${storeName}*!\n\nWishing you both a lifetime of love, happiness, and prosperity together.`;
     }
 
     if (customer.vault_url) {
-        text += `\n\n✨ View your Digital Jewellery Vault:\n${customer.vault_url}`;
+        text += `\n\n*View Your Digital Jewellery Vault:*\n${customer.vault_url}`;
     }
 
     if (props.business?.google_review_url) {
-        text += `\n\n⭐ We'd love your love & blessings! Rate your experience on Google:\n${props.business.google_review_url}`;
+        text += `\n\n*Share your love & feedback on Google:*\n${props.business.google_review_url}`;
     }
 
     text += `\n\nWarm regards,\n*${storeName}*`;

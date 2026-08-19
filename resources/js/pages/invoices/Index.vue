@@ -176,16 +176,16 @@ const shareInvoiceOnWhatsapp = (invoice) => {
     const customerName = invoice.customer?.name || 'Customer';
     const total = formatCurrency(invoice.total_amount);
     const paid = formatCurrency(invoice.paid_amount);
-    const pending = Number(invoice.pending_amount || 0) > 0 ? `\n⏳ Pending: ${formatCurrency(invoice.pending_amount)}` : '';
+    const pending = Number(invoice.pending_amount || 0) > 0 ? `\n• *Pending Balance:* ${formatCurrency(invoice.pending_amount)}` : '';
 
-    let text = `Namaste ${customerName},\n\nThank you for shopping at *${storeName}*! Here are your bill details:\n\n🧾 *Invoice No:* ${invoice.invoice_number}\n📅 *Date:* ${formatDate(invoice.date)}\n💎 *Items:* ${invoice.items?.length || invoice.item_count || 1} jewellery item(s)\n💰 *Total Amount:* ${total}\n💳 *Paid Amount:* ${paid}${pending}`;
+    let text = `Namaste ${customerName},\n\nThank you for shopping at *${storeName}*! Here are your invoice details:\n\n• *Invoice No:* ${invoice.invoice_number}\n• *Date:* ${formatDate(invoice.date)}\n• *Items:* ${invoice.items?.length || invoice.item_count || 1} item(s)\n• *Total Amount:* ${total}\n• *Paid Amount:* ${paid}${pending}`;
 
     if (invoice.vault_url) {
-        text += `\n\n✨ *Access your Digital Vault & Certificates:*\n${invoice.vault_url}`;
+        text += `\n\n*Access Your Digital Vault & Certificates:*\n${invoice.vault_url}`;
     }
 
     if (props.business?.google_review_url) {
-        text += `\n\n⭐ *We value your feedback!* Please rate your experience with us on Google:\n${props.business.google_review_url}`;
+        text += `\n\n*Rate Your Experience on Google:*\n${props.business.google_review_url}`;
     }
 
     text += `\n\nWarm regards,\n*${storeName}*`;
