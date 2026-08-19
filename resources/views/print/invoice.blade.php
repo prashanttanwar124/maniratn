@@ -430,10 +430,12 @@
                                 <td>{{ number_format((float) $item->weight, 3) }} g</td>
                                 <td>{{ $item->purity }}</td>
                                 <td class="align-right">
-                                    @if ($item->product_id)
-                                        {{ (float) $item->making_charges }}%
-                                    @else
+                                    @if ($item->making_charge_type === 'flat' || $item->making_charge_type === 'lump_sum')
                                         Rs {{ number_format((float) $item->making_charges, 2) }}
+                                    @elseif ($item->making_charge_type === 'per_gram' || (!$item->product_id && $item->making_charge_type !== 'percentage'))
+                                        Rs {{ number_format((float) $item->making_charges, 2) }}/g
+                                    @else
+                                        {{ (float) $item->making_charges }}%
                                     @endif
                                 </td>
                                 <td class="align-right">Rs {{ number_format((float) $item->final_price, 2) }}</td>

@@ -185,6 +185,7 @@ class InvoiceController extends Controller
                             'purity' => $item->purity,
                             'rate' => (float) $item->rate,
                             'making_charges' => (float) $item->making_charges,
+                            'making_charge_type' => $item->making_charge_type ?: ($item->product_id ? 'percentage' : 'per_gram'),
                             'quantity' => (int) ($item->quantity ?? 1),
                             'total_price' => (float) ($item->final_price ?? $item->total_price ?? 0),
                             'product_barcode' => $item->product?->barcode,
@@ -298,6 +299,7 @@ class InvoiceController extends Controller
             'items.*.purity' => 'nullable',
             'items.*.rate' => 'nullable|numeric|min:0',
             'items.*.making_charges' => 'nullable|numeric|min:0',
+            'items.*.making_charge_type' => 'nullable|string|in:percentage,flat,lump_sum,per_gram',
             'items.*.final_price' => 'nullable|numeric|min:0',
             'payment_cash' => 'nullable|numeric|min:0',
             'payment_card' => 'nullable|numeric|min:0',
@@ -376,6 +378,7 @@ class InvoiceController extends Controller
             'items.*.purity' => 'nullable',
             'items.*.rate' => 'nullable|numeric|min:0',
             'items.*.making_charges' => 'nullable|numeric|min:0',
+            'items.*.making_charge_type' => 'nullable|string|in:percentage,flat,lump_sum,per_gram',
             'items.*.final_price' => 'nullable|numeric|min:0',
         ]);
 
@@ -386,6 +389,35 @@ class InvoiceController extends Controller
             'items' => $items,
             'has_invalid_items' => $hasInvalidItems,
         ]);
+    }
+
+    private function calculateItemTotalPrice(string $type, float $weight, float $rate, float $making, string $makingType = 'percentage', int $quantity = 1, ?string $pricingMode = null): float
+    {
+        $makingAmount = 0.0;
+
+        if ($type === 'silver_product' && $pricingMode === 'PIECE') {
+            $base = $rate * $quantity;
+            if ($makingType === 'percentage') {
+                $makingAmount = $base * ($making / 100);
+            } elseif ($makingType === 'flat' || $makingType === 'lump_sum') {
+                $makingAmount = $making;
+            } else {
+                $makingAmount = $weight * $making;
+            }
+            return round($base + $makingAmount, 2);
+        }
+
+        $metalValue = $weight * $rate;
+
+        if ($makingType === 'flat' || $makingType === 'lump_sum') {
+            $makingAmount = $making;
+        } elseif ($makingType === 'per_gram') {
+            $makingAmount = $weight * $making;
+        } else {
+            $makingAmount = $metalValue * ($making / 100);
+        }
+
+        return round($metalValue + $makingAmount, 2);
     }
 
     private function publicBaseUrl(): string
@@ -497,8 +529,9 @@ class InvoiceController extends Controller
             'items'       => 'required|array',
             'items.*.type' => 'required|in:product,order_item,silver_product', // Identify the type
             'items.*.id'   => 'required|integer', // The ID of the Product or OrderItem
-            'items.*.rate' => 'required|numeric|min:0',
+            'items.*.rate' => 'nullable|numeric|min:0',
             'items.*.making_charges' => 'required|numeric|min:0', // We need this from frontend
+            'items.*.making_charge_type' => 'nullable|string|in:percentage,flat,lump_sum,per_gram',
             'items.*.quantity' => 'nullable|integer|min:1',
             'draft_id' => 'nullable|integer',
 
@@ -512,9 +545,14 @@ class InvoiceController extends Controller
             $totalBillAmount = 0;
             $totalVaultGoldSoldWeight = 0;
             $totalVaultSilverSoldWeight = 0;
+            $defaultGoldRate = (float) ($validated['gold_rate'] ?? 0);
+            $defaultSilverRate = (float) ($validated['silver_rate'] ?? 0);
             $items = collect($validated['items']);
 
-            if ($items->contains(fn ($item) => (float) ($item['rate'] ?? 0) <= 0)) {
+            if ($items->contains(function ($item) use ($defaultGoldRate, $defaultSilverRate) {
+                $itemRate = (float) ($item['rate'] ?? (($item['type'] ?? '') === 'silver_product' ? $defaultSilverRate : $defaultGoldRate));
+                return $itemRate <= 0;
+            })) {
                 throw ValidationException::withMessages([
                     'items' => 'A valid rate is required for every invoice item.',
                 ]);
@@ -558,14 +596,16 @@ class InvoiceController extends Controller
                 $weight = 0;
                 $purity = 0;
                 $itemName = '';
+                $makingType = $row['making_charge_type'] ?? null;
+                $makingValue = (float) ($row['making_charges'] ?? 0);
 
                 // --- CASE A: IT IS A STOCK PRODUCT (Ring from Showcase) ---
                 if ($row['type'] === 'product') {
                     $product = Product::findOrFail($row['id']);
-                    $rateApplied = (float) ($row['rate'] ?? 0);
-                    $makingPercent = (float) $row['making_charges'];
+                    $rateApplied = (float) ($row['rate'] ?? ($validated['gold_rate'] ?? 0));
+                    $makingType = $makingType ?: 'percentage';
 
-                    if ($makingPercent > 100) {
+                    if ($makingType === 'percentage' && $makingValue > 100) {
                         throw ValidationException::withMessages([
                             'items' => "Making percentage for {$product->name} cannot be greater than 100.",
                         ]);
@@ -576,26 +616,31 @@ class InvoiceController extends Controller
                         abort(400, "Product {$product->name} is already sold!");
                     }
 
-                    $weight = $product->net_weight;
+                    $weight = (float) $product->net_weight;
                     $purity = $product->purity; // e.g., 91.6
                     $itemName = $product->name;
-                    $itemTotal = $weight * ($rateApplied + ($rateApplied * ($makingPercent / 100)));
+                    $itemTotal = $this->calculateItemTotalPrice('product', $weight, $rateApplied, $makingValue, $makingType, 1);
 
                     // Mark Stock as SOLD
                     $product->update(['is_sold' => true]);
 
                     // Save to InvoiceItems
                     InvoiceItem::create([
-                        'invoice_id'  => $invoice->id,
-                        'product_id'  => $product->id, // Link Product
-                        'description' => $itemName,
-                        'quantity'    => 1,
-                        'weight'      => $weight,
-                        'purity'      => $purity->name,
-                        'rate'        => $rateApplied,
-                        'making_charges' => $row['making_charges'],
-                        'final_price' => $itemTotal,
+                        'invoice_id'         => $invoice->id,
+                        'product_id'         => $product->id, // Link Product
+                        'description'        => $itemName,
+                        'quantity'           => 1,
+                        'weight'             => $weight,
+                        'purity'             => $purity->name,
+                        'rate'               => $rateApplied,
+                        'making_charges'     => $makingValue,
+                        'making_charge_type' => $makingType === 'lump_sum' ? 'flat' : $makingType,
+                        'final_price'        => $itemTotal,
                     ]);
+
+                    $totalBillAmount += $itemTotal;
+                    $totalVaultGoldSoldWeight += (float) $weight;
+                    continue;
                 }
 
                 elseif ($row['type'] === 'silver_product') {
@@ -606,6 +651,8 @@ class InvoiceController extends Controller
                     }
 
                     $saleQuantity = max(1, (int) ($row['quantity'] ?? 1));
+                    $rateApplied = (float) ($row['rate'] ?? ($validated['silver_rate'] ?? 0));
+                    $makingType = $makingType ?: ($silverProduct->pricing_mode === 'PIECE' ? 'per_gram' : 'per_gram');
 
                     if ($silverProduct->pricing_mode === 'PIECE') {
                         if ($saleQuantity > (int) $silverProduct->quantity) {
@@ -616,8 +663,7 @@ class InvoiceController extends Controller
 
                         $weight = (float) ($silverProduct->net_weight ?? 0) * $saleQuantity;
                         $itemName = $silverProduct->name;
-                        $rateApplied = (float) ($row['rate'] ?? 0);
-                        $itemTotal = ($rateApplied * $saleQuantity) + ($weight * (float) $row['making_charges']);
+                        $itemTotal = $this->calculateItemTotalPrice('silver_product', $weight, $rateApplied, $makingValue, $makingType, $saleQuantity, 'PIECE');
 
                         $remainingQuantity = (int) $silverProduct->quantity - $saleQuantity;
                         $silverProduct->update([
@@ -626,26 +672,27 @@ class InvoiceController extends Controller
                         ]);
 
                         InvoiceItem::create([
-                            'invoice_id' => $invoice->id,
-                            'silver_product_id' => $silverProduct->id,
-                            'description' => $itemName,
-                            'quantity' => $saleQuantity,
-                            'weight' => $weight,
-                            'purity' => 'Silver',
-                            'rate' => $rateApplied,
-                            'making_charges' => $row['making_charges'],
-                            'final_price' => $itemTotal,
+                            'invoice_id'         => $invoice->id,
+                            'silver_product_id'  => $silverProduct->id,
+                            'description'        => $itemName,
+                            'quantity'           => $saleQuantity,
+                            'weight'             => $weight,
+                            'purity'             => 'Silver',
+                            'rate'               => $rateApplied,
+                            'making_charges'     => $makingValue,
+                            'making_charge_type' => $makingType === 'lump_sum' ? 'flat' : $makingType,
+                            'final_price'        => $itemTotal,
                         ]);
 
                         $totalBillAmount += $itemTotal;
+                        $totalVaultSilverSoldWeight += (float) $weight;
                         continue;
                     }
 
                     $weight = (float) $silverProduct->net_weight;
                     $originalQuantity = max(1, (int) $silverProduct->quantity);
                     $itemName = $silverProduct->name;
-                    $rateApplied = (float) ($row['rate'] ?? 0);
-                    $itemTotal = $weight * ($rateApplied + (float) $row['making_charges']);
+                    $itemTotal = $this->calculateItemTotalPrice('silver_product', $weight, $rateApplied, $makingValue, $makingType, $originalQuantity, 'WEIGHT');
 
                     $silverProduct->update([
                         'quantity' => 0,
@@ -653,18 +700,20 @@ class InvoiceController extends Controller
                     ]);
 
                     InvoiceItem::create([
-                        'invoice_id' => $invoice->id,
-                        'silver_product_id' => $silverProduct->id,
-                        'description' => $itemName,
-                        'quantity' => $originalQuantity,
-                        'weight' => $weight,
-                        'purity' => 'Silver',
-                        'rate' => $rateApplied,
-                        'making_charges' => $row['making_charges'],
-                        'final_price' => $itemTotal,
+                        'invoice_id'         => $invoice->id,
+                        'silver_product_id'  => $silverProduct->id,
+                        'description'        => $itemName,
+                        'quantity'           => $originalQuantity,
+                        'weight'             => $weight,
+                        'purity'             => 'Silver',
+                        'rate'               => $rateApplied,
+                        'making_charges'     => $makingValue,
+                        'making_charge_type' => $makingType === 'lump_sum' ? 'flat' : $makingType,
+                        'final_price'        => $itemTotal,
                     ]);
 
                     $totalBillAmount += $itemTotal;
+                    $totalVaultSilverSoldWeight += (float) $weight;
                     continue;
                 }
 
@@ -684,30 +733,32 @@ class InvoiceController extends Controller
                         ]);
                     }
 
-                    $weight = $orderItem->finished_weight; // Use actual finished weight
+                    $weight = (float) $orderItem->finished_weight;
                     $purity = $orderItem->purity;
                     $itemName = $orderItem->item_name;
                     $orderItemMetalType = strtoupper((string) ($orderItem->metal_type ?? 'GOLD'));
-                    $rateApplied = (float) ($row['rate'] ?? 0);
+                    $rateApplied = (float) ($row['rate'] ?? ($orderItemMetalType === 'SILVER' ? ($validated['silver_rate'] ?? 0) : ($validated['gold_rate'] ?? 0)));
+                    $makingType = $makingType ?: 'per_gram';
+
+                    $itemTotal = $this->calculateItemTotalPrice('order_item', $weight, $rateApplied, $makingValue, $makingType, 1);
 
                     // Mark Item as DELIVERED
                     $orderItem->update([
                         'status' => 'DELIVERED',
-                        // Optional: You can save invoice_id here if you added that column to order_items
-                        // 'invoice_id' => $invoice->id 
                     ]);
 
                     // Save to InvoiceItems
                     InvoiceItem::create([
-                        'invoice_id'    => $invoice->id,
-                        'order_item_id' => $orderItem->id, // Link Order Item
-                        'description'   => $itemName . " (Order #" . $orderItem->order->order_number . ")",
-                        'quantity'      => 1,
-                        'weight'        => $weight,
-                        'purity'        => $purity,
-                        'rate'          => $rateApplied,
-                        'making_charges' => $row['making_charges'],
-                        'final_price'   => $weight * ($rateApplied + (float) $row['making_charges'])
+                        'invoice_id'         => $invoice->id,
+                        'order_item_id'      => $orderItem->id, // Link Order Item
+                        'description'        => $itemName . " (Order #" . $orderItem->order->order_number . ")",
+                        'quantity'           => 1,
+                        'weight'             => $weight,
+                        'purity'             => $purity,
+                        'rate'               => $rateApplied,
+                        'making_charges'     => $makingValue,
+                        'making_charge_type' => $makingType === 'lump_sum' ? 'flat' : $makingType,
+                        'final_price'        => $itemTotal,
                     ]);
 
                     if ($orderItemMetalType === 'SILVER') {
@@ -715,22 +766,10 @@ class InvoiceController extends Controller
                     } else {
                         $totalVaultGoldSoldWeight += (float) $weight;
                     }
-                }
 
-                // Product rows use making as a percentage; custom orders keep per-gram making.
-                $rateForItem = 0;
-
-                if ($row['type'] === 'product') {
-                    $rateForItem = (float) ($row['rate'] ?? 0);
-                    $itemTotal = $weight * ($rateForItem + ($rateForItem * ((float) $row['making_charges'] / 100)));
                     $totalBillAmount += $itemTotal;
                     continue;
-                } elseif ($row['type'] === 'order_item') {
-                    $rateForItem = (float) ($row['rate'] ?? 0);
                 }
-
-                $itemTotal = $weight * ($rateForItem + (float) $row['making_charges']);
-                $totalBillAmount += $itemTotal;
             }
 
             // 4. Calculate Discount, Tax & Final Total

@@ -743,7 +743,17 @@ const draftFormatCurrency = (val) =>
                                     </td>
                                     <td class="px-3 py-2 text-surface-600">{{ item.purity || '—' }}</td>
                                     <td class="px-3 py-2 text-right font-mono text-surface-700">₹{{ Number(item.rate || 0).toLocaleString('en-IN') }}</td>
-                                    <td class="px-3 py-2 text-right text-surface-700">{{ Number(item.making_charges || 0).toFixed(2) }}%</td>
+                                    <td class="px-3 py-2 text-right font-mono text-surface-700">
+                                        <span v-if="item.making_charge_type === 'flat' || item.making_charge_type === 'lump_sum'">
+                                            ₹{{ Number(item.making_charges || 0).toLocaleString('en-IN') }}
+                                        </span>
+                                        <span v-else-if="item.making_charge_type === 'per_gram'">
+                                            ₹{{ Number(item.making_charges || 0).toLocaleString('en-IN') }}/g
+                                        </span>
+                                        <span v-else>
+                                            {{ Number(item.making_charges || 0).toFixed(2) }}%
+                                        </span>
+                                    </td>
                                     <td class="px-3 py-2 text-right font-mono font-bold text-surface-900">₹{{ Number(item.total_price || 0).toLocaleString('en-IN') }}</td>
                                 </tr>
                                 <tr v-if="!viewInvoice.items?.length">

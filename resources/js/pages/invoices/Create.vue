@@ -78,6 +78,7 @@ const form = useForm({
                   metal_type: String(item.metal_type || 'GOLD').toUpperCase(),
                   rate: String(item.metal_type || 'GOLD').toUpperCase() === 'SILVER' ? Number(props.defaultSilverRate || 0) : Number(props.defaultGoldRate || 0),
                   making_charges: 0,
+                  making_charge_type: 'per_gram',
                   final_price:
                       parseFloat(item.finished_weight || 0) *
                       (String(item.metal_type || 'GOLD').toUpperCase() === 'SILVER' ? Number(props.defaultSilverRate || 0) : Number(props.defaultGoldRate || 0)),
@@ -168,6 +169,7 @@ const hydrateDraft = async (draft) => {
     form.discount_value = Number(d.discount_value || 0);
     form.items = (d.items || []).map((item) => ({
         ...item,
+        making_charge_type: item.making_charge_type || (item.type === 'product' ? 'percentage' : 'per_gram'),
         draft_valid: true,
         draft_issue: null,
     }));
@@ -306,6 +308,7 @@ const fetchProduct = async () => {
                 pricing_mode: product.pricing_mode,
                 rate: product.pricing_mode === 'PIECE' ? piecePrice : silverRate,
                 making_charges: makingCharge,
+                making_charge_type: 'per_gram',
                 final_price: price,
             });
         } else {
@@ -322,6 +325,7 @@ const fetchProduct = async () => {
                 quantity: 1,
                 rate: currentRate,
                 making_charges: makingCharge,
+                making_charge_type: 'percentage',
                 final_price: price,
             });
         }
@@ -369,30 +373,43 @@ const onRowInput = (event, item, field) => {
     recalculateRow(item);
 };
 
+const onMakingTypeChange = (item) => {
+    draftValidationFailed.value = false;
+    recalculateRow(item);
+};
+
 const calculateRawRowTotal = (item) => {
     const making = parseFloat(item?.making_charges) || 0;
-
-    if (item?.type === 'silver_product') {
-        if (item.pricing_mode === 'PIECE') {
-            const quantity = Math.max(1, parseInt(item.quantity || 1, 10));
-            const pieceRate = parseFloat(item.rate) || 0;
-            const weight = parseFloat(item.weight) || 0;
-            return quantity * pieceRate + weight * making;
-        }
-
-        const weight = parseFloat(item.weight) || 0;
-        const rate = parseFloat(item.rate) || 0;
-        return weight * (rate + making);
-    }
-
+    const makingType = item?.making_charge_type || (item?.type === 'product' ? 'percentage' : 'per_gram');
     const weight = parseFloat(item?.weight) || 0;
     const rate = parseFloat(item?.rate) || 0;
 
-    if (item?.type === 'product') {
-        return weight * (rate + rate * (making / 100));
+    if (item?.type === 'silver_product' && item.pricing_mode === 'PIECE') {
+        const quantity = Math.max(1, parseInt(item.quantity || 1, 10));
+        const base = rate * quantity;
+        let makingAmount = 0;
+        if (makingType === 'percentage') {
+            makingAmount = base * (making / 100);
+        } else if (makingType === 'flat' || makingType === 'lump_sum') {
+            makingAmount = making;
+        } else {
+            makingAmount = weight * making;
+        }
+        return base + makingAmount;
     }
 
-    return weight * (rate + making);
+    const metalValue = weight * rate;
+    let makingAmount = 0;
+
+    if (makingType === 'flat' || makingType === 'lump_sum') {
+        makingAmount = making;
+    } else if (makingType === 'per_gram') {
+        makingAmount = weight * making;
+    } else {
+        makingAmount = metalValue * (making / 100);
+    }
+
+    return metalValue + makingAmount;
 };
 
 const recalculateRow = (item) => {
@@ -501,6 +518,7 @@ const submitInvoice = () => {
             quantity: item.type === 'silver_product' ? Number(item.quantity || 1) : 1,
             rate: Number(item.rate || 0),
             making_charges: item.making_charges || 0,
+            making_charge_type: item.making_charge_type || (item.type === 'product' ? 'percentage' : 'per_gram'),
         })),
     })).post(route('invoices.store'), {
         onSuccess: () => {
@@ -782,19 +800,30 @@ const submitInvoice = () => {
                         </Column>
 
                         <!-- Making -->
-                        <Column header="Making" style="width: 130px">
+                        <Column header="Making" style="width: 175px">
                             <template #body="{ data }">
-                                <InputNumber
-                                    v-model="data.making_charges"
-                                    inputClass="w-full text-right"
-                                    class="w-full"
-                                    mode="decimal"
-                                    :suffix="data.type === 'product' ? ' %' : ''"
-                                    :max="data.type === 'product' ? 100 : undefined"
-                                    :minFractionDigits="2"
-                                    :maxFractionDigits="2"
-                                    @input="onRowInput($event, data, 'making_charges')"
-                                />
+                                <div class="flex items-center gap-1">
+                                    <InputNumber
+                                        v-model="data.making_charges"
+                                        inputClass="w-full text-right !px-2"
+                                        class="w-full min-w-0"
+                                        mode="decimal"
+                                        :max="data.making_charge_type === 'percentage' ? 100 : undefined"
+                                        :minFractionDigits="0"
+                                        :maxFractionDigits="2"
+                                        @input="onRowInput($event, data, 'making_charges')"
+                                    />
+                                    <select
+                                        v-model="data.making_charge_type"
+                                        class="h-[38px] shrink-0 rounded border border-surface-300 bg-surface-50 px-1.5 text-xs font-semibold text-surface-700 hover:bg-surface-100 focus:border-amber-500 focus:outline-none"
+                                        @change="onMakingTypeChange(data)"
+                                        title="Making charge type: % (Percentage), ₹ (Flat lump sum), ₹/g (Per gram)"
+                                    >
+                                        <option value="percentage">%</option>
+                                        <option value="flat">₹ Flat</option>
+                                        <option value="per_gram">₹/g</option>
+                                    </select>
+                                </div>
                             </template>
                         </Column>
 
