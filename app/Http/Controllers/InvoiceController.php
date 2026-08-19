@@ -550,7 +550,14 @@ class InvoiceController extends Controller
             $items = collect($validated['items']);
 
             if ($items->contains(function ($item) use ($defaultGoldRate, $defaultSilverRate) {
-                $itemRate = (float) ($item['rate'] ?? (($item['type'] ?? '') === 'silver_product' ? $defaultSilverRate : $defaultGoldRate));
+                $itemType = $item['type'] ?? '';
+                if ($itemType === 'order_item') {
+                    $orderItem = OrderItem::find($item['id']);
+                    $metalType = strtoupper((string) ($orderItem?->metal_type ?? 'GOLD'));
+                    $itemRate = (float) ($item['rate'] ?? ($metalType === 'SILVER' ? $defaultSilverRate : $defaultGoldRate));
+                    return $itemRate <= 0;
+                }
+                $itemRate = (float) ($item['rate'] ?? ($itemType === 'silver_product' ? $defaultSilverRate : $defaultGoldRate));
                 return $itemRate <= 0;
             })) {
                 throw ValidationException::withMessages([
@@ -603,7 +610,7 @@ class InvoiceController extends Controller
                 if ($row['type'] === 'product') {
                     $product = Product::findOrFail($row['id']);
                     $rateApplied = (float) ($row['rate'] ?? ($validated['gold_rate'] ?? 0));
-                    $makingType = $makingType ?: 'percentage';
+                    $makingType = $makingType ?: ($makingValue > 100 ? 'flat' : 'percentage');
 
                     if ($makingType === 'percentage' && $makingValue > 100) {
                         throw ValidationException::withMessages([
@@ -639,7 +646,6 @@ class InvoiceController extends Controller
                     ]);
 
                     $totalBillAmount += $itemTotal;
-                    $totalVaultGoldSoldWeight += (float) $weight;
                     continue;
                 }
 
@@ -685,7 +691,6 @@ class InvoiceController extends Controller
                         ]);
 
                         $totalBillAmount += $itemTotal;
-                        $totalVaultSilverSoldWeight += (float) $weight;
                         continue;
                     }
 
@@ -713,7 +718,6 @@ class InvoiceController extends Controller
                     ]);
 
                     $totalBillAmount += $itemTotal;
-                    $totalVaultSilverSoldWeight += (float) $weight;
                     continue;
                 }
 
