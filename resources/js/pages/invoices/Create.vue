@@ -8,7 +8,7 @@ import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
 import Divider from 'primevue/divider';
-import IconField from 'primevue/iconfield';
+import InputGroup from 'primevue/inputgroup';
 import InputNumber from 'primevue/inputnumber';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
@@ -806,12 +806,12 @@ const submitInvoice = () => {
                         </Column>
 
                         <!-- Making -->
-                        <Column header="Making" style="width: 205px">
+                        <Column header="Making" style="width: 220px">
                             <template #body="{ data }">
-                                <div class="flex items-center gap-1.5">
+                                <InputGroup class="w-full">
                                     <InputNumber
                                         v-model="data.making_charges"
-                                        inputClass="w-full text-right !px-2"
+                                        inputClass="text-right !px-2 font-mono"
                                         class="w-full min-w-0"
                                         mode="decimal"
                                         :max="data.making_charge_type === 'percentage' ? 100 : undefined"
@@ -824,11 +824,17 @@ const submitInvoice = () => {
                                         :options="makingChargeTypeOptions"
                                         optionLabel="label"
                                         optionValue="value"
-                                        class="!w-[88px] shrink-0"
-                                        title="Making charge type: % (Percentage), ₹ (Flat lump sum), ₹/g (Per gram)"
+                                        class="!w-[96px] shrink-0"
+                                        title="Making charge type: % (Percentage), ₹ Flat (Lump sum), ₹/g (Per gram)"
                                         @change="onMakingTypeChange(data)"
-                                    />
-                                </div>
+                                    >
+                                        <template #value="slotProps">
+                                            <span class="text-xs font-semibold text-surface-800 whitespace-nowrap">
+                                                {{ slotProps.value === 'percentage' ? '%' : slotProps.value === 'flat' ? '₹ Flat' : '₹/g' }}
+                                            </span>
+                                        </template>
+                                    </Select>
+                                </InputGroup>
                             </template>
                         </Column>
 
