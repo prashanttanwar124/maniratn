@@ -15,6 +15,24 @@ import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
 import { formatIndianDate } from '@/utils/indiaTime';
 
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler,
+} from 'chart.js';
+
+// Explicitly register Chart.js and bind font to Instrument Sans
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
+ChartJS.defaults.font.family = "'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+ChartJS.defaults.font.size = 12;
+ChartJS.defaults.color = '#64748b';
+
 const props = defineProps({
     rates: Object,
     vaults: Object,
@@ -34,6 +52,16 @@ const page = usePage();
 const can = computed(() => page.props.auth?.can || {});
 const isInitialSetup = computed(() => Boolean(page.props.dayStatus?.is_initial_setup));
 const openingExpectation = computed(() => props.opening_expectation || { cash: 0, gold: 0, silver: 0, date: null });
+
+// Quick Shortcuts
+const quickLinks = [
+    { label: 'New Invoice', href: route('invoices.create'), icon: 'pi pi-plus-circle' },
+    { label: 'Invoices', href: route('invoices.index'), icon: 'pi pi-file-check' },
+    { label: 'Custom Orders', href: route('orders.index'), icon: 'pi pi-sparkles' },
+    { label: 'Customers', href: route('customers.index'), icon: 'pi pi-users' },
+    { label: 'Products', href: route('products.index'), icon: 'pi pi-box' },
+    { label: 'Karigars', href: route('karigars.index'), icon: 'pi pi-wrench' },
+];
 
 // Forms
 const rateForm = useForm({
@@ -125,10 +153,6 @@ const formatVaultMovementAmount = (movement) => {
     return ['GOLD', 'SILVER'].includes(movement.vault_type) ? formatWeight(movement.amount) : formatCurrency(movement.amount);
 };
 
-const formatVaultMovementBalance = (movement) => {
-    return ['GOLD', 'SILVER'].includes(movement.vault_type) ? formatWeight(movement.balance_after) : formatCurrency(movement.balance_after);
-};
-
 const goldSellRate = computed(() => Number(props.rates?.gold_sell || 0));
 const goldBuyRate = computed(() => Number(props.rates?.gold_buy || 0));
 const silverSellRate = computed(() => Number(props.rates?.silver_sell || 0));
@@ -136,7 +160,6 @@ const gold22kRate = computed(() => Math.round(goldSellRate.value * (22 / 24)));
 
 const goldValuation = computed(() => props.analytics?.valuations?.gold_value || (Number(props.vaults?.gold || 0) * goldSellRate.value));
 const silverValuation = computed(() => props.analytics?.valuations?.silver_value || (Number(props.vaults?.silver || 0) * silverSellRate.value));
-const liquidCashTotal = computed(() => Number(props.vaults?.cash || 0) + Number(props.vaults?.bank || 0));
 
 const closingCashDifference = computed(() => {
     if (closeForm.closing_cash === null || closeForm.closing_cash === undefined) return null;
@@ -323,8 +346,8 @@ const shopifyChartData = computed(() => {
             {
                 label: 'Gross Sales',
                 data: items.map((i) => i.sales),
-                borderColor: '#1e293b',
-                backgroundColor: 'rgba(30, 41, 59, 0.04)',
+                borderColor: '#0f172a',
+                backgroundColor: 'rgba(15, 23, 42, 0.04)',
                 borderWidth: 2,
                 fill: true,
                 tension: 0.35,
@@ -340,9 +363,9 @@ const shopifyChartOptions = {
     plugins: {
         legend: { display: false },
         tooltip: {
-            backgroundColor: '#1e293b',
-            titleFont: { size: 12, weight: '600' },
-            bodyFont: { size: 12 },
+            backgroundColor: '#0f172a',
+            titleFont: { family: "'Instrument Sans', sans-serif", size: 12, weight: '600' },
+            bodyFont: { family: "'Instrument Sans', sans-serif", size: 12 },
             padding: 8,
             callbacks: {
                 label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
@@ -352,12 +375,12 @@ const shopifyChartOptions = {
     scales: {
         x: {
             grid: { display: false },
-            ticks: { font: { size: 11 }, color: '#64748b' },
+            ticks: { font: { family: "'Instrument Sans', sans-serif", size: 11 }, color: '#64748b' },
         },
         y: {
             grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [2, 2] },
             ticks: {
-                font: { size: 11 },
+                font: { family: "'Instrument Sans', sans-serif", size: 11 },
                 color: '#64748b',
                 callback: (val) => (val >= 100000 ? `₹${(val / 100000).toFixed(1)}L` : val >= 1000 ? `₹${(val / 1000).toFixed(0)}k` : `₹${val}`),
             },
@@ -368,19 +391,19 @@ const shopifyChartOptions = {
 
 <template>
     <AppLayout>
-        <div class="mx-auto max-w-7xl space-y-4">
+        <div class="mx-auto max-w-7xl space-y-4 font-sans">
             <!-- ========================================== -->
             <!-- 1. HEADER                                  -->
             <!-- ========================================== -->
             <div class="border border-surface-200 bg-white p-5">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                         <div class="flex items-center gap-3">
-                            <h2 class="text-xl font-semibold text-surface-900">Overview</h2>
+                            <h2 class="text-xl font-semibold text-surface-900">Admin Dashboard</h2>
                             <Tag :value="isDayOpen ? 'Store Open' : 'Register Closed'" :severity="isDayOpen ? 'success' : 'danger'" />
                             <Tag v-if="activeAlerts" :value="`${activeAlerts} alert${activeAlerts > 1 ? 's' : ''}`" severity="warn" />
                         </div>
-                        <p class="mt-1 text-xs text-surface-500">Live store performance and bullion position for today.</p>
+                        <p class="mt-1 text-xs text-surface-500">Live view of sales, bullion rates, safe vaults, and workshop pipeline.</p>
                     </div>
 
                     <div class="flex flex-wrap items-center gap-2">
@@ -396,7 +419,29 @@ const shopifyChartOptions = {
             </div>
 
             <!-- ========================================== -->
-            <!-- 2. 2-COLUMN MAIN LAYOUT                    -->
+            <!-- 2. QUICK ACCESS SHORTCUTS                  -->
+            <!-- ========================================== -->
+            <div class="border border-surface-200 bg-white p-5">
+                <div class="flex items-center justify-between border-b border-surface-100 pb-3">
+                    <h3 class="text-sm font-semibold text-surface-900">Quick Access</h3>
+                    <span class="text-xs text-surface-400">Shortcuts</span>
+                </div>
+
+                <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
+                    <Link
+                        v-for="item in quickLinks"
+                        :key="item.label"
+                        :href="item.href"
+                        class="flex flex-col items-center justify-center gap-2 border border-surface-200 bg-surface-50 p-3 text-center transition hover:border-surface-400 hover:bg-surface-100"
+                    >
+                        <i :class="[item.icon, 'text-base text-surface-700']"></i>
+                        <span class="text-xs font-medium text-surface-800">{{ item.label }}</span>
+                    </Link>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 3. 2-COLUMN MAIN LAYOUT                    -->
             <!-- ========================================== -->
             <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <!-- ========================================== -->
@@ -406,9 +451,9 @@ const shopifyChartOptions = {
                     <!-- Metric Cards -->
                     <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
                         <div class="border border-surface-200 bg-white p-4">
-                            <div class="text-xs text-surface-500 font-medium">Total Sales</div>
+                            <div class="text-xs text-surface-500 font-medium">Today's Sales</div>
                             <div class="mt-1 text-xl font-bold text-surface-900">{{ formatCurrency(metrics?.today_sales) }}</div>
-                            <div class="mt-1 text-xs text-surface-400">{{ recent_invoices?.length || 0 }} orders today</div>
+                            <div class="mt-1 text-xs text-surface-400">{{ recent_invoices?.length || 0 }} bills today</div>
                         </div>
 
                         <div class="border border-surface-200 bg-white p-4">
@@ -435,21 +480,21 @@ const shopifyChartOptions = {
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-surface-100 pb-3">
                             <div class="flex items-center gap-1 border border-surface-200 p-0.5 bg-surface-50">
                                 <button
-                                    class="px-3 py-1 text-xs font-semibold transition"
+                                    class="px-3 py-1 text-xs font-semibold transition font-sans"
                                     :class="activeChartTab === 'sales' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
                                     @click="activeChartTab === 'sales'"
                                 >
                                     Total Sales
                                 </button>
                                 <button
-                                    class="px-3 py-1 text-xs font-semibold transition"
+                                    class="px-3 py-1 text-xs font-semibold transition font-sans"
                                     :class="activeChartTab === 'collections' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
                                     @click="activeChartTab === 'collections'"
                                 >
                                     Collections
                                 </button>
                                 <button
-                                    class="px-3 py-1 text-xs font-semibold transition"
+                                    class="px-3 py-1 text-xs font-semibold transition font-sans"
                                     :class="activeChartTab === 'bullion' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
                                     @click="activeChartTab === 'bullion'"
                                 >
@@ -461,8 +506,8 @@ const shopifyChartOptions = {
                                 <button
                                     v-for="range in ['7D', '14D', '30D']"
                                     :key="range"
-                                    class="px-2.5 py-0.5 text-xs font-medium transition"
-                                    :class="chartRange === range ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
+                                    class="px-2.5 py-0.5 text-xs font-medium transition font-sans"
+                                    :class="chartRange === range ? 'bg-surface-900 text-white font-semibold' : 'text-surface-600 hover:bg-surface-200'"
                                     @click="chartRange = range"
                                 >
                                     {{ range }}
@@ -658,8 +703,8 @@ const shopifyChartOptions = {
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-1.5">
                                         <span class="font-medium text-surface-800">{{ vaultLabels[m.vault_type] || m.vault_type }}</span>
-                                        <span :class="m.direction === 'IN' ? 'text-emerald-700' : 'text-rose-700'" class="font-bold text-[10px]">
-                                            {{ m.direction === 'IN' ? '+IN' : '-OUT' }}
+                                        <span :class="m.direction === 'CREDIT' ? 'text-emerald-700' : 'text-rose-700'" class="font-bold text-[10px]">
+                                            {{ m.direction === 'CREDIT' ? '+IN' : '-OUT' }}
                                         </span>
                                     </div>
                                     <div class="text-surface-400 truncate">{{ m.note || m.reference || m.time }}</div>
