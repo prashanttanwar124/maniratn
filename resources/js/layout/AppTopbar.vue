@@ -1,7 +1,7 @@
 <script setup>
 import { logout } from '@/routes';
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
+import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useLayout } from '@/layout/composables/layout';
 import { formatIndianDate } from '@/utils/indiaTime';
 
@@ -102,6 +102,7 @@ const saveRates = () => {
 // Spotlight Omnisearch State
 const isSpotlightOpen = ref(false);
 const searchQuery = ref('');
+const searchInputRef = ref(null);
 const searchResults = ref({ customers: [], invoices: [], products: [] });
 const isSearching = ref(false);
 let searchTimeout = null;
@@ -110,6 +111,9 @@ const openSpotlight = () => {
     isSpotlightOpen.value = true;
     searchQuery.value = '';
     searchResults.value = { customers: [], invoices: [], products: [] };
+    nextTick(() => {
+        searchInputRef.value?.focus();
+    });
 };
 
 const closeSpotlight = () => {
@@ -262,20 +266,20 @@ const submitLogout = () => {
         <div class="layout-topbar-actions">
             <!-- ➕ Quick Create Button with Dropdown -->
             <div class="relative quick-create-wrapper">
-                <div class="inline-flex items-center">
+                <div class="inline-flex items-center shadow-xs">
                     <Link
                         href="/invoices/create"
-                        class="inline-flex items-center gap-1.5 h-10 px-3.5 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-bold transition-all cursor-pointer shadow-xs border-r border-[#2d5651]"
+                        class="inline-flex items-center gap-1.5 h-10 px-3.5 bg-[#c08f34] hover:bg-[#a67a26] text-white text-xs font-bold transition-all cursor-pointer border-r border-[#a67a26]"
                         title="Create New Jewellery Bill (Shortcut: F2)"
                     >
-                        <i class="pi pi-plus text-xs text-[#c08f34]"></i>
+                        <i class="pi pi-plus text-xs text-white"></i>
                         <span class="hidden sm:inline font-semibold">New Bill</span>
-                        <kbd class="hidden lg:inline px-1 py-0.2 bg-black/20 text-[9px] text-amber-200/80 font-mono font-normal">F2</kbd>
+                        <kbd class="hidden lg:inline px-1 py-0.2 bg-black/20 text-[9px] text-white/90 font-mono font-normal">F2</kbd>
                     </Link>
                     <button
                         type="button"
                         @click.stop="isQuickCreateOpen = !isQuickCreateOpen"
-                        class="h-10 px-2 bg-[#1c3633] hover:bg-[#254642] text-white/80 hover:text-white transition-all cursor-pointer"
+                        class="h-10 px-2 bg-[#b58428] hover:bg-[#996e1d] text-white transition-all cursor-pointer"
                         title="More Quick Actions"
                     >
                         <i class="pi pi-chevron-down text-[10px]"></i>
@@ -393,12 +397,12 @@ const submitLogout = () => {
             <div class="flex items-center gap-3 px-4 py-3.5 border-b border-surface-200 bg-white">
                 <i class="pi pi-search text-base text-[#c08f34]"></i>
                 <input
+                    ref="searchInputRef"
                     v-model="searchQuery"
                     @input="performSearch"
                     type="text"
                     placeholder="Search invoices, customer phone, product barcode (e.g. G0001)..."
                     class="flex-1 text-sm bg-transparent border-none outline-hidden text-[#1c3633] placeholder:text-surface-400 font-medium"
-                    autofocus
                 />
                 <button
                     type="button"
