@@ -1,10 +1,9 @@
 <script setup>
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import Button from 'primevue/button';
-import Chart from 'primevue/chart';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
@@ -16,22 +15,22 @@ import Textarea from 'primevue/textarea';
 import { formatIndianDate } from '@/utils/indiaTime';
 
 import {
-    Chart as ChartJS,
+    Chart,
     CategoryScale,
     LinearScale,
     PointElement,
     LineElement,
+    BarElement,
     Title,
     Tooltip,
     Legend,
     Filler,
 } from 'chart.js';
 
-// Explicitly register Chart.js and bind font to Instrument Sans
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
-ChartJS.defaults.font.family = "'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-ChartJS.defaults.font.size = 12;
-ChartJS.defaults.color = '#64748b';
+Chart.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler);
+Chart.defaults.font.family = "'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.color = '#64748b';
 
 const props = defineProps({
     rates: Object,
@@ -55,12 +54,12 @@ const openingExpectation = computed(() => props.opening_expectation || { cash: 0
 
 // Quick Shortcuts
 const quickLinks = [
-    { label: 'New Invoice', href: route('invoices.create'), icon: 'pi pi-plus-circle' },
-    { label: 'Invoices', href: route('invoices.index'), icon: 'pi pi-file-check' },
-    { label: 'Custom Orders', href: route('orders.index'), icon: 'pi pi-sparkles' },
-    { label: 'Customers', href: route('customers.index'), icon: 'pi pi-users' },
-    { label: 'Products', href: route('products.index'), icon: 'pi pi-box' },
-    { label: 'Karigars', href: route('karigars.index'), icon: 'pi pi-wrench' },
+    { label: 'New Invoice', href: route('invoices.create'), icon: 'pi pi-plus-circle', desc: 'Create retail bill' },
+    { label: 'Invoices', href: route('invoices.index'), icon: 'pi pi-file-check', desc: 'All sales & tax bills' },
+    { label: 'Custom Orders', href: route('orders.index'), icon: 'pi pi-sparkles', desc: 'Workshop jobs' },
+    { label: 'Customers', href: route('customers.index'), icon: 'pi pi-users', desc: 'Directory & khata' },
+    { label: 'Inventory', href: route('products.index'), icon: 'pi pi-box', desc: 'Stock & barcodes' },
+    { label: 'Karigars', href: route('karigars.index'), icon: 'pi pi-wrench', desc: 'Metal issue / return' },
 ];
 
 // Forms
@@ -116,8 +115,10 @@ const showExpenseDialog = ref(false);
 const showVaultTransferDialog = ref(false);
 
 // Chart Tabs
-const activeChartTab = ref('sales');
-const chartRange = ref('7D');
+const activeChartTab = ref('sales'); // 'sales' | 'collections' | 'bullion'
+const chartRange = ref('7D'); // '7D' | '14D' | '30D'
+const chartCanvas = ref(null);
+let chartInstance = null;
 
 const totalKarigars = computed(() => props.karigars?.length || 0);
 const activeAlerts = computed(() => Number(props.metrics?.overdue_items || 0) + (props.isDayOpen ? 0 : 1));
@@ -160,6 +161,7 @@ const gold22kRate = computed(() => Math.round(goldSellRate.value * (22 / 24)));
 
 const goldValuation = computed(() => props.analytics?.valuations?.gold_value || (Number(props.vaults?.gold || 0) * goldSellRate.value));
 const silverValuation = computed(() => props.analytics?.valuations?.silver_value || (Number(props.vaults?.silver || 0) * silverSellRate.value));
+const liquidTotal = computed(() => Number(props.vaults?.cash || 0) + Number(props.vaults?.bank || 0));
 
 const closingCashDifference = computed(() => {
     if (closeForm.closing_cash === null || closeForm.closing_cash === undefined) return null;
@@ -285,120 +287,227 @@ const sendWhatsAppWish = (reminder) => {
     window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
 };
 
-// Chart Data
+// ----------------------------------------------------
+// NATIVE REACTIVE CHART.JS CONTROLLER
+// ----------------------------------------------------
+
 const filteredSalesData = computed(() => {
     const raw = props.analytics?.sales_trend || [];
     const count = chartRange.value === '7D' ? 7 : chartRange.value === '14D' ? 14 : 30;
     return raw.slice(-count);
 });
 
-const shopifyChartData = computed(() => {
+const currentChartSummary = computed(() => {
+    const items = filteredSalesData.value;
+    if (activeChartTab.value === 'collections') {
+        const total = items.reduce((acc, i) => acc + Number(i.collections || 0), 0);
+        return { label: `Total ${chartRange.value} Collections`, value: formatCurrency(total) };
+    }
+    if (activeChartTab.value === 'bullion') {
+        return { label: 'Live 24K Gold Rate', value: `₹${Number(rates?.gold_sell || 0).toLocaleString('en-IN')}/g` };
+    }
+    const total = items.reduce((acc, i) => acc + Number(i.sales || 0), 0);
+    return { label: `Total ${chartRange.value} Sales`, value: formatCurrency(total) };
+});
+
+const updateChart = () => {
+    if (!chartCanvas.value) return;
+
+    if (chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+    }
+
+    const ctx = chartCanvas.value.getContext('2d');
     const items = filteredSalesData.value;
     const labels = items.map((i) => (chartRange.value === '30D' ? i.label : `${i.short_label} ${i.label.split(' ')[0]}`));
 
+    let chartData = {};
+
     if (activeChartTab.value === 'collections') {
-        return {
+        const gradient = ctx.createLinearGradient(0, 0, 0, 260);
+        gradient.addColorStop(0, 'rgba(5, 150, 105, 0.18)');
+        gradient.addColorStop(1, 'rgba(5, 150, 105, 0.0)');
+
+        chartData = {
             labels,
             datasets: [
                 {
-                    label: 'Collections',
+                    label: 'Collections (₹)',
                     data: items.map((i) => i.collections),
                     borderColor: '#059669',
-                    backgroundColor: 'rgba(5, 150, 105, 0.05)',
-                    borderWidth: 2,
+                    backgroundColor: gradient,
+                    borderWidth: 2.5,
                     fill: true,
                     tension: 0.35,
-                    pointRadius: 3,
+                    pointBackgroundColor: '#059669',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
                 },
             ],
         };
-    }
+    } else if (activeChartTab.value === 'bullion') {
+        const count = chartRange.value === '7D' ? 7 : chartRange.value === '14D' ? 14 : 14;
+        const bullionItems = (props.analytics?.bullion_trend || []).slice(-count);
 
-    if (activeChartTab.value === 'bullion') {
-        const bullionItems = (props.analytics?.bullion_trend || []).slice(-(chartRange.value === '7D' ? 7 : chartRange.value === '14D' ? 14 : 14));
-        return {
+        chartData = {
             labels: bullionItems.map((i) => i.label),
             datasets: [
                 {
                     label: 'Gold 24K (₹/g)',
                     data: bullionItems.map((i) => i.gold_sell),
                     borderColor: '#c4922a',
-                    borderWidth: 2,
+                    backgroundColor: 'rgba(196, 146, 42, 0.05)',
+                    borderWidth: 2.5,
+                    fill: false,
                     tension: 0.3,
-                    pointRadius: 3,
+                    pointBackgroundColor: '#c4922a',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
                 },
                 {
                     label: 'Silver (₹/g)',
                     data: bullionItems.map((i) => i.silver_sell),
                     borderColor: '#64748b',
                     borderWidth: 2,
-                    borderDash: [3, 3],
+                    borderDash: [4, 4],
+                    fill: false,
                     tension: 0.3,
+                    pointBackgroundColor: '#64748b',
                     pointRadius: 3,
+                },
+            ],
+        };
+    } else {
+        // Sales
+        const gradient = ctx.createLinearGradient(0, 0, 0, 260);
+        gradient.addColorStop(0, 'rgba(15, 23, 42, 0.14)');
+        gradient.addColorStop(1, 'rgba(15, 23, 42, 0.0)');
+
+        chartData = {
+            labels,
+            datasets: [
+                {
+                    label: 'Gross Sales (₹)',
+                    data: items.map((i) => i.sales),
+                    borderColor: '#0f172a',
+                    backgroundColor: gradient,
+                    borderWidth: 2.5,
+                    fill: true,
+                    tension: 0.35,
+                    pointBackgroundColor: '#0f172a',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
                 },
             ],
         };
     }
 
-    return {
-        labels,
-        datasets: [
-            {
-                label: 'Gross Sales',
-                data: items.map((i) => i.sales),
-                borderColor: '#0f172a',
-                backgroundColor: 'rgba(15, 23, 42, 0.04)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.35,
-                pointRadius: 3,
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
             },
-        ],
-    };
+            plugins: {
+                legend: {
+                    display: activeChartTab.value === 'bullion',
+                    position: 'top',
+                    align: 'end',
+                    labels: {
+                        boxWidth: 12,
+                        boxHeight: 12,
+                        font: { family: "'Instrument Sans', sans-serif", size: 11, weight: '500' },
+                    },
+                },
+                tooltip: {
+                    backgroundColor: '#0f172a',
+                    titleFont: { family: "'Instrument Sans', sans-serif", size: 12, weight: '600' },
+                    bodyFont: { family: "'Instrument Sans', sans-serif", size: 12 },
+                    padding: 10,
+                    cornerRadius: 0,
+                    callbacks: {
+                        label: (ctx) => {
+                            const val = ctx.parsed.y;
+                            if (activeChartTab.value === 'bullion') {
+                                return ` ${ctx.dataset.label}: ₹${Number(val).toLocaleString('en-IN')}`;
+                            }
+                            return ` ${ctx.dataset.label}: ${formatCurrency(val)}`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        font: { family: "'Instrument Sans', sans-serif", size: 11 },
+                        color: '#64748b',
+                    },
+                },
+                y: {
+                    grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [3, 3] },
+                    ticks: {
+                        font: { family: "'Instrument Sans', sans-serif", size: 11 },
+                        color: '#64748b',
+                        callback: (val) => {
+                            if (activeChartTab.value === 'bullion') return `₹${val}`;
+                            if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
+                            if (val >= 1000) return `₹${(val / 1000).toFixed(0)}k`;
+                            return `₹${val}`;
+                        },
+                    },
+                },
+            },
+        },
+    });
+};
+
+const setTab = (tab) => {
+    activeChartTab.value = tab;
+    nextTick(() => updateChart());
+};
+
+const setRange = (range) => {
+    chartRange.value = range;
+    nextTick(() => updateChart());
+};
+
+onMounted(() => {
+    nextTick(() => updateChart());
 });
 
-const shopifyChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: { display: false },
-        tooltip: {
-            backgroundColor: '#0f172a',
-            titleFont: { family: "'Instrument Sans', sans-serif", size: 12, weight: '600' },
-            bodyFont: { family: "'Instrument Sans', sans-serif", size: 12 },
-            padding: 8,
-            callbacks: {
-                label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
-            },
-        },
-    },
-    scales: {
-        x: {
-            grid: { display: false },
-            ticks: { font: { family: "'Instrument Sans', sans-serif", size: 11 }, color: '#64748b' },
-        },
-        y: {
-            grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [2, 2] },
-            ticks: {
-                font: { family: "'Instrument Sans', sans-serif", size: 11 },
-                color: '#64748b',
-                callback: (val) => (val >= 100000 ? `₹${(val / 100000).toFixed(1)}L` : val >= 1000 ? `₹${(val / 1000).toFixed(0)}k` : `₹${val}`),
-            },
-        },
-    },
-};
+onUnmounted(() => {
+    if (chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+    }
+});
+
+watch([() => props.analytics], () => {
+    nextTick(() => updateChart());
+});
 </script>
 
 <template>
     <AppLayout>
-        <div class="mx-auto max-w-7xl space-y-4 font-sans">
+        <div class="mx-auto max-w-7xl space-y-4 font-sans pb-10">
             <!-- ========================================== -->
             <!-- 1. HEADER                                  -->
             <!-- ========================================== -->
             <div class="border border-surface-200 bg-white p-5">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <div class="flex items-center gap-3">
+                        <div class="flex flex-wrap items-center gap-3">
                             <h2 class="text-xl font-semibold text-surface-900">Admin Dashboard</h2>
                             <Tag :value="isDayOpen ? 'Store Open' : 'Register Closed'" :severity="isDayOpen ? 'success' : 'danger'" />
                             <Tag v-if="activeAlerts" :value="`${activeAlerts} alert${activeAlerts > 1 ? 's' : ''}`" severity="warn" />
@@ -424,7 +533,7 @@ const shopifyChartOptions = {
             <div class="border border-surface-200 bg-white p-5">
                 <div class="flex items-center justify-between border-b border-surface-100 pb-3">
                     <h3 class="text-sm font-semibold text-surface-900">Quick Access</h3>
-                    <span class="text-xs text-surface-400">Shortcuts</span>
+                    <span class="text-xs text-surface-400">Store Shortcuts</span>
                 </div>
 
                 <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
@@ -432,10 +541,15 @@ const shopifyChartOptions = {
                         v-for="item in quickLinks"
                         :key="item.label"
                         :href="item.href"
-                        class="flex flex-col items-center justify-center gap-2 border border-surface-200 bg-surface-50 p-3 text-center transition hover:border-surface-400 hover:bg-surface-100"
+                        class="flex flex-col items-start justify-between border border-surface-200 bg-surface-50 p-3 transition hover:border-surface-400 hover:bg-surface-100"
                     >
-                        <i :class="[item.icon, 'text-base text-surface-700']"></i>
-                        <span class="text-xs font-medium text-surface-800">{{ item.label }}</span>
+                        <div class="flex h-7 w-7 items-center justify-center border border-surface-200 bg-white text-surface-800">
+                            <i :class="[item.icon, 'text-xs']"></i>
+                        </div>
+                        <div class="mt-2">
+                            <div class="text-xs font-semibold text-surface-900">{{ item.label }}</div>
+                            <div class="text-[10px] text-surface-400 truncate">{{ item.desc }}</div>
+                        </div>
                     </Link>
                 </div>
             </div>
@@ -478,45 +592,58 @@ const shopifyChartOptions = {
                     <!-- Analytics Chart Card -->
                     <div class="border border-surface-200 bg-white p-5">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-surface-100 pb-3">
-                            <div class="flex items-center gap-1 border border-surface-200 p-0.5 bg-surface-50">
+                            <!-- Tab Controls -->
+                            <div class="flex items-center border border-surface-200 bg-surface-50 p-0.5">
                                 <button
-                                    class="px-3 py-1 text-xs font-semibold transition font-sans"
+                                    type="button"
+                                    class="px-3 py-1.5 text-xs font-semibold transition cursor-pointer"
                                     :class="activeChartTab === 'sales' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
-                                    @click="activeChartTab === 'sales'"
+                                    @click="setTab('sales')"
                                 >
                                     Total Sales
                                 </button>
                                 <button
-                                    class="px-3 py-1 text-xs font-semibold transition font-sans"
+                                    type="button"
+                                    class="px-3 py-1.5 text-xs font-semibold transition cursor-pointer"
                                     :class="activeChartTab === 'collections' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
-                                    @click="activeChartTab === 'collections'"
+                                    @click="setTab('collections')"
                                 >
                                     Collections
                                 </button>
                                 <button
-                                    class="px-3 py-1 text-xs font-semibold transition font-sans"
+                                    type="button"
+                                    class="px-3 py-1.5 text-xs font-semibold transition cursor-pointer"
                                     :class="activeChartTab === 'bullion' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
-                                    @click="activeChartTab === 'bullion'"
+                                    @click="setTab('bullion')"
                                 >
                                     Rates Trend
                                 </button>
                             </div>
 
-                            <div class="flex items-center gap-1 border border-surface-200 p-0.5 bg-surface-50">
-                                <button
-                                    v-for="range in ['7D', '14D', '30D']"
-                                    :key="range"
-                                    class="px-2.5 py-0.5 text-xs font-medium transition font-sans"
-                                    :class="chartRange === range ? 'bg-surface-900 text-white font-semibold' : 'text-surface-600 hover:bg-surface-200'"
-                                    @click="chartRange = range"
-                                >
-                                    {{ range }}
-                                </button>
+                            <!-- Range Controls -->
+                            <div class="flex items-center gap-3">
+                                <div class="hidden text-right sm:block">
+                                    <div class="text-[11px] text-surface-400">{{ currentChartSummary.label }}</div>
+                                    <div class="text-xs font-bold text-surface-900">{{ currentChartSummary.value }}</div>
+                                </div>
+                                <div class="flex items-center border border-surface-200 bg-surface-50 p-0.5">
+                                    <button
+                                        v-for="range in ['7D', '14D', '30D']"
+                                        :key="range"
+                                        type="button"
+                                        class="px-2.5 py-1 text-xs font-medium transition cursor-pointer"
+                                        :class="chartRange === range ? 'bg-surface-900 text-white font-semibold' : 'text-surface-600 hover:bg-surface-200'"
+                                        @click="setRange(range)"
+                                    >
+                                        {{ range }}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="mt-4 h-64 w-full">
-                            <Chart type="line" :data="shopifyChartData" :options="shopifyChartOptions" class="h-full w-full" />
+                        <!-- Canvas Container -->
+                        <div class="mt-4 h-64 w-full relative">
+                            <canvas ref="chartCanvas" class="h-full w-full"></canvas>
                         </div>
                     </div>
 
@@ -524,7 +651,7 @@ const shopifyChartOptions = {
                     <div v-if="metrics?.overdue_items > 0 || metrics?.new_orders > 0 || karigars?.length > 0" class="border border-surface-200 bg-white p-5">
                         <div class="flex items-center justify-between border-b border-surface-100 pb-2">
                             <h3 class="text-xs font-semibold uppercase tracking-wider text-surface-600">Needs Attention</h3>
-                            <span class="text-xs text-surface-400">Action items</span>
+                            <span class="text-xs text-surface-400">Workshop & Delivery</span>
                         </div>
 
                         <div class="mt-3 space-y-2 text-xs">
@@ -556,7 +683,7 @@ const shopifyChartOptions = {
                         <div class="flex items-center justify-between border-b border-surface-100 pb-3">
                             <h3 class="text-sm font-semibold text-surface-900">Recent Invoices</h3>
                             <Link :href="route('invoices.index')" class="text-xs font-semibold text-surface-600 hover:text-surface-900">
-                                View all &rarr;
+                                View all invoices &rarr;
                             </Link>
                         </div>
 
