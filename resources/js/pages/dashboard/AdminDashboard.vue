@@ -1,7 +1,7 @@
 <script setup>
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 
 import Button from 'primevue/button';
 import Column from 'primevue/column';
@@ -13,24 +13,6 @@ import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
 import { formatIndianDate } from '@/utils/indiaTime';
-
-import {
-    Chart,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler,
-} from 'chart.js';
-
-Chart.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler);
-Chart.defaults.font.family = "'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-Chart.defaults.font.size = 12;
-Chart.defaults.color = '#64748b';
 
 const props = defineProps({
     rates: Object,
@@ -114,11 +96,10 @@ const showCloseDialog = ref(false);
 const showExpenseDialog = ref(false);
 const showVaultTransferDialog = ref(false);
 
-// Chart Tabs
+// Chart Tabs & Interactive State
 const activeChartTab = ref('sales'); // 'sales' | 'collections' | 'bullion'
 const chartRange = ref('7D'); // '7D' | '14D' | '30D'
-const chartCanvas = ref(null);
-let chartInstance = null;
+const hoveredIndex = ref(null);
 
 const totalKarigars = computed(() => props.karigars?.length || 0);
 const activeAlerts = computed(() => Number(props.metrics?.overdue_items || 0) + (props.isDayOpen ? 0 : 1));
@@ -161,7 +142,6 @@ const gold22kRate = computed(() => Math.round(goldSellRate.value * (22 / 24)));
 
 const goldValuation = computed(() => props.analytics?.valuations?.gold_value || (Number(props.vaults?.gold || 0) * goldSellRate.value));
 const silverValuation = computed(() => props.analytics?.valuations?.silver_value || (Number(props.vaults?.silver || 0) * silverSellRate.value));
-const liquidTotal = computed(() => Number(props.vaults?.cash || 0) + Number(props.vaults?.bank || 0));
 
 const closingCashDifference = computed(() => {
     if (closeForm.closing_cash === null || closeForm.closing_cash === undefined) return null;
@@ -288,8 +268,17 @@ const sendWhatsAppWish = (reminder) => {
 };
 
 // ----------------------------------------------------
-// BULLETPROOF REACTIVE CHART CONTROLLER
+// PURE VUE ULTRA-REACTIVE SVG CHART ENGINE
 // ----------------------------------------------------
+
+const chartViewWidth = 800;
+const chartViewHeight = 220;
+const padLeft = 60;
+const padRight = 30;
+const padTop = 20;
+const padBottom = 30;
+const plotWidth = chartViewWidth - padLeft - padRight;
+const plotHeight = chartViewHeight - padTop - padBottom;
 
 const filteredSalesData = computed(() => {
     const raw = props.analytics?.sales_trend || [];
@@ -297,283 +286,163 @@ const filteredSalesData = computed(() => {
     return raw.slice(-count);
 });
 
+const filteredBullionData = computed(() => {
+    const raw = props.analytics?.bullion_trend || [];
+    const count = chartRange.value === '7D' ? 7 : chartRange.value === '14D' ? 14 : 14;
+    return raw.slice(-count);
+});
+
 const currentChartSummary = computed(() => {
-    const items = filteredSalesData.value;
     if (activeChartTab.value === 'collections') {
-        const total = items.reduce((acc, i) => acc + Number(i.collections || 0), 0);
+        const total = filteredSalesData.value.reduce((acc, i) => acc + Number(i.collections || 0), 0);
         return { label: `Total ${chartRange.value} Collections`, value: formatCurrency(total) };
     }
     if (activeChartTab.value === 'bullion') {
         return { label: 'Live 24K Gold Rate', value: `₹${Number(rates?.gold_sell || 0).toLocaleString('en-IN')}/g` };
     }
-    const total = items.reduce((acc, i) => acc + Number(i.sales || 0), 0);
+    const total = filteredSalesData.value.reduce((acc, i) => acc + Number(i.sales || 0), 0);
     return { label: `Total ${chartRange.value} Sales`, value: formatCurrency(total) };
 });
 
-const getChartPayload = () => {
-    if (!chartCanvas.value) return null;
-    const ctx = chartCanvas.value.getContext('2d');
+// Calculate Bezier Paths
+const buildSmoothPath = (points) => {
+    if (!points || points.length === 0) return '';
+    if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+
+    let d = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 0; i < points.length - 1; i++) {
+        const p0 = points[i === 0 ? 0 : i - 1];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = points[i + 2] || p2;
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+        d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+    }
+    return d;
+};
+
+// Financial Chart (Sales or Collections)
+const financeChartCalculations = computed(() => {
     const items = filteredSalesData.value;
-    const labels = items.map((i) => (chartRange.value === '30D' ? i.label : `${i.short_label} ${i.label.split(' ')[0]}`));
+    if (!items.length) return { points: [], linePath: '', areaPath: '', yTicks: [], xTicks: [] };
 
-    if (activeChartTab.value === 'collections') {
-        const gradient = ctx.createLinearGradient(0, 0, 0, 260);
-        gradient.addColorStop(0, 'rgba(5, 150, 105, 0.16)');
-        gradient.addColorStop(1, 'rgba(5, 150, 105, 0.0)');
+    const values = items.map((i) => (activeChartTab.value === 'collections' ? Number(i.collections || 0) : Number(i.sales || 0)));
+    const maxVal = Math.max(...values, 1000) * 1.15;
+    const minVal = 0;
 
+    const points = items.map((item, idx) => {
+        const x = padLeft + (idx / (items.length - 1 || 1)) * plotWidth;
+        const val = activeChartTab.value === 'collections' ? Number(item.collections || 0) : Number(item.sales || 0);
+        const y = padTop + plotHeight * (1 - (val - minVal) / (maxVal - minVal));
         return {
-            data: {
-                labels,
-                datasets: [
-                    {
-                        label: 'Collections (₹)',
-                        data: items.map((i) => i.collections),
-                        borderColor: '#059669',
-                        backgroundColor: gradient,
-                        borderWidth: 2.5,
-                        fill: true,
-                        tension: 0.35,
-                        pointBackgroundColor: '#059669',
-                        pointBorderColor: '#ffffff',
-                        pointBorderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#0f172a',
-                        titleFont: { family: "'Instrument Sans', sans-serif", size: 12, weight: '600' },
-                        bodyFont: { family: "'Instrument Sans', sans-serif", size: 12 },
-                        padding: 10,
-                        cornerRadius: 0,
-                        callbacks: {
-                            label: (ctx) => ` Collections: ${formatCurrency(ctx.parsed.y)}`,
-                        },
-                    },
-                },
-                scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: { font: { family: "'Instrument Sans', sans-serif", size: 11 }, color: '#64748b' },
-                    },
-                    y: {
-                        grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [3, 3] },
-                        ticks: {
-                            font: { family: "'Instrument Sans', sans-serif", size: 11 },
-                            color: '#64748b',
-                            callback: (val) => (val >= 100000 ? `₹${(val / 100000).toFixed(1)}L` : val >= 1000 ? `₹${(val / 1000).toFixed(0)}k` : `₹${val}`),
-                        },
-                    },
-                },
-            },
+            x,
+            y,
+            val,
+            label: item.label,
+            short_label: item.short_label,
+            formatted: formatCurrency(val),
         };
-    }
-
-    if (activeChartTab.value === 'bullion') {
-        const count = chartRange.value === '7D' ? 7 : chartRange.value === '14D' ? 14 : 14;
-        const bullionItems = (props.analytics?.bullion_trend || []).slice(-count);
-
-        return {
-            data: {
-                labels: bullionItems.map((i) => i.label),
-                datasets: [
-                    {
-                        label: 'Gold 24K (₹/g)',
-                        data: bullionItems.map((i) => i.gold_sell),
-                        borderColor: '#c4922a',
-                        backgroundColor: 'rgba(196, 146, 42, 0.05)',
-                        borderWidth: 2.5,
-                        fill: false,
-                        tension: 0.3,
-                        pointBackgroundColor: '#c4922a',
-                        pointBorderColor: '#ffffff',
-                        pointBorderWidth: 2,
-                        pointRadius: 4,
-                        yAxisID: 'y',
-                    },
-                    {
-                        label: 'Silver (₹/g)',
-                        data: bullionItems.map((i) => i.silver_sell),
-                        borderColor: '#64748b',
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        borderDash: [4, 4],
-                        fill: false,
-                        tension: 0.3,
-                        pointBackgroundColor: '#64748b',
-                        pointRadius: 3,
-                        yAxisID: 'y1',
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        align: 'end',
-                        labels: {
-                            boxWidth: 10,
-                            boxHeight: 10,
-                            font: { family: "'Instrument Sans', sans-serif", size: 11, weight: '600' },
-                        },
-                    },
-                    tooltip: {
-                        backgroundColor: '#0f172a',
-                        titleFont: { family: "'Instrument Sans', sans-serif", size: 12, weight: '600' },
-                        bodyFont: { family: "'Instrument Sans', sans-serif", size: 12 },
-                        padding: 10,
-                        cornerRadius: 0,
-                        callbacks: {
-                            label: (ctx) => ` ${ctx.dataset.label}: ₹${Number(ctx.parsed.y).toLocaleString('en-IN')}`,
-                        },
-                    },
-                },
-                scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: { font: { family: "'Instrument Sans', sans-serif", size: 11 }, color: '#64748b' },
-                    },
-                    y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
-                        grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [3, 3] },
-                        ticks: {
-                            font: { family: "'Instrument Sans', sans-serif", size: 11 },
-                            color: '#c4922a',
-                            callback: (val) => `₹${val}`,
-                        },
-                    },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        grid: { drawOnChartArea: false },
-                        ticks: {
-                            font: { family: "'Instrument Sans', sans-serif", size: 11 },
-                            color: '#64748b',
-                            callback: (val) => `₹${val}`,
-                        },
-                    },
-                },
-            },
-        };
-    }
-
-    // Default: Total Sales
-    const gradient = ctx.createLinearGradient(0, 0, 0, 260);
-    gradient.addColorStop(0, 'rgba(15, 23, 42, 0.14)');
-    gradient.addColorStop(1, 'rgba(15, 23, 42, 0.0)');
-
-    return {
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: 'Gross Sales (₹)',
-                    data: items.map((i) => i.sales),
-                    borderColor: '#0f172a',
-                    backgroundColor: gradient,
-                    borderWidth: 2.5,
-                    fill: true,
-                    tension: 0.35,
-                    pointBackgroundColor: '#0f172a',
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                },
-            ],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#0f172a',
-                    titleFont: { family: "'Instrument Sans', sans-serif", size: 12, weight: '600' },
-                    bodyFont: { family: "'Instrument Sans', sans-serif", size: 12 },
-                    padding: 10,
-                    cornerRadius: 0,
-                    callbacks: {
-                        label: (ctx) => ` Sales: ${formatCurrency(ctx.parsed.y)}`,
-                    },
-                },
-            },
-            scales: {
-                x: {
-                    grid: { display: false },
-                    ticks: { font: { family: "'Instrument Sans', sans-serif", size: 11 }, color: '#64748b' },
-                },
-                y: {
-                    grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [3, 3] },
-                    ticks: {
-                        font: { family: "'Instrument Sans', sans-serif", size: 11 },
-                        color: '#64748b',
-                        callback: (val) => (val >= 100000 ? `₹${(val / 100000).toFixed(1)}L` : val >= 1000 ? `₹${(val / 1000).toFixed(0)}k` : `₹${val}`),
-                    },
-                },
-            },
-        },
-    };
-};
-
-const updateChart = () => {
-    if (!chartCanvas.value) return;
-
-    const payload = getChartPayload();
-    if (!payload) return;
-
-    if (chartInstance) {
-        chartInstance.destroy();
-        chartInstance = null;
-    }
-
-    const ctx = chartCanvas.value.getContext('2d');
-    chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: payload.data,
-        options: payload.options,
     });
-};
 
-const setTab = (tab) => {
-    activeChartTab.value = tab;
-    nextTick(() => updateChart());
-};
+    const linePath = buildSmoothPath(points);
+    const bottomY = padTop + plotHeight;
+    const areaPath = points.length
+        ? `${linePath} L ${points[points.length - 1].x} ${bottomY} L ${points[0].x} ${bottomY} Z`
+        : '';
 
-const setRange = (range) => {
-    chartRange.value = range;
-    nextTick(() => updateChart());
-};
+    // 4 Horizontal Y Ticks
+    const yTicks = [0, 0.33, 0.66, 1].map((pct) => {
+        const val = minVal + (maxVal - minVal) * pct;
+        const y = padTop + plotHeight * (1 - pct);
+        const formatted = val >= 100000 ? `₹${(val / 100000).toFixed(1)}L` : val >= 1000 ? `₹${(val / 1000).toFixed(0)}k` : `₹${Math.round(val)}`;
+        return { y, formatted };
+    });
 
-onMounted(() => {
-    nextTick(() => updateChart());
+    // X Axis Ticks
+    const step = items.length > 14 ? 4 : items.length > 7 ? 2 : 1;
+    const xTicks = points.filter((_, idx) => idx % step === 0 || idx === points.length - 1);
+
+    return { points, linePath, areaPath, yTicks, xTicks };
 });
 
-onUnmounted(() => {
-    if (chartInstance) {
-        chartInstance.destroy();
-        chartInstance = null;
-    }
+// Bullion Chart Calculations (Dual Axis)
+const bullionChartCalculations = computed(() => {
+    const items = filteredBullionData.value;
+    if (!items.length) return { goldPoints: [], silverPoints: [], goldPath: '', silverPath: '', goldYTicks: [], silverYTicks: [], xTicks: [] };
+
+    const goldVals = items.map((i) => Number(i.gold_sell || 0));
+    const silverVals = items.map((i) => Number(i.silver_sell || 0));
+
+    const minGold = Math.floor((Math.min(...goldVals, 7000) * 0.98) / 100) * 100;
+    const maxGold = Math.ceil((Math.max(...goldVals, 7500) * 1.02) / 100) * 100;
+
+    const minSilver = Math.floor((Math.min(...silverVals, 80) * 0.95) / 5) * 5;
+    const maxSilver = Math.ceil((Math.max(...silverVals, 95) * 1.05) / 5) * 5;
+
+    const goldPoints = items.map((item, idx) => {
+        const x = padLeft + (idx / (items.length - 1 || 1)) * plotWidth;
+        const val = Number(item.gold_sell || 0);
+        const y = padTop + plotHeight * (1 - (val - minGold) / (maxGold - minGold || 1));
+        return { x, y, val, label: item.label, formatted: `₹${val.toLocaleString('en-IN')}/g` };
+    });
+
+    const silverPoints = items.map((item, idx) => {
+        const x = padLeft + (idx / (items.length - 1 || 1)) * plotWidth;
+        const val = Number(item.silver_sell || 0);
+        const y = padTop + plotHeight * (1 - (val - minSilver) / (maxSilver - minSilver || 1));
+        return { x, y, val, label: item.label, formatted: `₹${val.toLocaleString('en-IN')}/g` };
+    });
+
+    const goldPath = buildSmoothPath(goldPoints);
+    const silverPath = buildSmoothPath(silverPoints);
+
+    const goldYTicks = [0, 0.5, 1].map((pct) => {
+        const val = Math.round(minGold + (maxGold - minGold) * pct);
+        const y = padTop + plotHeight * (1 - pct);
+        return { y, formatted: `₹${val}` };
+    });
+
+    const silverYTicks = [0, 0.5, 1].map((pct) => {
+        const val = Math.round(minSilver + (maxSilver - minSilver) * pct);
+        const y = padTop + plotHeight * (1 - pct);
+        return { y, formatted: `₹${val}` };
+    });
+
+    const xTicks = goldPoints.filter((_, idx) => idx % 2 === 0 || idx === goldPoints.length - 1);
+
+    return { goldPoints, silverPoints, goldPath, silverPath, goldYTicks, silverYTicks, xTicks };
 });
 
-watch([() => props.analytics], () => {
-    nextTick(() => updateChart());
-});
+const handleSvgMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clientX = e.clientX - rect.left;
+    const ratio = clientX / rect.width;
+    const svgX = ratio * chartViewWidth;
+
+    const points = activeChartTab.value === 'bullion' ? bullionChartCalculations.value.goldPoints : financeChartCalculations.value.points;
+    if (!points.length) return;
+
+    let closestIdx = 0;
+    let minDiff = Infinity;
+    points.forEach((p, idx) => {
+        const diff = Math.abs(p.x - svgX);
+        if (diff < minDiff) {
+            minDiff = diff;
+            closestIdx = idx;
+        }
+    });
+
+    hoveredIndex.value = closestIdx;
+};
+
+const handleSvgMouseLeave = () => {
+    hoveredIndex.value = null;
+};
 </script>
 
 <template>
@@ -667,16 +536,18 @@ watch([() => props.analytics], () => {
                         </div>
                     </div>
 
-                    <!-- Analytics Chart Card -->
+                    <!-- ========================================== -->
+                    <!-- ULTRA-REACTIVE FINTECH SVG CHART           -->
+                    <!-- ========================================== -->
                     <div class="border border-surface-200 bg-white p-5">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-surface-100 pb-3">
-                            <!-- Tab Controls -->
+                            <!-- Tab Switcher -->
                             <div class="flex items-center border border-surface-200 bg-surface-50 p-0.5">
                                 <button
                                     type="button"
                                     class="px-3 py-1.5 text-xs font-semibold transition cursor-pointer"
                                     :class="activeChartTab === 'sales' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
-                                    @click="setTab('sales')"
+                                    @click="activeChartTab = 'sales'"
                                 >
                                     Total Sales
                                 </button>
@@ -684,7 +555,7 @@ watch([() => props.analytics], () => {
                                     type="button"
                                     class="px-3 py-1.5 text-xs font-semibold transition cursor-pointer"
                                     :class="activeChartTab === 'collections' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
-                                    @click="setTab('collections')"
+                                    @click="activeChartTab = 'collections'"
                                 >
                                     Collections
                                 </button>
@@ -692,13 +563,13 @@ watch([() => props.analytics], () => {
                                     type="button"
                                     class="px-3 py-1.5 text-xs font-semibold transition cursor-pointer"
                                     :class="activeChartTab === 'bullion' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
-                                    @click="setTab('bullion')"
+                                    @click="activeChartTab = 'bullion'"
                                 >
                                     Rates Trend
                                 </button>
                             </div>
 
-                            <!-- Range Controls -->
+                            <!-- Range Switcher & Summary -->
                             <div class="flex items-center gap-3">
                                 <div class="hidden text-right sm:block">
                                     <div class="text-[11px] text-surface-400">{{ currentChartSummary.label }}</div>
@@ -711,7 +582,7 @@ watch([() => props.analytics], () => {
                                         type="button"
                                         class="px-2.5 py-1 text-xs font-medium transition cursor-pointer"
                                         :class="chartRange === range ? 'bg-surface-900 text-white font-semibold' : 'text-surface-600 hover:bg-surface-200'"
-                                        @click="setRange(range)"
+                                        @click="chartRange = range"
                                     >
                                         {{ range }}
                                     </button>
@@ -719,9 +590,288 @@ watch([() => props.analytics], () => {
                             </div>
                         </div>
 
-                        <!-- Canvas Container -->
-                        <div class="mt-4 h-64 w-full relative">
-                            <canvas ref="chartCanvas" class="h-full w-full"></canvas>
+                        <!-- Bullion Legend (When on Rates tab) -->
+                        <div v-if="activeChartTab === 'bullion'" class="mt-2 flex items-center justify-end gap-4 text-xs font-medium">
+                            <span class="flex items-center gap-1.5 text-amber-800">
+                                <span class="h-2 w-4 bg-[#c4922a]"></span>
+                                Gold 24K (Fine)
+                            </span>
+                            <span class="flex items-center gap-1.5 text-slate-600">
+                                <span class="h-2 w-4 border-b-2 border-dashed border-slate-500"></span>
+                                Silver 925
+                            </span>
+                        </div>
+
+                        <!-- SVG Interactive Canvas Container -->
+                        <div class="mt-3 relative h-64 w-full select-none" @mousemove="handleSvgMouseMove" @mouseleave="handleSvgMouseLeave">
+                            <svg :viewBox="`0 0 ${chartViewWidth} ${chartViewHeight}`" class="h-full w-full overflow-visible">
+                                <defs>
+                                    <!-- Sales Gradient -->
+                                    <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#0f172a" stop-opacity="0.12" />
+                                        <stop offset="100%" stop-color="#0f172a" stop-opacity="0.0" />
+                                    </linearGradient>
+
+                                    <!-- Collections Gradient -->
+                                    <linearGradient id="collectionsGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#059669" stop-opacity="0.18" />
+                                        <stop offset="100%" stop-color="#059669" stop-opacity="0.0" />
+                                    </linearGradient>
+                                </defs>
+
+                                <!-- Grid Lines & Y Ticks (Finance Mode) -->
+                                <template v-if="activeChartTab !== 'bullion'">
+                                    <g v-for="(tick, idx) in financeChartCalculations.yTicks" :key="`y-${idx}`">
+                                        <line
+                                            :x1="padLeft"
+                                            :y1="tick.y"
+                                            :x2="chartViewWidth - padRight"
+                                            :y2="tick.y"
+                                            stroke="#e2e8f0"
+                                            stroke-dasharray="3 3"
+                                            stroke-width="1"
+                                        />
+                                        <text
+                                            :x="padLeft - 10"
+                                            :y="tick.y + 4"
+                                            text-anchor="end"
+                                            fill="#64748b"
+                                            font-size="11"
+                                            font-family="Instrument Sans, sans-serif"
+                                        >
+                                            {{ tick.formatted }}
+                                        </text>
+                                    </g>
+                                </template>
+
+                                <!-- Grid Lines & Dual Y Ticks (Bullion Mode) -->
+                                <template v-else>
+                                    <!-- Gold Left Ticks -->
+                                    <g v-for="(tick, idx) in bullionChartCalculations.goldYTicks" :key="`gy-${idx}`">
+                                        <line
+                                            :x1="padLeft"
+                                            :y1="tick.y"
+                                            :x2="chartViewWidth - padRight"
+                                            :y2="tick.y"
+                                            stroke="#e2e8f0"
+                                            stroke-dasharray="3 3"
+                                            stroke-width="1"
+                                        />
+                                        <text
+                                            :x="padLeft - 8"
+                                            :y="tick.y + 4"
+                                            text-anchor="end"
+                                            fill="#c4922a"
+                                            font-size="11"
+                                            font-weight="600"
+                                            font-family="Instrument Sans, sans-serif"
+                                        >
+                                            {{ tick.formatted }}
+                                        </text>
+                                    </g>
+
+                                    <!-- Silver Right Ticks -->
+                                    <g v-for="(tick, idx) in bullionChartCalculations.silverYTicks" :key="`sy-${idx}`">
+                                        <text
+                                            :x="chartViewWidth - padRight + 8"
+                                            :y="tick.y + 4"
+                                            text-anchor="start"
+                                            fill="#64748b"
+                                            font-size="11"
+                                            font-family="Instrument Sans, sans-serif"
+                                        >
+                                            {{ tick.formatted }}
+                                        </text>
+                                    </g>
+                                </template>
+
+                                <!-- X Axis Labels -->
+                                <g v-if="activeChartTab !== 'bullion'">
+                                    <text
+                                        v-for="(p, idx) in financeChartCalculations.xTicks"
+                                        :key="`x-${idx}`"
+                                        :x="p.x"
+                                        :y="chartViewHeight - 6"
+                                        text-anchor="middle"
+                                        fill="#64748b"
+                                        font-size="11"
+                                        font-family="Instrument Sans, sans-serif"
+                                    >
+                                        {{ chartRange === '30D' ? p.label.split(' ')[0] : `${p.short_label} ${p.label.split(' ')[0]}` }}
+                                    </text>
+                                </g>
+                                <g v-else>
+                                    <text
+                                        v-for="(p, idx) in bullionChartCalculations.xTicks"
+                                        :key="`bx-${idx}`"
+                                        :x="p.x"
+                                        :y="chartViewHeight - 6"
+                                        text-anchor="middle"
+                                        fill="#64748b"
+                                        font-size="11"
+                                        font-family="Instrument Sans, sans-serif"
+                                    >
+                                        {{ p.label }}
+                                    </text>
+                                </g>
+
+                                <!-- Finance Chart Paths -->
+                                <g v-if="activeChartTab === 'sales'">
+                                    <path :d="financeChartCalculations.areaPath" fill="url(#salesGrad)" />
+                                    <path
+                                        :d="financeChartCalculations.linePath"
+                                        fill="none"
+                                        stroke="#0f172a"
+                                        stroke-width="2.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    />
+                                    <circle
+                                        v-for="(p, idx) in financeChartCalculations.points"
+                                        :key="`sp-${idx}`"
+                                        :cx="p.x"
+                                        :cy="p.y"
+                                        r="3.5"
+                                        fill="#0f172a"
+                                        stroke="#ffffff"
+                                        stroke-width="2"
+                                    />
+                                </g>
+
+                                <g v-if="activeChartTab === 'collections'">
+                                    <path :d="financeChartCalculations.areaPath" fill="url(#collectionsGrad)" />
+                                    <path
+                                        :d="financeChartCalculations.linePath"
+                                        fill="none"
+                                        stroke="#059669"
+                                        stroke-width="2.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    />
+                                    <circle
+                                        v-for="(p, idx) in financeChartCalculations.points"
+                                        :key="`cp-${idx}`"
+                                        :cx="p.x"
+                                        :cy="p.y"
+                                        r="3.5"
+                                        fill="#059669"
+                                        stroke="#ffffff"
+                                        stroke-width="2"
+                                    />
+                                </g>
+
+                                <!-- Bullion Chart Paths -->
+                                <g v-if="activeChartTab === 'bullion'">
+                                    <path
+                                        :d="bullionChartCalculations.goldPath"
+                                        fill="none"
+                                        stroke="#c4922a"
+                                        stroke-width="2.5"
+                                        stroke-linecap="round"
+                                    />
+                                    <circle
+                                        v-for="(p, idx) in bullionChartCalculations.goldPoints"
+                                        :key="`gp-${idx}`"
+                                        :cx="p.x"
+                                        :cy="p.y"
+                                        r="3.5"
+                                        fill="#c4922a"
+                                        stroke="#ffffff"
+                                        stroke-width="2"
+                                    />
+
+                                    <path
+                                        :d="bullionChartCalculations.silverPath"
+                                        fill="none"
+                                        stroke="#64748b"
+                                        stroke-width="2"
+                                        stroke-dasharray="4 4"
+                                    />
+                                    <circle
+                                        v-for="(p, idx) in bullionChartCalculations.silverPoints"
+                                        :key="`sivp-${idx}`"
+                                        :cx="p.x"
+                                        :cy="p.y"
+                                        r="3"
+                                        fill="#64748b"
+                                    />
+                                </g>
+
+                                <!-- Hover Cursor Guide Line & Highlights -->
+                                <g v-if="hoveredIndex !== null">
+                                    <template v-if="activeChartTab !== 'bullion' && financeChartCalculations.points[hoveredIndex]">
+                                        <line
+                                            :x1="financeChartCalculations.points[hoveredIndex].x"
+                                            :y1="padTop"
+                                            :x2="financeChartCalculations.points[hoveredIndex].x"
+                                            :y2="chartViewHeight - padBottom"
+                                            stroke="#0f172a"
+                                            stroke-dasharray="3 3"
+                                            stroke-width="1.5"
+                                        />
+                                        <circle
+                                            :cx="financeChartCalculations.points[hoveredIndex].x"
+                                            :cy="financeChartCalculations.points[hoveredIndex].y"
+                                            r="6"
+                                            :fill="activeChartTab === 'collections' ? '#059669' : '#0f172a'"
+                                            stroke="#ffffff"
+                                            stroke-width="2.5"
+                                        />
+                                    </template>
+
+                                    <template v-if="activeChartTab === 'bullion' && bullionChartCalculations.goldPoints[hoveredIndex]">
+                                        <line
+                                            :x1="bullionChartCalculations.goldPoints[hoveredIndex].x"
+                                            :y1="padTop"
+                                            :x2="bullionChartCalculations.goldPoints[hoveredIndex].x"
+                                            :y2="chartViewHeight - padBottom"
+                                            stroke="#c4922a"
+                                            stroke-dasharray="3 3"
+                                            stroke-width="1.5"
+                                        />
+                                        <circle
+                                            :cx="bullionChartCalculations.goldPoints[hoveredIndex].x"
+                                            :cy="bullionChartCalculations.goldPoints[hoveredIndex].y"
+                                            r="5.5"
+                                            fill="#c4922a"
+                                            stroke="#ffffff"
+                                            stroke-width="2"
+                                        />
+                                        <circle
+                                            :cx="bullionChartCalculations.silverPoints[hoveredIndex].x"
+                                            :cy="bullionChartCalculations.silverPoints[hoveredIndex].y"
+                                            r="5"
+                                            fill="#64748b"
+                                            stroke="#ffffff"
+                                            stroke-width="2"
+                                        />
+                                    </template>
+                                </g>
+                            </svg>
+
+                            <!-- Hover Tooltip Overlay Box -->
+                            <div
+                                v-if="hoveredIndex !== null"
+                                class="pointer-events-none absolute z-20 border border-surface-800 bg-surface-900 px-3 py-2 text-xs text-white shadow-lg transition-all"
+                                :style="{
+                                    left: `${activeChartTab === 'bullion' ? (bullionChartCalculations.goldPoints[hoveredIndex]?.x / chartViewWidth) * 100 : (financeChartCalculations.points[hoveredIndex]?.x / chartViewWidth) * 100}%`,
+                                    top: '15px',
+                                    transform: 'translateX(-50%)',
+                                }"
+                            >
+                                <template v-if="activeChartTab !== 'bullion' && financeChartCalculations.points[hoveredIndex]">
+                                    <div class="text-[11px] text-surface-400 font-medium">{{ financeChartCalculations.points[hoveredIndex].label }}</div>
+                                    <div class="mt-0.5 font-bold text-white">
+                                        {{ activeChartTab === 'collections' ? 'Collections: ' : 'Sales: ' }}
+                                        {{ financeChartCalculations.points[hoveredIndex].formatted }}
+                                    </div>
+                                </template>
+                                <template v-if="activeChartTab === 'bullion' && bullionChartCalculations.goldPoints[hoveredIndex]">
+                                    <div class="text-[11px] text-surface-400 font-medium">{{ bullionChartCalculations.goldPoints[hoveredIndex].label }}</div>
+                                    <div class="mt-0.5 font-bold text-amber-400">Gold 24K: {{ bullionChartCalculations.goldPoints[hoveredIndex].formatted }}</div>
+                                    <div class="text-[11px] text-slate-300">Silver: {{ bullionChartCalculations.silverPoints[hoveredIndex]?.formatted }}</div>
+                                </template>
+                            </div>
                         </div>
                     </div>
 
