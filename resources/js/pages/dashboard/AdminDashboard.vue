@@ -34,6 +34,14 @@ const can = computed(() => page.props.auth?.can || {});
 const isInitialSetup = computed(() => Boolean(page.props.dayStatus?.is_initial_setup));
 const openingExpectation = computed(() => props.opening_expectation || { cash: 0, gold: 0, silver: 0, date: null });
 
+// Helper to get initials
+const getInitials = (name) => {
+    if (!name) return 'CU';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
 // Quick Shortcuts
 const quickLinks = [
     { label: 'New Invoice', href: route('invoices.create'), icon: 'pi pi-plus-circle', desc: 'Create retail bill' },
@@ -142,6 +150,13 @@ const gold22kRate = computed(() => Math.round(goldSellRate.value * (22 / 24)));
 
 const goldValuation = computed(() => props.analytics?.valuations?.gold_value || (Number(props.vaults?.gold || 0) * goldSellRate.value));
 const silverValuation = computed(() => props.analytics?.valuations?.silver_value || (Number(props.vaults?.silver || 0) * silverSellRate.value));
+const liquidTotal = computed(() => Number(props.vaults?.cash || 0) + Number(props.vaults?.bank || 0));
+const totalAssetsValuation = computed(() => liquidTotal.value + goldValuation.value + silverValuation.value);
+
+const cashPercent = computed(() => (totalAssetsValuation.value > 0 ? (Number(props.vaults?.cash || 0) / totalAssetsValuation.value) * 100 : 25));
+const bankPercent = computed(() => (totalAssetsValuation.value > 0 ? (Number(props.vaults?.bank || 0) / totalAssetsValuation.value) * 100 : 25));
+const goldPercent = computed(() => (totalAssetsValuation.value > 0 ? (goldValuation.value / totalAssetsValuation.value) * 100 : 25));
+const silverPercent = computed(() => (totalAssetsValuation.value > 0 ? (silverValuation.value / totalAssetsValuation.value) * 100 : 25));
 
 const closingCashDifference = computed(() => {
     if (closeForm.closing_cash === null || closeForm.closing_cash === undefined) return null;
@@ -304,7 +319,6 @@ const currentChartSummary = computed(() => {
     return { label: `Total ${chartRange.value} Sales`, value: formatCurrency(total) };
 });
 
-// Calculate Bezier Paths
 const buildSmoothPath = (points) => {
     if (!points || points.length === 0) return '';
     if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
@@ -476,7 +490,7 @@ const handleSvgMouseMove = (e) => {
     const svgX = ratio * chartViewWidth;
 
     const points = activeChartTab.value === 'bullion' ? bullionChartCalculations.value.goldPoints : financeChartCalculations.value.points;
-    if (!points.length) return;
+    if (!points || !points.length) return;
 
     let closestIdx = 0;
     let minDiff = Infinity;
@@ -502,20 +516,29 @@ const handleSvgMouseLeave = () => {
             <!-- ========================================== -->
             <!-- 1. HEADER                                  -->
             <!-- ========================================== -->
-            <div class="border border-surface-200 bg-white p-5">
+            <div class="border border-surface-200 bg-white p-5 shadow-2xs">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                         <div class="flex flex-wrap items-center gap-3">
-                            <h2 class="text-xl font-semibold text-surface-900">Admin Dashboard</h2>
-                            <Tag :value="isDayOpen ? 'Store Open' : 'Register Closed'" :severity="isDayOpen ? 'success' : 'danger'" />
-                            <Tag v-if="activeAlerts" :value="`${activeAlerts} alert${activeAlerts > 1 ? 's' : ''}`" severity="warn" />
+                            <h2 class="text-xl font-bold tracking-tight text-surface-900">Admin Dashboard</h2>
+                            <span
+                                class="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold"
+                                :class="isDayOpen ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' : 'bg-rose-50 text-rose-700 border border-rose-300'"
+                            >
+                                <span class="h-1.5 w-1.5 rounded-full" :class="isDayOpen ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'"></span>
+                                {{ isDayOpen ? 'Store Open' : 'Register Closed' }}
+                            </span>
+                            <span v-if="activeAlerts" class="inline-flex items-center gap-1 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 border border-amber-300">
+                                <i class="pi pi-bell text-[10px]"></i>
+                                {{ activeAlerts }} Action Required
+                            </span>
                         </div>
-                        <p class="mt-1 text-xs text-surface-500">Live view of sales, bullion rates, safe vaults, and workshop pipeline.</p>
+                        <p class="mt-1 text-xs text-surface-500">Real-time overview of jewellery store sales, bullion positions, safe inventory, and workshop pipeline.</p>
                     </div>
 
                     <div class="flex flex-wrap items-center gap-2">
                         <Link :href="route('invoices.create')">
-                            <Button label="New Bill" icon="pi pi-plus" size="small" />
+                            <Button label="New Bill" icon="pi pi-plus" size="small" class="!bg-surface-900 !text-white !border-surface-900 hover:!bg-surface-800" />
                         </Link>
                         <Button v-if="can.manage_expenses" label="Expense" icon="pi pi-minus-circle" size="small" outlined severity="secondary" @click="openExpenseDialog" />
                         <Button v-if="can.manage_daily_rates" label="Rates" icon="pi pi-pencil" size="small" outlined severity="secondary" @click="showRateDialog = true" />
@@ -528,24 +551,27 @@ const handleSvgMouseLeave = () => {
             <!-- ========================================== -->
             <!-- 2. QUICK ACCESS SHORTCUTS                  -->
             <!-- ========================================== -->
-            <div class="border border-surface-200 bg-white p-5">
+            <div class="border border-surface-200 bg-white p-5 shadow-2xs">
                 <div class="flex items-center justify-between border-b border-surface-100 pb-3">
-                    <h3 class="text-sm font-semibold text-surface-900">Quick Access</h3>
-                    <span class="text-xs text-surface-400">Store Shortcuts</span>
+                    <div class="flex items-center gap-2">
+                        <i class="pi pi-th-large text-xs text-surface-500"></i>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-surface-700">Quick Access Shortcuts</h3>
+                    </div>
+                    <span class="text-[11px] text-surface-400 font-medium">Fast Operations</span>
                 </div>
 
-                <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
+                <div class="mt-3.5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
                     <Link
                         v-for="item in quickLinks"
                         :key="item.label"
                         :href="item.href"
-                        class="flex flex-col items-start justify-between border border-surface-200 bg-surface-50 p-3 transition hover:border-surface-400 hover:bg-surface-100"
+                        class="group flex flex-col justify-between border border-surface-200 bg-surface-50 p-3 transition hover:border-surface-900 hover:bg-white hover:shadow-2xs"
                     >
-                        <div class="flex h-7 w-7 items-center justify-center border border-surface-200 bg-white text-surface-800">
+                        <div class="flex h-8 w-8 items-center justify-center border border-surface-200 bg-white text-surface-800 group-hover:bg-surface-900 group-hover:text-white transition">
                             <i :class="[item.icon, 'text-xs']"></i>
                         </div>
-                        <div class="mt-2">
-                            <div class="text-xs font-semibold text-surface-900">{{ item.label }}</div>
+                        <div class="mt-3">
+                            <div class="text-xs font-bold text-surface-900 group-hover:text-surface-900">{{ item.label }}</div>
                             <div class="text-[10px] text-surface-400 truncate">{{ item.desc }}</div>
                         </div>
                     </Link>
@@ -560,60 +586,84 @@ const handleSvgMouseLeave = () => {
                 <!-- LEFT COLUMN (2/3)                          -->
                 <!-- ========================================== -->
                 <div class="space-y-4 lg:col-span-2">
-                    <!-- Metric Cards -->
-                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                        <div class="border border-surface-200 bg-white p-4">
-                            <div class="text-xs text-surface-500 font-medium">Today's Sales</div>
-                            <div class="mt-1 text-xl font-bold text-surface-900">{{ formatCurrency(metrics?.today_sales) }}</div>
-                            <div class="mt-1 text-xs text-surface-400">{{ recent_invoices?.length || 0 }} bills today</div>
+                    <!-- Metric Cards (4 Grid) with Accent Top Borders -->
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <!-- Metric 1: Sales -->
+                        <div class="border border-surface-200 border-t-2 border-t-surface-900 bg-white p-4 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold text-surface-500">Today's Sales</span>
+                                <i class="pi pi-receipt text-xs text-surface-400"></i>
+                            </div>
+                            <div class="mt-2 text-xl font-bold tracking-tight text-surface-900">{{ formatCurrency(metrics?.today_sales) }}</div>
+                            <div class="mt-1 flex items-center gap-1 text-[11px] text-surface-400">
+                                <span class="font-semibold text-surface-700">{{ recent_invoices?.length || 0 }} bills</span> generated today
+                            </div>
                         </div>
 
-                        <div class="border border-surface-200 bg-white p-4">
-                            <div class="text-xs text-surface-500 font-medium">Collections</div>
-                            <div class="mt-1 text-xl font-bold text-emerald-700">{{ formatCurrency(metrics?.today_collections) }}</div>
-                            <div class="mt-1 text-xs text-emerald-600 font-medium">Settled in full</div>
+                        <!-- Metric 2: Collections -->
+                        <div class="border border-surface-200 border-t-2 border-t-emerald-600 bg-white p-4 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold text-surface-500">Collections</span>
+                                <i class="pi pi-check-circle text-xs text-emerald-600"></i>
+                            </div>
+                            <div class="mt-2 text-xl font-bold tracking-tight text-emerald-700">{{ formatCurrency(metrics?.today_collections) }}</div>
+                            <div class="mt-1 text-[11px] font-semibold text-emerald-600">
+                                100% Settled Inflows
+                            </div>
                         </div>
 
-                        <div class="border border-surface-200 bg-white p-4">
-                            <div class="text-xs text-surface-500 font-medium">Active Orders</div>
-                            <div class="mt-1 text-xl font-bold text-surface-900">{{ (metrics?.new_orders || 0) + (metrics?.in_production || 0) }}</div>
-                            <div class="mt-1 text-xs text-amber-700 font-medium">{{ metrics?.ready_items || 0 }} ready for pickup</div>
+                        <!-- Metric 3: Active Orders -->
+                        <div class="border border-surface-200 border-t-2 border-t-amber-500 bg-white p-4 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold text-surface-500">Active Orders</span>
+                                <i class="pi pi-sparkles text-xs text-amber-600"></i>
+                            </div>
+                            <div class="mt-2 text-xl font-bold tracking-tight text-surface-900">{{ (metrics?.new_orders || 0) + (metrics?.in_production || 0) }}</div>
+                            <div class="mt-1 text-[11px] font-semibold text-amber-700">
+                                {{ metrics?.ready_items || 0 }} items ready for pickup
+                            </div>
                         </div>
 
-                        <div class="border border-surface-200 bg-white p-4">
-                            <div class="text-xs text-surface-500 font-medium">Safe Gold Stock</div>
-                            <div class="mt-1 text-xl font-bold text-surface-900">{{ formatWeight(vaults?.gold) }}</div>
-                            <div class="mt-1 text-xs text-surface-400 truncate">Val: {{ formatCurrency(goldValuation) }}</div>
+                        <!-- Metric 4: Safe Gold Value -->
+                        <div class="border border-surface-200 border-t-2 border-t-[#c4922a] bg-white p-4 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold text-surface-500">Safe Gold Stock</span>
+                                <i class="pi pi-box text-xs text-[#c4922a]"></i>
+                            </div>
+                            <div class="mt-2 text-xl font-bold tracking-tight text-surface-900">{{ formatWeight(vaults?.gold) }}</div>
+                            <div class="mt-1 text-[11px] font-medium text-surface-500 truncate">
+                                Val: <strong class="text-amber-900">{{ formatCurrency(goldValuation) }}</strong>
+                            </div>
                         </div>
                     </div>
 
                     <!-- ========================================== -->
                     <!-- ULTRA-REACTIVE FINTECH SVG CHART           -->
                     <!-- ========================================== -->
-                    <div class="border border-surface-200 bg-white p-5">
+                    <div class="border border-surface-200 bg-white p-5 shadow-2xs">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-surface-100 pb-3">
                             <!-- Tab Switcher -->
                             <div class="flex items-center border border-surface-200 bg-surface-50 p-0.5">
                                 <button
                                     type="button"
-                                    class="px-3 py-1.5 text-xs font-semibold transition cursor-pointer"
-                                    :class="activeChartTab === 'sales' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
+                                    class="px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer"
+                                    :class="activeChartTab === 'sales' ? 'bg-surface-900 text-white shadow-xs' : 'text-surface-600 hover:bg-surface-200 hover:text-surface-900'"
                                     @click="activeChartTab = 'sales'"
                                 >
                                     Total Sales
                                 </button>
                                 <button
                                     type="button"
-                                    class="px-3 py-1.5 text-xs font-semibold transition cursor-pointer"
-                                    :class="activeChartTab === 'collections' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
+                                    class="px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer"
+                                    :class="activeChartTab === 'collections' ? 'bg-surface-900 text-white shadow-xs' : 'text-surface-600 hover:bg-surface-200 hover:text-surface-900'"
                                     @click="activeChartTab = 'collections'"
                                 >
                                     Collections
                                 </button>
                                 <button
                                     type="button"
-                                    class="px-3 py-1.5 text-xs font-semibold transition cursor-pointer"
-                                    :class="activeChartTab === 'bullion' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
+                                    class="px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer"
+                                    :class="activeChartTab === 'bullion' ? 'bg-surface-900 text-white shadow-xs' : 'text-surface-600 hover:bg-surface-200 hover:text-surface-900'"
                                     @click="activeChartTab = 'bullion'"
                                 >
                                     Rates Trend
@@ -623,16 +673,16 @@ const handleSvgMouseLeave = () => {
                             <!-- Range Switcher & Summary -->
                             <div class="flex items-center gap-3">
                                 <div class="hidden text-right sm:block">
-                                    <div class="text-[11px] text-surface-400">{{ currentChartSummary.label }}</div>
-                                    <div class="text-xs font-bold text-surface-900">{{ currentChartSummary.value }}</div>
+                                    <div class="text-[10px] uppercase tracking-wider text-surface-400 font-semibold">{{ currentChartSummary.label }}</div>
+                                    <div class="text-sm font-bold text-surface-900">{{ currentChartSummary.value }}</div>
                                 </div>
                                 <div class="flex items-center border border-surface-200 bg-surface-50 p-0.5">
                                     <button
                                         v-for="range in ['7D', '14D', '30D']"
                                         :key="range"
                                         type="button"
-                                        class="px-2.5 py-1 text-xs font-medium transition cursor-pointer"
-                                        :class="chartRange === range ? 'bg-surface-900 text-white font-semibold' : 'text-surface-600 hover:bg-surface-200'"
+                                        class="px-3 py-1 text-xs font-medium transition cursor-pointer"
+                                        :class="chartRange === range ? 'bg-surface-900 text-white font-bold shadow-xs' : 'text-surface-600 hover:bg-surface-200 hover:text-surface-900'"
                                         @click="chartRange = range"
                                     >
                                         {{ range }}
@@ -642,14 +692,14 @@ const handleSvgMouseLeave = () => {
                         </div>
 
                         <!-- Bullion Legend (When on Rates tab) -->
-                        <div v-if="activeChartTab === 'bullion'" class="mt-2 flex items-center justify-end gap-4 text-xs font-medium">
+                        <div v-if="activeChartTab === 'bullion'" class="mt-2.5 flex items-center justify-end gap-5 text-xs font-medium">
                             <span class="flex items-center gap-1.5 text-amber-800">
-                                <span class="h-2 w-4 bg-[#c4922a]"></span>
-                                Gold 24K (Fine)
+                                <span class="h-2.5 w-4 bg-[#c4922a]"></span>
+                                <strong>Gold 24K (Fine)</strong>
                             </span>
                             <span class="flex items-center gap-1.5 text-slate-600">
-                                <span class="h-2 w-4 border-b-2 border-dashed border-slate-500"></span>
-                                Silver 925
+                                <span class="h-2.5 w-4 border-b-2 border-dashed border-slate-600"></span>
+                                <strong>Silver 925</strong>
                             </span>
                         </div>
 
@@ -657,15 +707,13 @@ const handleSvgMouseLeave = () => {
                         <div class="mt-3 relative h-64 w-full select-none" @mousemove="handleSvgMouseMove" @mouseleave="handleSvgMouseLeave">
                             <svg :viewBox="`0 0 ${chartViewWidth} ${chartViewHeight}`" class="h-full w-full overflow-visible">
                                 <defs>
-                                    <!-- Sales Gradient -->
                                     <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="0%" stop-color="#0f172a" stop-opacity="0.12" />
                                         <stop offset="100%" stop-color="#0f172a" stop-opacity="0.0" />
                                     </linearGradient>
 
-                                    <!-- Collections Gradient -->
                                     <linearGradient id="collectionsGrad" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stop-color="#059669" stop-opacity="0.18" />
+                                        <stop offset="0%" stop-color="#059669" stop-opacity="0.16" />
                                         <stop offset="100%" stop-color="#059669" stop-opacity="0.0" />
                                     </linearGradient>
                                 </defs>
@@ -697,7 +745,6 @@ const handleSvgMouseLeave = () => {
 
                                 <!-- Grid Lines & Dual Y Ticks (Bullion Mode) -->
                                 <template v-else>
-                                    <!-- Gold Left Ticks -->
                                     <g v-for="(tick, idx) in bullionChartCalculations.goldYTicks" :key="`gy-${idx}`">
                                         <line
                                             :x1="padLeft"
@@ -721,7 +768,6 @@ const handleSvgMouseLeave = () => {
                                         </text>
                                     </g>
 
-                                    <!-- Silver Right Ticks -->
                                     <g v-for="(tick, idx) in bullionChartCalculations.silverYTicks" :key="`sy-${idx}`">
                                         <text
                                             :x="chartViewWidth - padRight + 8"
@@ -927,161 +973,280 @@ const handleSvgMouseLeave = () => {
                     </div>
 
                     <!-- Action Required Strip -->
-                    <div v-if="metrics?.overdue_items > 0 || metrics?.new_orders > 0 || karigars?.length > 0" class="border border-surface-200 bg-white p-5">
-                        <div class="flex items-center justify-between border-b border-surface-100 pb-2">
-                            <h3 class="text-xs font-semibold uppercase tracking-wider text-surface-600">Needs Attention</h3>
-                            <span class="text-xs text-surface-400">Workshop & Delivery</span>
+                    <div v-if="metrics?.overdue_items > 0 || metrics?.new_orders > 0 || karigars?.length > 0" class="border border-surface-200 bg-white p-5 shadow-2xs">
+                        <div class="flex items-center justify-between border-b border-surface-100 pb-2.5">
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-exclamation-triangle text-amber-600 text-xs"></i>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-surface-700">Workshop & Store Alerts</h3>
+                            </div>
+                            <span class="text-[11px] text-surface-400 font-medium">Action Required</span>
                         </div>
 
                         <div class="mt-3 space-y-2 text-xs">
-                            <div v-if="metrics?.overdue_items > 0" class="flex items-center justify-between border border-rose-200 bg-rose-50 p-2.5 text-rose-800">
-                                <span><strong>{{ metrics.overdue_items }} Custom Order{{ metrics.overdue_items > 1 ? 's' : '' }}</strong> are past their promised delivery date.</span>
-                                <Link :href="route('orders.index')" class="font-semibold text-rose-900 hover:underline">
+                            <div v-if="metrics?.overdue_items > 0" class="flex items-center justify-between border border-rose-200 bg-rose-50/80 p-3 text-rose-900">
+                                <div class="flex items-center gap-2">
+                                    <i class="pi pi-clock text-rose-600 text-xs"></i>
+                                    <span><strong>{{ metrics.overdue_items }} Custom Order{{ metrics.overdue_items > 1 ? 's' : '' }}</strong> are past their promised delivery date.</span>
+                                </div>
+                                <Link :href="route('orders.index')" class="font-bold text-rose-900 hover:underline">
                                     View orders &rarr;
                                 </Link>
                             </div>
 
-                            <div v-if="metrics?.new_orders > 0" class="flex items-center justify-between border border-surface-200 bg-surface-50 p-2.5 text-surface-800">
-                                <span><strong>{{ metrics.new_orders }} New Order{{ metrics.new_orders > 1 ? 's' : '' }}</strong> awaiting workshop karigar assignment.</span>
-                                <Link :href="route('orders.index')" class="font-semibold text-surface-900 hover:underline">
+                            <div v-if="metrics?.new_orders > 0" class="flex items-center justify-between border border-surface-200 bg-surface-50 p-3 text-surface-800">
+                                <div class="flex items-center gap-2">
+                                    <i class="pi pi-inbox text-surface-600 text-xs"></i>
+                                    <span><strong>{{ metrics.new_orders }} New Order{{ metrics.new_orders > 1 ? 's' : '' }}</strong> awaiting workshop assignment.</span>
+                                </div>
+                                <Link :href="route('orders.index')" class="font-bold text-surface-900 hover:underline">
                                     Assign &rarr;
                                 </Link>
                             </div>
 
-                            <div v-if="karigars?.length > 0" class="flex items-center justify-between border border-amber-200 bg-amber-50 p-2.5 text-amber-900">
-                                <span><strong>{{ karigars.length }} Karigar{{ karigars.length > 1 ? 's' : '' }}</strong> currently holding store metal.</span>
-                                <Link :href="route('karigars.index')" class="font-semibold text-amber-900 hover:underline">
+                            <div v-if="karigars?.length > 0" class="flex items-center justify-between border border-amber-200 bg-amber-50/70 p-3 text-amber-900">
+                                <div class="flex items-center gap-2">
+                                    <i class="pi pi-users text-amber-700 text-xs"></i>
+                                    <span><strong>{{ karigars.length }} Karigar{{ karigars.length > 1 ? 's' : '' }}</strong> holding store bullion.</span>
+                                </div>
+                                <Link :href="route('karigars.index')" class="font-bold text-amber-900 hover:underline">
                                     Karigar ledger &rarr;
                                 </Link>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Recent Invoices Table -->
-                    <div class="border border-surface-200 bg-white p-5">
-                        <div class="flex items-center justify-between border-b border-surface-100 pb-3">
-                            <h3 class="text-sm font-semibold text-surface-900">Recent Invoices</h3>
-                            <Link :href="route('invoices.index')" class="text-xs font-semibold text-surface-600 hover:text-surface-900">
-                                View all invoices &rarr;
+                    <!-- ========================================== -->
+                    <!-- ENTERPRISE RECENT INVOICES TABLE           -->
+                    <!-- ========================================== -->
+                    <div class="border border-surface-200 bg-white shadow-2xs">
+                        <!-- Card Header -->
+                        <div class="flex items-center justify-between border-b border-surface-200 bg-surface-50/50 px-5 py-4">
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-receipt text-xs text-surface-500"></i>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-surface-700">Recent Invoices</h3>
+                            </div>
+                            <Link :href="route('invoices.index')" class="text-xs font-bold text-surface-700 hover:text-surface-900 flex items-center gap-1">
+                                View all invoices <i class="pi pi-arrow-right text-[10px]"></i>
                             </Link>
                         </div>
 
-                        <div class="mt-2 overflow-x-auto">
-                            <DataTable :value="recent_invoices" class="p-datatable-sm text-xs" responsiveLayout="scroll">
-                                <Column field="invoice_number" header="Invoice #">
-                                    <template #body="{ data }">
-                                        <span class="font-mono font-medium text-surface-900">{{ data.invoice_number }}</span>
-                                    </template>
-                                </Column>
-                                <Column field="customer_name" header="Customer">
-                                    <template #body="{ data }">
-                                        <span class="text-surface-800">{{ data.customer_name }}</span>
-                                    </template>
-                                </Column>
-                                <Column field="date" header="Date">
-                                    <template #body="{ data }">
-                                        <span class="text-surface-500">{{ formatReminderDate(data.date) }}</span>
-                                    </template>
-                                </Column>
-                                <Column field="total_amount" header="Total" class="text-right">
-                                    <template #body="{ data }">
-                                        <span class="font-semibold text-surface-900">{{ formatCurrency(data.total_amount) }}</span>
-                                    </template>
-                                </Column>
-                                <Column header="Action" class="text-right">
-                                    <template #body="{ data }">
-                                        <a :href="route('invoices.print', data.id)" target="_blank" class="inline-flex items-center gap-1 border border-surface-200 bg-surface-50 px-2 py-0.5 text-xs text-surface-700 hover:bg-surface-100">
-                                            <i class="pi pi-print text-[10px]"></i>
-                                            Print
-                                        </a>
-                                    </template>
-                                </Column>
-                            </DataTable>
+                        <!-- Data Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="border-b border-surface-200 bg-surface-50 text-[11px] font-semibold text-surface-500 uppercase tracking-wider">
+                                        <th class="px-5 py-3 font-semibold">Invoice #</th>
+                                        <th class="px-5 py-3 font-semibold">Customer</th>
+                                        <th class="px-5 py-3 font-semibold">Date</th>
+                                        <th class="px-5 py-3 font-semibold">Status</th>
+                                        <th class="px-5 py-3 font-semibold text-right">Total Amount</th>
+                                        <th class="px-5 py-3 font-semibold text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-surface-100">
+                                    <tr v-for="inv in recent_invoices" :key="inv.id" class="transition hover:bg-surface-50/70">
+                                        <!-- Invoice # -->
+                                        <td class="px-5 py-3.5">
+                                            <span class="inline-flex items-center gap-1.5 border border-surface-200 bg-surface-50 px-2 py-0.5 font-mono text-xs font-semibold text-surface-900">
+                                                {{ inv.invoice_number }}
+                                            </span>
+                                        </td>
+
+                                        <!-- Customer with Avatar -->
+                                        <td class="px-5 py-3.5">
+                                            <div class="flex items-center gap-2.5">
+                                                <div class="flex h-7 w-7 flex-shrink-0 items-center justify-center bg-surface-900 text-[10px] font-bold text-white uppercase">
+                                                    {{ getInitials(inv.customer_name) }}
+                                                </div>
+                                                <div class="min-w-0">
+                                                    <div class="font-bold text-surface-900 truncate">{{ inv.customer_name }}</div>
+                                                    <div class="text-[10px] text-surface-400">Retail Client</div>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <!-- Date -->
+                                        <td class="px-5 py-3.5 text-surface-600 font-medium">
+                                            {{ formatReminderDate(inv.date) }}
+                                        </td>
+
+                                        <!-- Status Badge -->
+                                        <td class="px-5 py-3.5">
+                                            <span class="inline-flex items-center gap-1 border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                                                PAID
+                                            </span>
+                                        </td>
+
+                                        <!-- Total Amount -->
+                                        <td class="px-5 py-3.5 text-right font-bold text-surface-900 text-sm">
+                                            {{ formatCurrency(inv.total_amount) }}
+                                        </td>
+
+                                        <!-- Print Button -->
+                                        <td class="px-5 py-3.5 text-right">
+                                            <a
+                                                :href="route('invoices.print', inv.id)"
+                                                target="_blank"
+                                                class="inline-flex items-center gap-1.5 border border-surface-300 bg-white px-3 py-1 text-xs font-medium text-surface-800 shadow-2xs hover:border-surface-900 hover:bg-surface-900 hover:text-white transition"
+                                            >
+                                                <i class="pi pi-print text-[11px]"></i>
+                                                <span>Print</span>
+                                            </a>
+                                        </td>
+                                    </tr>
+
+                                    <tr v-if="!recent_invoices?.length">
+                                        <td colspan="6" class="px-5 py-8 text-center text-xs text-surface-400">
+                                            No recent invoices created today.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
 
                 <!-- ========================================== -->
-                <!-- RIGHT COLUMN (1/3)                         -->
+                <!-- RIGHT COLUMN (1/3): STORE OPERATIONS       -->
                 <!-- ========================================== -->
                 <div class="space-y-4">
-                    <!-- Today's Bullion Rates -->
-                    <div class="border border-surface-200 bg-white p-5">
+                    <!-- Today's Bullion Rates (Gold Accent Header) -->
+                    <div class="border border-surface-200 border-t-2 border-t-[#c4922a] bg-white p-5 shadow-2xs">
                         <div class="flex items-center justify-between border-b border-surface-100 pb-3">
-                            <h3 class="text-sm font-semibold text-surface-900">Today's Bullion Rates</h3>
-                            <Button v-if="can.manage_daily_rates" icon="pi pi-pencil" text size="small" class="!p-0" @click="showRateDialog = true" />
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-chart-line text-[#c4922a] text-xs"></i>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-surface-700">Today's Bullion Rates</h3>
+                            </div>
+                            <Button v-if="can.manage_daily_rates" icon="pi pi-pencil" text size="small" class="!p-1 !h-6 !w-6" @click="showRateDialog = true" />
                         </div>
 
-                        <div class="mt-3 space-y-2 text-xs">
-                            <div class="flex items-center justify-between border border-surface-100 bg-surface-50 p-2.5">
-                                <span class="text-surface-600 font-medium">Gold 24K (Fine)</span>
-                                <span class="font-semibold text-amber-800">₹{{ Number(rates?.gold_sell || 0).toLocaleString('en-IN') }}/g</span>
+                        <div class="mt-3.5 space-y-2 text-xs">
+                            <!-- Gold 24K -->
+                            <div class="flex items-center justify-between border border-surface-200 bg-surface-50 p-3 transition hover:border-[#c4922a]/50">
+                                <div>
+                                    <div class="font-bold text-surface-900">Gold 24K (Fine)</div>
+                                    <div class="text-[10px] text-surface-400">99.9% Pure Standard</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-bold text-amber-800">₹{{ Number(rates?.gold_sell || 0).toLocaleString('en-IN') }}</div>
+                                    <div class="text-[10px] text-surface-400">per gram</div>
+                                </div>
                             </div>
-                            <div class="flex items-center justify-between border border-surface-100 bg-surface-50 p-2.5">
-                                <span class="text-surface-600 font-medium">Gold 22K (916)</span>
-                                <span class="font-semibold text-amber-700">₹{{ Number(gold22kRate).toLocaleString('en-IN') }}/g</span>
+
+                            <!-- Gold 22K (916) -->
+                            <div class="flex items-center justify-between border border-surface-200 bg-surface-50 p-3 transition hover:border-[#c4922a]/50">
+                                <div>
+                                    <div class="font-bold text-surface-900">Gold 22K (916)</div>
+                                    <div class="text-[10px] text-surface-400">Hallmark Jewellery</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-bold text-amber-700">₹{{ Number(gold22kRate).toLocaleString('en-IN') }}</div>
+                                    <div class="text-[10px] text-surface-400">per gram</div>
+                                </div>
                             </div>
-                            <div class="flex items-center justify-between border border-surface-100 bg-surface-50 p-2.5">
-                                <span class="text-surface-600 font-medium">Silver 925</span>
-                                <span class="font-semibold text-slate-700">₹{{ Number(rates?.silver_sell || 0).toLocaleString('en-IN') }}/g</span>
+
+                            <!-- Silver 925 -->
+                            <div class="flex items-center justify-between border border-surface-200 bg-surface-50 p-3 transition hover:border-slate-400">
+                                <div>
+                                    <div class="font-bold text-surface-900">Silver 925</div>
+                                    <div class="text-[10px] text-surface-400">Sterling Fine</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-bold text-slate-700">₹{{ Number(rates?.silver_sell || 0).toLocaleString('en-IN') }}</div>
+                                    <div class="text-[10px] text-surface-400">per gram</div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Safe & Drawer Vaults -->
-                    <div class="border border-surface-200 bg-white p-5">
+                    <!-- Safe & Drawer Vaults (With Liquidity Split Bar) -->
+                    <div class="border border-surface-200 bg-white p-5 shadow-2xs">
                         <div class="flex items-center justify-between border-b border-surface-100 pb-3">
-                            <h3 class="text-sm font-semibold text-surface-900">Safe & Drawer Vaults</h3>
-                            <Button v-if="can.manage_vault && isDayOpen" label="Transfer" text size="small" class="!p-0 !text-xs" @click="openVaultTransferDialog" />
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-wallet text-surface-500 text-xs"></i>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-surface-700">Safe & Drawer Vaults</h3>
+                            </div>
+                            <Button v-if="can.manage_vault && isDayOpen" label="Transfer" text size="small" class="!p-0 !text-xs !font-bold" @click="openVaultTransferDialog" />
                         </div>
 
-                        <div class="mt-3 space-y-2.5 text-xs">
-                            <div class="flex items-center justify-between">
-                                <span class="text-surface-600">Cash in Hand</span>
-                                <span class="font-semibold text-surface-900">{{ formatCurrency(vaults?.cash) }}</span>
+                        <!-- Multi-Asset Liquidity Progress Bar -->
+                        <div class="mt-3.5">
+                            <div class="flex h-2 w-full overflow-hidden bg-surface-100">
+                                <div class="bg-surface-900" :style="{ width: `${cashPercent}%` }" title="Cash in hand"></div>
+                                <div class="bg-sky-600" :style="{ width: `${bankPercent}%` }" title="Bank Account"></div>
+                                <div class="bg-[#c4922a]" :style="{ width: `${goldPercent}%` }" title="Gold Safe"></div>
+                                <div class="bg-slate-400" :style="{ width: `${silverPercent}%` }" title="Silver Drawer"></div>
+                            </div>
+                            <div class="mt-2 flex items-center justify-between text-[10px] text-surface-400">
+                                <span>Total Valuation: <strong>{{ formatCurrency(totalAssetsValuation) }}</strong></span>
+                            </div>
+                        </div>
+
+                        <div class="mt-3.5 space-y-2.5 text-xs">
+                            <div class="flex items-center justify-between border-b border-surface-100 pb-2">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="h-2 w-2 bg-surface-900"></span>
+                                    <span class="text-surface-600 font-medium">Cash in Hand</span>
+                                </div>
+                                <span class="font-bold text-surface-900">{{ formatCurrency(vaults?.cash) }}</span>
+                            </div>
+                            <div class="flex items-center justify-between border-b border-surface-100 pb-2">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="h-2 w-2 bg-sky-600"></span>
+                                    <span class="text-surface-600 font-medium">Bank Account</span>
+                                </div>
+                                <span class="font-bold text-surface-900">{{ formatCurrency(vaults?.bank) }}</span>
+                            </div>
+                            <div class="flex items-center justify-between border-b border-surface-100 pb-2">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="h-2 w-2 bg-[#c4922a]"></span>
+                                    <span class="text-surface-600 font-medium">Gold Safe</span>
+                                </div>
+                                <span class="font-bold text-amber-800">{{ formatWeight(vaults?.gold) }}</span>
                             </div>
                             <div class="flex items-center justify-between">
-                                <span class="text-surface-600">Bank Account</span>
-                                <span class="font-semibold text-surface-900">{{ formatCurrency(vaults?.bank) }}</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-surface-600">Gold Safe (g)</span>
-                                <span class="font-semibold text-amber-800">{{ formatWeight(vaults?.gold) }}</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-surface-600">Silver Drawer (g)</span>
-                                <span class="font-semibold text-slate-700">{{ formatWeight(vaults?.silver) }}</span>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="h-2 w-2 bg-slate-400"></span>
+                                    <span class="text-surface-600 font-medium">Silver Drawer</span>
+                                </div>
+                                <span class="font-bold text-slate-700">{{ formatWeight(vaults?.silver) }}</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- CRM Celebrations -->
-                    <div class="border border-surface-200 bg-white p-5">
+                    <!-- CRM Celebrations (Modern Cards) -->
+                    <div class="border border-surface-200 bg-white p-5 shadow-2xs">
                         <div class="flex items-center justify-between border-b border-surface-100 pb-3">
-                            <h3 class="text-sm font-semibold text-surface-900">CRM Celebrations</h3>
-                            <Tag :value="`${customer_reminders?.length || 0}`" severity="secondary" />
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-heart text-rose-500 text-xs"></i>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-surface-700">CRM Celebrations</h3>
+                            </div>
+                            <span class="inline-flex items-center border border-surface-200 bg-surface-50 px-2 py-0.5 text-[10px] font-bold text-surface-700">
+                                {{ customer_reminders?.length || 0 }} upcoming
+                            </span>
                         </div>
 
                         <div class="mt-3 space-y-2">
                             <div
                                 v-for="r in (customer_reminders || []).slice(0, 4)"
                                 :key="`${r.customer_id}-${r.type}`"
-                                class="flex items-center justify-between border p-2.5 text-xs"
+                                class="flex items-center justify-between border p-3 text-xs transition hover:shadow-2xs"
                                 :class="r.is_today ? 'bg-amber-50/70 border-amber-300' : 'bg-surface-50 border-surface-200'"
                             >
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-1.5">
-                                        <span class="truncate font-semibold text-surface-900">{{ r.customer_name }}</span>
-                                        <Tag :value="r.is_today ? 'Today' : r.type" :severity="r.is_today ? 'warn' : 'secondary'" class="!text-[10px]" />
+                                        <span class="truncate font-bold text-surface-900">{{ r.customer_name }}</span>
+                                        <Tag :value="r.is_today ? 'Today' : r.type" :severity="r.is_today ? 'warn' : 'secondary'" class="!text-[9px] !font-bold" />
                                     </div>
-                                    <div class="mt-0.5 text-surface-500">{{ formatReminderDate(r.date) }}</div>
+                                    <div class="mt-0.5 text-[10px] text-surface-500">{{ formatReminderDate(r.date) }} &bull; {{ r.mobile }}</div>
                                 </div>
 
                                 <Button
                                     icon="pi pi-whatsapp"
                                     size="small"
                                     severity="success"
-                                    class="!h-7 !w-7 !p-0"
+                                    class="!h-7 !w-7 !p-0 !rounded-none hover:scale-105 transition"
                                     title="Send WhatsApp Greeting"
                                     @click="sendWhatsAppWish(r)"
                                 />
@@ -1094,13 +1259,16 @@ const handleSvgMouseLeave = () => {
                     </div>
 
                     <!-- Recent Safe & Drawer Movements -->
-                    <div class="border border-surface-200 bg-white p-5">
+                    <div class="border border-surface-200 bg-white p-5 shadow-2xs">
                         <div class="flex items-center justify-between border-b border-surface-100 pb-3">
-                            <h3 class="text-sm font-semibold text-surface-900">Recent Movements</h3>
-                            <span class="text-xs text-surface-400">Live feed</span>
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-history text-surface-500 text-xs"></i>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-surface-700">Recent Movements</h3>
+                            </div>
+                            <span class="text-[10px] text-surface-400 font-semibold">Live Audit</span>
                         </div>
 
-                        <div class="mt-3 space-y-2">
+                        <div class="mt-3 space-y-2.5">
                             <div
                                 v-for="m in (recent_vault_movements || []).slice(0, 4)"
                                 :key="m.id"
@@ -1108,14 +1276,17 @@ const handleSvgMouseLeave = () => {
                             >
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-1.5">
-                                        <span class="font-medium text-surface-800">{{ vaultLabels[m.vault_type] || m.vault_type }}</span>
-                                        <span :class="m.direction === 'CREDIT' ? 'text-emerald-700' : 'text-rose-700'" class="font-bold text-[10px]">
+                                        <span class="font-bold text-surface-900">{{ vaultLabels[m.vault_type] || m.vault_type }}</span>
+                                        <span
+                                            class="px-1.5 py-0.2 text-[9px] font-bold"
+                                            :class="m.direction === 'CREDIT' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'"
+                                        >
                                             {{ m.direction === 'CREDIT' ? '+IN' : '-OUT' }}
                                         </span>
                                     </div>
-                                    <div class="text-surface-400 truncate">{{ m.note || m.reference || m.time }}</div>
+                                    <div class="text-[10px] text-surface-400 truncate">{{ m.note || m.reference || m.time }}</div>
                                 </div>
-                                <span class="font-semibold text-surface-900">{{ formatVaultMovementAmount(m) }}</span>
+                                <span class="font-bold text-surface-900">{{ formatVaultMovementAmount(m) }}</span>
                             </div>
 
                             <div v-if="!recent_vault_movements?.length" class="py-3 text-center text-xs text-surface-400">
