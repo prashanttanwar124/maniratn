@@ -39,7 +39,7 @@
         }
 
         .page {
-            max-width: 820px;
+            max-width: 800px;
             margin: 15px auto;
             border: 1px dashed var(--brand-gold);
             box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.08);
@@ -58,7 +58,7 @@
 
         /* Gold Luxury Toolbar */
         .toolbar {
-            max-width: 820px;
+            max-width: 800px;
             margin: 0 auto 14px;
             background: linear-gradient(115deg, #fffaf0 0%, #f8f3e3 18%, #ffffff 46%, #ffffff 100%);
             color: #21160a;
@@ -66,27 +66,10 @@
             border: 1px solid #d8c38a;
             box-shadow: 0 4px 12px rgba(175, 140, 55, 0.08);
             display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .toolbar-top-row {
-            display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 10px;
-        }
-
-        .toolbar-bottom-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-top: 1px solid rgba(216, 195, 138, 0.4);
-            padding-top: 8px;
-            flex-wrap: wrap;
-            gap: 8px;
-            font-size: 11.5px;
         }
 
         .toolbar-group {
@@ -173,41 +156,6 @@
             min-width: 40px;
             text-align: right;
             font-family: 'JetBrains Mono', monospace;
-        }
-
-        .preset-btn {
-            background: #ffffff;
-            border: 1px solid #d8c38a;
-            padding: 3px 8px;
-            font-size: 11px;
-            cursor: pointer;
-            color: #7b6a42;
-            font-weight: 600;
-        }
-
-        .preset-btn:hover {
-            background: #fbf6ea;
-            border-color: #b58a34;
-        }
-
-        /* Optional Store Header (When printing without pre-printed letterhead) */
-        .store-letterhead {
-            display: none;
-            border-bottom: 2px solid var(--brand-maroon);
-            padding-bottom: 12px;
-            margin-bottom: 16px;
-        }
-
-        .store-letterhead.active {
-            display: block;
-        }
-
-        .store-header-title {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--brand-maroon);
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
         }
 
         /* Invoice Header & Meta */
@@ -313,14 +261,6 @@
             background-color: #fafaf9;
         }
 
-        table.items tfoot td {
-            background: var(--surface-100);
-            font-weight: 700;
-            border-top: 2px solid var(--brand-maroon);
-            padding: 6px 10px;
-            font-size: 10.5px;
-        }
-
         .barcode-pill {
             display: inline-block;
             font-family: 'JetBrains Mono', monospace;
@@ -339,18 +279,6 @@
 
         .align-center {
             text-align: center;
-        }
-
-        /* Words & Totals */
-        .amount-in-words {
-            font-size: 10.5px;
-            font-style: italic;
-            color: var(--surface-700);
-            margin-top: 6px;
-            padding: 6px 10px;
-            background: var(--surface-50);
-            border: 1px solid var(--surface-200);
-            border-left: 3px solid var(--brand-gold);
         }
 
         /* Bottom Totals Section */
@@ -490,61 +418,6 @@
         $settings = \App\Models\BusinessSetting::first();
         $storeName = $settings->store_name ?? 'Maniratn Jewellers';
 
-        // Helper for Indian Rupees in Words
-        function amountToWords(float $num) {
-            $num = round($num, 2);
-            $ones = [
-                0 => '', 1 => 'One', 2 => 'Two', 3 => 'Three', 4 => 'Four', 5 => 'Five', 6 => 'Six', 7 => 'Seven', 8 => 'Eight', 9 => 'Nine',
-                10 => 'Ten', 11 => 'Eleven', 12 => 'Twelve', 13 => 'Thirteen', 14 => 'Fourteen', 15 => 'Fifteen', 16 => 'Sixteen', 17 => 'Seventeen', 18 => 'Eighteen', 19 => 'Nineteen'
-            ];
-            $tens = [2 => 'Twenty', 3 => 'Thirty', 4 => 'Forty', 5 => 'Fifty', 6 => 'Sixty', 7 => 'Seventy', 8 => 'Eighty', 9 => 'Ninety'];
-            
-            $intVal = (int) $num;
-            $decVal = (int) round(($num - $intVal) * 100);
-
-            if ($intVal == 0) return 'Zero Rupees';
-
-            $convertGroup = function($n) use ($ones, $tens) {
-                $str = '';
-                if ($n >= 100) {
-                    $str .= $ones[(int)($n / 100)] . ' Hundred ';
-                    $n %= 100;
-                }
-                if ($n >= 20) {
-                    $str .= $tens[(int)($n / 10)] . ' ';
-                    $n %= 10;
-                }
-                if ($n > 0) {
-                    $str .= $ones[$n] . ' ';
-                }
-                return trim($str);
-            };
-
-            $crore = (int) ($intVal / 10000000);
-            $intVal %= 10000000;
-            $lakh = (int) ($intVal / 100000);
-            $intVal %= 100000;
-            $thousand = (int) ($intVal / 1000);
-            $intVal %= 1000;
-            $remaining = $intVal;
-
-            $words = [];
-            if ($crore > 0) $words[] = $convertGroup($crore) . ' Crore';
-            if ($lakh > 0) $words[] = $convertGroup($lakh) . ' Lakh';
-            if ($thousand > 0) $words[] = $convertGroup($thousand) . ' Thousand';
-            if ($remaining > 0) $words[] = $convertGroup($remaining);
-
-            $out = 'Rupees ' . implode(' ', $words);
-            if ($decVal > 0) {
-                $out .= ' and ' . $convertGroup($decVal) . ' Paise';
-            }
-            return $out . ' Only';
-        }
-
-        $totalGrams = (float) $invoice->items->sum('weight');
-        $totalItemsCount = count($invoice->items);
-        $amountInWords = amountToWords((float) $invoice->total_amount);
-
         // WhatsApp greeting link
         $customerMobile = $invoice->customer?->mobile ? preg_replace('/\D/', '', $invoice->customer->mobile) : '';
         $cleanPhone = str_starts_with($customerMobile, '91') ? $customerMobile : '91' . $customerMobile;
@@ -554,78 +427,36 @@
 
     <!-- Top UX Toolbar -->
     <div class="toolbar">
-        <div class="toolbar-top-row">
-            <div class="toolbar-group">
-                <span class="toolbar-title">Print Controls</span>
-                <button class="btn-print" onclick="window.print()">
-                    🖨️ Print Bill <span style="font-size: 10px; opacity: 0.8; font-weight: normal;">(⌘P)</span>
-                </button>
-                @if ($customerMobile)
-                    <a href="{{ $waLink }}" target="_blank" class="btn-whatsapp" title="Share invoice link on customer's WhatsApp">
-                        💬 WhatsApp Bill
-                    </a>
-                @endif
-            </div>
-
-            <!-- Alignment Slider & Presets -->
-            <div class="toolbar-group">
-                <div class="slider-container">
-                    <label for="offset-slider">Top Offset:</label>
-                    <input id="offset-slider" type="range" min="0" max="100" step="1" value="58"
-                        oninput="updateTopOffset(this.value)">
-                    <span id="offset-val-text" class="offset-value">58 mm</span>
-                </div>
-                <button type="button" class="preset-btn" onclick="setPresetOffset(0)">0 mm (Plain)</button>
-                <button type="button" class="preset-btn" onclick="setPresetOffset(40)">40 mm</button>
-                <button type="button" class="preset-btn" onclick="setPresetOffset(58)">58 mm (Letterhead)</button>
-            </div>
+        <div class="toolbar-group">
+            <span class="toolbar-title">Print Controls</span>
+            <button class="btn-print" onclick="window.print()">
+                Print Invoice <span style="font-size: 10px; opacity: 0.8; font-weight: normal;">(⌘P)</span>
+            </button>
+            @if ($customerMobile)
+                <a href="{{ $waLink }}" target="_blank" class="btn-whatsapp" title="Share invoice link on customer's WhatsApp">
+                    WhatsApp Bill
+                </a>
+            @endif
         </div>
 
-        <div class="toolbar-bottom-row">
-            <div class="toolbar-group">
-                <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
-                    <input type="checkbox" id="toggle-header" onchange="toggleStoreHeader(this.checked)">
-                    <span>Show Store Letterhead Header</span>
-                </label>
-            </div>
-            <div style="color: #78350f; font-size: 11px;">
-                💡 <em>Tip: Use 58mm offset for pre-printed letterheads, or check "Show Store Letterhead" for plain A4 sheets.</em>
+        <div class="toolbar-group">
+            <div class="slider-container">
+                <label for="offset-slider">Offset:</label>
+                <input id="offset-slider" type="range" min="0" max="100" step="1" value="58"
+                    oninput="updateTopOffset(this.value)">
+                <span id="offset-val-text" class="offset-value">58 mm</span>
             </div>
         </div>
     </div>
 
     <div class="page">
         <div class="invoice-body">
-            <!-- Optional Dynamic Store Header (Toggled for plain paper) -->
-            <div id="store-header" class="store-letterhead">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div>
-                        <div class="store-header-title">{{ $storeName }}</div>
-                        <div style="color: var(--surface-700); font-size: 10.5px; margin-top: 2px;">
-                            {{ $settings->address ?? 'Fine Gold, Diamond & Silver Jewellery' }}
-                        </div>
-                        <div style="color: var(--surface-500); font-size: 10px; margin-top: 1px;">
-                            @if ($settings?->phone) Phone: {{ $settings->phone }} &bull; @endif
-                            @if ($settings?->email) Email: {{ $settings->email }} &bull; @endif
-                            @if ($settings?->gst_number) GSTIN: {{ $settings->gst_number }} @endif
-                        </div>
-                    </div>
-                    <div style="text-align: right;">
-                        <span style="font-size: 11px; font-weight: 700; color: var(--brand-gold); text-transform: uppercase; letter-spacing: 0.05em;">
-                            KaratSetu ERP Verified
-                        </span>
-                    </div>
-                </div>
-            </div>
-
             <!-- Header Status -->
             <div class="invoice-heading-row">
                 <div class="invoice-heading-label">Retail Tax Invoice</div>
                 <div>
                     @if ($invoice->status === 'CANCELLED')
                         <span class="badge badge-void">VOIDED / CANCELLED</span>
-                    @else
-                        <span style="font-size: 10px; font-weight: 600; color: var(--surface-500); text-transform: uppercase; letter-spacing: 0.05em;">Tax Invoice (Original for Recipient)</span>
                     @endif
                 </div>
             </div>
@@ -745,26 +576,7 @@
                             </tr>
                         @endforeach
                     </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="3" style="text-align: left;">
-                                Total Quantity: <strong>{{ $totalItemsCount }} Item{{ $totalItemsCount > 1 ? 's' : '' }}</strong>
-                            </td>
-                            <td class="align-right mono">
-                                <strong>{{ number_format($totalGrams, 3) }} g</strong>
-                            </td>
-                            <td colspan="2"></td>
-                            <td class="align-right mono">
-                                <strong>Rs {{ number_format((float) $invoice->items->sum('final_price'), 2) }}</strong>
-                            </td>
-                        </tr>
-                    </tfoot>
                 </table>
-            </div>
-
-            <!-- Amount in Words -->
-            <div class="amount-in-words">
-                <strong>Amount in Words:</strong> {{ $amountInWords }}
             </div>
 
             <!-- Bottom Section: Vault QR & Totals -->
@@ -902,23 +714,6 @@
             document.documentElement.style.setProperty('--preprinted-top-offset', val + 'mm');
             document.getElementById('offset-val-text').innerText = val + ' mm';
             localStorage.setItem('karatsetu_print_top_offset', val);
-        }
-
-        function setPresetOffset(val) {
-            document.getElementById('offset-slider').value = val;
-            updateTopOffset(val);
-        }
-
-        function toggleStoreHeader(show) {
-            const el = document.getElementById('store-header');
-            if (show) {
-                el.classList.add('active');
-                setPresetOffset(15);
-            } else {
-                el.classList.remove('active');
-                const saved = localStorage.getItem('karatsetu_print_top_offset') || '58';
-                setPresetOffset(saved);
-            }
         }
 
         // Initialize state from local storage on load
