@@ -14,6 +14,7 @@ use App\Http\Controllers\KarigarController;
 use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\MetalTransactionController;
 use App\Http\Controllers\MortgageController;
+use App\Http\Controllers\OmnisearchController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurityController;
@@ -130,44 +131,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permission:view_dashboard')
         ->name('dashboard');
 
-    Route::get('/api/omnisearch', function (\Illuminate\Http\Request $request) {
-        $q = trim((string) $request->input('q', ''));
-        if (strlen($q) < 1) {
-            return response()->json([
-                'customers' => [],
-                'invoices' => [],
-                'products' => [],
-            ]);
-        }
-
-        $customers = \App\Models\Customer::query()
-            ->where('name', 'like', "%{$q}%")
-            ->orWhere('phone', 'like', "%{$q}%")
-            ->orWhere('city', 'like', "%{$q}%")
-            ->limit(5)
-            ->get(['id', 'name', 'phone', 'city']);
-
-        $invoices = \App\Models\Invoice::query()
-            ->with('customer:id,name,phone')
-            ->where('invoice_number', 'like', "%{$q}%")
-            ->orWhereHas('customer', fn ($query) => $query->where('name', 'like', "%{$q}%")->orWhere('phone', 'like', "%{$q}%"))
-            ->latest('id')
-            ->limit(5)
-            ->get(['id', 'invoice_number', 'customer_id', 'total_amount', 'date', 'status']);
-
-        $products = \App\Models\Product::query()
-            ->with(['category:id,name', 'purity:id,name'])
-            ->where('name', 'like', "%{$q}%")
-            ->orWhere('barcode', 'like', "%{$q}%")
-            ->limit(5)
-            ->get(['id', 'name', 'barcode', 'category_id', 'purity_id', 'gross_weight', 'status']);
-
-        return response()->json([
-            'customers' => $customers,
-            'invoices' => $invoices,
-            'products' => $products,
-        ]);
-    })->name('api.omnisearch');
+    Route::get('/api/omnisearch', OmnisearchController::class)->name('api.omnisearch');
 
     // --- 2. ADMIN ONLY ROUTES (Financial Control) ---
     Route::group(['middleware' => ['permission:manage_vault|manage_daily_rates|manage_expenses|manage_users|manage_roles_permissions']], function () {

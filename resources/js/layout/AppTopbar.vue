@@ -90,9 +90,11 @@ const saveRates = () => {
     rateUpdating.value = true;
     router.post('/dashboard/update-rates', rateForm.value, {
         preserveScroll: true,
+        onSuccess: () => {
+            isRatesModalOpen.value = false;
+        },
         onFinish: () => {
             rateUpdating.value = false;
-            isRatesModalOpen.value = false;
         },
     });
 };
@@ -149,6 +151,9 @@ const quickLinks = [
 ];
 
 const handleKeyDown = (e) => {
+    const activeEl = document.activeElement;
+    const isEditing = activeEl && ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeEl.tagName);
+
     // ⌘K or Ctrl+K for Spotlight Search
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -157,12 +162,16 @@ const handleKeyDown = (e) => {
         } else {
             openSpotlight();
         }
+        return;
     }
-    // F2 for New Invoice
-    if (e.key === 'F2') {
+
+    // F2 for New Invoice - only when NOT actively typing in an input
+    if (e.key === 'F2' && !isEditing) {
         e.preventDefault();
         router.visit('/invoices/create');
+        return;
     }
+
     // ESC to close modals/menus
     if (e.key === 'Escape') {
         isSpotlightOpen.value = false;
@@ -183,6 +192,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    if (searchTimeout) clearTimeout(searchTimeout);
     window.removeEventListener('keydown', handleKeyDown);
     window.removeEventListener('click', closeAllDropdowns);
 });
