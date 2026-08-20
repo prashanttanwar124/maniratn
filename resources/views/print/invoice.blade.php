@@ -545,7 +545,7 @@
                             <tr>
                                 <td class="align-center mono" style="color: var(--surface-500);">{{ $index + 1 }}</td>
                                 <td>
-                                    <div style="font-weight: 600; color: var(--surface-900);">{{ $item->description }}</div>
+                                    <div style="font-weight: 600; color: var(--surface-900); text-transform: capitalize;">{{ ucwords(strtolower($item->description)) }}</div>
                                     <div style="font-size: 9.5px; color: var(--surface-500); font-family: 'JetBrains Mono', monospace; margin-top: 1px;">
                                         @if ($barcode)
                                             Tag: <span style="font-weight: 600; color: var(--surface-800);">{{ $barcode }}</span>
