@@ -385,7 +385,7 @@ const submitLogout = () => {
                                     </div>
                                     <div>
                                         <p class="text-xs font-bold text-[#1c3633] group-hover:text-[#c08f34]">{{ c.name }}</p>
-                                        <p class="text-[11px] text-surface-500">{{ c.phone }} {{ c.city ? '• ' + c.city : '' }}</p>
+                                        <p class="text-[11px] text-surface-500">{{ c.mobile || c.phone }} {{ c.city ? '• ' + c.city : '' }}</p>
                                     </div>
                                 </div>
                                 <i class="pi pi-arrow-right text-xs text-surface-300 group-hover:text-[#1c3633]"></i>
