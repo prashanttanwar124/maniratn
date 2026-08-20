@@ -479,17 +479,19 @@
                             <td>Sub Total</td>
                             <td>Rs {{ number_format($subTotal, 2) }}</td>
                         </tr>
-                        <tr>
-                            <td>
-                                Discount
-                                @if (($invoice->discount_value ?? 0) > 0)
-                                    <span class="muted" style="font-size: 9.5px;">
-                                        ({{ $invoice->discount_type === 'percentage' ? number_format((float) $invoice->discount_value, 2) . '%' : 'manual' }})
-                                    </span>
-                                @endif
-                            </td>
-                            <td>- Rs {{ number_format((float) ($invoice->discount_amount ?? 0), 2) }}</td>
-                        </tr>
+                        @if ((float) ($invoice->discount_amount ?? 0) > 0)
+                            <tr>
+                                <td>
+                                    Discount
+                                    @if (($invoice->discount_value ?? 0) > 0)
+                                        <span class="muted" style="font-size: 9.5px;">
+                                            ({{ $invoice->discount_type === 'percentage' ? number_format((float) $invoice->discount_value, 2) . '%' : 'manual' }})
+                                        </span>
+                                    @endif
+                                </td>
+                                <td>- Rs {{ number_format((float) ($invoice->discount_amount ?? 0), 2) }}</td>
+                            </tr>
+                        @endif
                         <tr>
                             <td>GST</td>
                             <td>Rs {{ number_format((float) ($invoice->tax_amount ?? 0), 2) }}</td>

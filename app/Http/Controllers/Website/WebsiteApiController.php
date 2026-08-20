@@ -208,7 +208,7 @@ class WebsiteApiController extends Controller
     {
         $customer = Customer::where('vault_token', $token)->first();
 
-        if (! $customer || $customer->vault_status === 'DISABLED') {
+        if (! $customer || $customer->card_status === 'DISABLED') {
             return response()->json([
                 'success' => false,
                 'message' => 'Vault card is inactive or not found.',
@@ -257,29 +257,118 @@ class WebsiteApiController extends Controller
 
         $business = BusinessSetting::first();
 
+        // 3. Resolve Website & Vault URLs for QR Code Generation
+        $websiteUrl = trim((string) ($business?->website ?? config('app.url')));
+        $websiteUrl = rtrim($websiteUrl !== '' ? $websiteUrl : 'http://localhost:8000', '/');
+        $vaultUrl = "{$websiteUrl}/vault/{$token}";
+
+        $qrCodeBase64 = null;
+        try {
+            if (class_exists(\TCPDF2DBarcode::class)) {
+                $barcode = new \TCPDF2DBarcode($vaultUrl, 'QRCODE,M');
+                $pngData = $barcode->getBarcodePngData(4, 4);
+                if ($pngData) {
+                    $qrCodeBase64 = 'data:image/png;base64,' . base64_encode($pngData);
+                }
+            }
+        } catch (\Throwable $e) {
+            // Non-critical fallback
+        }
+
+        $googleReviewUrl = $business?->google_review_url;
+        $googleReviewQrBase64 = null;
+        if ($googleReviewUrl) {
+            try {
+                if (class_exists(\TCPDF2DBarcode::class)) {
+                    $reviewBarcode = new \TCPDF2DBarcode($googleReviewUrl, 'QRCODE,M');
+                    $reviewPngData = $reviewBarcode->getBarcodePngData(4, 4);
+                    if ($reviewPngData) {
+                        $googleReviewQrBase64 = 'data:image/png;base64,' . base64_encode($reviewPngData);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Non-critical fallback
+            }
+        }
+
+        $subTotal = (float) $invoice->items->sum('final_price');
+        $paidAmount = (float) $invoice->transactions->where('type', 'PAYMENT')->sum('amount');
+        $balanceDue = $invoice->status === 'CANCELLED' ? 0 : max((float) $invoice->total_amount - $paidAmount, 0);
+
         return response()->json([
             'success' => true,
+            'vault_url' => $vaultUrl,
+            'qr_code_base64' => $qrCodeBase64,
+            'google_review_url' => $googleReviewUrl,
+            'google_review_qr_base64' => $googleReviewQrBase64,
             'invoice' => [
                 'id' => $invoice->id,
                 'invoice_number' => $invoice->invoice_number,
                 'date' => $invoice->date,
+                'gold_rate_applied' => (float) $invoice->gold_rate_applied,
+                'silver_rate_applied' => (float) ($invoice->silver_rate_applied ?? 0),
+                'subtotal' => $subTotal,
+                'discount_type' => $invoice->discount_type,
+                'discount_value' => (float) ($invoice->discount_value ?? 0),
+                'discount_amount' => (float) ($invoice->discount_amount ?? 0),
+                'tax_amount' => (float) ($invoice->tax_amount ?? 0),
                 'total_amount' => (float) $invoice->total_amount,
-                'tax_amount' => (float) $invoice->tax_amount,
-                'discount_amount' => (float) $invoice->discount_amount,
+                'status' => $invoice->status ?? 'COMPLETED',
+                'cancellation_mode' => $invoice->cancellation_mode,
+                'cancellation_reason' => $invoice->cancellation_reason,
+                'cancelled_at' => optional($invoice->cancelled_at)?->format('d M Y h:i A'),
+                'created_by' => $invoice->user?->name ?? 'Sales Staff',
                 'customer' => [
-                    'name' => $invoice->customer?->name,
-                    'mobile' => $invoice->customer?->mobile,
-                    'city' => $invoice->customer?->city,
+                    'id' => $customer->id,
+                    'name' => $invoice->customer?->name ?? $customer->name,
+                    'mobile' => $invoice->customer?->mobile ?? $customer->mobile,
+                    'email' => $invoice->customer?->email ?? $customer->email,
+                    'address' => $invoice->customer?->address ?? $customer->address,
+                    'city' => $invoice->customer?->city ?? $customer->city ?? 'Virar',
+                    'pan_no' => $invoice->customer?->pan_no ?? $customer->pan_no,
+                    'aadhaar_no' => $invoice->customer?->aadhaar_no ?? $customer->aadhaar_no,
+                    'membership_id' => $invoice->customer?->membership_id ?? $customer->membership_id,
                 ],
                 'items' => $invoice->items->map(function ($item) {
+                    $isSilver = $item->silver_product_id !== null
+                        || str_contains(strtolower($item->purity ?? ''), 'silver')
+                        || str_contains(strtolower($item->purity ?? ''), '925')
+                        || str_contains(strtolower($item->description ?? ''), 'silver');
+
+                    $grossWeight = (float) $item->weight;
+                    $netWeight = (float) ($item->net_weight > 0 ? $item->net_weight : $item->weight);
+                    $rate = (float) $item->rate;
+                    $metalAmount = round($netWeight * $rate, 2);
+
                     return [
+                        'id' => $item->id,
                         'description' => $item->description ?: ($item->product?->name ?? $item->silverProduct?->name ?? $item->orderItem?->item_name ?? 'Jewellery Item'),
-                        'purity' => $item->purity ?: '22K (916)',
-                        'net_weight' => (float) ($item->net_weight > 0 ? $item->net_weight : $item->weight),
+                        'category' => $item->product?->category?->name ?? $item->silverProduct?->category?->name ?? ($isSilver ? 'Silver Jewellery' : 'Gold Jewellery'),
+                        'metal' => $isSilver ? 'SILVER' : 'GOLD',
+                        'purity' => $item->purity ?: ($isSilver ? '92.5 Sterling' : '22K (916)'),
+                        'gross_weight' => $grossWeight,
+                        'net_weight' => $netWeight,
+                        'rate' => $rate,
+                        'metal_amount' => $metalAmount,
+                        'making_charges' => (float) $item->making_charges,
+                        'making_charge_type' => $item->making_charge_type ?? 'percentage',
                         'huid' => $item->huid,
+                        'barcode' => $item->product?->barcode ?? $item->silverProduct?->barcode ?? null,
                         'final_price' => (float) ($item->final_price ?? $item->total_price ?? 0),
                     ];
                 })->values(),
+                'transactions' => $invoice->transactions->map(function ($txn) {
+                    return [
+                        'id' => $txn->id,
+                        'type' => $txn->type,
+                        'payment_method' => $txn->payment_method ?? 'CASH',
+                        'reference_number' => $txn->reference_number,
+                        'amount' => (float) $txn->amount,
+                        'date' => $txn->date ? date('d M Y', strtotime($txn->date)) : null,
+                    ];
+                })->values(),
+                'paid_amount' => $paidAmount,
+                'balance_due' => $balanceDue,
             ],
             'business' => [
                 'store_name' => $business?->store_name ?? 'Maniratn Jewellers',
@@ -287,6 +376,8 @@ class WebsiteApiController extends Controller
                 'email' => $business?->email,
                 'address' => $business?->address,
                 'gst_number' => $business?->gst_number,
+                'website' => $business?->website,
+                'google_review_url' => $business?->google_review_url,
             ],
         ]);
     }

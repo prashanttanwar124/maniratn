@@ -95,3 +95,102 @@ test('public website api returns 404 for disabled or non-existent vault cards', 
     $this->getJson(route('website.vault.show', 'vault_INVALID'))
         ->assertNotFound();
 });
+
+test('public website api returns full invoice details for printing', function () {
+    $business = BusinessSetting::create([
+        'store_name' => 'Maniratn Jewellers',
+        'phone' => '9892820518',
+        'email' => 'hello@maniratnjewellers.com',
+        'website' => 'https://maniratnjewellers.com',
+        'gst_number' => '27AABCU9603R1ZM',
+        'google_review_url' => 'https://g.page/r/maniratn/review',
+    ]);
+
+    $user = User::factory()->create(['name' => 'Senior Goldsmith']);
+
+    $customer = Customer::create([
+        'name' => 'Arjun Solanki',
+        'mobile' => '9876543210',
+        'address' => 'Station Road',
+        'city' => 'Virar',
+        'pan_no' => 'ABCDE1234F',
+        'membership_id' => 'MJ-1001',
+        'vault_token' => 'vault_TEST123456',
+        'card_status' => 'ISSUED',
+    ]);
+
+    $invoice = Invoice::create([
+        'invoice_number' => 'INV-001',
+        'customer_id' => $customer->id,
+        'user_id' => $user->id,
+        'date' => now()->toDateString(),
+        'gold_rate_applied' => 7200,
+        'silver_rate_applied' => 90,
+        'discount_amount' => 500,
+        'tax_amount' => 1500,
+        'total_amount' => 51000,
+        'status' => 'COMPLETED',
+    ]);
+
+    InvoiceItem::create([
+        'invoice_id' => $invoice->id,
+        'description' => '22K Gold Bangle',
+        'weight' => 7.5,
+        'purity' => '22K',
+        'rate' => 7200,
+        'making_charges' => 10,
+        'making_charge_type' => 'percentage',
+        'final_price' => 50000,
+    ]);
+
+    \App\Models\Transaction::create([
+        'transactable_id' => $customer->id,
+        'transactable_type' => Customer::class,
+        'invoice_id' => $invoice->id,
+        'type' => 'PAYMENT',
+        'payment_method' => 'UPI',
+        'reference_number' => 'UPI-987654321',
+        'amount' => 51000,
+        'date' => now()->toDateString(),
+    ]);
+
+    $invSign = substr(hash_hmac('sha256', "invoice_{$invoice->id}_{$customer->vault_token}", config('app.key') ?: 'maniratn_vault_secret'), 0, 12);
+    $secureKey = "inv_{$invoice->id}_{$invSign}";
+
+    $response = $this->getJson(route('website.vault.invoice-print', [
+        'token' => $customer->vault_token,
+        'invoice' => $secureKey,
+    ]));
+
+    $response->assertOk()
+        ->assertJson([
+            'success' => true,
+            'invoice' => [
+                'invoice_number' => 'INV-001',
+                'gold_rate_applied' => 7200,
+                'silver_rate_applied' => 90,
+                'created_by' => 'Senior Goldsmith',
+                'customer' => [
+                    'name' => 'Arjun Solanki',
+                    'pan_no' => 'ABCDE1234F',
+                    'membership_id' => 'MJ-1001',
+                ],
+                'items' => [
+                    [
+                        'description' => '22K Gold Bangle',
+                        'making_charge_type' => 'percentage',
+                    ],
+                ],
+                'transactions' => [
+                    [
+                        'payment_method' => 'UPI',
+                        'amount' => 51000,
+                    ],
+                ],
+            ],
+            'business' => [
+                'store_name' => 'Maniratn Jewellers',
+                'gst_number' => '27AABCU9603R1ZM',
+            ],
+        ]);
+});
