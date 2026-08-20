@@ -373,8 +373,8 @@ const submitLogout = () => {
                     <!-- Customers -->
                     <div v-if="searchResults.customers?.length" class="space-y-0.5">
                         <div class="px-3 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-surface-400 flex items-center justify-between border-b border-surface-100">
-                            <span>Customers</span>
-                            <span class="text-[9px] font-normal lowercase text-surface-400">enter to open ledger</span>
+                            <span>Customers ({{ searchResults.customers.length }})</span>
+                            <span class="text-[9px] font-normal lowercase text-surface-400">ledger</span>
                         </div>
                         <div>
                             <Link
@@ -385,16 +385,14 @@ const submitLogout = () => {
                                 class="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#1c3633]/5 transition-colors group cursor-pointer"
                             >
                                 <div class="flex items-center gap-2.5 min-w-0">
-                                    <div class="h-6 w-6 bg-[#1c3633]/10 text-[#1c3633] flex items-center justify-center text-[11px] font-bold flex-shrink-0">
-                                        {{ c.name.charAt(0).toUpperCase() }}
-                                    </div>
+                                    <i class="pi pi-user text-xs text-[#c08f34] flex-shrink-0"></i>
                                     <span class="font-bold text-[#1c3633] group-hover:text-[#c08f34] truncate">{{ c.name }}</span>
-                                    <span class="text-[11px] text-surface-400 truncate">{{ c.mobile || c.phone }}{{ c.city ? ' • ' + c.city : '' }}</span>
+                                    <span class="text-[11px] text-surface-400 truncate">{{ c.mobile || c.phone }}</span>
                                 </div>
-                                <span class="text-[10px] text-surface-400 group-hover:text-[#1c3633] font-medium flex items-center gap-1 flex-shrink-0 ml-2">
-                                    <span>Ledger</span>
-                                    <i class="pi pi-arrow-right text-[9px] group-hover:translate-x-0.5 transition-transform"></i>
-                                </span>
+                                <div class="flex items-center gap-2 flex-shrink-0 text-xs">
+                                    <span v-if="c.city" class="text-[10px] text-surface-500 bg-surface-100 px-1.5 py-0.5 font-medium">{{ c.city }}</span>
+                                    <i class="pi pi-arrow-up-right text-[10px] text-surface-300 group-hover:text-[#1c3633] transition-colors"></i>
+                                </div>
                             </Link>
                         </div>
                     </div>
@@ -402,8 +400,8 @@ const submitLogout = () => {
                     <!-- Invoices -->
                     <div v-if="searchResults.invoices?.length" class="space-y-0.5 pt-2">
                         <div class="px-3 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-surface-400 flex items-center justify-between border-b border-surface-100">
-                            <span>Invoices & Bills</span>
-                            <span class="text-[9px] font-normal lowercase text-surface-400">tax invoices</span>
+                            <span>Invoices & Bills ({{ searchResults.invoices.length }})</span>
+                            <span class="text-[9px] font-normal lowercase text-surface-400">printable tax bills</span>
                         </div>
                         <div>
                             <a
@@ -416,17 +414,14 @@ const submitLogout = () => {
                                 class="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#1c3633]/5 transition-colors group cursor-pointer"
                             >
                                 <div class="flex items-center gap-2.5 min-w-0">
-                                    <div class="h-6 w-6 bg-amber-50 text-amber-800 flex items-center justify-center text-xs flex-shrink-0 border border-amber-200/60">
-                                        <i class="pi pi-receipt text-[11px]"></i>
-                                    </div>
+                                    <i class="pi pi-receipt text-xs text-[#c08f34] flex-shrink-0"></i>
                                     <span class="font-bold font-mono text-[#1c3633] group-hover:text-[#c08f34]">{{ inv.invoice_number }}</span>
                                     <span class="text-[11px] text-surface-400 truncate">• {{ inv.customer?.name || 'Walk-in' }}</span>
-                                    <span class="text-[11px] font-bold text-emerald-700">₹{{ Number(inv.total_amount).toLocaleString('en-IN') }}</span>
                                 </div>
-                                <span class="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200 flex items-center gap-1 flex-shrink-0 ml-2">
-                                    <span>Print</span>
-                                    <i class="pi pi-external-link text-[8px]"></i>
-                                </span>
+                                <div class="flex items-center gap-2 flex-shrink-0 text-xs">
+                                    <span class="font-bold text-emerald-700">₹{{ Number(inv.total_amount).toLocaleString('en-IN') }}</span>
+                                    <i class="pi pi-external-link text-[10px] text-surface-300 group-hover:text-[#1c3633] transition-colors"></i>
+                                </div>
                             </a>
                         </div>
                     </div>
@@ -434,8 +429,8 @@ const submitLogout = () => {
                     <!-- Products -->
                     <div v-if="searchResults.products?.length" class="space-y-0.5 pt-2">
                         <div class="px-3 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-surface-400 flex items-center justify-between border-b border-surface-100">
-                            <span>Inventory & Barcodes</span>
-                            <span class="text-[9px] font-normal lowercase text-surface-400">stock items</span>
+                            <span>Inventory & Barcodes ({{ searchResults.products.length }})</span>
+                            <span class="text-[9px] font-normal lowercase text-surface-400">products</span>
                         </div>
                         <div>
                             <Link
@@ -446,15 +441,14 @@ const submitLogout = () => {
                                 class="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#1c3633]/5 transition-colors group cursor-pointer"
                             >
                                 <div class="flex items-center gap-2.5 min-w-0">
-                                    <div class="h-6 w-6 bg-zinc-100 text-zinc-700 flex items-center justify-center text-[10px] font-mono font-bold flex-shrink-0 border border-zinc-200">
-                                        🏷️
-                                    </div>
+                                    <i class="pi pi-tag text-xs text-[#c08f34] flex-shrink-0"></i>
                                     <span class="font-bold text-[#1c3633] group-hover:text-[#c08f34] truncate">{{ p.name }}</span>
-                                    <span class="text-[11px] text-surface-400">• {{ p.gross_weight }}g</span>
+                                    <span class="text-[11px] font-mono text-surface-400">{{ p.barcode }}</span>
                                 </div>
-                                <span class="text-[10px] font-mono font-bold bg-surface-100 px-1.5 py-0.5 border border-surface-200 text-surface-700 flex-shrink-0 ml-2">
-                                    {{ p.barcode }}
-                                </span>
+                                <div class="flex items-center gap-2 flex-shrink-0 text-xs">
+                                    <span class="text-[11px] font-semibold text-surface-600">{{ p.gross_weight }}g</span>
+                                    <i class="pi pi-arrow-up-right text-[10px] text-surface-300 group-hover:text-[#1c3633] transition-colors"></i>
+                                </div>
                             </Link>
                         </div>
                     </div>
