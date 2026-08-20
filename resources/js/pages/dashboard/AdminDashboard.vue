@@ -328,24 +328,35 @@ const buildSmoothPath = (points) => {
 
 // Financial Chart (Sales or Collections)
 const financeChartCalculations = computed(() => {
-    const items = filteredSalesData.value;
-    if (!items.length) return { points: [], linePath: '', areaPath: '', yTicks: [], xTicks: [] };
+    const items = filteredSalesData.value || [];
+    if (!items.length) {
+        const defaultYTicks = [
+            { y: padTop, formatted: '₹10k' },
+            { y: padTop + plotHeight * 0.5, formatted: '₹5k' },
+            { y: padTop + plotHeight, formatted: '₹0' },
+        ];
+        return { points: [], linePath: '', areaPath: '', yTicks: defaultYTicks, xTicks: [] };
+    }
 
-    const values = items.map((i) => (activeChartTab.value === 'collections' ? Number(i.collections || 0) : Number(i.sales || 0)));
-    const maxVal = Math.max(...values, 1000) * 1.15;
+    const values = items
+        .map((i) => (activeChartTab.value === 'collections' ? Number(i.collections || 0) : Number(i.sales || 0)))
+        .filter((v) => !isNaN(v));
+    const rawMax = values.length ? Math.max(...values, 1000) : 1000;
+    const maxVal = Math.max(rawMax * 1.15, 1000);
     const minVal = 0;
 
     const points = items.map((item, idx) => {
-        const x = padLeft + (idx / (items.length - 1 || 1)) * plotWidth;
+        const x = padLeft + (idx / Math.max(items.length - 1, 1)) * plotWidth;
         const val = activeChartTab.value === 'collections' ? Number(item.collections || 0) : Number(item.sales || 0);
-        const y = padTop + plotHeight * (1 - (val - minVal) / (maxVal - minVal));
+        const safeVal = isNaN(val) ? 0 : val;
+        const y = padTop + plotHeight * (1 - (safeVal - minVal) / (maxVal - minVal));
         return {
             x,
-            y,
-            val,
-            label: item.label,
-            short_label: item.short_label,
-            formatted: formatCurrency(val),
+            y: isNaN(y) ? padTop + plotHeight : y,
+            val: safeVal,
+            label: item.label || '',
+            short_label: item.short_label || '',
+            formatted: formatCurrency(safeVal),
         };
     });
 
@@ -355,7 +366,6 @@ const financeChartCalculations = computed(() => {
         ? `${linePath} L ${points[points.length - 1].x} ${bottomY} L ${points[0].x} ${bottomY} Z`
         : '';
 
-    // 4 Horizontal Y Ticks
     const yTicks = [0, 0.33, 0.66, 1].map((pct) => {
         const val = minVal + (maxVal - minVal) * pct;
         const y = padTop + plotHeight * (1 - pct);
@@ -363,7 +373,6 @@ const financeChartCalculations = computed(() => {
         return { y, formatted };
     });
 
-    // X Axis Ticks
     const step = items.length > 14 ? 4 : items.length > 7 ? 2 : 1;
     const xTicks = points.filter((_, idx) => idx % step === 0 || idx === points.length - 1);
 
@@ -372,30 +381,71 @@ const financeChartCalculations = computed(() => {
 
 // Bullion Chart Calculations (Dual Axis)
 const bullionChartCalculations = computed(() => {
-    const items = filteredBullionData.value;
-    if (!items.length) return { goldPoints: [], silverPoints: [], goldPath: '', silverPath: '', goldYTicks: [], silverYTicks: [], xTicks: [] };
+    const items = filteredBullionData.value || [];
+    if (!items.length) {
+        const defaultGoldYTicks = [
+            { y: padTop, formatted: '₹7,500' },
+            { y: padTop + plotHeight * 0.5, formatted: '₹7,250' },
+            { y: padTop + plotHeight, formatted: '₹7,000' },
+        ];
+        const defaultSilverYTicks = [
+            { y: padTop, formatted: '₹95' },
+            { y: padTop + plotHeight * 0.5, formatted: '₹88' },
+            { y: padTop + plotHeight, formatted: '₹80' },
+        ];
+        return {
+            goldPoints: [],
+            silverPoints: [],
+            goldPath: '',
+            silverPath: '',
+            goldYTicks: defaultGoldYTicks,
+            silverYTicks: defaultSilverYTicks,
+            xTicks: [],
+        };
+    }
 
-    const goldVals = items.map((i) => Number(i.gold_sell || 0));
-    const silverVals = items.map((i) => Number(i.silver_sell || 0));
+    const goldVals = items.map((i) => Number(i.gold_sell || 0)).filter((v) => v > 0 && !isNaN(v));
+    const silverVals = items.map((i) => Number(i.silver_sell || 0)).filter((v) => v > 0 && !isNaN(v));
 
-    const minGold = Math.floor((Math.min(...goldVals, 7000) * 0.98) / 100) * 100;
-    const maxGold = Math.ceil((Math.max(...goldVals, 7500) * 1.02) / 100) * 100;
+    const rawMinGold = goldVals.length ? Math.min(...goldVals) : 7000;
+    const rawMaxGold = goldVals.length ? Math.max(...goldVals) : 7500;
+    const minGold = Math.floor((rawMinGold * 0.98) / 50) * 50;
+    const maxGold = Math.ceil((rawMaxGold * 1.02) / 50) * 50;
 
-    const minSilver = Math.floor((Math.min(...silverVals, 80) * 0.95) / 5) * 5;
-    const maxSilver = Math.ceil((Math.max(...silverVals, 95) * 1.05) / 5) * 5;
+    const rawMinSilver = silverVals.length ? Math.min(...silverVals) : 80;
+    const rawMaxSilver = silverVals.length ? Math.max(...silverVals) : 95;
+    const minSilver = Math.floor((rawMinSilver * 0.95) / 5) * 5;
+    const maxSilver = Math.ceil((rawMaxSilver * 1.05) / 5) * 5;
+
+    const goldDenom = Math.max(maxGold - minGold, 1);
+    const silverDenom = Math.max(maxSilver - minSilver, 1);
 
     const goldPoints = items.map((item, idx) => {
-        const x = padLeft + (idx / (items.length - 1 || 1)) * plotWidth;
+        const x = padLeft + (idx / Math.max(items.length - 1, 1)) * plotWidth;
         const val = Number(item.gold_sell || 0);
-        const y = padTop + plotHeight * (1 - (val - minGold) / (maxGold - minGold || 1));
-        return { x, y, val, label: item.label, formatted: `₹${val.toLocaleString('en-IN')}/g` };
+        const safeVal = isNaN(val) || val <= 0 ? (goldVals[0] || 7200) : val;
+        const y = padTop + plotHeight * (1 - (safeVal - minGold) / goldDenom);
+        return {
+            x,
+            y: isNaN(y) ? padTop + plotHeight * 0.5 : y,
+            val: safeVal,
+            label: item.label || '',
+            formatted: `₹${safeVal.toLocaleString('en-IN')}/g`,
+        };
     });
 
     const silverPoints = items.map((item, idx) => {
-        const x = padLeft + (idx / (items.length - 1 || 1)) * plotWidth;
+        const x = padLeft + (idx / Math.max(items.length - 1, 1)) * plotWidth;
         const val = Number(item.silver_sell || 0);
-        const y = padTop + plotHeight * (1 - (val - minSilver) / (maxSilver - minSilver || 1));
-        return { x, y, val, label: item.label, formatted: `₹${val.toLocaleString('en-IN')}/g` };
+        const safeVal = isNaN(val) || val <= 0 ? (silverVals[0] || 88) : val;
+        const y = padTop + plotHeight * (1 - (safeVal - minSilver) / silverDenom);
+        return {
+            x,
+            y: isNaN(y) ? padTop + plotHeight * 0.5 : y,
+            val: safeVal,
+            label: item.label || '',
+            formatted: `₹${safeVal.toLocaleString('en-IN')}/g`,
+        };
     });
 
     const goldPath = buildSmoothPath(goldPoints);
@@ -404,16 +454,17 @@ const bullionChartCalculations = computed(() => {
     const goldYTicks = [0, 0.5, 1].map((pct) => {
         const val = Math.round(minGold + (maxGold - minGold) * pct);
         const y = padTop + plotHeight * (1 - pct);
-        return { y, formatted: `₹${val}` };
+        return { y, formatted: `₹${val.toLocaleString('en-IN')}` };
     });
 
     const silverYTicks = [0, 0.5, 1].map((pct) => {
         const val = Math.round(minSilver + (maxSilver - minSilver) * pct);
         const y = padTop + plotHeight * (1 - pct);
-        return { y, formatted: `₹${val}` };
+        return { y, formatted: `₹${val.toLocaleString('en-IN')}` };
     });
 
-    const xTicks = goldPoints.filter((_, idx) => idx % 2 === 0 || idx === goldPoints.length - 1);
+    const step = items.length > 7 ? 2 : 1;
+    const xTicks = goldPoints.filter((_, idx) => idx % step === 0 || idx === goldPoints.length - 1);
 
     return { goldPoints, silverPoints, goldPath, silverPath, goldYTicks, silverYTicks, xTicks };
 });
