@@ -191,12 +191,12 @@ const submitLogout = () => {
         <div class="layout-topbar-start">
             <button
                 type="button"
-                class="layout-topbar-action"
+                class="inline-flex items-center justify-center h-9 w-9 border border-surface-200 bg-surface-50 hover:bg-surface-100 text-surface-700 hover:text-[#1c3633] transition-all cursor-pointer"
                 @click="toggleMenu"
                 aria-label="Toggle navigation"
                 title="Toggle Menu"
             >
-                <i class="pi pi-bars"></i>
+                <i class="pi pi-bars text-sm"></i>
             </button>
 
             <Link href="/dashboard" class="layout-topbar-brand flex items-center gap-2.5 group">
