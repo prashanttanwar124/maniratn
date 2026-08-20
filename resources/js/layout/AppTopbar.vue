@@ -217,12 +217,12 @@ const submitLogout = () => {
             <button
                 type="button"
                 @click="openSpotlight"
-                class="w-full flex items-center gap-2.5 px-3.5 py-1.5 bg-[#f8faf9] hover:bg-[#edf2f0] border border-surface-200 hover:border-[#1c3633]/25 rounded-lg text-xs text-surface-500 transition-all cursor-pointer group"
+                class="w-full flex items-center gap-2.5 px-3.5 py-1.5 bg-[#f8faf9] hover:bg-[#edf2f0] border border-surface-200 hover:border-[#1c3633]/25 text-xs text-surface-500 transition-all cursor-pointer group"
                 title="Search customers, bills, tags... (⌘K)"
             >
                 <i class="pi pi-search text-surface-400 group-hover:text-[#1c3633] transition-colors"></i>
                 <span class="flex-1 text-left truncate font-normal text-surface-500">Search bills, customers, barcode tags...</span>
-                <kbd class="px-1.5 py-0.5 bg-white border border-surface-200 rounded text-[10px] font-mono text-surface-400 font-medium">⌘K</kbd>
+                <kbd class="px-1.5 py-0.5 bg-white border border-surface-200 text-[10px] font-mono text-surface-400 font-medium">⌘K</kbd>
             </button>
         </div>
 
@@ -232,7 +232,7 @@ const submitLogout = () => {
             <button
                 type="button"
                 @click="openRatesModal"
-                class="hidden xl:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50/80 hover:bg-amber-100/90 border border-amber-200/70 text-xs text-amber-950 transition-all cursor-pointer group"
+                class="hidden xl:inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50/80 hover:bg-amber-100/90 border border-amber-200/70 text-xs text-amber-950 transition-all cursor-pointer group"
                 title="Click to update today's live rates"
             >
                 <span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
@@ -245,18 +245,18 @@ const submitLogout = () => {
             <!-- + New Bill Button (Primary Action) -->
             <Link
                 href="/invoices/create"
-                class="inline-flex items-center gap-1.5 h-8.5 px-3.5 rounded-lg bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
+                class="inline-flex items-center gap-1.5 h-8.5 px-3.5 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
                 title="Create New Bill (Shortcut: F2)"
             >
                 <i class="pi pi-plus text-xs text-[#c08f34] font-bold"></i>
                 <span class="font-bold">New Bill</span>
-                <kbd class="hidden lg:inline px-1 py-0.2 bg-white/15 rounded text-[9px] font-mono text-white/90">F2</kbd>
+                <kbd class="hidden lg:inline px-1 py-0.2 bg-white/15 text-[9px] font-mono text-white/90">F2</kbd>
             </Link>
 
             <!-- Karat AI Copilot -->
             <button
                 type="button"
-                class="inline-flex items-center justify-center h-8.5 w-8.5 rounded-lg border border-surface-200 bg-surface-50 hover:bg-surface-100 text-surface-600 hover:text-amber-700 transition-all cursor-pointer"
+                class="inline-flex items-center justify-center h-8.5 w-8.5 border border-surface-200 bg-surface-50 hover:bg-surface-100 text-surface-600 hover:text-amber-700 transition-all cursor-pointer"
                 title="Karat AI Assistant"
                 @click="emit('openAskAi')"
             >
@@ -265,7 +265,7 @@ const submitLogout = () => {
 
             <!-- Day Status Live Indicator -->
             <div
-                class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border"
+                class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium border"
                 :class="dayStatus.is_open ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'"
                 :title="dayStatus.is_open ? 'Store Register is Open' : 'Store Register is Closed'"
             >
@@ -280,9 +280,9 @@ const submitLogout = () => {
                 <button
                     type="button"
                     @click.stop="isUserMenuOpen = !isUserMenuOpen"
-                    class="flex items-center gap-2 p-1 rounded-lg hover:bg-surface-100 transition-colors cursor-pointer group"
+                    class="flex items-center gap-2 p-1 hover:bg-surface-100 transition-colors cursor-pointer group"
                 >
-                    <div class="h-8 w-8 rounded-full bg-[#1c3633] text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                    <div class="h-8 w-8 bg-[#1c3633] text-white flex items-center justify-center text-xs font-bold shadow-xs">
                         {{ initials }}
                     </div>
                     <div class="hidden md:flex flex-col text-left">
@@ -295,7 +295,7 @@ const submitLogout = () => {
                 <!-- Dropdown Menu -->
                 <div
                     v-if="isUserMenuOpen"
-                    class="absolute right-0 mt-2 w-56 bg-white border border-surface-200 rounded-xl shadow-xl z-50 py-1.5 divide-y divide-surface-100 animate-in fade-in zoom-in-95 duration-100"
+                    class="absolute right-0 mt-2 w-56 bg-white border border-surface-200 shadow-xl z-50 py-1.5 divide-y divide-surface-100 animate-in fade-in zoom-in-95 duration-100"
                 >
                     <div class="px-3.5 py-2.5">
                         <p class="text-xs font-bold text-[#1c3633]">{{ pageUser?.name }}</p>
@@ -303,11 +303,11 @@ const submitLogout = () => {
                     </div>
 
                     <div class="py-1">
-                        <Link href="/settings/profile" class="flex items-center gap-2.5 px-3.5 py-2 text-xs text-surface-700 hover:bg-surface-50 rounded-md mx-1">
+                        <Link href="/settings/profile" class="flex items-center gap-2.5 px-3.5 py-2 text-xs text-surface-700 hover:bg-surface-50 mx-1">
                             <i class="pi pi-user text-xs text-surface-400"></i>
                             <span>My Profile</span>
                         </Link>
-                        <Link href="/settings" class="flex items-center gap-2.5 px-3.5 py-2 text-xs text-surface-700 hover:bg-surface-50 rounded-md mx-1">
+                        <Link href="/settings" class="flex items-center gap-2.5 px-3.5 py-2 text-xs text-surface-700 hover:bg-surface-50 mx-1">
                             <i class="pi pi-cog text-xs text-surface-400"></i>
                             <span>Store Settings</span>
                         </Link>
@@ -317,7 +317,7 @@ const submitLogout = () => {
                         <button
                             type="button"
                             @click="submitLogout"
-                            class="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 rounded-md mx-1 text-left cursor-pointer font-medium"
+                            class="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 mx-1 text-left cursor-pointer font-medium"
                         >
                             <i class="pi pi-sign-out text-xs text-red-500"></i>
                             <span>Sign Out</span>
@@ -334,7 +334,7 @@ const submitLogout = () => {
         class="fixed inset-0 z-[9999] flex items-start justify-center pt-16 sm:pt-24 px-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
         @click.self="closeSpotlight"
     >
-        <div class="w-full max-w-2xl bg-white border border-surface-200 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+        <div class="w-full max-w-2xl bg-white border border-surface-200 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
             <!-- Search Header Input -->
             <div class="flex items-center gap-3 px-4 py-3.5 border-b border-surface-200 bg-white">
                 <i class="pi pi-search text-base text-[#c08f34]"></i>
@@ -349,7 +349,7 @@ const submitLogout = () => {
                 <button
                     type="button"
                     @click="closeSpotlight"
-                    class="px-2 py-1 text-[11px] font-mono text-surface-500 hover:text-surface-900 bg-surface-100 border border-surface-200 rounded"
+                    class="px-2 py-1 text-[11px] font-mono text-surface-500 hover:text-surface-900 bg-surface-100 border border-surface-200"
                 >
                     ESC
                 </button>
@@ -373,10 +373,10 @@ const submitLogout = () => {
                                 v-for="c in searchResults.customers"
                                 :key="c.id"
                                 :href="`/customers/${c.id}`"
-                                class="flex items-center justify-between p-2.5 hover:bg-[#f4f7f6] rounded-lg transition-colors group"
+                                class="flex items-center justify-between p-2.5 hover:bg-[#f4f7f6] transition-colors group"
                             >
                                 <div class="flex items-center gap-2.5">
-                                    <div class="h-7 w-7 rounded-full bg-[#1c3633]/10 text-[#1c3633] flex items-center justify-center text-xs font-bold">
+                                    <div class="h-7 w-7 bg-[#1c3633]/10 text-[#1c3633] flex items-center justify-center text-xs font-bold">
                                         {{ c.name.charAt(0) }}
                                     </div>
                                     <div>
@@ -397,10 +397,10 @@ const submitLogout = () => {
                                 v-for="inv in searchResults.invoices"
                                 :key="inv.id"
                                 :href="`/invoices/${inv.id}/print`"
-                                class="flex items-center justify-between p-2.5 hover:bg-[#f4f7f6] rounded-lg transition-colors group"
+                                class="flex items-center justify-between p-2.5 hover:bg-[#f4f7f6] transition-colors group"
                             >
                                 <div class="flex items-center gap-2.5">
-                                    <div class="h-7 w-7 rounded-full bg-amber-50 text-amber-800 flex items-center justify-center text-xs font-bold">
+                                    <div class="h-7 w-7 bg-amber-50 text-amber-800 flex items-center justify-center text-xs font-bold">
                                         <i class="pi pi-receipt text-xs"></i>
                                     </div>
                                     <div>
@@ -408,7 +408,7 @@ const submitLogout = () => {
                                         <p class="text-[11px] text-surface-500">{{ inv.customer?.name || 'Walk-in' }} • ₹{{ Number(inv.total_amount).toLocaleString('en-IN') }}</p>
                                     </div>
                                 </div>
-                                <span class="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">View Bill</span>
+                                <span class="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200">View Bill</span>
                             </a>
                         </div>
                     </div>
@@ -421,10 +421,10 @@ const submitLogout = () => {
                                 v-for="p in searchResults.products"
                                 :key="p.id"
                                 :href="`/products`"
-                                class="flex items-center justify-between p-2.5 hover:bg-[#f4f7f6] rounded-lg transition-colors group"
+                                class="flex items-center justify-between p-2.5 hover:bg-[#f4f7f6] transition-colors group"
                             >
                                 <div class="flex items-center gap-2.5">
-                                    <div class="h-7 w-7 rounded-full bg-zinc-100 text-zinc-700 flex items-center justify-center text-xs font-mono font-bold">
+                                    <div class="h-7 w-7 bg-zinc-100 text-zinc-700 flex items-center justify-center text-xs font-mono font-bold">
                                         🏷️
                                     </div>
                                     <div>
@@ -432,7 +432,7 @@ const submitLogout = () => {
                                         <p class="text-[11px] font-mono text-surface-500">Tag: {{ p.barcode }} • {{ p.gross_weight }}g</p>
                                     </div>
                                 </div>
-                                <span class="text-[10px] font-mono font-bold bg-surface-100 px-2 py-0.5 rounded text-surface-700">{{ p.barcode }}</span>
+                                <span class="text-[10px] font-mono font-bold bg-surface-100 px-2 py-0.5 text-surface-700">{{ p.barcode }}</span>
                             </a>
                         </div>
                     </div>
@@ -455,7 +455,7 @@ const submitLogout = () => {
                             v-for="item in quickLinks"
                             :key="item.title"
                             :href="item.url"
-                            class="flex items-start gap-3 p-3 bg-surface-50 hover:bg-[#eef4f2] border border-surface-200 hover:border-[#1c3633]/30 rounded-lg transition-all group"
+                            class="flex items-start gap-3 p-3 bg-surface-50 hover:bg-[#eef4f2] border border-surface-200 hover:border-[#1c3633]/30 transition-all group"
                         >
                             <i :class="item.icon" class="text-sm text-[#1c3633] mt-0.5 group-hover:text-[#c08f34]"></i>
                             <div>
@@ -470,8 +470,8 @@ const submitLogout = () => {
             <!-- Modal Footer -->
             <div class="px-4 py-2.5 bg-surface-50 border-t border-surface-200 flex items-center justify-between text-[11px] text-surface-500">
                 <div class="flex items-center gap-3">
-                    <span><kbd class="px-1 py-0.5 bg-white border border-surface-200 rounded text-[9px] font-mono">F2</kbd> New Invoice</span>
-                    <span><kbd class="px-1 py-0.5 bg-white border border-surface-200 rounded text-[9px] font-mono">ESC</kbd> Close</span>
+                    <span><kbd class="px-1 py-0.5 bg-white border border-surface-200 text-[9px] font-mono">F2</kbd> New Invoice</span>
+                    <span><kbd class="px-1 py-0.5 bg-white border border-surface-200 text-[9px] font-mono">ESC</kbd> Close</span>
                 </div>
                 <span class="text-[10px] font-semibold text-[#1c3633]/60">KaratSetu Omnisearch</span>
             </div>
@@ -484,11 +484,11 @@ const submitLogout = () => {
         class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
         @click.self="isRatesModalOpen = false"
     >
-        <div class="w-full max-w-lg bg-white border border-surface-200 rounded-xl shadow-2xl p-6">
+        <div class="w-full max-w-lg bg-white border border-surface-200 shadow-2xl p-6">
             <!-- Modal Header -->
             <div class="flex items-start justify-between pb-4 mb-4 border-b border-surface-200">
                 <div class="flex items-center gap-3">
-                    <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-amber-100 text-amber-800 text-base flex-shrink-0">🪙</span>
+                    <span class="inline-flex items-center justify-center w-9 h-9 bg-amber-100 text-amber-800 text-base flex-shrink-0">🪙</span>
                     <div>
                         <h3 class="text-base font-bold text-[#1c3633] leading-tight">Today's Market Bullion Rates</h3>
                         <p class="text-xs text-surface-500 mt-0.5">Live base prices used across sales billing & valuations</p>
@@ -497,7 +497,7 @@ const submitLogout = () => {
                 <button
                     type="button"
                     @click="isRatesModalOpen = false"
-                    class="p-1.5 text-surface-400 hover:text-surface-700 cursor-pointer rounded-md hover:bg-surface-100 transition-colors"
+                    class="p-1.5 text-surface-400 hover:text-surface-700 cursor-pointer hover:bg-surface-100 transition-colors"
                 >
                     <i class="pi pi-times text-sm"></i>
                 </button>
@@ -518,7 +518,7 @@ const submitLogout = () => {
                             step="0.01"
                             required
                             placeholder="e.g. 7160.00"
-                            class="w-full pl-8 pr-4 h-11 border border-surface-300 rounded-lg text-sm font-bold text-[#1c3633] outline-hidden focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            class="w-full pl-8 pr-4 h-11 border border-surface-300 text-sm font-bold text-[#1c3633] outline-hidden focus:border-[#1c3633] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                     </div>
                 </div>
@@ -537,7 +537,7 @@ const submitLogout = () => {
                                 step="0.01"
                                 required
                                 placeholder="e.g. 7010.00"
-                                class="w-full pl-8 pr-4 h-11 border border-surface-300 rounded-lg text-sm font-medium text-surface-800 outline-hidden focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                class="w-full pl-8 pr-4 h-11 border border-surface-300 text-sm font-medium text-surface-800 outline-hidden focus:border-[#1c3633] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                         </div>
                     </div>
@@ -554,7 +554,7 @@ const submitLogout = () => {
                                 step="0.01"
                                 required
                                 placeholder="e.g. 88.00"
-                                class="w-full pl-8 pr-4 h-11 border border-surface-300 rounded-lg text-sm font-medium text-surface-800 outline-hidden focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                class="w-full pl-8 pr-4 h-11 border border-surface-300 text-sm font-medium text-surface-800 outline-hidden focus:border-[#1c3633] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                         </div>
                     </div>
@@ -565,14 +565,14 @@ const submitLogout = () => {
                     <button
                         type="button"
                         @click="isRatesModalOpen = false"
-                        class="px-4 h-10 border border-surface-300 rounded-lg text-xs font-semibold text-surface-600 hover:bg-surface-50 cursor-pointer transition-colors"
+                        class="px-4 h-10 border border-surface-300 text-xs font-semibold text-surface-600 hover:bg-surface-50 cursor-pointer transition-colors"
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
                         :disabled="rateUpdating"
-                        class="px-5 h-10 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50 transition-colors shadow-xs"
+                        class="px-5 h-10 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-bold cursor-pointer disabled:opacity-50 transition-colors shadow-xs"
                     >
                         {{ rateUpdating ? 'Saving Rates...' : 'Update Market Rates' }}
                     </button>
