@@ -31,7 +31,7 @@
         body {
             font-family: 'Poppins', Arial, sans-serif;
             margin: 0;
-            padding: 24px;
+            padding: 20px;
             color: var(--surface-900);
             background: linear-gradient(180deg, #fffaf0 0%, #f8f3e3 100%);
             font-size: 11.5px;
@@ -39,10 +39,10 @@
         }
 
         .page {
-            max-width: 800px;
+            max-width: 820px;
             margin: 15px auto;
             border: 1px dashed var(--brand-gold);
-            box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.08);
             background: var(--surface-0);
             padding: 0;
             position: relative;
@@ -58,22 +58,42 @@
 
         /* Gold Luxury Toolbar */
         .toolbar {
-            max-width: 800px;
-            margin: 0 auto 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            max-width: 820px;
+            margin: 0 auto 14px;
             background: linear-gradient(115deg, #fffaf0 0%, #f8f3e3 18%, #ffffff 46%, #ffffff 100%);
             color: #21160a;
             padding: 10px 18px;
             border: 1px solid #d8c38a;
             box-shadow: 0 4px 12px rgba(175, 140, 55, 0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toolbar-top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .toolbar-bottom-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid rgba(216, 195, 138, 0.4);
+            padding-top: 8px;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 11.5px;
         }
 
         .toolbar-group {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .toolbar-title {
@@ -84,21 +104,45 @@
             letter-spacing: 0.06em;
         }
 
-        .toolbar button {
+        .btn-print {
             border: 1px solid #b58a34;
             background: linear-gradient(145deg, #d7bb6a 0%, #f6e3a8 55%, #b58a34 100%);
             color: #5d4311;
-            padding: 7px 16px;
+            padding: 7px 18px;
             cursor: pointer;
             font-family: 'Poppins', Arial, sans-serif;
             font-size: 12px;
             font-weight: 700;
             box-shadow: 0 2px 6px rgba(175, 140, 55, 0.15);
             transition: all 0.15s ease-in-out;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        .toolbar button:hover {
+        .btn-print:hover {
             background: linear-gradient(145deg, #b58a34 0%, #ebd085 55%, #8e6818 100%);
+            transform: translateY(-1px);
+        }
+
+        .btn-whatsapp {
+            border: 1px solid #16a34a;
+            background: #16a34a;
+            color: #ffffff;
+            padding: 7px 14px;
+            cursor: pointer;
+            font-family: 'Poppins', Arial, sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s ease-in-out;
+        }
+
+        .btn-whatsapp:hover {
+            background: #15803d;
             transform: translateY(-1px);
         }
 
@@ -109,7 +153,7 @@
             font-size: 12px;
             background: rgba(255, 255, 255, 0.85);
             border: 1px solid rgba(216, 195, 138, 0.5);
-            padding: 5px 12px;
+            padding: 4px 10px;
         }
 
         .slider-container label {
@@ -118,7 +162,7 @@
         }
 
         .slider-container input[type="range"] {
-            width: 105px;
+            width: 90px;
             accent-color: var(--brand-gold);
             cursor: pointer;
         }
@@ -126,9 +170,44 @@
         .offset-value {
             font-weight: 700;
             color: var(--brand-gold);
-            min-width: 45px;
+            min-width: 40px;
             text-align: right;
             font-family: 'JetBrains Mono', monospace;
+        }
+
+        .preset-btn {
+            background: #ffffff;
+            border: 1px solid #d8c38a;
+            padding: 3px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            color: #7b6a42;
+            font-weight: 600;
+        }
+
+        .preset-btn:hover {
+            background: #fbf6ea;
+            border-color: #b58a34;
+        }
+
+        /* Optional Store Header (When printing without pre-printed letterhead) */
+        .store-letterhead {
+            display: none;
+            border-bottom: 2px solid var(--brand-maroon);
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+
+        .store-letterhead.active {
+            display: block;
+        }
+
+        .store-header-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--brand-maroon);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
         }
 
         /* Invoice Header & Meta */
@@ -137,6 +216,8 @@
             align-items: center;
             justify-content: space-between;
             margin-bottom: 12px;
+            border-bottom: 1px solid var(--surface-200);
+            padding-bottom: 6px;
         }
 
         .invoice-heading-label {
@@ -151,14 +232,14 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 14px;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
 
         .panel {
             border: 1px solid var(--surface-200);
             border-top: 3px solid var(--brand-maroon);
             background: var(--surface-50);
-            padding: 12px 14px;
+            padding: 10px 14px;
             font-size: 11px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
         }
@@ -201,8 +282,8 @@
 
         /* Items Table with Maroon Header */
         .items-section {
-            margin-top: 14px;
-            margin-bottom: 16px;
+            margin-top: 12px;
+            margin-bottom: 14px;
         }
 
         table.items {
@@ -214,7 +295,7 @@
         table.items th,
         table.items td {
             border: 1px solid var(--surface-200);
-            padding: 7.5px 10px;
+            padding: 7px 10px;
             text-align: left;
         }
 
@@ -229,7 +310,15 @@
         }
 
         table.items tbody tr:nth-child(even) {
-            background-color: #fdfdfd;
+            background-color: #fafaf9;
+        }
+
+        table.items tfoot td {
+            background: var(--surface-100);
+            font-weight: 700;
+            border-top: 2px solid var(--brand-maroon);
+            padding: 6px 10px;
+            font-size: 10.5px;
         }
 
         .barcode-pill {
@@ -252,6 +341,18 @@
             text-align: center;
         }
 
+        /* Words & Totals */
+        .amount-in-words {
+            font-size: 10.5px;
+            font-style: italic;
+            color: var(--surface-700);
+            margin-top: 6px;
+            padding: 6px 10px;
+            background: var(--surface-50);
+            border: 1px solid var(--surface-200);
+            border-left: 3px solid var(--brand-gold);
+        }
+
         /* Bottom Totals Section */
         .bottom-section {
             display: flex;
@@ -262,7 +363,7 @@
         }
 
         .totals-wrap {
-            width: 290px;
+            width: 300px;
             border: 1px solid var(--surface-200);
             background: var(--surface-50);
             padding: 10px 14px;
@@ -276,7 +377,7 @@
         }
 
         .totals-table td {
-            padding: 5px 0;
+            padding: 4px 0;
             border-bottom: 1px solid var(--surface-200);
         }
 
@@ -341,10 +442,10 @@
 
         .google-review-qr-box svg,
         .google-review-qr-box img {
-            width: 40px;
-            height: 40px;
-            max-width: 40px;
-            max-height: 40px;
+            width: 38px;
+            height: 38px;
+            max-width: 38px;
+            max-height: 38px;
             display: block;
         }
 
@@ -387,34 +488,144 @@
 <body>
     @php
         $settings = \App\Models\BusinessSetting::first();
+        $storeName = $settings->store_name ?? 'Maniratn Jewellers';
+
+        // Helper for Indian Rupees in Words
+        function amountToWords(float $num) {
+            $num = round($num, 2);
+            $ones = [
+                0 => '', 1 => 'One', 2 => 'Two', 3 => 'Three', 4 => 'Four', 5 => 'Five', 6 => 'Six', 7 => 'Seven', 8 => 'Eight', 9 => 'Nine',
+                10 => 'Ten', 11 => 'Eleven', 12 => 'Twelve', 13 => 'Thirteen', 14 => 'Fourteen', 15 => 'Fifteen', 16 => 'Sixteen', 17 => 'Seventeen', 18 => 'Eighteen', 19 => 'Nineteen'
+            ];
+            $tens = [2 => 'Twenty', 3 => 'Thirty', 4 => 'Forty', 5 => 'Fifty', 6 => 'Sixty', 7 => 'Seventy', 8 => 'Eighty', 9 => 'Ninety'];
+            
+            $intVal = (int) $num;
+            $decVal = (int) round(($num - $intVal) * 100);
+
+            if ($intVal == 0) return 'Zero Rupees';
+
+            $convertGroup = function($n) use ($ones, $tens) {
+                $str = '';
+                if ($n >= 100) {
+                    $str .= $ones[(int)($n / 100)] . ' Hundred ';
+                    $n %= 100;
+                }
+                if ($n >= 20) {
+                    $str .= $tens[(int)($n / 10)] . ' ';
+                    $n %= 10;
+                }
+                if ($n > 0) {
+                    $str .= $ones[$n] . ' ';
+                }
+                return trim($str);
+            };
+
+            $crore = (int) ($intVal / 10000000);
+            $intVal %= 10000000;
+            $lakh = (int) ($intVal / 100000);
+            $intVal %= 100000;
+            $thousand = (int) ($intVal / 1000);
+            $intVal %= 1000;
+            $remaining = $intVal;
+
+            $words = [];
+            if ($crore > 0) $words[] = $convertGroup($crore) . ' Crore';
+            if ($lakh > 0) $words[] = $convertGroup($lakh) . ' Lakh';
+            if ($thousand > 0) $words[] = $convertGroup($thousand) . ' Thousand';
+            if ($remaining > 0) $words[] = $convertGroup($remaining);
+
+            $out = 'Rupees ' . implode(' ', $words);
+            if ($decVal > 0) {
+                $out .= ' and ' . $convertGroup($decVal) . ' Paise';
+            }
+            return $out . ' Only';
+        }
+
+        $totalGrams = (float) $invoice->items->sum('weight');
+        $totalItemsCount = count($invoice->items);
+        $amountInWords = amountToWords((float) $invoice->total_amount);
+
+        // WhatsApp greeting link
+        $customerMobile = $invoice->customer?->mobile ? preg_replace('/\D/', '', $invoice->customer->mobile) : '';
+        $cleanPhone = str_starts_with($customerMobile, '91') ? $customerMobile : '91' . $customerMobile;
+        $waMessage = urlencode("Dear " . ($invoice->customer?->name ?? 'Customer') . ",\n\nThank you for choosing {$storeName}! ✨\n\nYour Tax Invoice *#{$invoice->invoice_number}* for *Rs " . number_format((float) $invoice->total_amount, 2) . "* has been generated.\n\n" . (!empty($vaultUrl) ? "View your Digital Jewellery Vault & Certificate:\n{$vaultUrl}\n\n" : "") . "Warm regards,\n{$storeName}");
+        $waLink = "https://wa.me/{$cleanPhone}?text={$waMessage}";
     @endphp
 
+    <!-- Top UX Toolbar -->
     <div class="toolbar">
-        <div class="toolbar-group">
-            <span class="toolbar-title">Print Header Offset</span>
-            <div id="slider-container" class="slider-container">
-                <label for="offset-slider">Offset:</label>
-                <input id="offset-slider" type="range" min="20" max="100" step="1" value="58"
-                    oninput="updateTopOffset(this.value)">
-                <span id="offset-val-text" class="offset-value">58 mm</span>
+        <div class="toolbar-top-row">
+            <div class="toolbar-group">
+                <span class="toolbar-title">Print Controls</span>
+                <button class="btn-print" onclick="window.print()">
+                    🖨️ Print Bill <span style="font-size: 10px; opacity: 0.8; font-weight: normal;">(⌘P)</span>
+                </button>
+                @if ($customerMobile)
+                    <a href="{{ $waLink }}" target="_blank" class="btn-whatsapp" title="Share invoice link on customer's WhatsApp">
+                        💬 WhatsApp Bill
+                    </a>
+                @endif
+            </div>
+
+            <!-- Alignment Slider & Presets -->
+            <div class="toolbar-group">
+                <div class="slider-container">
+                    <label for="offset-slider">Top Offset:</label>
+                    <input id="offset-slider" type="range" min="0" max="100" step="1" value="58"
+                        oninput="updateTopOffset(this.value)">
+                    <span id="offset-val-text" class="offset-value">58 mm</span>
+                </div>
+                <button type="button" class="preset-btn" onclick="setPresetOffset(0)">0 mm (Plain)</button>
+                <button type="button" class="preset-btn" onclick="setPresetOffset(40)">40 mm</button>
+                <button type="button" class="preset-btn" onclick="setPresetOffset(58)">58 mm (Letterhead)</button>
             </div>
         </div>
 
-        <div class="toolbar-group">
-            <button onclick="window.print()">
-                Print Invoice
-            </button>
+        <div class="toolbar-bottom-row">
+            <div class="toolbar-group">
+                <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                    <input type="checkbox" id="toggle-header" onchange="toggleStoreHeader(this.checked)">
+                    <span>Show Store Letterhead Header</span>
+                </label>
+            </div>
+            <div style="color: #78350f; font-size: 11px;">
+                💡 <em>Tip: Use 58mm offset for pre-printed letterheads, or check "Show Store Letterhead" for plain A4 sheets.</em>
+            </div>
         </div>
     </div>
 
     <div class="page">
         <div class="invoice-body">
+            <!-- Optional Dynamic Store Header (Toggled for plain paper) -->
+            <div id="store-header" class="store-letterhead">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <div class="store-header-title">{{ $storeName }}</div>
+                        <div style="color: var(--surface-700); font-size: 10.5px; margin-top: 2px;">
+                            {{ $settings->address ?? 'Fine Gold, Diamond & Silver Jewellery' }}
+                        </div>
+                        <div style="color: var(--surface-500); font-size: 10px; margin-top: 1px;">
+                            @if ($settings?->phone) Phone: {{ $settings->phone }} &bull; @endif
+                            @if ($settings?->email) Email: {{ $settings->email }} &bull; @endif
+                            @if ($settings?->gst_number) GSTIN: {{ $settings->gst_number }} @endif
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-size: 11px; font-weight: 700; color: var(--brand-gold); text-transform: uppercase; letter-spacing: 0.05em;">
+                            KaratSetu ERP Verified
+                        </span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Header Status -->
             <div class="invoice-heading-row">
                 <div class="invoice-heading-label">Retail Tax Invoice</div>
                 <div>
                     @if ($invoice->status === 'CANCELLED')
                         <span class="badge badge-void">VOIDED / CANCELLED</span>
+                    @else
+                        <span style="font-size: 10px; font-weight: 600; color: var(--surface-500); text-transform: uppercase; letter-spacing: 0.05em;">Tax Invoice (Original for Recipient)</span>
                     @endif
                 </div>
             </div>
@@ -423,7 +634,7 @@
             <div class="meta-grid">
                 <!-- Customer Details -->
                 <div class="panel">
-                    <div class="panel-title">Customer Details</div>
+                    <div class="panel-title">Customer Information</div>
                     <div class="meta-row">
                         <span class="meta-key">Customer:</span>
                         <span class="meta-val">{{ $invoice->customer?->name ?? 'Walk-in Customer' }}</span>
@@ -460,7 +671,7 @@
                         <span class="meta-val">{{ \Carbon\Carbon::parse($invoice->date)->format('d M Y') }}</span>
                     </div>
                     <div class="meta-row">
-                        <span class="meta-key">Gold Rate:</span>
+                        <span class="meta-key">24K Gold Rate:</span>
                         <span class="meta-val mono">Rs {{ number_format((float) $invoice->gold_rate_applied, 2) }}/g</span>
                     </div>
                     @if ((float) ($invoice->silver_rate_applied ?? 0) > 0)
@@ -476,7 +687,7 @@
                         </div>
                     @endif
                     <div class="meta-row">
-                        <span class="meta-key">Created By:</span>
+                        <span class="meta-key">Billed By:</span>
                         <span class="meta-val">{{ $invoice->user?->name ?? 'System' }}</span>
                     </div>
                 </div>
@@ -487,12 +698,12 @@
                 <table class="items">
                     <thead>
                         <tr>
-                            <th style="width: 30px;" class="align-center">#</th>
-                            <th style="width: 100px;">Barcode / Tag</th>
+                            <th style="width: 28px;" class="align-center">#</th>
+                            <th style="width: 95px;">Barcode / Tag</th>
                             <th>Description</th>
                             <th style="width: 75px;" class="align-right">Weight</th>
-                            <th style="width: 60px;" class="align-center">Purity</th>
-                            <th style="width: 85px;" class="align-right">Making</th>
+                            <th style="width: 55px;" class="align-center">Purity</th>
+                            <th style="width: 80px;" class="align-right">Making</th>
                             <th style="width: 105px;" class="align-right">Total</th>
                         </tr>
                     </thead>
@@ -534,7 +745,26 @@
                             </tr>
                         @endforeach
                     </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3" style="text-align: left;">
+                                Total Quantity: <strong>{{ $totalItemsCount }} Item{{ $totalItemsCount > 1 ? 's' : '' }}</strong>
+                            </td>
+                            <td class="align-right mono">
+                                <strong>{{ number_format($totalGrams, 3) }} g</strong>
+                            </td>
+                            <td colspan="2"></td>
+                            <td class="align-right mono">
+                                <strong>Rs {{ number_format((float) $invoice->items->sum('final_price'), 2) }}</strong>
+                            </td>
+                        </tr>
+                    </tfoot>
                 </table>
+            </div>
+
+            <!-- Amount in Words -->
+            <div class="amount-in-words">
+                <strong>Amount in Words:</strong> {{ $amountInWords }}
             </div>
 
             <!-- Bottom Section: Vault QR & Totals -->
@@ -621,7 +851,7 @@
             @endif
 
             <!-- Signatures Section -->
-            <div style="margin-top: 50px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
+            <div style="margin-top: 45px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
                 <div style="text-align: center; width: 170px;">
                     <div style="border-bottom: 1px solid var(--surface-300); margin-bottom: 5px;"></div>
                     <div style="font-size: 9.5px; font-weight: 600; color: var(--surface-700); text-transform: uppercase; letter-spacing: 0.05em;">
@@ -643,9 +873,9 @@
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <div class="google-review-qr-box">
                             @if (!empty($googleReviewQrBase64))
-                                <img src="{{ $googleReviewQrBase64 }}" alt="Google Review QR" style="width: 40px; height: 40px; display: block;" />
+                                <img src="{{ $googleReviewQrBase64 }}" alt="Google Review QR" style="width: 38px; height: 38px; display: block;" />
                             @elseif (!empty($googleReviewQrSvg))
-                                <div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                <div style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
                                     {!! $googleReviewQrSvg !!}
                                 </div>
                             @endif
@@ -674,11 +904,36 @@
             localStorage.setItem('karatsetu_print_top_offset', val);
         }
 
+        function setPresetOffset(val) {
+            document.getElementById('offset-slider').value = val;
+            updateTopOffset(val);
+        }
+
+        function toggleStoreHeader(show) {
+            const el = document.getElementById('store-header');
+            if (show) {
+                el.classList.add('active');
+                setPresetOffset(15);
+            } else {
+                el.classList.remove('active');
+                const saved = localStorage.getItem('karatsetu_print_top_offset') || '58';
+                setPresetOffset(saved);
+            }
+        }
+
         // Initialize state from local storage on load
         document.addEventListener('DOMContentLoaded', () => {
             const savedOffset = localStorage.getItem('karatsetu_print_top_offset') || localStorage.getItem('maniratn_print_top_offset') || '58';
             document.getElementById('offset-slider').value = savedOffset;
             updateTopOffset(savedOffset);
+        });
+
+        // Keyboard Shortcut: Cmd/Ctrl + P triggers print
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                e.preventDefault();
+                window.print();
+            }
         });
     </script>
 </body>
