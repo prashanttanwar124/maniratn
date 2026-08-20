@@ -42,15 +42,63 @@ const getInitials = (name) => {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-// Quick Shortcuts
-const quickLinks = [
-    { label: 'New Invoice', href: route('invoices.create'), icon: 'pi pi-plus-circle', desc: 'Create retail bill' },
-    { label: 'Invoices', href: route('invoices.index'), icon: 'pi pi-file-check', desc: 'All sales & tax bills' },
-    { label: 'Custom Orders', href: route('orders.index'), icon: 'pi pi-sparkles', desc: 'Workshop jobs' },
-    { label: 'Customers', href: route('customers.index'), icon: 'pi pi-users', desc: 'Directory & khata' },
-    { label: 'Inventory', href: route('products.index'), icon: 'pi pi-box', desc: 'Stock & barcodes' },
-    { label: 'Karigars', href: route('karigars.index'), icon: 'pi pi-wrench', desc: 'Metal issue / return' },
-];
+// Quick Shortcuts (Computed with dynamic badges)
+const quickLinks = computed(() => [
+    {
+        label: 'New Invoice',
+        href: route('invoices.create'),
+        icon: 'pi pi-plus',
+        badge: 'POS',
+        badgeClass: 'bg-surface-900 text-white',
+        iconBoxClass: 'bg-surface-900 text-white',
+        desc: 'Create retail bill',
+    },
+    {
+        label: 'Sales Invoices',
+        href: route('invoices.index'),
+        icon: 'pi pi-file-check',
+        badge: `${props.recent_invoices?.length || 0} today`,
+        badgeClass: 'bg-sky-50 text-sky-700 border border-sky-200',
+        iconBoxClass: 'bg-sky-50 text-sky-700 border border-sky-200',
+        desc: 'Tax bills & printing',
+    },
+    {
+        label: 'Custom Orders',
+        href: route('orders.index'),
+        icon: 'pi pi-sparkles',
+        badge: `${(props.metrics?.new_orders || 0) + (props.metrics?.in_production || 0)} active`,
+        badgeClass: 'bg-amber-50 text-amber-800 border border-amber-200',
+        iconBoxClass: 'bg-amber-50 text-amber-700 border border-amber-200',
+        desc: 'Workshop jobs & pipeline',
+    },
+    {
+        label: 'Customer Khata',
+        href: route('customers.index'),
+        icon: 'pi pi-users',
+        badge: 'Ledger',
+        badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+        iconBoxClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+        desc: 'Balances & directory',
+    },
+    {
+        label: 'Inventory Stock',
+        href: route('products.index'),
+        icon: 'pi pi-box',
+        badge: 'Catalog',
+        badgeClass: 'bg-purple-50 text-purple-700 border border-purple-200',
+        iconBoxClass: 'bg-purple-50 text-purple-700 border border-purple-200',
+        desc: 'Barcodes & safe stock',
+    },
+    {
+        label: 'Karigar Desk',
+        href: route('karigars.index'),
+        icon: 'pi pi-wrench',
+        badge: `${props.karigars?.length || 0} holding`,
+        badgeClass: 'bg-rose-50 text-rose-700 border border-rose-200',
+        iconBoxClass: 'bg-rose-50 text-rose-700 border border-rose-200',
+        desc: 'Metal issue & return',
+    },
+]);
 
 // Forms
 const rateForm = useForm({
@@ -549,15 +597,15 @@ const handleSvgMouseLeave = () => {
             </div>
 
             <!-- ========================================== -->
-            <!-- 2. QUICK ACCESS SHORTCUTS                  -->
+            <!-- 2. STORE QUICK LAUNCHPAD                   -->
             <!-- ========================================== -->
             <div class="border border-surface-200 bg-white p-5 shadow-2xs">
                 <div class="flex items-center justify-between border-b border-surface-100 pb-3">
                     <div class="flex items-center gap-2">
-                        <i class="pi pi-th-large text-xs text-surface-500"></i>
-                        <h3 class="text-xs font-bold uppercase tracking-wider text-surface-700">Quick Access Shortcuts</h3>
+                        <i class="pi pi-bolt text-surface-600 text-xs flex-shrink-0"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider text-surface-700 leading-none">Store Quick Launchpad</span>
                     </div>
-                    <span class="text-[11px] text-surface-400 font-medium">Fast Operations</span>
+                    <span class="text-[11px] text-surface-400 font-medium">Daily Operations</span>
                 </div>
 
                 <div class="mt-3.5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
@@ -565,14 +613,25 @@ const handleSvgMouseLeave = () => {
                         v-for="item in quickLinks"
                         :key="item.label"
                         :href="item.href"
-                        class="group flex flex-col justify-between border border-surface-200 bg-surface-50 p-3 transition hover:border-surface-900 hover:bg-white hover:shadow-2xs"
+                        class="group flex flex-col justify-between border border-surface-200 bg-surface-50/60 p-3.5 transition hover:border-surface-900 hover:bg-white hover:shadow-xs"
                     >
-                        <div class="flex h-8 w-8 items-center justify-center border border-surface-200 bg-white text-surface-800 group-hover:bg-surface-900 group-hover:text-white transition">
-                            <i :class="[item.icon, 'text-xs']"></i>
+                        <!-- Top Row: Icon Container + Badge -->
+                        <div class="flex items-center justify-between">
+                            <div class="flex h-8 w-8 items-center justify-center text-xs" :class="item.iconBoxClass">
+                                <i :class="item.icon"></i>
+                            </div>
+                            <span class="text-[9px] font-bold px-1.5 py-0.5" :class="item.badgeClass">
+                                {{ item.badge }}
+                            </span>
                         </div>
+
+                        <!-- Bottom Row: Title + Description + Animated Arrow -->
                         <div class="mt-3">
-                            <div class="text-xs font-bold text-surface-900 group-hover:text-surface-900">{{ item.label }}</div>
-                            <div class="text-[10px] text-surface-400 truncate">{{ item.desc }}</div>
+                            <div class="flex items-center justify-between">
+                                <div class="text-xs font-bold text-surface-900 group-hover:text-surface-900">{{ item.label }}</div>
+                                <i class="pi pi-arrow-right text-[9px] text-surface-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"></i>
+                            </div>
+                            <div class="mt-0.5 text-[10px] text-surface-400 truncate">{{ item.desc }}</div>
                         </div>
                     </Link>
                 </div>
