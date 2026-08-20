@@ -59,7 +59,7 @@ class OmnisearchController extends Controller
                     ->orWhere('barcode', 'like', "%{$q}%");
             })
             ->limit(6)
-            ->get(['id', 'name', 'barcode', 'category_id', 'purity_id', 'gross_weight', 'status']);
+            ->get(['id', 'name', 'barcode', 'category_id', 'purity_id', 'gross_weight', 'is_sold']);
 
         return response()->json([
             'customers' => $customers,
