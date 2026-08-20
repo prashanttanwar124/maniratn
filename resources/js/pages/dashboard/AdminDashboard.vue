@@ -111,7 +111,7 @@ const quickLinks = [
     { label: 'Custom Orders', href: route('orders.index'), icon: 'pi pi-briefcase', color: 'text-sky-600 bg-sky-50 hover:bg-sky-100 border-sky-200' },
     { label: 'Customer Vault', href: route('customers.index'), icon: 'pi pi-id-card', color: 'text-purple-600 bg-purple-50 hover:bg-purple-100 border-purple-200' },
     { label: 'Inventory Stock', href: route('products.index'), icon: 'pi pi-box', color: 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border-emerald-200' },
-    { label: 'Ledger Khata', href: route('ledger.index'), icon: 'pi pi-book', color: 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border-indigo-200' },
+    { label: 'Suppliers', href: route('suppliers.index'), icon: 'pi pi-truck', color: 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border-indigo-200' },
     { label: 'Daily Expenses', href: route('expenses.index'), icon: 'pi pi-wallet', color: 'text-rose-600 bg-rose-50 hover:bg-rose-100 border-rose-200' },
 ];
 
@@ -970,9 +970,14 @@ const bullionChartOptions = {
                         <h2 class="text-base font-bold text-surface-900">Recent Safe & Drawer Vault Movements</h2>
                         <p class="text-xs text-surface-500">Audit trail of cash, bank, gold, and silver transfers.</p>
                     </div>
-                    <Link :href="route('vaults.index')">
-                        <Button label="View Vault Ledger" icon="pi pi-arrow-right" iconPos="right" text size="small" />
-                    </Link>
+                    <Button
+                        v-if="can.manage_vault && isDayOpen"
+                        label="Transfer Funds"
+                        icon="pi pi-arrows-h"
+                        text
+                        size="small"
+                        @click="openVaultTransferDialog"
+                    />
                 </div>
 
                 <div class="mt-4 overflow-x-auto">
