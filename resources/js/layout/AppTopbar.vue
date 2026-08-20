@@ -353,9 +353,10 @@ const submitLogout = () => {
                 <button
                     type="button"
                     @click="closeSpotlight"
-                    class="px-2 py-1 text-[11px] font-mono text-surface-500 hover:text-surface-900 bg-surface-100 border border-surface-200"
+                    class="text-surface-400 hover:text-surface-900 cursor-pointer bg-transparent border-0 p-1 transition-colors"
+                    title="Close (ESC)"
                 >
-                    ESC
+                    <i class="pi pi-times text-sm"></i>
                 </button>
             </div>
 
@@ -492,19 +493,16 @@ const submitLogout = () => {
             <!-- Modal Header -->
             <div class="flex items-start justify-between pb-3.5 mb-4 border-b border-surface-200">
                 <div>
-                    <div class="flex items-center gap-2">
-                        <i class="pi pi-chart-line text-[#c08f34] text-base"></i>
-                        <h3 class="text-sm font-bold text-[#1c3633] uppercase tracking-wider">Today's Market Bullion Rates</h3>
-                    </div>
-                    <p class="text-xs text-surface-500 mt-1">Live base prices used across sales billing & valuations</p>
+                    <h3 class="text-base font-bold text-[#1c3633]">Today's Bullion Rates</h3>
+                    <p class="text-xs text-surface-500 mt-0.5">Live base prices used across sales billing & valuations</p>
                 </div>
                 <button
                     type="button"
                     @click="isRatesModalOpen = false"
-                    class="h-8 w-8 inline-flex items-center justify-center border border-surface-200 bg-surface-50 hover:bg-surface-100 text-surface-500 hover:text-surface-900 cursor-pointer transition-colors"
+                    class="text-surface-400 hover:text-surface-900 cursor-pointer bg-transparent border-0 p-1 transition-colors"
                     title="Close (ESC)"
                 >
-                    <i class="pi pi-times text-xs"></i>
+                    <i class="pi pi-times text-sm"></i>
                 </button>
             </div>
 
