@@ -976,8 +976,8 @@ const handleSvgMouseLeave = () => {
                     <div v-if="metrics?.overdue_items > 0 || metrics?.new_orders > 0 || karigars?.length > 0" class="border border-surface-200 bg-white p-5 shadow-2xs">
                         <div class="flex items-center justify-between border-b border-surface-100 pb-2.5">
                             <div class="flex items-center gap-2">
-                                <i class="pi pi-exclamation-triangle text-amber-600 text-xs"></i>
-                                <h3 class="text-xs font-bold uppercase tracking-wider text-surface-700">Workshop & Store Alerts</h3>
+                                <i class="pi pi-exclamation-triangle text-amber-600 text-xs flex-shrink-0"></i>
+                                <span class="text-xs font-bold uppercase tracking-wider text-surface-700 leading-none">Workshop & Store Alerts</span>
                             </div>
                             <span class="text-[11px] text-surface-400 font-medium">Action Required</span>
                         </div>
@@ -985,7 +985,7 @@ const handleSvgMouseLeave = () => {
                         <div class="mt-3 space-y-2 text-xs">
                             <div v-if="metrics?.overdue_items > 0" class="flex items-center justify-between border border-rose-200 bg-rose-50/80 p-3 text-rose-900">
                                 <div class="flex items-center gap-2">
-                                    <i class="pi pi-clock text-rose-600 text-xs"></i>
+                                    <i class="pi pi-clock text-rose-600 text-xs flex-shrink-0"></i>
                                     <span><strong>{{ metrics.overdue_items }} Custom Order{{ metrics.overdue_items > 1 ? 's' : '' }}</strong> are past their promised delivery date.</span>
                                 </div>
                                 <Link :href="route('orders.index')" class="font-bold text-rose-900 hover:underline">
@@ -995,7 +995,7 @@ const handleSvgMouseLeave = () => {
 
                             <div v-if="metrics?.new_orders > 0" class="flex items-center justify-between border border-surface-200 bg-surface-50 p-3 text-surface-800">
                                 <div class="flex items-center gap-2">
-                                    <i class="pi pi-inbox text-surface-600 text-xs"></i>
+                                    <i class="pi pi-inbox text-surface-600 text-xs flex-shrink-0"></i>
                                     <span><strong>{{ metrics.new_orders }} New Order{{ metrics.new_orders > 1 ? 's' : '' }}</strong> awaiting workshop assignment.</span>
                                 </div>
                                 <Link :href="route('orders.index')" class="font-bold text-surface-900 hover:underline">
@@ -1005,7 +1005,7 @@ const handleSvgMouseLeave = () => {
 
                             <div v-if="karigars?.length > 0" class="flex items-center justify-between border border-amber-200 bg-amber-50/70 p-3 text-amber-900">
                                 <div class="flex items-center gap-2">
-                                    <i class="pi pi-users text-amber-700 text-xs"></i>
+                                    <i class="pi pi-users text-amber-700 text-xs flex-shrink-0"></i>
                                     <span><strong>{{ karigars.length }} Karigar{{ karigars.length > 1 ? 's' : '' }}</strong> holding store bullion.</span>
                                 </div>
                                 <Link :href="route('karigars.index')" class="font-bold text-amber-900 hover:underline">
@@ -1020,10 +1020,10 @@ const handleSvgMouseLeave = () => {
                     <!-- ========================================== -->
                     <div class="border border-surface-200 bg-white shadow-2xs">
                         <!-- Card Header -->
-                        <div class="flex items-center justify-between border-b border-surface-200 bg-surface-50/50 px-5 py-4">
+                        <div class="flex items-center justify-between border-b border-surface-200 bg-surface-50/50 px-5 py-3.5">
                             <div class="flex items-center gap-2">
-                                <i class="pi pi-receipt text-xs text-surface-500"></i>
-                                <h3 class="text-xs font-bold uppercase tracking-wider text-surface-700">Recent Invoices</h3>
+                                <i class="pi pi-receipt text-xs text-surface-500 flex-shrink-0"></i>
+                                <span class="text-xs font-bold uppercase tracking-wider text-surface-700 leading-none">Recent Invoices</span>
                             </div>
                             <Link :href="route('invoices.index')" class="text-xs font-bold text-surface-700 hover:text-surface-900 flex items-center gap-1">
                                 View all invoices <i class="pi pi-arrow-right text-[10px]"></i>
@@ -1115,10 +1115,18 @@ const handleSvgMouseLeave = () => {
                     <div class="border border-surface-200 border-t-2 border-t-[#c4922a] bg-white p-5 shadow-2xs">
                         <div class="flex items-center justify-between border-b border-surface-100 pb-3">
                             <div class="flex items-center gap-2">
-                                <i class="pi pi-chart-line text-[#c4922a] text-xs"></i>
-                                <h3 class="text-xs font-bold uppercase tracking-wider text-surface-700">Today's Bullion Rates</h3>
+                                <i class="pi pi-chart-line text-[#c4922a] text-xs flex-shrink-0"></i>
+                                <span class="text-xs font-bold uppercase tracking-wider text-surface-700 leading-none">Today's Bullion Rates</span>
                             </div>
-                            <Button v-if="can.manage_daily_rates" icon="pi pi-pencil" text size="small" class="!p-1 !h-6 !w-6" @click="showRateDialog = true" />
+                            <button
+                                v-if="can.manage_daily_rates"
+                                type="button"
+                                class="inline-flex items-center justify-center text-surface-500 hover:text-surface-900 transition p-1 cursor-pointer"
+                                title="Update Rates"
+                                @click="showRateDialog = true"
+                            >
+                                <i class="pi pi-pencil text-xs"></i>
+                            </button>
                         </div>
 
                         <div class="mt-3.5 space-y-2 text-xs">
@@ -1164,10 +1172,17 @@ const handleSvgMouseLeave = () => {
                     <div class="border border-surface-200 bg-white p-5 shadow-2xs">
                         <div class="flex items-center justify-between border-b border-surface-100 pb-3">
                             <div class="flex items-center gap-2">
-                                <i class="pi pi-wallet text-surface-500 text-xs"></i>
-                                <h3 class="text-xs font-bold uppercase tracking-wider text-surface-700">Safe & Drawer Vaults</h3>
+                                <i class="pi pi-wallet text-surface-500 text-xs flex-shrink-0"></i>
+                                <span class="text-xs font-bold uppercase tracking-wider text-surface-700 leading-none">Safe & Drawer Vaults</span>
                             </div>
-                            <Button v-if="can.manage_vault && isDayOpen" label="Transfer" text size="small" class="!p-0 !text-xs !font-bold" @click="openVaultTransferDialog" />
+                            <button
+                                v-if="can.manage_vault && isDayOpen"
+                                type="button"
+                                class="text-xs font-bold text-surface-700 hover:text-surface-900 transition cursor-pointer"
+                                @click="openVaultTransferDialog"
+                            >
+                                Transfer
+                            </button>
                         </div>
 
                         <!-- Multi-Asset Liquidity Progress Bar -->
@@ -1219,8 +1234,8 @@ const handleSvgMouseLeave = () => {
                     <div class="border border-surface-200 bg-white p-5 shadow-2xs">
                         <div class="flex items-center justify-between border-b border-surface-100 pb-3">
                             <div class="flex items-center gap-2">
-                                <i class="pi pi-heart text-rose-500 text-xs"></i>
-                                <h3 class="text-xs font-bold uppercase tracking-wider text-surface-700">CRM Celebrations</h3>
+                                <i class="pi pi-heart text-rose-500 text-xs flex-shrink-0"></i>
+                                <span class="text-xs font-bold uppercase tracking-wider text-surface-700 leading-none">CRM Celebrations</span>
                             </div>
                             <span class="inline-flex items-center border border-surface-200 bg-surface-50 px-2 py-0.5 text-[10px] font-bold text-surface-700">
                                 {{ customer_reminders?.length || 0 }} upcoming
@@ -1262,8 +1277,8 @@ const handleSvgMouseLeave = () => {
                     <div class="border border-surface-200 bg-white p-5 shadow-2xs">
                         <div class="flex items-center justify-between border-b border-surface-100 pb-3">
                             <div class="flex items-center gap-2">
-                                <i class="pi pi-history text-surface-500 text-xs"></i>
-                                <h3 class="text-xs font-bold uppercase tracking-wider text-surface-700">Recent Movements</h3>
+                                <i class="pi pi-history text-surface-500 text-xs flex-shrink-0"></i>
+                                <span class="text-xs font-bold uppercase tracking-wider text-surface-700 leading-none">Recent Movements</span>
                             </div>
                             <span class="text-[10px] text-surface-400 font-semibold">Live Audit</span>
                         </div>
