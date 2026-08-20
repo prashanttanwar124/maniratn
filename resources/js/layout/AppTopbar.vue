@@ -486,20 +486,21 @@ const submitLogout = () => {
     >
         <div class="w-full max-w-lg bg-white border border-surface-200 shadow-2xl p-6">
             <!-- Modal Header -->
-            <div class="flex items-start justify-between pb-4 mb-4 border-b border-surface-200">
-                <div class="flex items-center gap-3">
-                    <span class="inline-flex items-center justify-center w-9 h-9 bg-amber-100 text-amber-800 text-base flex-shrink-0">🪙</span>
-                    <div>
-                        <h3 class="text-base font-bold text-[#1c3633] leading-tight">Today's Market Bullion Rates</h3>
-                        <p class="text-xs text-surface-500 mt-0.5">Live base prices used across sales billing & valuations</p>
+            <div class="flex items-start justify-between pb-3.5 mb-4 border-b border-surface-200">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <i class="pi pi-chart-line text-[#c08f34] text-base"></i>
+                        <h3 class="text-sm font-bold text-[#1c3633] uppercase tracking-wider">Today's Market Bullion Rates</h3>
                     </div>
+                    <p class="text-xs text-surface-500 mt-1">Live base prices used across sales billing & valuations</p>
                 </div>
                 <button
                     type="button"
                     @click="isRatesModalOpen = false"
-                    class="p-1.5 text-surface-400 hover:text-surface-700 cursor-pointer hover:bg-surface-100 transition-colors"
+                    class="h-8 w-8 inline-flex items-center justify-center border border-surface-200 bg-surface-50 hover:bg-surface-100 text-surface-500 hover:text-surface-900 cursor-pointer transition-colors"
+                    title="Close (ESC)"
                 >
-                    <i class="pi pi-times text-sm"></i>
+                    <i class="pi pi-times text-xs"></i>
                 </button>
             </div>
 
