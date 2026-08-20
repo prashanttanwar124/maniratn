@@ -217,7 +217,7 @@ const submitLogout = () => {
             <button
                 type="button"
                 @click="openSpotlight"
-                class="w-full flex items-center gap-2.5 px-3.5 py-1.5 bg-[#f8faf9] hover:bg-[#edf2f0] border border-surface-200 hover:border-[#1c3633]/25 text-xs text-surface-500 transition-all cursor-pointer group"
+                class="w-full flex items-center gap-2.5 px-3.5 h-9 bg-[#f8faf9] hover:bg-[#edf2f0] border border-surface-200 hover:border-[#1c3633]/25 text-xs text-surface-500 transition-all cursor-pointer group"
                 title="Search customers, bills, tags... (⌘K)"
             >
                 <i class="pi pi-search text-surface-400 group-hover:text-[#1c3633] transition-colors"></i>
@@ -232,7 +232,7 @@ const submitLogout = () => {
             <button
                 type="button"
                 @click="openRatesModal"
-                class="hidden xl:inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50/80 hover:bg-amber-100/90 border border-amber-200/70 text-xs text-amber-950 transition-all cursor-pointer group"
+                class="hidden xl:inline-flex items-center gap-2 px-3 h-9 bg-amber-50/80 hover:bg-amber-100/90 border border-amber-200/70 text-xs text-amber-950 transition-all cursor-pointer group"
                 title="Click to update today's live rates"
             >
                 <span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
@@ -245,7 +245,7 @@ const submitLogout = () => {
             <!-- + New Bill Button (Primary Action) -->
             <Link
                 href="/invoices/create"
-                class="inline-flex items-center gap-1.5 h-8.5 px-3.5 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
+                class="inline-flex items-center gap-1.5 h-9 px-3.5 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
                 title="Create New Bill (Shortcut: F2)"
             >
                 <i class="pi pi-plus text-xs text-[#c08f34] font-bold"></i>
@@ -256,7 +256,7 @@ const submitLogout = () => {
             <!-- Karat AI Copilot -->
             <button
                 type="button"
-                class="inline-flex items-center justify-center h-8.5 w-8.5 border border-surface-200 bg-surface-50 hover:bg-surface-100 text-surface-600 hover:text-amber-700 transition-all cursor-pointer"
+                class="inline-flex items-center justify-center h-9 w-9 border border-surface-200 bg-surface-50 hover:bg-surface-100 text-surface-600 hover:text-amber-700 transition-all cursor-pointer"
                 title="Karat AI Assistant"
                 @click="emit('openAskAi')"
             >
@@ -265,7 +265,7 @@ const submitLogout = () => {
 
             <!-- Day Status Live Indicator -->
             <div
-                class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium border"
+                class="hidden sm:inline-flex items-center gap-1.5 px-3 h-9 text-xs font-medium border"
                 :class="dayStatus.is_open ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'"
                 :title="dayStatus.is_open ? 'Store Register is Open' : 'Store Register is Closed'"
             >
@@ -280,9 +280,9 @@ const submitLogout = () => {
                 <button
                     type="button"
                     @click.stop="isUserMenuOpen = !isUserMenuOpen"
-                    class="flex items-center gap-2 p-1 hover:bg-surface-100 transition-colors cursor-pointer group"
+                    class="flex items-center gap-2 px-2 h-9 border border-transparent hover:border-surface-200 hover:bg-surface-50 transition-all cursor-pointer group"
                 >
-                    <div class="h-8 w-8 bg-[#1c3633] text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                    <div class="h-6.5 w-6.5 bg-[#1c3633] text-white flex items-center justify-center text-[10px] font-bold shadow-xs">
                         {{ initials }}
                     </div>
                     <div class="hidden md:flex flex-col text-left">
