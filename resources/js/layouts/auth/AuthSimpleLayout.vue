@@ -11,15 +11,14 @@ defineProps<{
 <template>
     <div class="bg-background flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
         <div class="w-full max-w-sm">
-            <div class="flex flex-col gap-8">
-                <div class="flex flex-col items-center gap-4">
-                    <Link :href="home()" class="flex flex-col items-center gap-2 font-medium">
-                        <!-- <span class="mb-1 text-2xl font-semibold tracking-wide text-[var(--foreground)] dark:text-white">JewelFlow</span> -->
-                        <span class="sr-only">{{ title }}</span>
+            <div class="flex flex-col gap-6">
+                <div class="flex flex-col items-center gap-3">
+                    <Link :href="home()" class="flex flex-col items-center gap-2">
+                        <img src="/main-logo.png" alt="KaratSetu" class="h-10 w-auto object-contain" />
                     </Link>
-                    <div class="space-y-2 text-center">
-                        <h1 class="text-xl font-medium">{{ title }}</h1>
-                        <p class="text-muted-foreground text-center text-sm">
+                    <div class="space-y-1 text-center">
+                        <h1 class="text-xl font-semibold tracking-tight text-surface-900">{{ title }}</h1>
+                        <p class="text-xs text-surface-500 text-center">
                             {{ description }}
                         </p>
                     </div>

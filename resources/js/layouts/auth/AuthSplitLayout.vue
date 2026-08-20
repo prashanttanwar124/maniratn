@@ -22,12 +22,11 @@ defineProps<{
             <div class="absolute inset-0 bg-zinc-900" />
             <Link
                 :href="home()"
-                class="relative z-20 flex items-center text-lg font-medium"
+                class="relative z-20 flex items-center"
             >
-                <span class="mr-3 inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/20 bg-white/10 text-sm font-semibold tracking-wide">
-                    JF
-                </span>
-                {{ name }}
+                <div class="rounded-lg bg-white p-2">
+                    <img src="/main-logo.png" alt="KaratSetu" class="h-8 w-auto object-contain" />
+                </div>
             </Link>
             <div v-if="quote" class="relative z-20 mt-auto">
                 <blockquote class="space-y-2">

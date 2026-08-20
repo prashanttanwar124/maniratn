@@ -68,12 +68,9 @@ const submitLogout = () => {
                 <i class="pi pi-bars"></i>
             </button>
 
-            <a href="/dashboard" class="layout-topbar-brand">
-                <span class="layout-topbar-mark">KS</span>
-                <span class="layout-topbar-brand-copy">
-                    <span class="layout-topbar-logo">KaratSetu</span>
-                    <span class="layout-topbar-subtitle hidden md:block">Jewellery ERP</span>
-                </span>
+            <a href="/dashboard" class="layout-topbar-brand flex items-center">
+                <img src="/main-logo.png" alt="KaratSetu ERP" class="h-8 w-auto object-contain hidden md:block" />
+                <img src="/logo-mark.png" alt="KaratSetu ERP" class="h-8 w-auto object-contain md:hidden" />
             </a>
         </div>
 

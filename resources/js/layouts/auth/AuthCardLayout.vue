@@ -22,9 +22,9 @@ defineProps<{
         <div class="flex w-full max-w-md flex-col gap-6">
             <Link
                 :href="home()"
-                class="flex items-center gap-2 self-center font-medium"
+                class="flex items-center justify-center"
             >
-                <span class="inline-flex h-12 items-center justify-center text-xl font-semibold tracking-wide text-surface-900">KaratSetu</span>
+                <img src="/main-logo.png" alt="KaratSetu" class="h-10 w-auto object-contain" />
             </Link>
 
             <div class="flex flex-col gap-6">
