@@ -9,18 +9,17 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    height: 4.75rem;
+    height: 4.25rem;
     padding: 0 1.25rem;
-    background:
-        linear-gradient(115deg, #fffaf0 0%, #f8f3e3 18%, var(--surface-card) 46%, var(--surface-card) 100%);
-    border-bottom: 1px solid color-mix(in srgb, var(--surface-border) 86%, #d8c38a);
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+    background: #ffffff;
+    border-bottom: 1px solid var(--surface-200);
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
     transition: left var(--layout-section-transition-duration);
 
     .layout-topbar-start {
         display: flex;
         align-items: center;
-        gap: 0.9rem;
+        gap: 0.75rem;
         min-width: 0;
         flex: 0 0 auto;
     }
@@ -29,22 +28,19 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 2.75rem;
-        height: 2.75rem;
+        width: 2.35rem;
+        height: 2.35rem;
         border-radius: 0;
-        color: var(--text-color);
-        background: rgba(255, 255, 255, 0.68);
-        border: 1px solid var(--surface-border);
-        transition:
-            transform var(--element-transition-duration),
-            background-color var(--element-transition-duration),
-            border-color var(--element-transition-duration);
+        color: var(--surface-700);
+        background: var(--surface-50);
+        border: 1px solid var(--surface-200);
+        transition: all 0.15s ease-in-out;
         cursor: pointer;
 
         &:hover {
-            background-color: #fffdf7;
-            border-color: color-mix(in srgb, var(--surface-border) 72%, #d9bf72);
-            transform: translateY(-1px);
+            background-color: var(--surface-100);
+            color: #1c3633;
+            border-color: var(--surface-300);
         }
 
         &:focus-visible {
@@ -52,34 +48,16 @@
         }
 
         i {
-            font-size: 1.05rem;
+            font-size: 0.95rem;
         }
     }
 
     .layout-topbar-brand {
         display: inline-flex;
         align-items: center;
-        gap: 0.85rem;
+        gap: 0.75rem;
         min-width: 0;
-        padding-right: 1rem;
-    }
-
-    .layout-topbar-mark {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 2.8rem;
-        height: 2.8rem;
-        border-radius: 0;
-        background: linear-gradient(145deg, #b8923f 0%, #f4df9c 55%, #a47d2f 100%);
-        color: #5d4311;
-        font-size: 0.92rem;
-        font-weight: 800;
-        letter-spacing: 0.14em;
-        box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.55),
-            0 8px 18px rgba(175, 140, 55, 0.18);
-        flex: 0 0 auto;
+        text-decoration: none;
     }
 
     .layout-topbar-brand-copy {
@@ -88,34 +66,11 @@
         min-width: 0;
     }
 
-    .layout-topbar-logo {
-        color: #21160a;
-        font-size: 1.2rem;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        line-height: 1;
-
-        &:focus-visible {
-            @include focused();
-        }
-    }
-
-    .layout-topbar-subtitle {
-        margin-top: 0.2rem;
-        color: #7b6a42;
-        font-size: 0.7rem;
-        font-weight: 600;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        line-height: 1;
-    }
-
     .layout-topbar-center {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.85rem;
+        gap: 0.75rem;
         flex: 1 1 auto;
         padding: 0 1.25rem;
         min-width: 0;
@@ -125,33 +80,33 @@
     .layout-topbar-date {
         display: inline-flex;
         align-items: center;
-        gap: 0.65rem;
-        min-height: 2.7rem;
-        padding: 0.55rem 0.9rem;
-        border-radius: 0;
-        border: 1px solid var(--surface-border);
-        background: rgba(255, 255, 255, 0.72);
-        color: var(--text-secondary-color);
-        backdrop-filter: blur(8px);
+        gap: 0.5rem;
+        min-height: 2.2rem;
+        padding: 0.35rem 0.75rem;
+        border: 1px solid var(--surface-200);
+        background: var(--surface-50);
+        color: var(--surface-700);
+        font-size: 0.78rem;
     }
 
     .layout-topbar-workspace-label {
-        font-size: 0.72rem;
+        font-size: 0.68rem;
         font-weight: 700;
-        letter-spacing: 0.12em;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: #8e7b4d;
+        color: var(--surface-500);
     }
 
     .layout-topbar-workspace-value {
-        font-size: 0.9rem;
+        font-size: 0.82rem;
         font-weight: 700;
-        color: var(--text-color);
+        color: #1c3633;
         white-space: nowrap;
     }
 
     .layout-topbar-date {
-        font-size: 0.85rem;
+        font-size: 0.78rem;
+        font-weight: 600;
         white-space: nowrap;
     }
 
@@ -159,7 +114,7 @@
         display: flex;
         align-items: center;
         justify-content: flex-end;
-        gap: 0.65rem;
+        gap: 0.6rem;
         flex: 0 0 auto;
         min-width: 0;
     }
@@ -167,31 +122,31 @@
     .layout-topbar-status {
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        min-height: 2.7rem;
-        padding: 0.55rem 0.9rem;
-        border-radius: 0;
-        font-size: 0.8rem;
+        gap: 0.45rem;
+        min-height: 2.2rem;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.76rem;
         font-weight: 700;
         white-space: nowrap;
         border: 1px solid transparent;
+        letter-spacing: 0.02em;
     }
 
     .layout-topbar-status-open {
-        color: #166534;
-        background: #edfdf3;
-        border-color: #b7efcb;
+        color: #15803d;
+        background: #f0fdf4;
+        border-color: #bbf7d0;
     }
 
     .layout-topbar-status-closed {
-        color: #9a3412;
-        background: #fff4e8;
-        border-color: #fdc48b;
+        color: #b45309;
+        background: #fffbeb;
+        border-color: #fde68a;
     }
 
     .layout-topbar-status-dot {
-        width: 0.5rem;
-        height: 0.5rem;
+        width: 0.45rem;
+        height: 0.45rem;
         border-radius: 999px;
         background: currentColor;
     }
@@ -199,12 +154,11 @@
     .layout-topbar-user {
         display: inline-flex;
         align-items: center;
-        gap: 0.75rem;
-        min-height: 2.9rem;
-        padding: 0.3rem 0.55rem 0.3rem 0.35rem;
-        border-radius: 0;
-        border: 1px solid var(--surface-border);
-        background: rgba(255, 255, 255, 0.82);
+        gap: 0.65rem;
+        min-height: 2.35rem;
+        padding: 0.2rem 0.6rem 0.2rem 0.25rem;
+        border: 1px solid var(--surface-200);
+        background: var(--surface-50);
         min-width: 0;
     }
 
@@ -212,14 +166,13 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 2.3rem;
-        height: 2.3rem;
-        border-radius: 0;
-        background: linear-gradient(145deg, #d7bb6a 0%, #f6e3a8 55%, #b58a34 100%);
-        color: #5d4311;
-        font-size: 0.76rem;
-        font-weight: 800;
-        letter-spacing: 0.08em;
+        width: 1.9rem;
+        height: 1.9rem;
+        background: #1c3633;
+        color: #ffffff;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
         flex: 0 0 auto;
     }
 
@@ -230,19 +183,19 @@
     }
 
     .layout-topbar-user-name {
-        color: var(--text-color);
-        font-size: 0.87rem;
+        color: #1c3633;
+        font-size: 0.8rem;
         font-weight: 700;
         line-height: 1.1;
         white-space: nowrap;
     }
 
     .layout-topbar-user-role {
-        color: #8a7650;
-        font-size: 0.68rem;
-        font-weight: 700;
+        color: var(--surface-500);
+        font-size: 0.65rem;
+        font-weight: 600;
         line-height: 1.1;
-        letter-spacing: 0.14em;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
         white-space: nowrap;
     }
@@ -251,24 +204,22 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 0.45rem;
-        min-height: 2.7rem;
-        padding: 0 0.9rem;
-        border-radius: 0;
-        border: 1px solid var(--surface-border);
-        background: rgba(255, 255, 255, 0.78);
-        color: var(--text-color);
-        font-size: 0.84rem;
+        gap: 0.4rem;
+        min-height: 2.2rem;
+        padding: 0 0.75rem;
+        border: 1px solid var(--surface-200);
+        background: var(--surface-50);
+        color: var(--surface-700);
+        font-size: 0.78rem;
         font-weight: 600;
-        transition:
-            transform var(--element-transition-duration),
-            background-color var(--element-transition-duration),
-            border-color var(--element-transition-duration);
+        text-decoration: none;
+        transition: all 0.15s ease-in-out;
+        cursor: pointer;
 
         &:hover {
-            background-color: #fffdf7;
-            border-color: color-mix(in srgb, var(--surface-border) 72%, #d9bf72);
-            transform: translateY(-1px);
+            background-color: var(--surface-100);
+            color: #1c3633;
+            border-color: var(--surface-300);
         }
 
         &:focus-visible {
@@ -276,182 +227,37 @@
         }
     }
 
+    .layout-topbar-ai {
+        background: #faf5eb;
+        border-color: #ebdcb9;
+        color: #78350f;
+
+        &:hover {
+            background-color: #f6ebd5;
+            border-color: #c08f34;
+            color: #582404;
+        }
+    }
+
     .layout-topbar-logout {
-        color: #8a1f1f;
-        background: #fff5f5;
-        border-color: #f1c9c9;
-    }
+        color: #b91c1c;
+        background: #fef2f2;
+        border-color: #fecaca;
 
-    .layout-topbar-logout:hover {
-        background: #feecec;
-    }
-}
-
-@media (max-width: 1199px) {
-    .layout-topbar {
-        flex-wrap: wrap;
-        align-items: center;
-        height: auto;
-        min-height: 4.75rem;
-        padding: 0 1rem;
-        row-gap: 0.75rem;
-        padding-top: 0.8rem;
-        padding-bottom: 0.8rem;
-
-        .layout-topbar-brand {
-            padding-right: 0;
-        }
-
-        .layout-topbar-start,
-        .layout-topbar-actions {
-            flex: 1 1 auto;
-        }
-
-        .layout-topbar-actions {
-            justify-content: flex-end;
-            flex-wrap: wrap;
-        }
-
-        .layout-topbar-center {
-            order: 3;
-            width: 100%;
-            justify-content: space-between;
-            padding: 0;
-            gap: 0.75rem;
-        }
-
-        .layout-topbar-workspace,
-        .layout-topbar-date {
-            flex: 1 1 0;
-            min-width: 0;
-        }
-
-        .layout-topbar-workspace-value,
-        .layout-topbar-date {
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .layout-topbar-user {
-            max-width: 13rem;
+        &:hover {
+            background-color: #fee2e2;
+            border-color: #fca5a5;
         }
     }
 }
 
 @media (max-width: 991px) {
     .layout-topbar {
-        .layout-topbar-user {
-            max-width: none;
-        }
-
-        .layout-topbar-user-meta {
-            display: none;
-        }
-
-        .layout-topbar-utility {
-            min-width: 2.7rem;
-            padding: 0;
-        }
-
-        .layout-topbar-center {
-            gap: 0.6rem;
-        }
-
-        .layout-topbar-workspace-label {
-            display: none;
-        }
-    }
-}
-
-@media (max-width: 767px) {
-    .layout-topbar {
-        flex-wrap: nowrap;
-        align-items: center;
-        justify-content: space-between;
-        height: 4.25rem;
-        min-height: 4.25rem;
-        padding: 0 0.8rem;
-        row-gap: 0;
-
-        .layout-topbar-start {
-            gap: 0.65rem;
-            flex: 1 1 auto;
-            min-width: 0;
-        }
-
-        .layout-topbar-mark {
-            width: 2.45rem;
-            height: 2.45rem;
-            border-radius: 0;
-            font-size: 0.78rem;
-        }
-
-        .layout-topbar-logo {
-            font-size: 1rem;
-        }
-
-        .layout-topbar-actions {
-            gap: 0.45rem;
-            flex: 0 0 auto;
-        }
+        padding: 0 1rem;
+        height: 4rem;
 
         .layout-topbar-center {
             display: none;
-        }
-
-        .layout-topbar-status,
-        .layout-topbar-utility {
-            min-height: 2.45rem;
-            padding: 0 0.75rem;
-        }
-
-        .layout-topbar-status {
-            font-size: 0.75rem;
-            padding: 0 0.65rem;
-        }
-
-        .layout-topbar-user {
-            display: none;
-        }
-    }
-}
-
-@media (max-width: 575px) {
-    .layout-topbar {
-        padding: 0 0.65rem;
-
-        .layout-topbar-logo {
-            font-size: 0.92rem;
-            letter-spacing: 0.05em;
-        }
-
-        .layout-topbar-mark {
-            width: 2.2rem;
-            height: 2.2rem;
-            font-size: 0.72rem;
-        }
-
-        .layout-topbar-action,
-        .layout-topbar-utility {
-            min-width: 2.3rem;
-            width: 2.3rem;
-            height: 2.3rem;
-            padding: 0;
-        }
-
-        .layout-topbar-status {
-            min-width: 2.2rem;
-            min-height: 2.3rem;
-            justify-content: center;
-            padding: 0 0.55rem;
-
-            span:last-child {
-                display: none;
-            }
-        }
-
-        .layout-topbar-status-dot {
-            margin-right: 0;
         }
     }
 }

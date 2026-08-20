@@ -94,8 +94,8 @@ const submitLogout = () => {
         </div>
 
         <div class="layout-topbar-actions">
-            <button type="button" class="layout-topbar-utility" title="Ask AI" @click="emit('openAskAi')">
-                <i class="pi pi-sparkles"></i>
+            <button type="button" class="layout-topbar-utility layout-topbar-ai" title="Ask AI" @click="emit('openAskAi')">
+                <i class="pi pi-sparkles text-[#c08f34]"></i>
                 <span class="hidden md:inline">Ask AI</span>
             </button>
 
