@@ -408,10 +408,12 @@ const submitLogout = () => {
                             <span class="text-[9px] text-surface-400 font-normal lowercase">tax invoices</span>
                         </div>
                         <div class="divide-y divide-surface-100">
-                            <Link
+                            <a
                                 v-for="inv in searchResults.invoices"
                                 :key="inv.id"
                                 :href="`/invoices/${inv.id}/print`"
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 @click="closeSpotlight"
                                 class="flex items-center justify-between px-3 py-2 hover:bg-[#f2f6f5] transition-colors group cursor-pointer"
                             >
@@ -424,8 +426,11 @@ const submitLogout = () => {
                                         <p class="text-[11px] text-surface-500 truncate">{{ inv.customer?.name || 'Walk-in' }} • ₹{{ Number(inv.total_amount).toLocaleString('en-IN') }}</p>
                                     </div>
                                 </div>
-                                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200">View</span>
-                            </Link>
+                                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200 flex items-center gap-1">
+                                    <span>Print</span>
+                                    <i class="pi pi-external-link text-[9px]"></i>
+                                </span>
+                            </a>
                         </div>
                     </div>
 
