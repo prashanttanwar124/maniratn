@@ -66,17 +66,17 @@ const submitLogout = () => {
 <template>
     <div class="layout-topbar">
         <div class="layout-topbar-start">
-            <button class="layout-menu-button layout-topbar-action" @click="toggleMenu" aria-label="Toggle sidebar">
+            <button class="layout-menu-button layout-topbar-action" @click="toggleMenu" aria-label="Toggle sidebar" title="Toggle Navigation">
                 <i class="pi pi-bars"></i>
             </button>
 
-            <a href="/dashboard" class="layout-topbar-brand flex items-center gap-2.5 group">
-                <img src="/logo-mark.png" alt="KaratSetu" class="h-9 w-auto object-contain flex-shrink-0 transition-transform group-hover:scale-105" />
+            <a href="/dashboard" class="layout-topbar-brand flex items-center gap-3 group">
+                <img src="/logo-mark.png" alt="KaratSetu" class="h-10 w-auto object-contain flex-shrink-0 transition-transform group-hover:scale-105" />
                 <span class="layout-topbar-brand-copy flex flex-col justify-center">
-                    <span class="text-[1.25rem] font-bold leading-none tracking-tight text-[#1c3633]">
+                    <span class="text-[1.3rem] font-bold leading-none tracking-tight text-[#1c3633]">
                         Karat<span class="text-[#c08f34]">Setu</span>
                     </span>
-                    <span class="mt-1 text-[0.62rem] font-bold uppercase tracking-[0.2em] text-[#1c3633]/60 leading-none hidden sm:block">
+                    <span class="mt-1 text-[0.66rem] font-bold uppercase tracking-[0.2em] text-[#1c3633]/60 leading-none hidden sm:block">
                         Jewellery ERP
                     </span>
                 </span>
