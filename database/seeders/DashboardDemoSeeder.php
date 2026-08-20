@@ -167,15 +167,26 @@ class DashboardDemoSeeder extends Seeder
             );
         }
 
-        // 6. INVOICES ACROSS LAST 7 DAYS
+        // 6. 30-DAY INVOICES & TRANSACTIONS (DYNAMIC SALES & COLLECTIONS)
         $salesPattern = [
-            ['daysAgo' => 6, 'amount' => 42500, 'item' => 'Gold Ring 22K (4.5g)'],
-            ['daysAgo' => 5, 'amount' => 68200, 'item' => 'Lightweight Bangle Pair (9.2g)'],
-            ['daysAgo' => 4, 'amount' => 115000, 'item' => 'Bridal Chain & Pendant (15.8g)'],
-            ['daysAgo' => 3, 'amount' => 84000, 'item' => 'Antique Jhumkas 916 (11.5g)'],
-            ['daysAgo' => 2, 'amount' => 54500, 'item' => 'Silver Dinner Set & Coin (500g)'],
-            ['daysAgo' => 1, 'amount' => 92000, 'item' => 'Men Gold Bracelet 22K (12.4g)'],
-            ['daysAgo' => 0, 'amount' => 78500, 'item' => 'Diamond Studded Gold Pendant (10.6g)'],
+            ['daysAgo' => 28, 'sales' => 54000, 'collections' => 50000, 'item' => 'Gold Mangalsutra 22K (7.2g)'],
+            ['daysAgo' => 26, 'sales' => 88000, 'collections' => 65000, 'item' => 'Antique Necklace (11.8g)'],
+            ['daysAgo' => 24, 'sales' => 125000, 'collections' => 140000, 'item' => 'Bridal Set Complete (16.5g)'], // old khata settlement
+            ['daysAgo' => 22, 'sales' => 45000, 'collections' => 45000, 'item' => 'Men 22K Kada (6.0g)'],
+            ['daysAgo' => 20, 'sales' => 95000, 'collections' => 70000, 'item' => 'Diamond Stud Earrings (18K)'],
+            ['daysAgo' => 18, 'sales' => 62000, 'collections' => 85000, 'item' => 'Silver Dinner Thali (750g)'],
+            ['daysAgo' => 16, 'sales' => 110000, 'collections' => 95000, 'item' => 'Gold Bangles Pair 916 (14.6g)'],
+            ['daysAgo' => 14, 'sales' => 74000, 'collections' => 74000, 'item' => 'Traditional Gold Chain (9.8g)'],
+            ['daysAgo' => 12, 'sales' => 135000, 'collections' => 110000, 'item' => 'Ruby Emerald Pendant (18.2g)'],
+            ['daysAgo' => 10, 'sales' => 82000, 'collections' => 90000, 'item' => 'Gold Coins 24K (10g)'],
+            ['daysAgo' => 8, 'sales' => 69000, 'collections' => 69000, 'item' => 'Silver Payal Pair (350g)'],
+            ['daysAgo' => 6, 'sales' => 42500, 'collections' => 60000, 'item' => 'Gold Ring 22K (4.5g)'],
+            ['daysAgo' => 5, 'sales' => 98200, 'collections' => 85000, 'item' => 'Lightweight Bangle Pair (9.2g)'],
+            ['daysAgo' => 4, 'sales' => 145000, 'collections' => 120000, 'item' => 'Bridal Chain & Pendant (15.8g)'],
+            ['daysAgo' => 3, 'sales' => 84000, 'collections' => 95000, 'item' => 'Antique Jhumkas 916 (11.5g)'],
+            ['daysAgo' => 2, 'sales' => 54500, 'collections' => 40000, 'item' => 'Silver Dinner Set & Coin (500g)'],
+            ['daysAgo' => 1, 'sales' => 112000, 'collections' => 130000, 'item' => 'Men Gold Bracelet 22K (12.4g)'],
+            ['daysAgo' => 0, 'sales' => 78500, 'collections' => 78500, 'item' => 'Diamond Studded Gold Pendant (10.6g)'],
         ];
 
         foreach ($salesPattern as $sIdx => $sp) {
@@ -190,8 +201,8 @@ class DashboardDemoSeeder extends Seeder
                     'user_id' => $user->id,
                     'date' => $invDate->toDateString(),
                     'gold_rate_applied' => 7250,
-                    'tax_amount' => $sp['amount'] * 0.03,
-                    'total_amount' => $sp['amount'],
+                    'tax_amount' => $sp['sales'] * 0.03,
+                    'total_amount' => $sp['sales'],
                     'created_at' => $invDate,
                 ]
             );
@@ -200,10 +211,10 @@ class DashboardDemoSeeder extends Seeder
                 ['invoice_id' => $inv->id, 'description' => $sp['item']],
                 [
                     'purity' => '22K',
-                    'weight' => round($sp['amount'] / 7400, 3),
+                    'weight' => round($sp['sales'] / 7400, 3),
                     'rate' => 7250,
                     'making_charges' => 500,
-                    'final_price' => $sp['amount'],
+                    'final_price' => $sp['sales'],
                 ]
             );
 
@@ -216,7 +227,7 @@ class DashboardDemoSeeder extends Seeder
                 [
                     'user_id' => $user->id,
                     'type' => 'SALE',
-                    'amount' => $sp['amount'],
+                    'amount' => $sp['sales'],
                     'date' => $invDate->toDateString(),
                     'payment_method' => 'CASH',
                     'created_at' => $invDate,
@@ -227,12 +238,12 @@ class DashboardDemoSeeder extends Seeder
                 [
                     'transactable_type' => Customer::class,
                     'transactable_id' => $cust->id,
-                    'description' => 'Payment for Invoice #'.$inv->invoice_number,
+                    'description' => 'Payment settlement for Invoice #'.$inv->invoice_number,
                 ],
                 [
                     'user_id' => $user->id,
                     'type' => 'PAYMENT',
-                    'amount' => $sp['amount'],
+                    'amount' => $sp['collections'],
                     'date' => $invDate->toDateString(),
                     'payment_method' => $sIdx % 2 === 0 ? 'UPI' : 'CASH',
                     'created_at' => $invDate,

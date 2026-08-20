@@ -288,7 +288,7 @@ const sendWhatsAppWish = (reminder) => {
 };
 
 // ----------------------------------------------------
-// NATIVE REACTIVE CHART.JS CONTROLLER
+// BULLETPROOF REACTIVE CHART CONTROLLER
 // ----------------------------------------------------
 
 const filteredSalesData = computed(() => {
@@ -310,84 +310,174 @@ const currentChartSummary = computed(() => {
     return { label: `Total ${chartRange.value} Sales`, value: formatCurrency(total) };
 });
 
-const updateChart = () => {
-    if (!chartCanvas.value) return;
-
-    if (chartInstance) {
-        chartInstance.destroy();
-        chartInstance = null;
-    }
-
+const getChartPayload = () => {
+    if (!chartCanvas.value) return null;
     const ctx = chartCanvas.value.getContext('2d');
     const items = filteredSalesData.value;
     const labels = items.map((i) => (chartRange.value === '30D' ? i.label : `${i.short_label} ${i.label.split(' ')[0]}`));
 
-    let chartData = {};
-
     if (activeChartTab.value === 'collections') {
         const gradient = ctx.createLinearGradient(0, 0, 0, 260);
-        gradient.addColorStop(0, 'rgba(5, 150, 105, 0.18)');
+        gradient.addColorStop(0, 'rgba(5, 150, 105, 0.16)');
         gradient.addColorStop(1, 'rgba(5, 150, 105, 0.0)');
 
-        chartData = {
-            labels,
-            datasets: [
-                {
-                    label: 'Collections (₹)',
-                    data: items.map((i) => i.collections),
-                    borderColor: '#059669',
-                    backgroundColor: gradient,
-                    borderWidth: 2.5,
-                    fill: true,
-                    tension: 0.35,
-                    pointBackgroundColor: '#059669',
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
+        return {
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Collections (₹)',
+                        data: items.map((i) => i.collections),
+                        borderColor: '#059669',
+                        backgroundColor: gradient,
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.35,
+                        pointBackgroundColor: '#059669',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        titleFont: { family: "'Instrument Sans', sans-serif", size: 12, weight: '600' },
+                        bodyFont: { family: "'Instrument Sans', sans-serif", size: 12 },
+                        padding: 10,
+                        cornerRadius: 0,
+                        callbacks: {
+                            label: (ctx) => ` Collections: ${formatCurrency(ctx.parsed.y)}`,
+                        },
+                    },
                 },
-            ],
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { family: "'Instrument Sans', sans-serif", size: 11 }, color: '#64748b' },
+                    },
+                    y: {
+                        grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [3, 3] },
+                        ticks: {
+                            font: { family: "'Instrument Sans', sans-serif", size: 11 },
+                            color: '#64748b',
+                            callback: (val) => (val >= 100000 ? `₹${(val / 100000).toFixed(1)}L` : val >= 1000 ? `₹${(val / 1000).toFixed(0)}k` : `₹${val}`),
+                        },
+                    },
+                },
+            },
         };
-    } else if (activeChartTab.value === 'bullion') {
+    }
+
+    if (activeChartTab.value === 'bullion') {
         const count = chartRange.value === '7D' ? 7 : chartRange.value === '14D' ? 14 : 14;
         const bullionItems = (props.analytics?.bullion_trend || []).slice(-count);
 
-        chartData = {
-            labels: bullionItems.map((i) => i.label),
-            datasets: [
-                {
-                    label: 'Gold 24K (₹/g)',
-                    data: bullionItems.map((i) => i.gold_sell),
-                    borderColor: '#c4922a',
-                    backgroundColor: 'rgba(196, 146, 42, 0.05)',
-                    borderWidth: 2.5,
-                    fill: false,
-                    tension: 0.3,
-                    pointBackgroundColor: '#c4922a',
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
+        return {
+            data: {
+                labels: bullionItems.map((i) => i.label),
+                datasets: [
+                    {
+                        label: 'Gold 24K (₹/g)',
+                        data: bullionItems.map((i) => i.gold_sell),
+                        borderColor: '#c4922a',
+                        backgroundColor: 'rgba(196, 146, 42, 0.05)',
+                        borderWidth: 2.5,
+                        fill: false,
+                        tension: 0.3,
+                        pointBackgroundColor: '#c4922a',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        yAxisID: 'y',
+                    },
+                    {
+                        label: 'Silver (₹/g)',
+                        data: bullionItems.map((i) => i.silver_sell),
+                        borderColor: '#64748b',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [4, 4],
+                        fill: false,
+                        tension: 0.3,
+                        pointBackgroundColor: '#64748b',
+                        pointRadius: 3,
+                        yAxisID: 'y1',
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            boxWidth: 10,
+                            boxHeight: 10,
+                            font: { family: "'Instrument Sans', sans-serif", size: 11, weight: '600' },
+                        },
+                    },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        titleFont: { family: "'Instrument Sans', sans-serif", size: 12, weight: '600' },
+                        bodyFont: { family: "'Instrument Sans', sans-serif", size: 12 },
+                        padding: 10,
+                        cornerRadius: 0,
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.dataset.label}: ₹${Number(ctx.parsed.y).toLocaleString('en-IN')}`,
+                        },
+                    },
                 },
-                {
-                    label: 'Silver (₹/g)',
-                    data: bullionItems.map((i) => i.silver_sell),
-                    borderColor: '#64748b',
-                    borderWidth: 2,
-                    borderDash: [4, 4],
-                    fill: false,
-                    tension: 0.3,
-                    pointBackgroundColor: '#64748b',
-                    pointRadius: 3,
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { family: "'Instrument Sans', sans-serif", size: 11 }, color: '#64748b' },
+                    },
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [3, 3] },
+                        ticks: {
+                            font: { family: "'Instrument Sans', sans-serif", size: 11 },
+                            color: '#c4922a',
+                            callback: (val) => `₹${val}`,
+                        },
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        ticks: {
+                            font: { family: "'Instrument Sans', sans-serif", size: 11 },
+                            color: '#64748b',
+                            callback: (val) => `₹${val}`,
+                        },
+                    },
                 },
-            ],
+            },
         };
-    } else {
-        // Sales
-        const gradient = ctx.createLinearGradient(0, 0, 0, 260);
-        gradient.addColorStop(0, 'rgba(15, 23, 42, 0.14)');
-        gradient.addColorStop(1, 'rgba(15, 23, 42, 0.0)');
+    }
 
-        chartData = {
+    // Default: Total Sales
+    const gradient = ctx.createLinearGradient(0, 0, 0, 260);
+    gradient.addColorStop(0, 'rgba(15, 23, 42, 0.14)');
+    gradient.addColorStop(1, 'rgba(15, 23, 42, 0.0)');
+
+    return {
+        data: {
             labels,
             datasets: [
                 {
@@ -405,30 +495,13 @@ const updateChart = () => {
                     pointHoverRadius: 6,
                 },
             ],
-        };
-    }
-
-    chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: chartData,
+        },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
+            interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: {
-                    display: activeChartTab.value === 'bullion',
-                    position: 'top',
-                    align: 'end',
-                    labels: {
-                        boxWidth: 12,
-                        boxHeight: 12,
-                        font: { family: "'Instrument Sans', sans-serif", size: 11, weight: '500' },
-                    },
-                },
+                legend: { display: false },
                 tooltip: {
                     backgroundColor: '#0f172a',
                     titleFont: { family: "'Instrument Sans', sans-serif", size: 12, weight: '600' },
@@ -436,39 +509,44 @@ const updateChart = () => {
                     padding: 10,
                     cornerRadius: 0,
                     callbacks: {
-                        label: (ctx) => {
-                            const val = ctx.parsed.y;
-                            if (activeChartTab.value === 'bullion') {
-                                return ` ${ctx.dataset.label}: ₹${Number(val).toLocaleString('en-IN')}`;
-                            }
-                            return ` ${ctx.dataset.label}: ${formatCurrency(val)}`;
-                        },
+                        label: (ctx) => ` Sales: ${formatCurrency(ctx.parsed.y)}`,
                     },
                 },
             },
             scales: {
                 x: {
                     grid: { display: false },
-                    ticks: {
-                        font: { family: "'Instrument Sans', sans-serif", size: 11 },
-                        color: '#64748b',
-                    },
+                    ticks: { font: { family: "'Instrument Sans', sans-serif", size: 11 }, color: '#64748b' },
                 },
                 y: {
                     grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [3, 3] },
                     ticks: {
                         font: { family: "'Instrument Sans', sans-serif", size: 11 },
                         color: '#64748b',
-                        callback: (val) => {
-                            if (activeChartTab.value === 'bullion') return `₹${val}`;
-                            if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
-                            if (val >= 1000) return `₹${(val / 1000).toFixed(0)}k`;
-                            return `₹${val}`;
-                        },
+                        callback: (val) => (val >= 100000 ? `₹${(val / 100000).toFixed(1)}L` : val >= 1000 ? `₹${(val / 1000).toFixed(0)}k` : `₹${val}`),
                     },
                 },
             },
         },
+    };
+};
+
+const updateChart = () => {
+    if (!chartCanvas.value) return;
+
+    const payload = getChartPayload();
+    if (!payload) return;
+
+    if (chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+    }
+
+    const ctx = chartCanvas.value.getContext('2d');
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: payload.data,
+        options: payload.options,
     });
 };
 
