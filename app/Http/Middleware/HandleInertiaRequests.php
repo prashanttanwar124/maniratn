@@ -61,6 +61,7 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'rates' => [
                 'gold_sell' => (float) ($todayRate?->gold_sell ?? 0),
+                'gold_buy' => (float) ($todayRate?->gold_buy ?? 0),
                 'silver_sell' => (float) ($todayRate?->silver_sell ?? 0),
             ],
             'quote' => ['message' => trim($message), 'author' => trim($author)],
