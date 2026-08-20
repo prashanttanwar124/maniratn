@@ -13,6 +13,8 @@ const role = computed(() => page.props.auth?.role || 'user');
 const dayStatus = computed(() => page.props.dayStatus ?? { is_open: true });
 const currentPath = computed(() => String(page.url || '/').split('?')[0]);
 
+const rates = computed(() => page.props.rates ?? { gold_sell: 0, silver_sell: 0 });
+
 const currentDate = computed(() =>
     formatIndianDate(new Date(), {
         day: '2-digit',
@@ -87,8 +89,22 @@ const submitLogout = () => {
                 <span class="layout-topbar-workspace-value">{{ workspaceLabel }}</span>
             </div>
 
-            <div class="layout-topbar-date">
-                <i class="pi pi-calendar text-sm"></i>
+            <!-- Live Rates Ticker -->
+            <div v-if="rates?.gold_sell > 0" class="hidden xl:inline-flex items-center gap-2.5 px-3 py-1 bg-amber-50/80 border border-amber-200 text-xs text-amber-950">
+                <div class="flex items-center gap-1.5 font-bold">
+                    <span class="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span class="text-[9px] uppercase tracking-wider text-amber-700 font-bold">24K Gold</span>
+                    <span>₹{{ Number(rates.gold_sell).toLocaleString('en-IN') }}/g</span>
+                </div>
+                <span class="text-amber-300">|</span>
+                <div class="flex items-center gap-1 text-surface-600">
+                    <span class="text-[9px] uppercase tracking-wider text-surface-500 font-bold">Silver</span>
+                    <span class="font-semibold text-surface-800">₹{{ Number(rates.silver_sell).toLocaleString('en-IN') }}/g</span>
+                </div>
+            </div>
+
+            <div class="layout-topbar-date hidden lg:inline-flex">
+                <i class="pi pi-calendar text-xs text-surface-500"></i>
                 <span>{{ currentDate }}</span>
             </div>
         </div>

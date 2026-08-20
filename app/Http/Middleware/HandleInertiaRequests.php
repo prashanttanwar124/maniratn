@@ -50,6 +50,7 @@ class HandleInertiaRequests extends Middleware
             ->whereDate('date', Carbon::today())
             ->latest('id')
             ->first();
+        $todayRate = \App\Models\DailyRate::query()->latest('date')->first();
         $hasAnyRegister = DailyRegister::query()->exists();
         $cashVault = Vault::query()->where('type', 'CASH')->value('balance') ?? 0;
         $goldVault = Vault::query()->where('type', 'GOLD')->value('balance') ?? 0;
@@ -58,6 +59,10 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            'rates' => [
+                'gold_sell' => (float) ($todayRate?->gold_sell ?? 0),
+                'silver_sell' => (float) ($todayRate?->silver_sell ?? 0),
+            ],
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
                 'user' => $request->user(),
