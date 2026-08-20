@@ -357,7 +357,7 @@ class WebsiteApiController extends Controller
                         'final_price' => (float) ($item->final_price ?? $item->total_price ?? 0),
                     ];
                 })->values(),
-                'transactions' => $invoice->transactions->map(function ($txn) {
+                'transactions' => $invoice->transactions->where('type', 'PAYMENT')->map(function ($txn) {
                     return [
                         'id' => $txn->id,
                         'type' => $txn->type,
