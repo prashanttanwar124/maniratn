@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $invoice->invoice_number }} - Tax Invoice</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
         :root {
             --surface-0: #ffffff;
@@ -18,9 +18,10 @@
             --surface-700: #334155;
             --surface-900: #0f172a;
 
-            --brand-gold: #c4922a;
-            --brand-dark: #0f172a;
-            --brand-accent: #854d0e;
+            --brand-maroon: #5b0d13;
+            --brand-gold: #c59b27;
+            --danger-100: #fee2e2;
+            --danger-700: #b91c1c;
         }
 
         * {
@@ -28,20 +29,20 @@
         }
 
         body {
-            font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Poppins', Arial, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 24px;
             color: var(--surface-900);
-            background: #f1f5f9;
+            background: linear-gradient(180deg, #fffaf0 0%, #f8f3e3 100%);
             font-size: 11.5px;
-            line-height: 1.45;
+            line-height: 1.4;
         }
 
         .page {
-            max-width: 820px;
-            margin: 10px auto;
-            border: 1px solid var(--surface-300);
-            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08);
+            max-width: 800px;
+            margin: 15px auto;
+            border: 1px dashed var(--brand-gold);
+            box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.08);
             background: var(--surface-0);
             padding: 0;
             position: relative;
@@ -55,18 +56,18 @@
             box-sizing: border-box;
         }
 
-        /* Top Toolbar */
+        /* Gold Luxury Toolbar */
         .toolbar {
-            max-width: 820px;
-            margin: 0 auto 14px;
+            max-width: 800px;
+            margin: 0 auto 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #ffffff;
-            color: var(--surface-900);
+            background: linear-gradient(115deg, #fffaf0 0%, #f8f3e3 18%, #ffffff 46%, #ffffff 100%);
+            color: #21160a;
             padding: 10px 18px;
-            border: 1px solid var(--surface-200);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+            border: 1px solid #d8c38a;
+            box-shadow: 0 4px 12px rgba(175, 140, 55, 0.08);
         }
 
         .toolbar-group {
@@ -78,25 +79,26 @@
         .toolbar-title {
             font-weight: 700;
             font-size: 12px;
-            color: var(--surface-700);
+            color: #8e7b4d;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.06em;
         }
 
         .toolbar button {
-            border: 1px solid var(--surface-900);
-            background: var(--surface-900);
-            color: #ffffff;
+            border: 1px solid #b58a34;
+            background: linear-gradient(145deg, #d7bb6a 0%, #f6e3a8 55%, #b58a34 100%);
+            color: #5d4311;
             padding: 7px 16px;
             cursor: pointer;
-            font-family: inherit;
+            font-family: 'Poppins', Arial, sans-serif;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 700;
+            box-shadow: 0 2px 6px rgba(175, 140, 55, 0.15);
             transition: all 0.15s ease-in-out;
         }
 
         .toolbar button:hover {
-            background: #1e293b;
+            background: linear-gradient(145deg, #b58a34 0%, #ebd085 55%, #8e6818 100%);
             transform: translateY(-1px);
         }
 
@@ -105,67 +107,60 @@
             align-items: center;
             gap: 8px;
             font-size: 12px;
-            background: var(--surface-50);
-            border: 1px solid var(--surface-200);
-            padding: 5px 10px;
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(216, 195, 138, 0.5);
+            padding: 5px 12px;
         }
 
         .slider-container label {
             font-weight: 600;
-            color: var(--surface-700);
+            color: #7b6a42;
         }
 
         .slider-container input[type="range"] {
-            width: 100px;
-            accent-color: var(--surface-900);
+            width: 105px;
+            accent-color: var(--brand-gold);
             cursor: pointer;
         }
 
         .offset-value {
             font-weight: 700;
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--surface-900);
-            min-width: 40px;
+            color: var(--brand-gold);
+            min-width: 45px;
             text-align: right;
+            font-family: 'JetBrains Mono', monospace;
         }
 
-        /* Invoice Layout Elements */
-        .head,
-        .meta,
-        .totals {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
+        /* Invoice Header & Meta */
         .invoice-heading-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 2px solid var(--surface-900);
-            padding-bottom: 8px;
             margin-bottom: 12px;
         }
 
         .invoice-heading-label {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.1em;
             text-transform: uppercase;
-            color: var(--surface-900);
+            color: var(--brand-maroon);
         }
 
         .meta-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 14px;
             margin-bottom: 16px;
         }
 
         .panel {
             border: 1px solid var(--surface-200);
+            border-top: 3px solid var(--brand-maroon);
             background: var(--surface-50);
-            padding: 10px 14px;
+            padding: 12px 14px;
             font-size: 11px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
         }
 
         .panel-title {
@@ -200,7 +195,11 @@
             text-align: right;
         }
 
-        /* Items Table */
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Items Table with Maroon Header */
         .items-section {
             margin-top: 14px;
             margin-bottom: 16px;
@@ -210,45 +209,39 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 11px;
-            border: 1px solid var(--surface-300);
+        }
+
+        table.items th,
+        table.items td {
+            border: 1px solid var(--surface-200);
+            padding: 7.5px 10px;
+            text-align: left;
         }
 
         table.items th {
-            background: var(--surface-900);
-            color: #ffffff;
+            background: var(--brand-maroon);
+            color: white;
             font-weight: 600;
             font-size: 9.5px;
             text-transform: uppercase;
             letter-spacing: 0.06em;
-            padding: 7px 10px;
-            border: 1px solid var(--surface-900);
-        }
-
-        table.items td {
-            border: 1px solid var(--surface-200);
-            padding: 7px 10px;
-            vertical-align: middle;
-            color: var(--surface-900);
+            border: 1px solid var(--brand-maroon);
         }
 
         table.items tbody tr:nth-child(even) {
-            background-color: var(--surface-50);
+            background-color: #fdfdfd;
         }
 
         .barcode-pill {
             display: inline-block;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 10px;
+            font-size: 9.5px;
             font-weight: 600;
-            background: #f1f5f9;
-            color: #0f172a;
+            background: #fff8eb;
+            color: #78350f;
             padding: 1px 6px;
-            border: 1px solid #cbd5e1;
+            border: 1px solid #fde68a;
             letter-spacing: 0.02em;
-        }
-
-        .mono {
-            font-family: 'JetBrains Mono', monospace;
         }
 
         .align-right {
@@ -259,7 +252,7 @@
             text-align: center;
         }
 
-        /* Totals */
+        /* Bottom Totals Section */
         .bottom-section {
             display: flex;
             justify-content: space-between;
@@ -268,11 +261,12 @@
             gap: 20px;
         }
 
-        .totals-card {
+        .totals-wrap {
             width: 290px;
             border: 1px solid var(--surface-200);
             background: var(--surface-50);
             padding: 10px 14px;
+            border-top: 2px solid var(--brand-maroon);
         }
 
         .totals-table {
@@ -282,7 +276,7 @@
         }
 
         .totals-table td {
-            padding: 4px 0;
+            padding: 5px 0;
             border-bottom: 1px solid var(--surface-200);
         }
 
@@ -294,31 +288,32 @@
             padding-top: 6px;
             font-size: 13px;
             font-weight: 700;
-            color: var(--surface-900);
-            border-top: 1.5px solid var(--surface-900);
-            border-bottom: none;
+            color: var(--brand-maroon);
+            border-top: 1.5px solid var(--brand-maroon);
         }
 
         .badge {
             display: inline-block;
             padding: 3px 8px;
-            font-size: 9px;
+            font-size: 9.5px;
             font-weight: 700;
             letter-spacing: 0.06em;
+            background: var(--surface-50);
         }
 
         .badge-void {
             border: 1px solid #fecaca;
-            background: #fee2e2;
-            color: #b91c1c;
+            background: var(--danger-100);
+            color: var(--danger-700);
         }
 
         /* Digital Vault Box */
         .invoice-vault-qr {
             text-align: center;
             background: #ffffff;
-            padding: 5px;
+            padding: 4px;
             border: 1px solid var(--surface-200);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
             display: inline-block;
         }
 
@@ -346,10 +341,10 @@
 
         .google-review-qr-box svg,
         .google-review-qr-box img {
-            width: 38px;
-            height: 38px;
-            max-width: 38px;
-            max-height: 38px;
+            width: 40px;
+            height: 40px;
+            max-width: 40px;
+            max-height: 40px;
             display: block;
         }
 
@@ -407,7 +402,7 @@
 
         <div class="toolbar-group">
             <button onclick="window.print()">
-                <i class="pi pi-print"></i> Print Tax Invoice
+                Print Invoice
             </button>
         </div>
     </div>
@@ -420,8 +415,6 @@
                 <div>
                     @if ($invoice->status === 'CANCELLED')
                         <span class="badge badge-void">VOIDED / CANCELLED</span>
-                    @else
-                        <span style="font-size: 10px; font-weight: 700; color: var(--surface-500); letter-spacing: 0.05em; text-transform: uppercase;">Original Bill</span>
                     @endif
                 </div>
             </div>
@@ -430,10 +423,10 @@
             <div class="meta-grid">
                 <!-- Customer Details -->
                 <div class="panel">
-                    <div class="panel-title">Customer Information</div>
+                    <div class="panel-title">Customer Details</div>
                     <div class="meta-row">
                         <span class="meta-key">Customer:</span>
-                        <span class="meta-val">{{ $invoice->customer?->name ?? 'Walk-in Retail Client' }}</span>
+                        <span class="meta-val">{{ $invoice->customer?->name ?? 'Walk-in Customer' }}</span>
                     </div>
                     @if ($invoice->customer?->mobile)
                         <div class="meta-row">
@@ -459,21 +452,21 @@
                 <div class="panel">
                     <div class="panel-title">Invoice Details</div>
                     <div class="meta-row">
-                        <span class="meta-key">Invoice #:</span>
+                        <span class="meta-key">Bill No:</span>
                         <span class="meta-val mono">{{ $invoice->invoice_number }}</span>
                     </div>
                     <div class="meta-row">
-                        <span class="meta-key">Invoice Date:</span>
+                        <span class="meta-key">Date:</span>
                         <span class="meta-val">{{ \Carbon\Carbon::parse($invoice->date)->format('d M Y') }}</span>
                     </div>
                     <div class="meta-row">
-                        <span class="meta-key">24K Gold Rate:</span>
-                        <span class="meta-val mono">₹{{ number_format((float) $invoice->gold_rate_applied, 2) }}/g</span>
+                        <span class="meta-key">Gold Rate:</span>
+                        <span class="meta-val mono">Rs {{ number_format((float) $invoice->gold_rate_applied, 2) }}/g</span>
                     </div>
                     @if ((float) ($invoice->silver_rate_applied ?? 0) > 0)
                         <div class="meta-row">
                             <span class="meta-key">Silver Rate:</span>
-                            <span class="meta-val mono">₹{{ number_format((float) $invoice->silver_rate_applied, 2) }}/g</span>
+                            <span class="meta-val mono">Rs {{ number_format((float) $invoice->silver_rate_applied, 2) }}/g</span>
                         </div>
                     @endif
                     @if ($settings?->gst_number)
@@ -482,21 +475,25 @@
                             <span class="meta-val mono">{{ $settings->gst_number }}</span>
                         </div>
                     @endif
+                    <div class="meta-row">
+                        <span class="meta-key">Created By:</span>
+                        <span class="meta-val">{{ $invoice->user?->name ?? 'System' }}</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Items Table with Dedicated Barcode Column -->
+            <!-- Items Table with Brand Maroon Header & Barcode Column -->
             <div class="items-section">
                 <table class="items">
                     <thead>
                         <tr>
-                            <th style="width: 32px;" class="align-center">#</th>
+                            <th style="width: 30px;" class="align-center">#</th>
                             <th style="width: 100px;">Barcode / Tag</th>
                             <th>Description</th>
                             <th style="width: 75px;" class="align-right">Weight</th>
                             <th style="width: 60px;" class="align-center">Purity</th>
                             <th style="width: 85px;" class="align-right">Making</th>
-                            <th style="width: 105px;" class="align-right">Total Amount</th>
+                            <th style="width: 105px;" class="align-right">Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -505,12 +502,12 @@
                                 $barcode = $item->product?->barcode ?? $item->silverProduct?->barcode ?? $item->barcode ?? $item->tag_number ?? null;
                             @endphp
                             <tr>
-                                <td class="align-center mono" style="color: var(--surface-500);">{{ $index + 1 }}</td>
+                                <td class="align-center mono">{{ $index + 1 }}</td>
                                 <td>
                                     @if ($barcode)
                                         <span class="barcode-pill">{{ $barcode }}</span>
                                     @else
-                                        <span class="barcode-pill" style="color: var(--surface-500); background: #f8fafc; border-color: #e2e8f0;">TAG-{{ str_pad($item->id, 4, '0', STR_PAD_LEFT) }}</span>
+                                        <span class="barcode-pill" style="background: #f8fafc; color: #64748b; border-color: #e2e8f0;">TAG-{{ str_pad($item->id, 4, '0', STR_PAD_LEFT) }}</span>
                                     @endif
                                 </td>
                                 <td>
@@ -524,15 +521,15 @@
                                 </td>
                                 <td class="align-right mono">
                                     @if ($item->making_charge_type === 'flat' || $item->making_charge_type === 'lump_sum')
-                                        ₹{{ number_format((float) $item->making_charges, 2) }}
+                                        Rs {{ number_format((float) $item->making_charges, 2) }}
                                     @elseif ($item->making_charge_type === 'per_gram' || (!$item->product_id && $item->making_charge_type !== 'percentage'))
-                                        ₹{{ number_format((float) $item->making_charges, 2) }}/g
+                                        Rs {{ number_format((float) $item->making_charges, 2) }}/g
                                     @else
                                         {{ (float) $item->making_charges }}%
                                     @endif
                                 </td>
                                 <td class="align-right mono" style="font-weight: 700;">
-                                    ₹{{ number_format((float) $item->final_price, 2) }}
+                                    Rs {{ number_format((float) $item->final_price, 2) }}
                                 </td>
                             </tr>
                         @endforeach
@@ -556,26 +553,26 @@
                                             style="width: 55px; height: 55px; display: block;" />
                                     @endif
                                 </div>
-                                <span style="font-size: 7.5px; font-weight: 700; color: var(--surface-900); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 3px; line-height: 1;">
-                                    Customer Vault
+                                <span style="font-size: 7.5px; font-weight: 700; color: var(--brand-maroon); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 3px; line-height: 1;">
+                                    Digital Vault
                                 </span>
                             </a>
                         </div>
                     @endif
-                    <div style="font-size: 10.5px; color: var(--surface-500);">
-                        Thank you for choosing us for your jewellery purchase!
+                    <div style="font-size: 11px; font-style: italic; color: var(--surface-500);">
+                        Thank you for shopping with us!
                     </div>
                 </div>
 
                 <!-- Right: Summary Card -->
-                <div class="totals-card">
+                <div class="totals-wrap">
                     @php
                         $subTotal = (float) $invoice->items->sum('final_price');
                     @endphp
                     <table class="totals-table">
                         <tr>
-                            <td class="meta-key">Item Subtotal:</td>
-                            <td class="align-right mono font-semibold">₹{{ number_format($subTotal, 2) }}</td>
+                            <td class="meta-key">Sub Total:</td>
+                            <td class="align-right mono font-semibold">Rs {{ number_format($subTotal, 2) }}</td>
                         </tr>
                         @if ((float) ($invoice->discount_amount ?? 0) > 0)
                             <tr>
@@ -583,40 +580,40 @@
                                     Discount:
                                     @if (($invoice->discount_value ?? 0) > 0)
                                         <span style="font-size: 9px; color: var(--surface-500);">
-                                            ({{ $invoice->discount_type === 'percentage' ? number_format((float) $invoice->discount_value, 2) . '%' : 'flat' }})
+                                            ({{ $invoice->discount_type === 'percentage' ? number_format((float) $invoice->discount_value, 2) . '%' : 'manual' }})
                                         </span>
                                     @endif
                                 </td>
-                                <td class="align-right mono" style="color: #b91c1c;">- ₹{{ number_format((float) ($invoice->discount_amount ?? 0), 2) }}</td>
+                                <td class="align-right mono" style="color: var(--danger-700);">- Rs {{ number_format((float) ($invoice->discount_amount ?? 0), 2) }}</td>
                             </tr>
                         @endif
                         <tr>
-                            <td class="meta-key">GST Tax:</td>
-                            <td class="align-right mono">₹{{ number_format((float) ($invoice->tax_amount ?? 0), 2) }}</td>
+                            <td class="meta-key">GST:</td>
+                            <td class="align-right mono">Rs {{ number_format((float) ($invoice->tax_amount ?? 0), 2) }}</td>
                         </tr>
                         <tr class="grand-row">
-                            <td>Grand Total:</td>
-                            <td class="align-right mono font-bold">₹{{ number_format((float) $invoice->total_amount, 2) }}</td>
+                            <td>Total Amount:</td>
+                            <td class="align-right mono font-bold">Rs {{ number_format((float) $invoice->total_amount, 2) }}</td>
                         </tr>
                     </table>
                 </div>
             </div>
 
-            <!-- Void Cancellation Details if any -->
+            <!-- Void Details -->
             @if ($invoice->status === 'CANCELLED')
                 <div style="margin-top: 14px;">
-                    <div class="panel" style="border-left: 3px solid #b91c1c;">
-                        <div class="panel-title" style="color: #b91c1c;">Invoice Cancellation Record</div>
+                    <div class="panel" style="border-top-color: var(--danger-700);">
+                        <div class="panel-title" style="color: var(--danger-700);">Void Details</div>
                         <div class="meta-row">
                             <span class="meta-key">Mode:</span>
-                            <span class="meta-val" style="color: #b91c1c;">{{ $invoice->cancellation_mode === 'refund' ? 'Refunded' : ($invoice->cancellation_mode === 'keep_advance' ? 'Kept As Advance' : 'Unpaid Bill') }}</span>
+                            <span class="meta-val" style="color: var(--danger-700);">{{ $invoice->cancellation_mode === 'refund' ? 'Refunded' : ($invoice->cancellation_mode === 'keep_advance' ? 'Kept As Advance' : 'Unpaid Bill (No Payments Collected)') }}</span>
                         </div>
                         <div class="meta-row">
                             <span class="meta-key">Reason:</span>
                             <span class="meta-val">{{ $invoice->cancellation_reason }}</span>
                         </div>
                         <div class="meta-row">
-                            <span class="meta-key">Cancelled Date:</span>
+                            <span class="meta-key">Cancelled At:</span>
                             <span class="meta-val mono">{{ optional($invoice->cancelled_at)?->format('d M Y h:i A') }}</span>
                         </div>
                     </div>
@@ -624,18 +621,18 @@
             @endif
 
             <!-- Signatures Section -->
-            <div style="margin-top: 45px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
+            <div style="margin-top: 50px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
                 <div style="text-align: center; width: 170px;">
                     <div style="border-bottom: 1px solid var(--surface-300); margin-bottom: 5px;"></div>
-                    <div style="font-size: 9.5px; font-weight: 600; color: var(--surface-500); text-transform: uppercase; letter-spacing: 0.05em;">
-                        Customer Signature
+                    <div style="font-size: 9.5px; font-weight: 600; color: var(--surface-700); text-transform: uppercase; letter-spacing: 0.05em;">
+                        Customer's Signature
                     </div>
                 </div>
 
                 <div style="text-align: center; width: 170px;">
                     <div style="border-bottom: 1px solid var(--surface-300); margin-bottom: 5px;"></div>
-                    <div style="font-size: 9.5px; font-weight: 600; color: var(--surface-500); text-transform: uppercase; letter-spacing: 0.05em;">
-                        Authorized Signatory
+                    <div style="font-size: 9.5px; font-weight: 600; color: var(--surface-700); text-transform: uppercase; letter-spacing: 0.05em;">
+                        Authorized Signature
                     </div>
                 </div>
             </div>
@@ -646,19 +643,19 @@
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <div class="google-review-qr-box">
                             @if (!empty($googleReviewQrBase64))
-                                <img src="{{ $googleReviewQrBase64 }}" alt="Google Review QR" style="width: 38px; height: 38px; display: block;" />
+                                <img src="{{ $googleReviewQrBase64 }}" alt="Google Review QR" style="width: 40px; height: 40px; display: block;" />
                             @elseif (!empty($googleReviewQrSvg))
-                                <div style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                <div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
                                     {!! $googleReviewQrSvg !!}
                                 </div>
                             @endif
                         </div>
                         <div>
-                            <div style="font-size: 10.5px; font-weight: 700; color: var(--surface-900); letter-spacing: 0.03em;">
-                                RATE US ON GOOGLE
+                            <div style="font-size: 10.5px; font-weight: 700; color: var(--brand-maroon); letter-spacing: 0.04em;">
+                                ⭐ RATE YOUR EXPERIENCE ON GOOGLE
                             </div>
-                            <div style="font-size: 9px; color: var(--surface-500); margin-top: 1px;">
-                                Scan QR code to share your feedback on Google Maps!
+                            <div style="font-size: 9.5px; color: var(--surface-700); margin-top: 1px;">
+                                Scan QR code to leave us a 5-star review on Google Maps!
                             </div>
                         </div>
                     </div>
