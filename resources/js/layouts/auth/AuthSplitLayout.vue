@@ -3,7 +3,7 @@ import { home } from '@/routes';
 import { Link, usePage } from '@inertiajs/vue3';
 
 const page = usePage();
-const name = 'JewelFlow';
+const name = 'KaratSetu';
 const quote = page.props.quote;
 
 defineProps<{

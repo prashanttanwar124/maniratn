@@ -26,7 +26,7 @@ defineProps<{
             <div class="border-b border-surface-200 bg-surface-50 px-6 py-4">
                 <div class="flex items-center justify-between gap-4">
                     <div>
-                        <p class="text-xs font-semibold tracking-[0.16em] text-surface-500 uppercase">JewelFlow ERP</p>
+                        <p class="text-xs font-semibold tracking-[0.16em] text-surface-500 uppercase">KaratSetu ERP</p>
                         <h2 class="mt-1 text-lg font-semibold text-surface-900">Account Access</h2>
                     </div>
                 </div>
@@ -87,7 +87,7 @@ defineProps<{
 
                     <Button type="submit" class="w-full" size="large" :tabindex="5" :disabled="processing" data-test="login-button">
                         <Spinner v-if="processing" />
-                        Log in to JewelFlow
+                        Log in to KaratSetu
                     </Button>
 
                     <div class="border-t border-surface-200 pt-4 text-center text-xs leading-5 text-surface-500">

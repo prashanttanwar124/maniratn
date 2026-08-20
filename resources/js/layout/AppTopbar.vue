@@ -69,9 +69,9 @@ const submitLogout = () => {
             </button>
 
             <a href="/dashboard" class="layout-topbar-brand">
-                <span class="layout-topbar-mark">JF</span>
+                <span class="layout-topbar-mark">KS</span>
                 <span class="layout-topbar-brand-copy">
-                    <span class="layout-topbar-logo">JewelFlow</span>
+                    <span class="layout-topbar-logo">KaratSetu</span>
                     <span class="layout-topbar-subtitle hidden md:block">Jewellery ERP</span>
                 </span>
             </a>

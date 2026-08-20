@@ -24,7 +24,7 @@ defineProps<{
                 :href="home()"
                 class="flex items-center gap-2 self-center font-medium"
             >
-                <span class="inline-flex h-12 items-center justify-center text-xl font-semibold tracking-wide text-surface-900">JewelFlow</span>
+                <span class="inline-flex h-12 items-center justify-center text-xl font-semibold tracking-wide text-surface-900">KaratSetu</span>
             </Link>
 
             <div class="flex flex-col gap-6">
