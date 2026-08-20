@@ -372,73 +372,85 @@ const submitLogout = () => {
                 <template v-else-if="searchQuery.trim()">
                     <!-- Customers -->
                     <div v-if="searchResults.customers?.length" class="space-y-1">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-surface-400 px-2">Customers</span>
+                        <div class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-surface-500 bg-surface-50 border-b border-surface-100 flex items-center justify-between">
+                            <span>Customers ({{ searchResults.customers.length }})</span>
+                            <span class="text-[9px] text-surface-400 font-normal lowercase">click to open ledger</span>
+                        </div>
                         <div class="divide-y divide-surface-100">
-                            <a
+                            <Link
                                 v-for="c in searchResults.customers"
                                 :key="c.id"
                                 :href="`/customers/${c.id}`"
-                                class="flex items-center justify-between p-2.5 hover:bg-[#f4f7f6] transition-colors group"
+                                @click="closeSpotlight"
+                                class="flex items-center justify-between p-2.5 hover:bg-[#f4f7f6] transition-colors group cursor-pointer"
                             >
-                                <div class="flex items-center gap-2.5">
-                                    <div class="h-7 w-7 bg-[#1c3633]/10 text-[#1c3633] flex items-center justify-center text-xs font-bold">
-                                        {{ c.name.charAt(0) }}
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <div class="h-8 w-8 bg-[#1c3633]/10 text-[#1c3633] flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                        {{ c.name.charAt(0).toUpperCase() }}
                                     </div>
-                                    <div>
-                                        <p class="text-xs font-bold text-[#1c3633] group-hover:text-[#c08f34]">{{ c.name }}</p>
-                                        <p class="text-[11px] text-surface-500">{{ c.mobile || c.phone }} {{ c.city ? '• ' + c.city : '' }}</p>
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-bold text-[#1c3633] group-hover:text-[#c08f34] truncate">{{ c.name }}</p>
+                                        <p class="text-[11px] text-surface-500 truncate">{{ c.mobile || c.phone }} {{ c.city ? '• ' + c.city : '' }}</p>
                                     </div>
                                 </div>
-                                <i class="pi pi-arrow-right text-xs text-surface-300 group-hover:text-[#1c3633]"></i>
-                            </a>
+                                <i class="pi pi-arrow-right text-xs text-surface-300 group-hover:text-[#1c3633] group-hover:translate-x-0.5 transition-all flex-shrink-0 ml-2"></i>
+                            </Link>
                         </div>
                     </div>
 
                     <!-- Invoices -->
                     <div v-if="searchResults.invoices?.length" class="space-y-1">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-surface-400 px-2">Invoices & Bills</span>
+                        <div class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-surface-500 bg-surface-50 border-b border-surface-100 flex items-center justify-between">
+                            <span>Invoices & Bills ({{ searchResults.invoices.length }})</span>
+                            <span class="text-[9px] text-surface-400 font-normal lowercase">click to view bill</span>
+                        </div>
                         <div class="divide-y divide-surface-100">
-                            <a
+                            <Link
                                 v-for="inv in searchResults.invoices"
                                 :key="inv.id"
                                 :href="`/invoices/${inv.id}/print`"
-                                class="flex items-center justify-between p-2.5 hover:bg-[#f4f7f6] transition-colors group"
+                                @click="closeSpotlight"
+                                class="flex items-center justify-between p-2.5 hover:bg-[#f4f7f6] transition-colors group cursor-pointer"
                             >
-                                <div class="flex items-center gap-2.5">
-                                    <div class="h-7 w-7 bg-amber-50 text-amber-800 flex items-center justify-center text-xs font-bold">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <div class="h-8 w-8 bg-amber-50 text-amber-800 flex items-center justify-center text-xs font-bold flex-shrink-0 border border-amber-200/60">
                                         <i class="pi pi-receipt text-xs"></i>
                                     </div>
-                                    <div>
-                                        <p class="text-xs font-bold text-[#1c3633] group-hover:text-[#c08f34]">Bill #{{ inv.invoice_number }}</p>
-                                        <p class="text-[11px] text-surface-500">{{ inv.customer?.name || 'Walk-in' }} • ₹{{ Number(inv.total_amount).toLocaleString('en-IN') }}</p>
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-bold text-[#1c3633] group-hover:text-[#c08f34] truncate">Bill #{{ inv.invoice_number }}</p>
+                                        <p class="text-[11px] text-surface-500 truncate">{{ inv.customer?.name || 'Walk-in' }} • ₹{{ Number(inv.total_amount).toLocaleString('en-IN') }}</p>
                                     </div>
                                 </div>
-                                <span class="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200">View Bill</span>
-                            </a>
+                                <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200 flex-shrink-0 ml-2">View Bill</span>
+                            </Link>
                         </div>
                     </div>
 
                     <!-- Products -->
                     <div v-if="searchResults.products?.length" class="space-y-1">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-surface-400 px-2">Inventory & Barcodes</span>
+                        <div class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-surface-500 bg-surface-50 border-b border-surface-100 flex items-center justify-between">
+                            <span>Inventory & Barcodes ({{ searchResults.products.length }})</span>
+                            <span class="text-[9px] text-surface-400 font-normal lowercase">stock item</span>
+                        </div>
                         <div class="divide-y divide-surface-100">
-                            <a
+                            <Link
                                 v-for="p in searchResults.products"
                                 :key="p.id"
                                 :href="`/products`"
-                                class="flex items-center justify-between p-2.5 hover:bg-[#f4f7f6] transition-colors group"
+                                @click="closeSpotlight"
+                                class="flex items-center justify-between p-2.5 hover:bg-[#f4f7f6] transition-colors group cursor-pointer"
                             >
-                                <div class="flex items-center gap-2.5">
-                                    <div class="h-7 w-7 bg-zinc-100 text-zinc-700 flex items-center justify-center text-xs font-mono font-bold">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <div class="h-8 w-8 bg-zinc-100 text-zinc-700 flex items-center justify-center text-xs font-mono font-bold flex-shrink-0 border border-zinc-200">
                                         🏷️
                                     </div>
-                                    <div>
-                                        <p class="text-xs font-bold text-[#1c3633] group-hover:text-[#c08f34]">{{ p.name }}</p>
-                                        <p class="text-[11px] font-mono text-surface-500">Tag: {{ p.barcode }} • {{ p.gross_weight }}g</p>
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-bold text-[#1c3633] group-hover:text-[#c08f34] truncate">{{ p.name }}</p>
+                                        <p class="text-[11px] font-mono text-surface-500 truncate">Tag: {{ p.barcode }} • {{ p.gross_weight }}g</p>
                                     </div>
                                 </div>
-                                <span class="text-[10px] font-mono font-bold bg-surface-100 px-2 py-0.5 text-surface-700">{{ p.barcode }}</span>
-                            </a>
+                                <span class="text-[10px] font-mono font-bold bg-surface-100 px-2 py-0.5 border border-surface-200 text-surface-700 flex-shrink-0 ml-2">{{ p.barcode }}</span>
+                            </Link>
                         </div>
                     </div>
 
@@ -456,18 +468,19 @@ const submitLogout = () => {
                 <div v-else class="space-y-2">
                     <span class="text-[10px] font-bold uppercase tracking-wider text-surface-400 px-2">Quick Store Actions</span>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <a
+                        <Link
                             v-for="item in quickLinks"
                             :key="item.title"
                             :href="item.url"
-                            class="flex items-start gap-3 p-3 bg-surface-50 hover:bg-[#eef4f2] border border-surface-200 hover:border-[#1c3633]/30 transition-all group"
+                            @click="closeSpotlight"
+                            class="flex items-start gap-3 p-3 bg-surface-50 hover:bg-[#eef4f2] border border-surface-200 hover:border-[#1c3633]/30 transition-all group cursor-pointer"
                         >
                             <i :class="item.icon" class="text-sm text-[#1c3633] mt-0.5 group-hover:text-[#c08f34]"></i>
                             <div>
                                 <p class="text-xs font-bold text-[#1c3633]">{{ item.title }}</p>
                                 <p class="text-[11px] text-surface-500 leading-tight">{{ item.desc }}</p>
                             </div>
-                        </a>
+                        </Link>
                     </div>
                 </div>
             </div>
