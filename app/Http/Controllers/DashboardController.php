@@ -74,6 +74,177 @@ class DashboardController extends Controller
             ->all();
     }
 
+    private function buildAnalytics(Carbon $today, $rates, $vaults): array
+    {
+        $startDate = $today->copy()->subDays(29)->startOfDay();
+
+        $salesByDate = Invoice::query()
+            ->where('date', '>=', $startDate->toDateString())
+            ->where('status', '!=', 'CANCELLED')
+            ->selectRaw('date, SUM(total_amount) as total, COUNT(id) as count')
+            ->groupBy('date')
+            ->get()
+            ->keyBy(fn ($item) => Carbon::parse($item->date)->toDateString());
+
+        $collectionsByDate = Transaction::query()
+            ->where('transactable_type', Customer::class)
+            ->whereIn('type', ['PAYMENT', 'RECEIPT'])
+            ->where('date', '>=', $startDate->toDateString())
+            ->selectRaw('date, SUM(amount) as total')
+            ->groupBy('date')
+            ->get()
+            ->keyBy(fn ($item) => Carbon::parse($item->date)->toDateString());
+
+        $expensesByDate = Expense::query()
+            ->whereDate('created_at', '>=', $startDate)
+            ->selectRaw('DATE(created_at) as date, SUM(amount) as total')
+            ->groupBy('date')
+            ->get()
+            ->keyBy(fn ($item) => Carbon::parse($item->date)->toDateString());
+
+        $salesTrend = [];
+        for ($i = 29; $i >= 0; $i--) {
+            $d = $today->copy()->subDays($i);
+            $dateStr = $d->toDateString();
+            $sale = (float) ($salesByDate[$dateStr]->total ?? 0);
+            $count = (int) ($salesByDate[$dateStr]->count ?? 0);
+            $coll = (float) ($collectionsByDate[$dateStr]->total ?? 0);
+            $exp = (float) ($expensesByDate[$dateStr]->total ?? 0);
+
+            $salesTrend[] = [
+                'date' => $dateStr,
+                'label' => $d->format('d M'),
+                'short_label' => $d->format('D'),
+                'sales' => $sale,
+                'invoices_count' => $count,
+                'collections' => $coll,
+                'expenses' => $exp,
+                'net_flow' => $coll - $exp,
+            ];
+        }
+
+        // Bullion Rate History (Last 14 days)
+        $rateStartDate = $today->copy()->subDays(13)->startOfDay();
+        $rateRecords = DailyRate::query()
+            ->where('date', '>=', $rateStartDate->toDateString())
+            ->orderBy('date')
+            ->get()
+            ->keyBy(fn ($item) => Carbon::parse($item->date)->toDateString());
+
+        $bullionTrend = [];
+        $lastGoldSell = (float) ($rates->gold_sell ?? 0);
+        $lastSilverSell = (float) ($rates->silver_sell ?? 0);
+
+        for ($i = 13; $i >= 0; $i--) {
+            $d = $today->copy()->subDays($i);
+            $dateStr = $d->toDateString();
+            $record = $rateRecords[$dateStr] ?? null;
+
+            $goldSell = $record && (float) $record->gold_sell > 0 ? (float) $record->gold_sell : $lastGoldSell;
+            $goldBuy = $record && (float) $record->gold_buy > 0 ? (float) $record->gold_buy : ($goldSell > 0 ? round($goldSell * 0.98, 2) : 0);
+            $silverSell = $record && (float) $record->silver_sell > 0 ? (float) $record->silver_sell : $lastSilverSell;
+
+            if ($goldSell > 0) $lastGoldSell = $goldSell;
+            if ($silverSell > 0) $lastSilverSell = $silverSell;
+
+            $bullionTrend[] = [
+                'date' => $dateStr,
+                'label' => $d->format('d M'),
+                'gold_sell' => $goldSell,
+                'gold_buy' => $goldBuy,
+                'silver_sell' => $silverSell,
+            ];
+        }
+
+        // Category & Metal Breakdown from items (Last 30 Days)
+        $goldSoldWeight = 0;
+        $silverSoldWeight = 0;
+        $categoryBreakdown = [];
+
+        $invoiceItems = \App\Models\InvoiceItem::query()
+            ->whereHas('invoice', fn ($q) => $q->where('date', '>=', $startDate->toDateString())->where('status', '!=', 'CANCELLED'))
+            ->get();
+
+        foreach ($invoiceItems as $item) {
+            $net = (float) ($item->net_weight > 0 ? $item->net_weight : $item->weight);
+            $price = (float) ($item->final_price ?? $item->total_price ?? 0);
+            $isSilver = $item->silver_product_id !== null || str_contains(strtolower($item->purity ?? ''), 'silver');
+
+            if ($isSilver) {
+                $silverSoldWeight += $net;
+            } else {
+                $goldSoldWeight += $net;
+            }
+
+            $cat = !empty($item->category) ? $item->category : ($isSilver ? 'Silver Ornaments' : 'Gold Jewellery');
+            if (!isset($categoryBreakdown[$cat])) {
+                $categoryBreakdown[$cat] = ['label' => $cat, 'count' => 0, 'amount' => 0, 'weight' => 0];
+            }
+            $categoryBreakdown[$cat]['count'] += 1;
+            $categoryBreakdown[$cat]['amount'] += $price;
+            $categoryBreakdown[$cat]['weight'] += $net;
+        }
+
+        $topCategories = collect($categoryBreakdown)->sortByDesc('amount')->values()->take(6)->all();
+
+        // Payment Modes Breakdown for Today
+        $todayPayments = Transaction::query()
+            ->where('transactable_type', Customer::class)
+            ->whereIn('type', ['PAYMENT', 'RECEIPT'])
+            ->whereDate('date', $today)
+            ->get();
+
+        $paymentModes = [
+            'CASH' => (float) $todayPayments->where('payment_method', 'CASH')->sum('amount'),
+            'CARD' => (float) $todayPayments->where('payment_method', 'CARD')->sum('amount'),
+            'UPI' => (float) $todayPayments->where('payment_method', 'UPI')->sum('amount'),
+            'BANK' => (float) $todayPayments->where('payment_method', 'BANK')->sum('amount'),
+        ];
+
+        // Month-over-Month Comparison
+        $thisMonthSales = (float) Invoice::query()
+            ->whereYear('date', $today->year)
+            ->whereMonth('date', $today->month)
+            ->where('status', '!=', 'CANCELLED')
+            ->sum('total_amount');
+
+        $lastMonthDate = $today->copy()->subMonth();
+        $lastMonthSales = (float) Invoice::query()
+            ->whereYear('date', $lastMonthDate->year)
+            ->whereMonth('date', $lastMonthDate->month)
+            ->where('status', '!=', 'CANCELLED')
+            ->sum('total_amount');
+
+        $growthPct = $lastMonthSales > 0 ? round((($thisMonthSales - $lastMonthSales) / $lastMonthSales) * 100, 1) : 0;
+
+        // Live Valuations
+        $goldBalance = (float) ($vaults['GOLD']->balance ?? 0);
+        $silverBalance = (float) ($vaults['SILVER']->balance ?? 0);
+        $goldRate = (float) ($rates->gold_sell ?? 0);
+        $silverRate = (float) ($rates->silver_sell ?? 0);
+
+        return [
+            'sales_trend' => $salesTrend,
+            'bullion_trend' => $bullionTrend,
+            'metal_mix' => [
+                'gold_weight' => round($goldSoldWeight, 3),
+                'silver_weight' => round($silverSoldWeight, 3),
+                'top_categories' => $topCategories,
+            ],
+            'payment_modes' => $paymentModes,
+            'month_metrics' => [
+                'this_month_sales' => $thisMonthSales,
+                'last_month_sales' => $lastMonthSales,
+                'growth_pct' => $growthPct,
+            ],
+            'valuations' => [
+                'gold_value' => round($goldBalance * $goldRate, 2),
+                'silver_value' => round($silverBalance * $silverRate, 2),
+                'liquid_funds' => (float) (($vaults['CASH']->balance ?? 0) + ($vaults['BANK']->balance ?? 0)),
+            ],
+        ];
+    }
+
     public function index()
     {
         $user = Auth::user();
@@ -201,6 +372,8 @@ class DashboardController extends Controller
                     'time' => optional($movement->recorded_at)?->diffForHumans(),
                 ]);
 
+            $analytics = $this->buildAnalytics($today, $rates, $vaults);
+
             return Inertia::render('dashboard/AdminDashboard', [
                 'rates' => $rates,
                 'isDayOpen' => $isDayOpen,
@@ -225,6 +398,7 @@ class DashboardController extends Controller
                     'ready_items' => $orderMetrics['ready'],
                     'overdue_items' => $orderMetrics['overdue'],
                 ],
+                'analytics' => $analytics,
                 'karigars' => $karigars,
                 'activities' => $recentActivity,
                 'recent_vault_movements' => $recentVaultMovements,
