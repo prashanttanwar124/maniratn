@@ -292,8 +292,14 @@ class WebsiteApiController extends Controller
         }
 
         $subTotal = (float) $invoice->items->sum('final_price');
-        $paidAmount = (float) $invoice->transactions->where('type', 'PAYMENT')->sum('amount');
-        $balanceDue = $invoice->status === 'CANCELLED' ? 0 : max((float) $invoice->total_amount - $paidAmount, 0);
+        $paymentTxns = $invoice->transactions->where('type', 'PAYMENT');
+        if ($paymentTxns->isNotEmpty()) {
+            $paidAmount = (float) $paymentTxns->sum('amount');
+            $balanceDue = $invoice->status === 'CANCELLED' ? 0 : max((float) $invoice->total_amount - $paidAmount, 0);
+        } else {
+            $paidAmount = (float) $invoice->total_amount;
+            $balanceDue = 0.0;
+        }
 
         return response()->json([
             'success' => true,
