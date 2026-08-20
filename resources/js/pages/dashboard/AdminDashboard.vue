@@ -1,7 +1,7 @@
 <script setup>
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref } from 'vue';
 
 import Button from 'primevue/button';
 import Calendar from 'primevue/calendar';
@@ -36,7 +36,6 @@ const can = computed(() => page.props.auth?.can || {});
 const isInitialSetup = computed(() => Boolean(page.props.dayStatus?.is_initial_setup));
 const openingExpectation = computed(() => props.opening_expectation || { cash: 0, gold: 0, silver: 0, date: null });
 
-// Form state
 const rateForm = useForm({
     gold_sell: parseFloat(props.rates?.gold_sell || 0),
     gold_buy: parseFloat(props.rates?.gold_buy || 0),
@@ -81,14 +80,12 @@ const vaultTransferForm = useForm({
     date: new Date(),
 });
 
-// Dialog Visibility
 const showRateDialog = ref(false);
 const showDayDialog = ref(false);
 const showCloseDialog = ref(false);
 const showExpenseDialog = ref(false);
 const showVaultTransferDialog = ref(false);
 
-// Chart Time Range Filter (7D, 14D, 30D)
 const chartRange = ref('7D');
 
 const totalKarigars = computed(() => props.karigars?.length || 0);
@@ -107,12 +104,12 @@ const vaultLabels = {
 };
 
 const quickLinks = [
-    { label: 'New Bill', href: route('invoices.create'), icon: 'pi pi-file-plus', color: 'text-amber-600 bg-amber-50 hover:bg-amber-100 border-amber-200' },
-    { label: 'Custom Orders', href: route('orders.index'), icon: 'pi pi-briefcase', color: 'text-sky-600 bg-sky-50 hover:bg-sky-100 border-sky-200' },
-    { label: 'Customer Vault', href: route('customers.index'), icon: 'pi pi-id-card', color: 'text-purple-600 bg-purple-50 hover:bg-purple-100 border-purple-200' },
-    { label: 'Inventory Stock', href: route('products.index'), icon: 'pi pi-box', color: 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border-emerald-200' },
-    { label: 'Suppliers', href: route('suppliers.index'), icon: 'pi pi-truck', color: 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border-indigo-200' },
-    { label: 'Daily Expenses', href: route('expenses.index'), icon: 'pi pi-wallet', color: 'text-rose-600 bg-rose-50 hover:bg-rose-100 border-rose-200' },
+    { label: 'New Bill', href: route('invoices.create'), icon: 'pi pi-file-edit' },
+    { label: 'Orders', href: route('orders.index'), icon: 'pi pi-briefcase' },
+    { label: 'Customers', href: route('customers.index'), icon: 'pi pi-users' },
+    { label: 'Products', href: route('products.index'), icon: 'pi pi-box' },
+    { label: 'Suppliers', href: route('suppliers.index'), icon: 'pi pi-truck' },
+    { label: 'Expenses', href: route('expenses.index'), icon: 'pi pi-wallet' },
 ];
 
 const formatCurrency = (val) =>
@@ -138,18 +135,15 @@ const formatVaultMovementBalance = (movement) => {
     return ['GOLD', 'SILVER'].includes(movement.vault_type) ? formatWeight(movement.balance_after) : formatCurrency(movement.balance_after);
 };
 
-// Math computations for live rate deltas
 const goldSellRate = computed(() => Number(props.rates?.gold_sell || 0));
 const goldBuyRate = computed(() => Number(props.rates?.gold_buy || 0));
 const silverSellRate = computed(() => Number(props.rates?.silver_sell || 0));
 const gold22kRate = computed(() => Math.round(goldSellRate.value * (22 / 24)));
 
-// Physical valuations
 const goldValuation = computed(() => props.analytics?.valuations?.gold_value || (Number(props.vaults?.gold || 0) * goldSellRate.value));
 const silverValuation = computed(() => props.analytics?.valuations?.silver_value || (Number(props.vaults?.silver || 0) * silverSellRate.value));
 const liquidCashTotal = computed(() => Number(props.vaults?.cash || 0) + Number(props.vaults?.bank || 0));
 
-// Form calculations
 const closingCashDifference = computed(() => {
     if (closeForm.closing_cash === null || closeForm.closing_cash === undefined) return null;
     return Number(closeForm.closing_cash || 0) - Number(props.vaults?.cash || 0);
@@ -205,7 +199,6 @@ const expenseCanSubmit = computed(() => {
     );
 });
 
-// Dialog submissions
 const saveRates = () => {
     rateForm.post(route('dashboard.update-rates'), {
         onSuccess: () => (showRateDialog.value = false),
@@ -265,13 +258,12 @@ const openVaultTransferDialog = () => {
     showVaultTransferDialog.value = true;
 };
 
-// Direct WhatsApp Wish Trigger
 const sendWhatsAppWish = (reminder) => {
     const cleanMobile = String(reminder.mobile || '').replace(/\D/g, '');
     const phone = cleanMobile.startsWith('91') ? cleanMobile : `91${cleanMobile}`;
     const greeting = reminder.type === 'Birthday' ? 'Happy Birthday' : 'Happy Anniversary';
     const text = encodeURIComponent(
-        `Dear ${reminder.customer_name},\n\nWarmest wishes on your ${greeting} from all of us at Maniratn Jewellers! ✨ May your day be blessed with joy, prosperity, and sparkling moments.\n\nVisit us to explore our latest fine jewellery collection!\n\nWarm regards,\nManiratn Jewellers`
+        `Dear ${reminder.customer_name},\n\nWarmest wishes on your ${greeting} from all of us at Maniratn Jewellers! ✨\n\nVisit us to explore our latest fine jewellery collection!\n\nWarm regards,\nManiratn Jewellers`
     );
     window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
 };
@@ -280,14 +272,13 @@ const sendWhatsAppWish = (reminder) => {
 // CHART CONFIGURATIONS (Chart.js via PrimeVue)
 // ----------------------------------------------------
 
-// Filtered Sales Trend Data based on chartRange ('7D', '14D', '30D')
 const filteredSalesData = computed(() => {
     const raw = props.analytics?.sales_trend || [];
     const count = chartRange.value === '7D' ? 7 : chartRange.value === '14D' ? 14 : 30;
     return raw.slice(-count);
 });
 
-// 1. Sales & Cash Flow Area Chart
+// 1. Sales & Collections Line Chart
 const salesChartData = computed(() => {
     const items = filteredSalesData.value;
     const labels = items.map((i) => (chartRange.value === '30D' ? i.label : `${i.short_label} ${i.label.split(' ')[0]}`));
@@ -298,32 +289,30 @@ const salesChartData = computed(() => {
         labels,
         datasets: [
             {
-                label: 'Gross Sales (₹)',
+                label: 'Gross Sales',
                 data: sales,
                 borderColor: '#c4922a',
-                backgroundColor: 'rgba(196, 146, 42, 0.12)',
-                borderWidth: 2.5,
+                backgroundColor: 'rgba(196, 146, 42, 0.08)',
+                borderWidth: 2,
                 fill: true,
-                tension: 0.38,
+                tension: 0.35,
                 pointBackgroundColor: '#c4922a',
                 pointBorderColor: '#ffffff',
                 pointBorderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6,
+                pointRadius: 3,
             },
             {
-                label: 'Collections (₹)',
+                label: 'Collections',
                 data: collections,
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.08)',
-                borderWidth: 2.5,
+                borderColor: '#059669',
+                backgroundColor: 'rgba(5, 150, 105, 0.04)',
+                borderWidth: 2,
                 fill: true,
-                tension: 0.38,
-                pointBackgroundColor: '#10b981',
+                tension: 0.35,
+                pointBackgroundColor: '#059669',
                 pointBorderColor: '#ffffff',
                 pointBorderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6,
+                pointRadius: 3,
             },
         ],
     };
@@ -337,20 +326,16 @@ const salesChartOptions = {
             position: 'top',
             align: 'end',
             labels: {
-                boxWidth: 12,
-                boxHeight: 12,
+                boxWidth: 10,
+                boxHeight: 10,
                 usePointStyle: true,
                 pointStyle: 'circle',
-                font: { family: 'Outfit, Inter, sans-serif', size: 12, weight: '500' },
+                font: { size: 12 },
                 color: '#475569',
             },
         },
         tooltip: {
-            backgroundColor: '#1e1b18',
-            titleFont: { family: 'Outfit, Inter, sans-serif', size: 12, weight: '600' },
-            bodyFont: { family: 'Outfit, Inter, sans-serif', size: 12 },
-            padding: 10,
-            cornerRadius: 8,
+            padding: 8,
             callbacks: {
                 label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
             },
@@ -359,15 +344,12 @@ const salesChartOptions = {
     scales: {
         x: {
             grid: { display: false },
-            ticks: {
-                font: { family: 'Outfit, Inter, sans-serif', size: 11 },
-                color: '#64748b',
-            },
+            ticks: { font: { size: 11 }, color: '#64748b' },
         },
         y: {
-            grid: { color: 'rgba(226, 232, 240, 0.6)', borderDash: [4, 4] },
+            grid: { color: 'rgba(226, 232, 240, 0.7)', borderDash: [3, 3] },
             ticks: {
-                font: { family: 'Outfit, Inter, sans-serif', size: 11 },
+                font: { size: 11 },
                 color: '#64748b',
                 callback: (val) => (val >= 100000 ? `₹${(val / 100000).toFixed(1)}L` : val >= 1000 ? `₹${(val / 1000).toFixed(0)}k` : `₹${val}`),
             },
@@ -375,7 +357,7 @@ const salesChartOptions = {
     },
 };
 
-// 2. Metal & Category Doughnut Chart
+// 2. Metal Mix Doughnut Chart
 const metalDoughnutData = computed(() => {
     const goldWt = Number(props.analytics?.metal_mix?.gold_weight || 0);
     const silverWt = Number(props.analytics?.metal_mix?.silver_weight || 0);
@@ -388,8 +370,7 @@ const metalDoughnutData = computed(() => {
         datasets: [
             {
                 data: dataValues,
-                backgroundColor: ['#d4af37', '#94a3b8'],
-                hoverBackgroundColor: ['#b89428', '#64748b'],
+                backgroundColor: ['#d97706', '#94a3b8'],
                 borderWidth: 2,
                 borderColor: '#ffffff',
             },
@@ -400,22 +381,20 @@ const metalDoughnutData = computed(() => {
 const metalDoughnutOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    cutout: '72%',
+    cutout: '70%',
     plugins: {
         legend: {
             position: 'bottom',
             labels: {
                 usePointStyle: true,
                 pointStyle: 'circle',
-                boxWidth: 10,
-                font: { family: 'Outfit, Inter, sans-serif', size: 11, weight: '500' },
+                boxWidth: 8,
+                font: { size: 11 },
                 color: '#475569',
             },
         },
         tooltip: {
-            backgroundColor: '#1e1b18',
-            padding: 10,
-            cornerRadius: 8,
+            padding: 8,
             callbacks: {
                 label: (ctx) => ` ${ctx.label}: ${formatWeight(ctx.parsed)}`,
             },
@@ -423,7 +402,7 @@ const metalDoughnutOptions = {
     },
 };
 
-// 3. 14-Day Bullion Rate Line Chart
+// 3. Bullion Price History
 const bullionChartData = computed(() => {
     const items = props.analytics?.bullion_trend || [];
     const labels = items.map((i) => i.label);
@@ -436,23 +415,19 @@ const bullionChartData = computed(() => {
             {
                 label: 'Gold 24K (₹/g)',
                 data: goldRates,
-                borderColor: '#b45309',
-                backgroundColor: 'rgba(180, 83, 9, 0.05)',
+                borderColor: '#d97706',
                 borderWidth: 2,
-                tension: 0.35,
-                yAxisID: 'yGold',
-                pointRadius: 3,
+                tension: 0.3,
+                pointRadius: 2,
             },
             {
                 label: 'Silver (₹/g)',
                 data: silverRates,
                 borderColor: '#64748b',
-                backgroundColor: 'rgba(100, 116, 139, 0.05)',
                 borderWidth: 2,
                 borderDash: [3, 3],
-                tension: 0.35,
-                yAxisID: 'ySilver',
-                pointRadius: 3,
+                tension: 0.3,
+                pointRadius: 2,
             },
         ],
     };
@@ -468,15 +443,13 @@ const bullionChartOptions = {
             labels: {
                 usePointStyle: true,
                 pointStyle: 'circle',
-                boxWidth: 10,
-                font: { family: 'Outfit, Inter, sans-serif', size: 11 },
+                boxWidth: 8,
+                font: { size: 11 },
                 color: '#475569',
             },
         },
         tooltip: {
-            backgroundColor: '#1e1b18',
-            padding: 10,
-            cornerRadius: 8,
+            padding: 8,
             callbacks: {
                 label: (ctx) => ` ${ctx.dataset.label}: ₹${Number(ctx.parsed.y).toLocaleString('en-IN')}`,
             },
@@ -487,20 +460,8 @@ const bullionChartOptions = {
             grid: { display: false },
             ticks: { font: { size: 10 }, color: '#64748b' },
         },
-        yGold: {
-            type: 'linear',
-            position: 'left',
-            grid: { color: 'rgba(226, 232, 240, 0.6)' },
-            ticks: {
-                font: { size: 10 },
-                color: '#b45309',
-                callback: (val) => `₹${val}`,
-            },
-        },
-        ySilver: {
-            type: 'linear',
-            position: 'right',
-            grid: { drawOnChartArea: false },
+        y: {
+            grid: { color: 'rgba(226, 232, 240, 0.7)', borderDash: [3, 3] },
             ticks: {
                 font: { size: 10 },
                 color: '#64748b',
@@ -513,216 +474,138 @@ const bullionChartOptions = {
 
 <template>
     <AppLayout>
-        <div class="space-y-6 pb-12">
+        <div class="mx-auto max-w-7xl space-y-6">
             <!-- ========================================== -->
-            <!-- 1. LUXURY COMMAND HEADER & LIVE BULLION BAR -->
+            <!-- 1. CLEAN STANDARD ERP HEADER              -->
             <!-- ========================================== -->
-            <div class="relative overflow-hidden rounded-2xl border border-amber-200/60 bg-gradient-to-r from-stone-900 via-[#3a0a0e] to-[#5b0d13] p-6 text-white shadow-xl">
-                <!-- Background ambient glow -->
-                <div class="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-amber-500/15 blur-3xl"></div>
-                <div class="pointer-events-none absolute -left-16 -bottom-16 h-64 w-64 rounded-full bg-rose-500/10 blur-3xl"></div>
-
-                <div class="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                    <!-- Title & Live Status -->
-                    <div>
+            <div class="border border-surface-200 bg-white px-5 py-5">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-3">
-                            <h1 class="text-2xl font-bold tracking-tight text-white lg:text-3xl">Executive Dashboard</h1>
-                            <span
-                                class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold tracking-wide"
-                                :class="isDayOpen ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'"
-                            >
-                                <span class="h-2 w-2 rounded-full" :class="isDayOpen ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'"></span>
-                                {{ isDayOpen ? 'Store Register Open' : 'Register Closed' }}
-                            </span>
-                            <span v-if="activeAlerts" class="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-500/20 px-2.5 py-0.5 text-xs font-medium text-amber-200">
-                                <i class="pi pi-bell text-[10px]"></i>
-                                {{ activeAlerts }} Active Alert{{ activeAlerts > 1 ? 's' : '' }}
-                            </span>
+                            <h2 class="text-2xl font-semibold tracking-tight text-surface-900">Admin Dashboard</h2>
+                            <Tag :value="isDayOpen ? 'Day Open' : 'Day Closed'" :severity="isDayOpen ? 'success' : 'danger'" />
+                            <Tag v-if="activeAlerts" :value="`${activeAlerts} alert${activeAlerts > 1 ? 's' : ''}`" severity="warn" />
                         </div>
-                        <p class="mt-1 text-sm text-stone-300/80">
-                            Live operational command center for jewellery retail, safe vaults, production pipeline, and ledger.
-                        </p>
+                        <p class="mt-1 text-sm text-surface-500">Live view of sales, bullion rates, production load, and shop balances.</p>
                     </div>
 
-                    <!-- Live Bullion Rate Ribbon -->
-                    <div class="flex flex-wrap items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 p-2 backdrop-blur-md">
-                        <!-- Gold 24K -->
-                        <div class="flex items-center gap-2 rounded-lg bg-black/30 px-3 py-2">
-                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400 font-bold text-xs">
-                                24K
-                            </div>
-                            <div>
-                                <div class="text-[10px] uppercase tracking-wider text-amber-200/70">Gold (Fine)</div>
-                                <div class="text-sm font-bold text-amber-300">₹{{ Number(rates?.gold_sell || 0).toLocaleString('en-IN') }} <span class="text-[10px] font-normal text-stone-300">/g</span></div>
-                            </div>
-                        </div>
-
-                        <!-- Gold 22K (916) -->
-                        <div class="flex items-center gap-2 rounded-lg bg-black/30 px-3 py-2">
-                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-600/20 text-amber-300 font-bold text-xs">
-                                916
-                            </div>
-                            <div>
-                                <div class="text-[10px] uppercase tracking-wider text-amber-200/70">Gold (22K)</div>
-                                <div class="text-sm font-bold text-amber-200">₹{{ Number(gold22kRate).toLocaleString('en-IN') }} <span class="text-[10px] font-normal text-stone-300">/g</span></div>
-                            </div>
-                        </div>
-
-                        <!-- Silver -->
-                        <div class="flex items-center gap-2 rounded-lg bg-black/30 px-3 py-2">
-                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-500/20 text-slate-300 font-bold text-xs">
-                                925
-                            </div>
-                            <div>
-                                <div class="text-[10px] uppercase tracking-wider text-slate-300/70">Silver</div>
-                                <div class="text-sm font-bold text-slate-200">₹{{ Number(rates?.silver_sell || 0).toLocaleString('en-IN') }} <span class="text-[10px] font-normal text-stone-300">/g</span></div>
-                            </div>
-                        </div>
-
-                        <!-- Quick Action in Ribbon -->
-                        <Button
-                            v-if="can.manage_daily_rates"
-                            icon="pi pi-pencil"
-                            label="Update"
-                            size="small"
-                            class="!border-amber-400/40 !bg-amber-500/20 !text-amber-200 hover:!bg-amber-500/30"
-                            @click="showRateDialog = true"
-                        />
-                    </div>
-                </div>
-
-                <!-- Quick Action Buttons Row -->
-                <div class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
                     <div class="flex flex-wrap items-center gap-2">
-                        <Link :href="route('invoices.create')">
-                            <Button label="New Tax Bill" icon="pi pi-plus" class="!bg-gradient-to-r !from-amber-500 !to-amber-600 !text-stone-950 !font-semibold !border-none !shadow-lg shadow-amber-500/20" size="small" />
-                        </Link>
-                        <Link :href="route('orders.index')">
-                            <Button label="Orders Pipeline" icon="pi pi-briefcase" class="!bg-white/10 !text-white !border-white/20 hover:!bg-white/20" size="small" />
-                        </Link>
-                        <Button v-if="can.manage_expenses" label="Record Expense" icon="pi pi-minus-circle" class="!bg-rose-500/20 !text-rose-200 !border-rose-400/30 hover:!bg-rose-500/30" size="small" @click="openExpenseDialog" />
-                        <Button v-if="can.manage_vault && isDayOpen" label="Transfer Funds" icon="pi pi-arrows-h" class="!bg-sky-500/20 !text-sky-200 !border-sky-400/30 hover:!bg-sky-500/30" size="small" @click="openVaultTransferDialog" />
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <Button v-if="can.manage_vault && !isDayOpen" label="Open Daily Register" icon="pi pi-lock-open" class="!bg-emerald-500 !text-stone-950 !font-semibold !border-none" size="small" @click="showDayDialog = true" />
-                        <Button v-if="can.manage_vault && isDayOpen" label="Close Day Register" icon="pi pi-lock" severity="danger" size="small" class="!border-rose-500/50" @click="openCloseDialog" />
+                        <Button v-if="can.manage_expenses" label="Add Expense" icon="pi pi-minus-circle" severity="danger" outlined size="small" @click="openExpenseDialog" />
+                        <Button v-if="can.manage_vault && isDayOpen" label="Transfer Funds" icon="pi pi-arrow-right-arrow-left" outlined size="small" @click="openVaultTransferDialog" />
+                        <Button v-if="can.manage_daily_rates" label="Update Rates" icon="pi pi-pencil" outlined size="small" @click="showRateDialog = true" />
+                        <Button v-if="can.manage_vault && !isDayOpen" label="Open Day" icon="pi pi-lock-open" size="small" @click="showDayDialog = true" />
+                        <Button v-if="can.manage_vault && isDayOpen" label="Close Day" icon="pi pi-lock" severity="danger" size="small" @click="openCloseDialog" />
                     </div>
                 </div>
             </div>
 
             <!-- ========================================== -->
-            <!-- 2. CORE FINANCIAL & LIQUIDITY KPI CARDS -->
+            <!-- 2. QUICK ACCESS & TODAY SNAPSHOT           -->
+            <!-- ========================================== -->
+            <div class="grid grid-cols-1 gap-4 xl:grid-cols-4">
+                <div class="border border-surface-200 bg-white p-5 xl:col-span-3">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-base font-semibold text-surface-900">Quick Access</h3>
+                            <p class="mt-1 text-sm text-surface-500">Jump into billing, orders, customers, stock, and suppliers.</p>
+                        </div>
+                        <span class="text-xs uppercase tracking-wide text-surface-400">Shortcuts</span>
+                    </div>
+
+                    <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-6">
+                        <Link
+                            v-for="item in quickLinks"
+                            :key="item.label"
+                            :href="item.href"
+                            class="flex min-h-24 flex-col justify-between border border-surface-200 bg-surface-50 px-4 py-3 transition hover:border-amber-300 hover:bg-amber-50"
+                        >
+                            <i :class="[item.icon, 'text-lg text-surface-700']"></i>
+                            <span class="text-sm font-medium text-surface-900">{{ item.label }}</span>
+                        </Link>
+                    </div>
+                </div>
+
+                <div class="border border-surface-200 bg-white p-5">
+                    <h3 class="text-base font-semibold text-surface-900">Today Snapshot</h3>
+                    <div class="mt-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-surface-500">Invoices</span>
+                            <span class="font-semibold text-surface-900">{{ recent_invoices?.length || 0 }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-surface-500">Active Karigars</span>
+                            <span class="font-semibold text-surface-900">{{ totalKarigars }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-surface-500">Gold (24K)</span>
+                            <span class="font-semibold text-amber-700">₹{{ Number(rates?.gold_sell || 0).toLocaleString('en-IN') }}/g</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-surface-500">Silver</span>
+                            <span class="font-semibold text-slate-700">₹{{ Number(rates?.silver_sell || 0).toLocaleString('en-IN') }}/g</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 3. KPI FINANCIAL SUMMARY CARDS             -->
             <!-- ========================================== -->
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <!-- KPI 1: Today Gross Sales -->
-                <div class="group relative overflow-hidden rounded-2xl border border-surface-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-semibold uppercase tracking-wider text-surface-500">Today Gross Sales</span>
-                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-                            <i class="pi pi-receipt text-lg"></i>
-                        </div>
+                <div class="border border-surface-200 bg-white p-5">
+                    <div class="flex items-center justify-between text-surface-500">
+                        <span class="text-xs uppercase tracking-wide font-medium">Today Sales</span>
+                        <i class="pi pi-receipt text-surface-400"></i>
                     </div>
-                    <div class="mt-3">
-                        <div class="text-2xl font-bold tracking-tight text-surface-900">
-                            {{ formatCurrency(metrics?.today_sales) }}
-                        </div>
-                        <div class="mt-1 flex items-center justify-between text-xs text-surface-500">
-                            <span>{{ recent_invoices?.length || 0 }} bills generated today</span>
-                            <span class="font-medium text-amber-600">Active POS</span>
-                        </div>
-                    </div>
-                    <div class="mt-3 h-1 w-full overflow-hidden rounded-full bg-surface-100">
-                        <div class="h-full bg-gradient-to-r from-amber-400 to-amber-600" style="width: 75%"></div>
-                    </div>
+                    <div class="mt-2 text-2xl font-bold text-surface-900">{{ formatCurrency(metrics?.today_sales) }}</div>
+                    <div class="mt-1 text-xs text-surface-500">{{ recent_invoices?.length || 0 }} bills generated</div>
                 </div>
 
-                <!-- KPI 2: Collections & Inflows -->
-                <div class="group relative overflow-hidden rounded-2xl border border-surface-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-semibold uppercase tracking-wider text-surface-500">Today Collections</span>
-                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                            <i class="pi pi-wallet text-lg"></i>
-                        </div>
+                <div class="border border-surface-200 bg-white p-5">
+                    <div class="flex items-center justify-between text-surface-500">
+                        <span class="text-xs uppercase tracking-wide font-medium">Today Collections</span>
+                        <i class="pi pi-wallet text-surface-400"></i>
                     </div>
-                    <div class="mt-3">
-                        <div class="text-2xl font-bold tracking-tight text-emerald-700">
-                            {{ formatCurrency(metrics?.today_collections) }}
-                        </div>
-                        <div class="mt-1 flex items-center justify-between text-xs text-surface-500">
-                            <span>Cash, UPI & Bank</span>
-                            <span class="font-medium text-emerald-600">Settled</span>
-                        </div>
-                    </div>
-                    <div class="mt-3 h-1 w-full overflow-hidden rounded-full bg-surface-100">
-                        <div class="h-full bg-gradient-to-r from-emerald-400 to-emerald-600" style="width: 85%"></div>
-                    </div>
+                    <div class="mt-2 text-2xl font-bold text-emerald-700">{{ formatCurrency(metrics?.today_collections) }}</div>
+                    <div class="mt-1 text-xs text-surface-500">Cash, UPI & Bank</div>
                 </div>
 
-                <!-- KPI 3: Gold Vault Stock & Valuation -->
-                <div class="group relative overflow-hidden rounded-2xl border border-surface-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-semibold uppercase tracking-wider text-surface-500">Main Gold Safe</span>
-                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-700">
-                            <i class="pi pi-shield text-lg"></i>
-                        </div>
+                <div class="border border-surface-200 bg-white p-5">
+                    <div class="flex items-center justify-between text-surface-500">
+                        <span class="text-xs uppercase tracking-wide font-medium">Gold in Safe</span>
+                        <i class="pi pi-shield text-surface-400"></i>
                     </div>
-                    <div class="mt-3">
-                        <div class="text-2xl font-bold tracking-tight text-surface-900">
-                            {{ formatWeight(vaults?.gold) }}
-                        </div>
-                        <div class="mt-1 flex items-center justify-between text-xs text-surface-500">
-                            <span>Market Value:</span>
-                            <span class="font-bold text-amber-700">{{ formatCurrency(goldValuation) }}</span>
-                        </div>
-                    </div>
-                    <div class="mt-3 h-1 w-full overflow-hidden rounded-full bg-surface-100">
-                        <div class="h-full bg-amber-500" style="width: 60%"></div>
-                    </div>
+                    <div class="mt-2 text-2xl font-bold text-amber-800">{{ formatWeight(vaults?.gold) }}</div>
+                    <div class="mt-1 text-xs text-surface-500">Value: {{ formatCurrency(goldValuation) }}</div>
                 </div>
 
-                <!-- KPI 4: Liquid Cash & Bank Position -->
-                <div class="group relative overflow-hidden rounded-2xl border border-surface-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-semibold uppercase tracking-wider text-surface-500">Liquid Funds</span>
-                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
-                            <i class="pi pi-building-columns text-lg"></i>
-                        </div>
+                <div class="border border-surface-200 bg-white p-5">
+                    <div class="flex items-center justify-between text-surface-500">
+                        <span class="text-xs uppercase tracking-wide font-medium">Liquid Funds</span>
+                        <i class="pi pi-building-columns text-surface-400"></i>
                     </div>
-                    <div class="mt-3">
-                        <div class="text-2xl font-bold tracking-tight text-surface-900">
-                            {{ formatCurrency(liquidCashTotal) }}
-                        </div>
-                        <div class="mt-1 flex items-center justify-between text-xs text-surface-500">
-                            <span>Cash: {{ formatCurrency(vaults?.cash) }}</span>
-                            <span>Bank: {{ formatCurrency(vaults?.bank) }}</span>
-                        </div>
-                    </div>
-                    <div class="mt-3 h-1 w-full overflow-hidden rounded-full bg-surface-100">
-                        <div class="h-full bg-sky-500" style="width: 70%"></div>
-                    </div>
+                    <div class="mt-2 text-2xl font-bold text-surface-900">{{ formatCurrency(liquidCashTotal) }}</div>
+                    <div class="mt-1 text-xs text-surface-500">Cash: {{ formatCurrency(vaults?.cash) }} | Bank: {{ formatCurrency(vaults?.bank) }}</div>
                 </div>
             </div>
 
             <!-- ========================================== -->
-            <!-- 3. INTERACTIVE ANALYTICS & CHARTS SECTION -->
+            <!-- 4. MODERN INTERACTIVE CHARTS               -->
             <!-- ========================================== -->
-            <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <!-- Main Area/Line Chart: Sales & Cashflow Trend (2 Cols) -->
-                <div class="rounded-2xl border border-surface-200 bg-white p-6 shadow-sm lg:col-span-2">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <!-- Sales & Collections Dynamics (2 Cols) -->
+                <div class="border border-surface-200 bg-white p-5 lg:col-span-2">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                            <h2 class="text-base font-bold text-surface-900">Revenue & Collections Dynamics</h2>
-                            <p class="text-xs text-surface-500">Track daily billing vs actual customer payment collections.</p>
+                            <h3 class="text-base font-semibold text-surface-900">Revenue & Collections Dynamics</h3>
+                            <p class="mt-0.5 text-xs text-surface-500">Daily sales vs collections inflow.</p>
                         </div>
-
-                        <!-- Range Pills (7D / 14D / 30D) -->
-                        <div class="flex items-center gap-1 rounded-xl bg-surface-100 p-1">
+                        <div class="flex items-center gap-1">
                             <button
                                 v-for="range in ['7D', '14D', '30D']"
                                 :key="range"
-                                class="rounded-lg px-3 py-1 text-xs font-semibold transition"
-                                :class="chartRange === range ? 'bg-white text-surface-900 shadow-sm' : 'text-surface-600 hover:text-surface-900'"
+                                class="rounded px-2.5 py-1 text-xs font-medium border transition"
+                                :class="chartRange === range ? 'bg-surface-900 text-white border-surface-900' : 'bg-surface-50 text-surface-600 border-surface-200 hover:bg-surface-100'"
                                 @click="chartRange = range"
                             >
                                 {{ range }}
@@ -730,123 +613,88 @@ const bullionChartOptions = {
                         </div>
                     </div>
 
-                    <div class="mt-6 h-72 w-full">
+                    <div class="mt-4 h-64 w-full">
                         <Chart type="line" :data="salesChartData" :options="salesChartOptions" class="h-full w-full" />
                     </div>
                 </div>
 
-                <!-- Secondary Doughnut Chart: Metal Mix & Category Share (1 Col) -->
-                <div class="flex flex-col justify-between rounded-2xl border border-surface-200 bg-white p-6 shadow-sm">
-                    <div>
-                        <div class="flex items-center justify-between">
-                            <h2 class="text-base font-bold text-surface-900">Sales Metal Mix</h2>
-                            <Tag value="30 Days" severity="secondary" />
-                        </div>
-                        <p class="mt-0.5 text-xs text-surface-500">Volume proportion of Gold vs Silver sold.</p>
-
-                        <div class="relative mt-4 flex h-48 items-center justify-center">
-                            <Chart type="doughnut" :data="metalDoughnutData" :options="metalDoughnutOptions" class="h-full w-full" />
-                            <div class="pointer-events-none absolute text-center">
-                                <div class="text-xs font-medium uppercase text-surface-400">Total Wt</div>
-                                <div class="text-base font-bold text-surface-900">
-                                    {{ formatWeight(Number(analytics?.metal_mix?.gold_weight || 0) + Number(analytics?.metal_mix?.silver_weight || 0)) }}
-                                </div>
-                            </div>
-                        </div>
+                <!-- Sales Metal Mix (1 Col) -->
+                <div class="border border-surface-200 bg-white p-5">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-base font-semibold text-surface-900">Sales Metal Mix</h3>
+                        <span class="text-xs text-surface-400">Last 30 Days</span>
                     </div>
+                    <p class="mt-0.5 text-xs text-surface-500">Volume proportion of Gold vs Silver sold.</p>
 
-                    <!-- Category Breakdown Chips -->
-                    <div class="mt-4 border-t border-surface-100 pt-3">
-                        <div class="text-xs font-semibold text-surface-700">Top Performing Categories</div>
-                        <div class="mt-2 space-y-1.5">
-                            <div v-for="cat in (analytics?.metal_mix?.top_categories || []).slice(0, 3)" :key="cat.label" class="flex items-center justify-between text-xs">
-                                <span class="text-surface-600">{{ cat.label }}</span>
-                                <span class="font-semibold text-surface-900">{{ formatCurrency(cat.amount) }}</span>
-                            </div>
-                        </div>
+                    <div class="relative mt-4 flex h-52 items-center justify-center">
+                        <Chart type="doughnut" :data="metalDoughnutData" :options="metalDoughnutOptions" class="h-full w-full" />
                     </div>
                 </div>
             </div>
 
             <!-- ========================================== -->
-            <!-- 4. BULLION MOVEMENT & PRODUCTION PIPELINE -->
+            <!-- 5. BULLION RATE TREND & WORKSHOP PIPELINE  -->
             <!-- ========================================== -->
-            <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <!-- Bullion 14-Day Price Movement (1 Col) -->
-                <div class="rounded-2xl border border-surface-200 bg-white p-6 shadow-sm lg:col-span-1">
+            <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <!-- 14-Day Bullion Trend -->
+                <div class="border border-surface-200 bg-white p-5">
                     <div class="flex items-center justify-between">
-                        <div>
-                            <h2 class="text-base font-bold text-surface-900">Bullion Price Trend</h2>
-                            <p class="text-xs text-surface-500">14-day Gold & Silver daily rates.</p>
-                        </div>
-                        <i class="pi pi-chart-line text-amber-600"></i>
+                        <h3 class="text-base font-semibold text-surface-900">Bullion Price Trend</h3>
+                        <span class="text-xs text-surface-400">14 Days</span>
                     </div>
+                    <p class="mt-0.5 text-xs text-surface-500">Daily gold & silver market rate changes.</p>
 
-                    <div class="mt-4 h-56 w-full">
+                    <div class="mt-4 h-52 w-full">
                         <Chart type="line" :data="bullionChartData" :options="bullionChartOptions" class="h-full w-full" />
                     </div>
                 </div>
 
-                <!-- Production & Custom Orders Pipeline (2 Cols) -->
-                <div class="rounded-2xl border border-surface-200 bg-white p-6 shadow-sm lg:col-span-2">
+                <!-- Workshop & Orders Pipeline -->
+                <div class="border border-surface-200 bg-white p-5 lg:col-span-2">
                     <div class="flex items-center justify-between">
                         <div>
-                            <h2 class="text-base font-bold text-surface-900">Workshop & Production Pipeline</h2>
-                            <p class="text-xs text-surface-500">Current order stages and customer delivery readiness.</p>
+                            <h3 class="text-base font-semibold text-surface-900">Workshop & Production Load</h3>
+                            <p class="mt-0.5 text-sm text-surface-500">Order pipeline stages and delivery status.</p>
                         </div>
                         <Link :href="route('orders.index')">
-                            <Button label="View All Orders" icon="pi pi-arrow-right" iconPos="right" text size="small" />
+                            <Button label="All Orders" icon="pi pi-arrow-right" iconPos="right" text size="small" />
                         </Link>
                     </div>
 
-                    <div class="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
-                        <!-- Stage 1: New -->
-                        <div class="rounded-xl border border-surface-200 bg-surface-50 p-4 text-center">
-                            <div class="text-xs font-semibold uppercase tracking-wider text-surface-500">New Orders</div>
-                            <div class="mt-2 text-2xl font-bold text-surface-800">{{ metrics?.new_orders || 0 }}</div>
-                            <div class="mt-1 text-[11px] text-surface-500">Pending Assignment</div>
+                    <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <div class="border border-surface-200 bg-surface-50 p-3 text-center">
+                            <div class="text-xs uppercase text-surface-500 font-medium">New</div>
+                            <div class="mt-1 text-xl font-bold text-surface-900">{{ metrics?.new_orders || 0 }}</div>
                         </div>
-
-                        <!-- Stage 2: In Production -->
-                        <div class="rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-center">
-                            <div class="text-xs font-semibold uppercase tracking-wider text-amber-800">With Karigars</div>
-                            <div class="mt-2 text-2xl font-bold text-amber-900">{{ metrics?.in_production || 0 }}</div>
-                            <div class="mt-1 text-[11px] text-amber-700">In Benchwork</div>
+                        <div class="border border-amber-200 bg-amber-50/50 p-3 text-center">
+                            <div class="text-xs uppercase text-amber-700 font-medium">With Karigars</div>
+                            <div class="mt-1 text-xl font-bold text-amber-800">{{ metrics?.in_production || 0 }}</div>
                         </div>
-
-                        <!-- Stage 3: Ready for Delivery -->
-                        <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-center">
-                            <div class="text-xs font-semibold uppercase tracking-wider text-emerald-800">Ready for Pickup</div>
-                            <div class="mt-2 text-2xl font-bold text-emerald-900">{{ metrics?.ready_items || 0 }}</div>
-                            <div class="mt-1 text-[11px] text-emerald-700">Hallmarked & Polished</div>
+                        <div class="border border-emerald-200 bg-emerald-50/50 p-3 text-center">
+                            <div class="text-xs uppercase text-emerald-700 font-medium">Ready</div>
+                            <div class="mt-1 text-xl font-bold text-emerald-800">{{ metrics?.ready_items || 0 }}</div>
                         </div>
-
-                        <!-- Stage 4: Overdue -->
-                        <div class="rounded-xl border border-rose-200 bg-rose-50/60 p-4 text-center">
-                            <div class="text-xs font-semibold uppercase tracking-wider text-rose-800">Overdue</div>
-                            <div class="mt-2 text-2xl font-bold text-rose-900">{{ metrics?.overdue_items || 0 }}</div>
-                            <div class="mt-1 text-[11px] text-rose-700">Past Due Date</div>
+                        <div class="border border-rose-200 bg-rose-50/50 p-3 text-center">
+                            <div class="text-xs uppercase text-rose-700 font-medium">Overdue</div>
+                            <div class="mt-1 text-xl font-bold text-rose-800">{{ metrics?.overdue_items || 0 }}</div>
                         </div>
                     </div>
 
-                    <!-- Karigars Holding Gold Strip -->
-                    <div class="mt-5 rounded-xl border border-surface-200 bg-stone-50 p-4">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-2">
-                                <i class="pi pi-users text-amber-600"></i>
-                                <span class="text-xs font-bold text-surface-900">Karigars Holding Store Metal ({{ karigars?.length || 0 }})</span>
-                            </div>
-                            <Link :href="route('karigars.index')" class="text-xs font-semibold text-amber-700 hover:underline">
+                    <!-- Karigars Holding Gold -->
+                    <div class="mt-4 border-t border-surface-100 pt-3">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-semibold text-surface-700">Karigars Holding Store Gold ({{ karigars?.length || 0 }})</span>
+                            <Link :href="route('karigars.index')" class="text-amber-700 hover:underline">
                                 Karigar Ledger &rarr;
                             </Link>
                         </div>
-                        <div class="mt-3 flex flex-wrap gap-2">
-                            <div v-for="k in (karigars || []).slice(0, 6)" :key="k.id" class="flex items-center gap-2 rounded-lg border border-surface-200 bg-white px-3 py-1.5 text-xs shadow-2xs">
-                                <span class="font-medium text-surface-800">{{ k.name }}</span>
-                                <span class="rounded bg-amber-100 px-1.5 py-0.5 font-bold text-amber-800">{{ formatWeight(k.gold_due) }}</span>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <div v-for="k in (karigars || []).slice(0, 6)" :key="k.id" class="flex items-center gap-2 border border-surface-200 bg-surface-50 px-2.5 py-1 text-xs">
+                                <span class="text-surface-700">{{ k.name }}</span>
+                                <span class="font-semibold text-amber-800">{{ formatWeight(k.gold_due) }}</span>
                             </div>
-                            <div v-if="!karigars?.length" class="text-xs text-surface-500">
-                                All karigar metal accounts balanced. Zero outstanding gold held.
+                            <div v-if="!karigars?.length" class="text-xs text-surface-400">
+                                Zero gold balance held with karigars.
                             </div>
                         </div>
                     </div>
@@ -854,47 +702,47 @@ const bullionChartOptions = {
             </div>
 
             <!-- ========================================== -->
-            <!-- 5. OPERATIONAL TABLES & CRM CELEBRATIONS -->
+            <!-- 6. RECENT INVOICES & CRM CELEBRATIONS      -->
             <!-- ========================================== -->
-            <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-                <!-- Recent Invoices & Live Billing (2 Cols) -->
-                <div class="rounded-2xl border border-surface-200 bg-white p-6 shadow-sm xl:col-span-2">
-                    <div class="flex items-center justify-between border-b border-surface-100 pb-4">
+            <div class="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                <!-- Recent Invoices (2 Cols) -->
+                <div class="border border-surface-200 bg-white p-5 xl:col-span-2">
+                    <div class="flex items-center justify-between border-b border-surface-100 pb-3">
                         <div>
-                            <h2 class="text-base font-bold text-surface-900">Recent Customer Bills</h2>
-                            <p class="text-xs text-surface-500">Latest retail invoices generated from the counter.</p>
+                            <h3 class="text-base font-semibold text-surface-900">Recent Invoices</h3>
+                            <p class="mt-0.5 text-xs text-surface-500">Latest retail bills generated at the store.</p>
                         </div>
                         <Link :href="route('invoices.index')">
-                            <Button label="View All Invoices" icon="pi pi-arrow-right" iconPos="right" text size="small" />
+                            <Button label="View All" icon="pi pi-arrow-right" iconPos="right" text size="small" />
                         </Link>
                     </div>
 
-                    <div class="mt-4 overflow-x-auto">
+                    <div class="mt-3 overflow-x-auto">
                         <DataTable :value="recent_invoices" class="p-datatable-sm" responsiveLayout="scroll">
                             <Column field="invoice_number" header="Invoice #">
                                 <template #body="{ data }">
-                                    <span class="font-mono text-xs font-semibold text-surface-900">{{ data.invoice_number }}</span>
+                                    <span class="font-mono text-xs font-medium text-surface-900">{{ data.invoice_number }}</span>
                                 </template>
                             </Column>
                             <Column field="customer_name" header="Customer">
                                 <template #body="{ data }">
-                                    <span class="font-medium text-surface-800">{{ data.customer_name }}</span>
+                                    <span class="text-sm text-surface-800">{{ data.customer_name }}</span>
                                 </template>
                             </Column>
                             <Column field="date" header="Date">
                                 <template #body="{ data }">
-                                    <span class="text-xs text-surface-600">{{ formatReminderDate(data.date) }}</span>
+                                    <span class="text-xs text-surface-500">{{ formatReminderDate(data.date) }}</span>
                                 </template>
                             </Column>
-                            <Column field="total_amount" header="Total Amount" class="text-right">
+                            <Column field="total_amount" header="Total" class="text-right">
                                 <template #body="{ data }">
-                                    <span class="font-bold text-surface-900">{{ formatCurrency(data.total_amount) }}</span>
+                                    <span class="font-semibold text-surface-900">{{ formatCurrency(data.total_amount) }}</span>
                                 </template>
                             </Column>
                             <Column header="Action" class="text-right">
                                 <template #body="{ data }">
-                                    <a :href="route('invoices.print', data.id)" target="_blank" class="inline-flex items-center gap-1 rounded-lg border border-surface-200 bg-surface-50 px-2.5 py-1 text-xs font-medium text-surface-700 hover:bg-surface-100">
-                                        <i class="pi pi-print text-[11px]"></i>
+                                    <a :href="route('invoices.print', data.id)" target="_blank" class="inline-flex items-center gap-1 rounded border border-surface-200 bg-surface-50 px-2 py-0.5 text-xs font-medium text-surface-700 hover:bg-surface-100">
+                                        <i class="pi pi-print text-[10px]"></i>
                                         Print
                                     </a>
                                 </template>
@@ -903,84 +751,69 @@ const bullionChartOptions = {
                     </div>
                 </div>
 
-                <!-- Customer CRM Celebrations (1 Col) -->
-                <div class="flex flex-col justify-between rounded-2xl border border-surface-200 bg-white p-6 shadow-sm">
-                    <div>
-                        <div class="flex items-center justify-between border-b border-surface-100 pb-3">
-                            <div class="flex items-center gap-2">
-                                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
-                                    <i class="pi pi-heart text-sm"></i>
-                                </div>
-                                <div>
-                                    <h2 class="text-base font-bold text-surface-900">CRM Celebrations</h2>
-                                    <p class="text-[11px] text-surface-500">Birthdays & Anniversaries (Next 7 Days)</p>
-                                </div>
-                            </div>
-                            <Tag :value="`${customer_reminders?.length || 0}`" severity="info" />
+                <!-- Customer CRM Reminders (1 Col) -->
+                <div class="border border-surface-200 bg-white p-5">
+                    <div class="flex items-center justify-between border-b border-surface-100 pb-3">
+                        <div>
+                            <h3 class="text-base font-semibold text-surface-900">CRM Celebrations</h3>
+                            <p class="mt-0.5 text-xs text-surface-500">Birthdays & Anniversaries (Next 7 Days)</p>
                         </div>
-
-                        <div class="mt-3 space-y-3">
-                            <div
-                                v-for="r in (customer_reminders || []).slice(0, 5)"
-                                :key="`${r.customer_id}-${r.type}`"
-                                class="flex items-center justify-between rounded-xl border p-3 transition"
-                                :class="r.is_today ? 'bg-amber-50/80 border-amber-300' : 'bg-surface-50 border-surface-200'"
-                            >
-                                <div class="min-w-0">
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="truncate text-xs font-bold text-surface-900">{{ r.customer_name }}</span>
-                                        <Tag :value="r.is_today ? 'Today!' : r.type" :severity="r.is_today ? 'warn' : 'secondary'" class="!text-[10px]" />
-                                    </div>
-                                    <div class="mt-0.5 text-[11px] text-surface-500">
-                                        {{ r.mobile }} &bull; {{ formatReminderDate(r.date) }}
-                                    </div>
-                                </div>
-
-                                <Button
-                                    icon="pi pi-whatsapp"
-                                    size="small"
-                                    class="!h-8 !w-8 !rounded-full !bg-emerald-600 !p-0 !text-white hover:!bg-emerald-700"
-                                    title="Send WhatsApp Greeting"
-                                    @click="sendWhatsAppWish(r)"
-                                />
-                            </div>
-
-                            <div v-if="!customer_reminders?.length" class="py-8 text-center text-xs text-surface-500">
-                                <i class="pi pi-calendar-plus text-2xl text-surface-300"></i>
-                                <p class="mt-2">No customer birthdays or anniversaries in the upcoming week.</p>
-                            </div>
-                        </div>
+                        <Tag :value="`${customer_reminders?.length || 0}`" severity="info" />
                     </div>
 
-                    <!-- Quick Link -->
-                    <div class="mt-4 border-t border-surface-100 pt-3 text-center">
-                        <Link :href="route('customers.index')" class="text-xs font-semibold text-amber-700 hover:underline">
-                            Manage Customer Vault Passes &rarr;
-                        </Link>
+                    <div class="mt-3 space-y-2.5">
+                        <div
+                            v-for="r in (customer_reminders || []).slice(0, 5)"
+                            :key="`${r.customer_id}-${r.type}`"
+                            class="flex items-center justify-between border p-2.5 transition"
+                            :class="r.is_today ? 'bg-amber-50/70 border-amber-300' : 'bg-surface-50 border-surface-200'"
+                        >
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="truncate text-xs font-semibold text-surface-900">{{ r.customer_name }}</span>
+                                    <Tag :value="r.is_today ? 'Today!' : r.type" :severity="r.is_today ? 'warn' : 'secondary'" class="!text-[10px]" />
+                                </div>
+                                <div class="mt-0.5 text-[11px] text-surface-500">
+                                    {{ r.mobile }} &bull; {{ formatReminderDate(r.date) }}
+                                </div>
+                            </div>
+
+                            <Button
+                                icon="pi pi-whatsapp"
+                                size="small"
+                                class="!h-7 !w-7 !rounded-full !bg-emerald-600 !p-0 !text-white hover:!bg-emerald-700"
+                                title="Send WhatsApp Greeting"
+                                @click="sendWhatsAppWish(r)"
+                            />
+                        </div>
+
+                        <div v-if="!customer_reminders?.length" class="py-6 text-center text-xs text-surface-400">
+                            No upcoming birthdays or anniversaries this week.
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- ========================================== -->
-            <!-- 6. RECENT VAULT MOVEMENTS FEED -->
+            <!-- 7. RECENT VAULT MOVEMENTS                  -->
             <!-- ========================================== -->
-            <div class="rounded-2xl border border-surface-200 bg-white p-6 shadow-sm">
-                <div class="flex items-center justify-between border-b border-surface-100 pb-4">
+            <div class="border border-surface-200 bg-white p-5">
+                <div class="flex items-center justify-between border-b border-surface-100 pb-3">
                     <div>
-                        <h2 class="text-base font-bold text-surface-900">Recent Safe & Drawer Vault Movements</h2>
-                        <p class="text-xs text-surface-500">Audit trail of cash, bank, gold, and silver transfers.</p>
+                        <h3 class="text-base font-semibold text-surface-900">Recent Safe & Drawer Vault Movements</h3>
+                        <p class="mt-0.5 text-xs text-surface-500">Audit trail of cash, bank, gold, and silver transfers.</p>
                     </div>
                     <Button
                         v-if="can.manage_vault && isDayOpen"
                         label="Transfer Funds"
-                        icon="pi pi-arrows-h"
-                        text
+                        icon="pi pi-arrow-right-arrow-left"
+                        outlined
                         size="small"
                         @click="openVaultTransferDialog"
                     />
                 </div>
 
-                <div class="mt-4 overflow-x-auto">
+                <div class="mt-3 overflow-x-auto">
                     <DataTable :value="recent_vault_movements" class="p-datatable-sm" responsiveLayout="scroll">
                         <Column field="vault_type" header="Vault Safe">
                             <template #body="{ data }">
@@ -990,7 +823,7 @@ const bullionChartOptions = {
                         <Column field="direction" header="Flow">
                             <template #body="{ data }">
                                 <span
-                                    class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold"
+                                    class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold"
                                     :class="data.direction === 'IN' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'"
                                 >
                                     <i :class="data.direction === 'IN' ? 'pi pi-arrow-down-left' : 'pi pi-arrow-up-right'" class="text-[10px]"></i>
@@ -1000,7 +833,7 @@ const bullionChartOptions = {
                         </Column>
                         <Column header="Amount" class="text-right">
                             <template #body="{ data }">
-                                <span class="font-semibold text-surface-900">{{ formatVaultMovementAmount(data) }}</span>
+                                <span class="font-medium text-surface-900">{{ formatVaultMovementAmount(data) }}</span>
                             </template>
                         </Column>
                         <Column header="Balance After" class="text-right">
@@ -1055,7 +888,7 @@ const bullionChartOptions = {
         <!-- 2. Open Day Dialog -->
         <Dialog v-model:visible="showDayDialog" modal header="Open Store Day Register" :style="{ width: '460px' }">
             <div class="space-y-4 pt-2">
-                <div class="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900">
+                <div class="rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
                     Verify cash and metal in safe drawers before opening the store for billing.
                 </div>
                 <div>
@@ -1176,7 +1009,7 @@ const bullionChartOptions = {
             <template #footer>
                 <div class="flex justify-end gap-2 pt-3">
                     <Button label="Cancel" text severity="secondary" size="small" @click="showVaultTransferDialog = false" />
-                    <Button label="Transfer Funds" icon="pi pi-arrows-h" size="small" :disabled="!transferCanSubmit" :loading="vaultTransferForm.processing" @click="saveVaultTransfer" />
+                    <Button label="Transfer Funds" icon="pi pi-arrow-right-arrow-left" size="small" :disabled="!transferCanSubmit" :loading="vaultTransferForm.processing" @click="saveVaultTransfer" />
                 </div>
             </template>
         </Dialog>
