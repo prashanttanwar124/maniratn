@@ -35,7 +35,7 @@ const can = computed(() => page.props.auth?.can || {});
 const isInitialSetup = computed(() => Boolean(page.props.dayStatus?.is_initial_setup));
 const openingExpectation = computed(() => props.opening_expectation || { cash: 0, gold: 0, silver: 0, date: null });
 
-// Form state
+// Forms
 const rateForm = useForm({
     gold_sell: parseFloat(props.rates?.gold_sell || 0),
     gold_buy: parseFloat(props.rates?.gold_buy || 0),
@@ -80,16 +80,16 @@ const vaultTransferForm = useForm({
     date: new Date(),
 });
 
-// Dialog Visibility
+// Dialogs
 const showRateDialog = ref(false);
 const showDayDialog = ref(false);
 const showCloseDialog = ref(false);
 const showExpenseDialog = ref(false);
 const showVaultTransferDialog = ref(false);
 
-// Shopify Chart Tab & Range Filter
-const activeChartTab = ref('sales'); // 'sales' | 'collections' | 'bullion'
-const chartRange = ref('7D'); // '7D' | '14D' | '30D'
+// Chart Tabs
+const activeChartTab = ref('sales');
+const chartRange = ref('7D');
 
 const totalKarigars = computed(() => props.karigars?.length || 0);
 const activeAlerts = computed(() => Number(props.metrics?.overdue_items || 0) + (props.isDayOpen ? 0 : 1));
@@ -129,7 +129,6 @@ const formatVaultMovementBalance = (movement) => {
     return ['GOLD', 'SILVER'].includes(movement.vault_type) ? formatWeight(movement.balance_after) : formatCurrency(movement.balance_after);
 };
 
-// Math calculations
 const goldSellRate = computed(() => Number(props.rates?.gold_sell || 0));
 const goldBuyRate = computed(() => Number(props.rates?.gold_buy || 0));
 const silverSellRate = computed(() => Number(props.rates?.silver_sell || 0));
@@ -263,10 +262,7 @@ const sendWhatsAppWish = (reminder) => {
     window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
 };
 
-// ----------------------------------------------------
-// SHOPIFY-STYLE CHART CONFIGURATION
-// ----------------------------------------------------
-
+// Chart Data
 const filteredSalesData = computed(() => {
     const raw = props.analytics?.sales_trend || [];
     const count = chartRange.value === '7D' ? 7 : chartRange.value === '14D' ? 14 : 30;
@@ -285,13 +281,10 @@ const shopifyChartData = computed(() => {
                     label: 'Collections',
                     data: items.map((i) => i.collections),
                     borderColor: '#059669',
-                    backgroundColor: 'rgba(5, 150, 105, 0.06)',
+                    backgroundColor: 'rgba(5, 150, 105, 0.05)',
                     borderWidth: 2,
                     fill: true,
                     tension: 0.35,
-                    pointBackgroundColor: '#059669',
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 2,
                     pointRadius: 3,
                 },
             ],
@@ -324,7 +317,6 @@ const shopifyChartData = computed(() => {
         };
     }
 
-    // Default: Total Sales
     return {
         labels,
         datasets: [
@@ -332,13 +324,10 @@ const shopifyChartData = computed(() => {
                 label: 'Gross Sales',
                 data: items.map((i) => i.sales),
                 borderColor: '#1e293b',
-                backgroundColor: 'rgba(30, 41, 59, 0.05)',
+                backgroundColor: 'rgba(30, 41, 59, 0.04)',
                 borderWidth: 2,
                 fill: true,
                 tension: 0.35,
-                pointBackgroundColor: '#1e293b',
-                pointBorderColor: '#ffffff',
-                pointBorderWidth: 2,
                 pointRadius: 3,
             },
         ],
@@ -355,7 +344,6 @@ const shopifyChartOptions = {
             titleFont: { size: 12, weight: '600' },
             bodyFont: { size: 12 },
             padding: 8,
-            cornerRadius: 6,
             callbacks: {
                 label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
             },
@@ -380,121 +368,101 @@ const shopifyChartOptions = {
 
 <template>
     <AppLayout>
-        <div class="mx-auto max-w-7xl space-y-5 pb-10">
+        <div class="mx-auto max-w-7xl space-y-4">
             <!-- ========================================== -->
-            <!-- 1. SHOPIFY TOP BAR: STORE HEADER & ACTIONS -->
+            <!-- 1. HEADER                                  -->
             <!-- ========================================== -->
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <div class="flex items-center gap-2.5">
-                        <h1 class="text-xl font-bold tracking-tight text-surface-900 sm:text-2xl">Overview</h1>
-                        <span
-                            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
-                            :class="isDayOpen ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'"
-                        >
-                            <span class="h-1.5 w-1.5 rounded-full" :class="isDayOpen ? 'bg-emerald-500' : 'bg-rose-500'"></span>
-                            {{ isDayOpen ? 'Store Open' : 'Register Closed' }}
-                        </span>
-                        <span v-if="activeAlerts" class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 border border-amber-200">
-                            {{ activeAlerts }} alert{{ activeAlerts > 1 ? 's' : '' }}
-                        </span>
+            <div class="border border-surface-200 bg-white p-5">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <h2 class="text-xl font-semibold text-surface-900">Overview</h2>
+                            <Tag :value="isDayOpen ? 'Store Open' : 'Register Closed'" :severity="isDayOpen ? 'success' : 'danger'" />
+                            <Tag v-if="activeAlerts" :value="`${activeAlerts} alert${activeAlerts > 1 ? 's' : ''}`" severity="warn" />
+                        </div>
+                        <p class="mt-1 text-xs text-surface-500">Live store performance and bullion position for today.</p>
                     </div>
-                    <p class="text-xs text-surface-500">Live store performance and bullion position for today.</p>
-                </div>
 
-                <div class="flex flex-wrap items-center gap-2">
-                    <Link :href="route('invoices.create')">
-                        <Button label="New Bill" icon="pi pi-plus" size="small" class="!bg-surface-900 !text-white !border-surface-900 hover:!bg-surface-800" />
-                    </Link>
-                    <Button v-if="can.manage_expenses" label="Expense" icon="pi pi-minus-circle" size="small" outlined severity="secondary" @click="openExpenseDialog" />
-                    <Button v-if="can.manage_daily_rates" label="Rates" icon="pi pi-pencil" size="small" outlined severity="secondary" @click="showRateDialog = true" />
-                    <Button v-if="can.manage_vault && !isDayOpen" label="Open Day" icon="pi pi-lock-open" size="small" severity="success" @click="showDayDialog = true" />
-                    <Button v-if="can.manage_vault && isDayOpen" label="Close Day" icon="pi pi-lock" size="small" severity="danger" outlined @click="openCloseDialog" />
+                    <div class="flex flex-wrap items-center gap-2">
+                        <Link :href="route('invoices.create')">
+                            <Button label="New Bill" icon="pi pi-plus" size="small" />
+                        </Link>
+                        <Button v-if="can.manage_expenses" label="Expense" icon="pi pi-minus-circle" size="small" outlined severity="secondary" @click="openExpenseDialog" />
+                        <Button v-if="can.manage_daily_rates" label="Rates" icon="pi pi-pencil" size="small" outlined severity="secondary" @click="showRateDialog = true" />
+                        <Button v-if="can.manage_vault && !isDayOpen" label="Open Day" icon="pi pi-lock-open" size="small" severity="success" @click="showDayDialog = true" />
+                        <Button v-if="can.manage_vault && isDayOpen" label="Close Day" icon="pi pi-lock" size="small" severity="danger" outlined @click="openCloseDialog" />
+                    </div>
                 </div>
             </div>
 
             <!-- ========================================== -->
-            <!-- 2. SHOPIFY 2-COLUMN GRID                   -->
+            <!-- 2. 2-COLUMN MAIN LAYOUT                    -->
             <!-- ========================================== -->
-            <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <!-- ========================================== -->
-                <!-- LEFT COLUMN (2/3): METRICS & ANALYTICS     -->
+                <!-- LEFT COLUMN (2/3)                          -->
                 <!-- ========================================== -->
-                <div class="space-y-5 lg:col-span-2">
-                    <!-- Shopify 4 Metrics Cards (2x2 Grid) -->
-                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                        <!-- Metric 1: Total Sales -->
-                        <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-2xs">
-                            <div class="text-xs font-medium text-surface-500">Total Sales</div>
-                            <div class="mt-1 text-lg font-bold text-surface-900 sm:text-xl">{{ formatCurrency(metrics?.today_sales) }}</div>
-                            <div class="mt-1 text-[11px] text-surface-400">
-                                {{ recent_invoices?.length || 0 }} orders today
-                            </div>
+                <div class="space-y-4 lg:col-span-2">
+                    <!-- Metric Cards -->
+                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                        <div class="border border-surface-200 bg-white p-4">
+                            <div class="text-xs text-surface-500 font-medium">Total Sales</div>
+                            <div class="mt-1 text-xl font-bold text-surface-900">{{ formatCurrency(metrics?.today_sales) }}</div>
+                            <div class="mt-1 text-xs text-surface-400">{{ recent_invoices?.length || 0 }} orders today</div>
                         </div>
 
-                        <!-- Metric 2: Collections -->
-                        <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-2xs">
-                            <div class="text-xs font-medium text-surface-500">Collections</div>
-                            <div class="mt-1 text-lg font-bold text-emerald-700 sm:text-xl">{{ formatCurrency(metrics?.today_collections) }}</div>
-                            <div class="mt-1 text-[11px] text-emerald-600 font-medium">
-                                Settled in full
-                            </div>
+                        <div class="border border-surface-200 bg-white p-4">
+                            <div class="text-xs text-surface-500 font-medium">Collections</div>
+                            <div class="mt-1 text-xl font-bold text-emerald-700">{{ formatCurrency(metrics?.today_collections) }}</div>
+                            <div class="mt-1 text-xs text-emerald-600 font-medium">Settled in full</div>
                         </div>
 
-                        <!-- Metric 3: Orders Pipeline -->
-                        <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-2xs">
-                            <div class="text-xs font-medium text-surface-500">Active Orders</div>
-                            <div class="mt-1 text-lg font-bold text-surface-900 sm:text-xl">{{ (metrics?.new_orders || 0) + (metrics?.in_production || 0) }}</div>
-                            <div class="mt-1 text-[11px] text-amber-700 font-medium">
-                                {{ metrics?.ready_items || 0 }} ready for pickup
-                            </div>
+                        <div class="border border-surface-200 bg-white p-4">
+                            <div class="text-xs text-surface-500 font-medium">Active Orders</div>
+                            <div class="mt-1 text-xl font-bold text-surface-900">{{ (metrics?.new_orders || 0) + (metrics?.in_production || 0) }}</div>
+                            <div class="mt-1 text-xs text-amber-700 font-medium">{{ metrics?.ready_items || 0 }} ready for pickup</div>
                         </div>
 
-                        <!-- Metric 4: Safe Gold Value -->
-                        <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-2xs">
-                            <div class="text-xs font-medium text-surface-500">Safe Gold Stock</div>
-                            <div class="mt-1 text-lg font-bold text-surface-900 sm:text-xl">{{ formatWeight(vaults?.gold) }}</div>
-                            <div class="mt-1 text-[11px] text-surface-400 truncate">
-                                Val: {{ formatCurrency(goldValuation) }}
-                            </div>
+                        <div class="border border-surface-200 bg-white p-4">
+                            <div class="text-xs text-surface-500 font-medium">Safe Gold Stock</div>
+                            <div class="mt-1 text-xl font-bold text-surface-900">{{ formatWeight(vaults?.gold) }}</div>
+                            <div class="mt-1 text-xs text-surface-400 truncate">Val: {{ formatCurrency(goldValuation) }}</div>
                         </div>
                     </div>
 
-                    <!-- Shopify Analytics Card with Tab Navigation -->
-                    <div class="rounded-xl border border-surface-200 bg-white p-4 sm:p-5 shadow-2xs">
+                    <!-- Analytics Chart Card -->
+                    <div class="border border-surface-200 bg-white p-5">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-surface-100 pb-3">
-                            <!-- Metric Tabs (Shopify Style) -->
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1 border border-surface-200 p-0.5 bg-surface-50">
                                 <button
-                                    class="rounded-lg px-3 py-1 text-xs font-semibold transition"
-                                    :class="activeChartTab === 'sales' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-100'"
-                                    @click="activeChartTab = 'sales'"
+                                    class="px-3 py-1 text-xs font-semibold transition"
+                                    :class="activeChartTab === 'sales' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
+                                    @click="activeChartTab === 'sales'"
                                 >
                                     Total Sales
                                 </button>
                                 <button
-                                    class="rounded-lg px-3 py-1 text-xs font-semibold transition"
-                                    :class="activeChartTab === 'collections' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-100'"
-                                    @click="activeChartTab = 'collections'"
+                                    class="px-3 py-1 text-xs font-semibold transition"
+                                    :class="activeChartTab === 'collections' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
+                                    @click="activeChartTab === 'collections'"
                                 >
                                     Collections
                                 </button>
                                 <button
-                                    class="rounded-lg px-3 py-1 text-xs font-semibold transition"
-                                    :class="activeChartTab === 'bullion' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-100'"
-                                    @click="activeChartTab = 'bullion'"
+                                    class="px-3 py-1 text-xs font-semibold transition"
+                                    :class="activeChartTab === 'bullion' ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
+                                    @click="activeChartTab === 'bullion'"
                                 >
                                     Rates Trend
                                 </button>
                             </div>
 
-                            <!-- Range Pills (7D / 14D / 30D) -->
-                            <div class="flex items-center gap-1 rounded-lg bg-surface-100 p-0.5">
+                            <div class="flex items-center gap-1 border border-surface-200 p-0.5 bg-surface-50">
                                 <button
                                     v-for="range in ['7D', '14D', '30D']"
                                     :key="range"
-                                    class="rounded-md px-2.5 py-0.5 text-xs font-medium transition"
-                                    :class="chartRange === range ? 'bg-white text-surface-900 shadow-2xs font-semibold' : 'text-surface-500 hover:text-surface-900'"
+                                    class="px-2.5 py-0.5 text-xs font-medium transition"
+                                    :class="chartRange === range ? 'bg-surface-900 text-white' : 'text-surface-600 hover:bg-surface-200'"
                                     @click="chartRange = range"
                                 >
                                     {{ range }}
@@ -502,48 +470,35 @@ const shopifyChartOptions = {
                             </div>
                         </div>
 
-                        <!-- Chart Canvas -->
                         <div class="mt-4 h-64 w-full">
                             <Chart type="line" :data="shopifyChartData" :options="shopifyChartOptions" class="h-full w-full" />
                         </div>
                     </div>
 
-                    <!-- Shopify To-Do / Needs Attention Banner -->
-                    <div v-if="metrics?.overdue_items > 0 || metrics?.new_orders > 0 || karigars?.length > 0" class="rounded-xl border border-surface-200 bg-white p-4 shadow-2xs">
-                        <div class="flex items-center justify-between border-b border-surface-100 pb-2.5">
-                            <div class="flex items-center gap-2">
-                                <i class="pi pi-check-circle text-surface-500 text-sm"></i>
-                                <h3 class="text-xs font-semibold uppercase tracking-wider text-surface-700">Needs Attention</h3>
-                            </div>
-                            <span class="text-[11px] text-surface-400">Action items</span>
+                    <!-- Action Required Strip -->
+                    <div v-if="metrics?.overdue_items > 0 || metrics?.new_orders > 0 || karigars?.length > 0" class="border border-surface-200 bg-white p-5">
+                        <div class="flex items-center justify-between border-b border-surface-100 pb-2">
+                            <h3 class="text-xs font-semibold uppercase tracking-wider text-surface-600">Needs Attention</h3>
+                            <span class="text-xs text-surface-400">Action items</span>
                         </div>
 
                         <div class="mt-3 space-y-2 text-xs">
-                            <div v-if="metrics?.overdue_items > 0" class="flex items-center justify-between rounded-lg bg-rose-50/70 p-2.5 border border-rose-200 text-rose-800">
-                                <div class="flex items-center gap-2">
-                                    <i class="pi pi-exclamation-circle text-rose-600"></i>
-                                    <span><strong>{{ metrics.overdue_items }} Custom Order{{ metrics.overdue_items > 1 ? 's' : '' }}</strong> are past their promised delivery date.</span>
-                                </div>
+                            <div v-if="metrics?.overdue_items > 0" class="flex items-center justify-between border border-rose-200 bg-rose-50 p-2.5 text-rose-800">
+                                <span><strong>{{ metrics.overdue_items }} Custom Order{{ metrics.overdue_items > 1 ? 's' : '' }}</strong> are past their promised delivery date.</span>
                                 <Link :href="route('orders.index')" class="font-semibold text-rose-900 hover:underline">
                                     View orders &rarr;
                                 </Link>
                             </div>
 
-                            <div v-if="metrics?.new_orders > 0" class="flex items-center justify-between rounded-lg bg-surface-50 p-2.5 border border-surface-200 text-surface-800">
-                                <div class="flex items-center gap-2">
-                                    <i class="pi pi-inbox text-surface-600"></i>
-                                    <span><strong>{{ metrics.new_orders }} New Order{{ metrics.new_orders > 1 ? 's' : '' }}</strong> awaiting workshop karigar assignment.</span>
-                                </div>
+                            <div v-if="metrics?.new_orders > 0" class="flex items-center justify-between border border-surface-200 bg-surface-50 p-2.5 text-surface-800">
+                                <span><strong>{{ metrics.new_orders }} New Order{{ metrics.new_orders > 1 ? 's' : '' }}</strong> awaiting workshop karigar assignment.</span>
                                 <Link :href="route('orders.index')" class="font-semibold text-surface-900 hover:underline">
                                     Assign &rarr;
                                 </Link>
                             </div>
 
-                            <div v-if="karigars?.length > 0" class="flex items-center justify-between rounded-lg bg-amber-50/50 p-2.5 border border-amber-200 text-amber-900">
-                                <div class="flex items-center gap-2">
-                                    <i class="pi pi-users text-amber-700"></i>
-                                    <span><strong>{{ karigars.length }} Karigar{{ karigars.length > 1 ? 's' : '' }}</strong> currently holding store metal.</span>
-                                </div>
+                            <div v-if="karigars?.length > 0" class="flex items-center justify-between border border-amber-200 bg-amber-50 p-2.5 text-amber-900">
+                                <span><strong>{{ karigars.length }} Karigar{{ karigars.length > 1 ? 's' : '' }}</strong> currently holding store metal.</span>
                                 <Link :href="route('karigars.index')" class="font-semibold text-amber-900 hover:underline">
                                     Karigar ledger &rarr;
                                 </Link>
@@ -551,12 +506,12 @@ const shopifyChartOptions = {
                         </div>
                     </div>
 
-                    <!-- Recent Invoices Table (Shopify Style) -->
-                    <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-2xs">
+                    <!-- Recent Invoices Table -->
+                    <div class="border border-surface-200 bg-white p-5">
                         <div class="flex items-center justify-between border-b border-surface-100 pb-3">
                             <h3 class="text-sm font-semibold text-surface-900">Recent Invoices</h3>
                             <Link :href="route('invoices.index')" class="text-xs font-semibold text-surface-600 hover:text-surface-900">
-                                View all invoices &rarr;
+                                View all &rarr;
                             </Link>
                         </div>
 
@@ -584,7 +539,7 @@ const shopifyChartOptions = {
                                 </Column>
                                 <Column header="Action" class="text-right">
                                     <template #body="{ data }">
-                                        <a :href="route('invoices.print', data.id)" target="_blank" class="inline-flex items-center gap-1 rounded border border-surface-200 bg-surface-50 px-2 py-0.5 text-xs text-surface-700 hover:bg-surface-100">
+                                        <a :href="route('invoices.print', data.id)" target="_blank" class="inline-flex items-center gap-1 border border-surface-200 bg-surface-50 px-2 py-0.5 text-xs text-surface-700 hover:bg-surface-100">
                                             <i class="pi pi-print text-[10px]"></i>
                                             Print
                                         </a>
@@ -596,42 +551,36 @@ const shopifyChartOptions = {
                 </div>
 
                 <!-- ========================================== -->
-                <!-- RIGHT SIDEBAR (1/3): RATES & OPERATIONS    -->
+                <!-- RIGHT COLUMN (1/3)                         -->
                 <!-- ========================================== -->
-                <div class="space-y-5">
-                    <!-- Live Rates Card -->
-                    <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-2xs">
-                        <div class="flex items-center justify-between border-b border-surface-100 pb-2.5">
-                            <div class="flex items-center gap-1.5">
-                                <i class="pi pi-chart-line text-amber-600 text-sm"></i>
-                                <h3 class="text-xs font-semibold uppercase tracking-wider text-surface-700">Today's Bullion Rates</h3>
-                            </div>
-                            <Button v-if="can.manage_daily_rates" icon="pi pi-pencil" text size="small" class="!p-1 !h-6 !w-6" @click="showRateDialog = true" />
+                <div class="space-y-4">
+                    <!-- Today's Bullion Rates -->
+                    <div class="border border-surface-200 bg-white p-5">
+                        <div class="flex items-center justify-between border-b border-surface-100 pb-3">
+                            <h3 class="text-sm font-semibold text-surface-900">Today's Bullion Rates</h3>
+                            <Button v-if="can.manage_daily_rates" icon="pi pi-pencil" text size="small" class="!p-0" @click="showRateDialog = true" />
                         </div>
 
-                        <div class="mt-3 space-y-2">
-                            <div class="flex items-center justify-between rounded-lg bg-surface-50 p-2.5 border border-surface-100">
-                                <span class="text-xs text-surface-600 font-medium">Gold 24K (Fine)</span>
-                                <span class="text-xs font-bold text-amber-800">₹{{ Number(rates?.gold_sell || 0).toLocaleString('en-IN') }}/g</span>
+                        <div class="mt-3 space-y-2 text-xs">
+                            <div class="flex items-center justify-between border border-surface-100 bg-surface-50 p-2.5">
+                                <span class="text-surface-600 font-medium">Gold 24K (Fine)</span>
+                                <span class="font-semibold text-amber-800">₹{{ Number(rates?.gold_sell || 0).toLocaleString('en-IN') }}/g</span>
                             </div>
-                            <div class="flex items-center justify-between rounded-lg bg-surface-50 p-2.5 border border-surface-100">
-                                <span class="text-xs text-surface-600 font-medium">Gold 22K (916)</span>
-                                <span class="text-xs font-bold text-amber-700">₹{{ Number(gold22kRate).toLocaleString('en-IN') }}/g</span>
+                            <div class="flex items-center justify-between border border-surface-100 bg-surface-50 p-2.5">
+                                <span class="text-surface-600 font-medium">Gold 22K (916)</span>
+                                <span class="font-semibold text-amber-700">₹{{ Number(gold22kRate).toLocaleString('en-IN') }}/g</span>
                             </div>
-                            <div class="flex items-center justify-between rounded-lg bg-surface-50 p-2.5 border border-surface-100">
-                                <span class="text-xs text-surface-600 font-medium">Silver 925</span>
-                                <span class="text-xs font-bold text-slate-700">₹{{ Number(rates?.silver_sell || 0).toLocaleString('en-IN') }}/g</span>
+                            <div class="flex items-center justify-between border border-surface-100 bg-surface-50 p-2.5">
+                                <span class="text-surface-600 font-medium">Silver 925</span>
+                                <span class="font-semibold text-slate-700">₹{{ Number(rates?.silver_sell || 0).toLocaleString('en-IN') }}/g</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Vault Position & Liquid Funds -->
-                    <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-2xs">
-                        <div class="flex items-center justify-between border-b border-surface-100 pb-2.5">
-                            <div class="flex items-center gap-1.5">
-                                <i class="pi pi-wallet text-surface-500 text-sm"></i>
-                                <h3 class="text-xs font-semibold uppercase tracking-wider text-surface-700">Safe & Drawer Vaults</h3>
-                            </div>
+                    <!-- Safe & Drawer Vaults -->
+                    <div class="border border-surface-200 bg-white p-5">
+                        <div class="flex items-center justify-between border-b border-surface-100 pb-3">
+                            <h3 class="text-sm font-semibold text-surface-900">Safe & Drawer Vaults</h3>
                             <Button v-if="can.manage_vault && isDayOpen" label="Transfer" text size="small" class="!p-0 !text-xs" @click="openVaultTransferDialog" />
                         </div>
 
@@ -655,35 +604,33 @@ const shopifyChartOptions = {
                         </div>
                     </div>
 
-                    <!-- Customer CRM Celebrations -->
-                    <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-2xs">
-                        <div class="flex items-center justify-between border-b border-surface-100 pb-2.5">
-                            <div class="flex items-center gap-1.5">
-                                <i class="pi pi-heart text-rose-500 text-sm"></i>
-                                <h3 class="text-xs font-semibold uppercase tracking-wider text-surface-700">CRM Celebrations</h3>
-                            </div>
-                            <Tag :value="`${customer_reminders?.length || 0}`" severity="secondary" class="!text-[10px]" />
+                    <!-- CRM Celebrations -->
+                    <div class="border border-surface-200 bg-white p-5">
+                        <div class="flex items-center justify-between border-b border-surface-100 pb-3">
+                            <h3 class="text-sm font-semibold text-surface-900">CRM Celebrations</h3>
+                            <Tag :value="`${customer_reminders?.length || 0}`" severity="secondary" />
                         </div>
 
                         <div class="mt-3 space-y-2">
                             <div
                                 v-for="r in (customer_reminders || []).slice(0, 4)"
                                 :key="`${r.customer_id}-${r.type}`"
-                                class="flex items-center justify-between rounded-lg border p-2.5 text-xs"
-                                :class="r.is_today ? 'bg-amber-50/60 border-amber-300' : 'bg-surface-50 border-surface-200'"
+                                class="flex items-center justify-between border p-2.5 text-xs"
+                                :class="r.is_today ? 'bg-amber-50/70 border-amber-300' : 'bg-surface-50 border-surface-200'"
                             >
                                 <div class="min-w-0">
-                                    <div class="flex items-center gap-1">
+                                    <div class="flex items-center gap-1.5">
                                         <span class="truncate font-semibold text-surface-900">{{ r.customer_name }}</span>
-                                        <Tag :value="r.is_today ? 'Today' : r.type" :severity="r.is_today ? 'warn' : 'secondary'" class="!text-[9px]" />
+                                        <Tag :value="r.is_today ? 'Today' : r.type" :severity="r.is_today ? 'warn' : 'secondary'" class="!text-[10px]" />
                                     </div>
-                                    <div class="text-[10px] text-surface-500">{{ formatReminderDate(r.date) }}</div>
+                                    <div class="mt-0.5 text-surface-500">{{ formatReminderDate(r.date) }}</div>
                                 </div>
 
                                 <Button
                                     icon="pi pi-whatsapp"
                                     size="small"
-                                    class="!h-6 !w-6 !rounded-full !bg-emerald-600 !p-0 !text-white hover:!bg-emerald-700"
+                                    severity="success"
+                                    class="!h-7 !w-7 !p-0"
                                     title="Send WhatsApp Greeting"
                                     @click="sendWhatsAppWish(r)"
                                 />
@@ -696,26 +643,26 @@ const shopifyChartOptions = {
                     </div>
 
                     <!-- Recent Safe & Drawer Movements -->
-                    <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-2xs">
-                        <div class="flex items-center justify-between border-b border-surface-100 pb-2.5">
-                            <h3 class="text-xs font-semibold uppercase tracking-wider text-surface-700">Recent Movements</h3>
-                            <span class="text-[10px] text-surface-400">Live feed</span>
+                    <div class="border border-surface-200 bg-white p-5">
+                        <div class="flex items-center justify-between border-b border-surface-100 pb-3">
+                            <h3 class="text-sm font-semibold text-surface-900">Recent Movements</h3>
+                            <span class="text-xs text-surface-400">Live feed</span>
                         </div>
 
-                        <div class="mt-2.5 space-y-2">
+                        <div class="mt-3 space-y-2">
                             <div
                                 v-for="m in (recent_vault_movements || []).slice(0, 4)"
                                 :key="m.id"
-                                class="flex items-center justify-between text-xs border-b border-surface-100 pb-1.5 last:border-0 last:pb-0"
+                                class="flex items-center justify-between text-xs border-b border-surface-100 pb-2 last:border-0 last:pb-0"
                             >
                                 <div class="min-w-0">
-                                    <div class="flex items-center gap-1">
+                                    <div class="flex items-center gap-1.5">
                                         <span class="font-medium text-surface-800">{{ vaultLabels[m.vault_type] || m.vault_type }}</span>
                                         <span :class="m.direction === 'IN' ? 'text-emerald-700' : 'text-rose-700'" class="font-bold text-[10px]">
                                             {{ m.direction === 'IN' ? '+IN' : '-OUT' }}
                                         </span>
                                     </div>
-                                    <div class="text-[10px] text-surface-400 truncate">{{ m.note || m.reference || m.time }}</div>
+                                    <div class="text-surface-400 truncate">{{ m.note || m.reference || m.time }}</div>
                                 </div>
                                 <span class="font-semibold text-surface-900">{{ formatVaultMovementAmount(m) }}</span>
                             </div>
@@ -761,7 +708,7 @@ const shopifyChartOptions = {
         <!-- 2. Open Day Dialog -->
         <Dialog v-model:visible="showDayDialog" modal header="Open Store Day Register" :style="{ width: '460px' }">
             <div class="space-y-4 pt-2">
-                <div class="rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <div class="border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
                     Verify cash and metal in safe drawers before opening the store for billing.
                 </div>
                 <div>
