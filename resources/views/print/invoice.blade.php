@@ -524,18 +524,17 @@
                 </div>
             </div>
 
-            <!-- Items Table with Brand Maroon Header & Barcode Column -->
+            <!-- Items Table with Brand Maroon Header -->
             <div class="items-section">
                 <table class="items">
                     <thead>
                         <tr>
-                            <th style="width: 28px;" class="align-center">#</th>
-                            <th style="width: 95px;">Barcode / Tag</th>
-                            <th>Description</th>
-                            <th style="width: 75px;" class="align-right">Weight</th>
-                            <th style="width: 55px;" class="align-center">Purity</th>
-                            <th style="width: 80px;" class="align-right">Making</th>
-                            <th style="width: 105px;" class="align-right">Total</th>
+                            <th style="width: 32px;" class="align-center">#</th>
+                            <th>Description & Tag</th>
+                            <th style="width: 85px;" class="align-right">Weight</th>
+                            <th style="width: 65px;" class="align-center">Purity</th>
+                            <th style="width: 90px;" class="align-right">Making</th>
+                            <th style="width: 115px;" class="align-right">Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -544,16 +543,16 @@
                                 $barcode = $item->product?->barcode ?? $item->silverProduct?->barcode ?? $item->barcode ?? $item->tag_number ?? null;
                             @endphp
                             <tr>
-                                <td class="align-center mono">{{ $index + 1 }}</td>
+                                <td class="align-center mono" style="color: var(--surface-500);">{{ $index + 1 }}</td>
                                 <td>
-                                    @if ($barcode)
-                                        <span class="barcode-pill">{{ $barcode }}</span>
-                                    @else
-                                        <span class="barcode-pill" style="background: #f8fafc; color: #64748b; border-color: #e2e8f0;">TAG-{{ str_pad($item->id, 4, '0', STR_PAD_LEFT) }}</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    <strong>{{ $item->description }}</strong>
+                                    <div style="font-weight: 600; color: var(--surface-900);">{{ $item->description }}</div>
+                                    <div style="font-size: 9.5px; color: var(--surface-500); font-family: 'JetBrains Mono', monospace; margin-top: 1px;">
+                                        @if ($barcode)
+                                            Tag: <span style="font-weight: 600; color: var(--surface-800);">{{ $barcode }}</span>
+                                        @else
+                                            Tag: <span style="color: var(--surface-600);">#{{ str_pad($item->id, 4, '0', STR_PAD_LEFT) }}</span>
+                                        @endif
+                                    </div>
                                 </td>
                                 <td class="align-right mono font-semibold">
                                     {{ number_format((float) $item->weight, 3) }} g
