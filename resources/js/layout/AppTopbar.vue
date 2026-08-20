@@ -542,82 +542,97 @@ const submitLogout = () => {
         class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
         @click.self="isRatesModalOpen = false"
     >
-        <div class="w-full max-w-md bg-white border border-surface-300 shadow-2xl p-6 space-y-4">
-            <div class="flex items-center justify-between border-b border-surface-100 pb-3">
-                <div class="flex items-center gap-2">
-                    <span class="text-lg">🪙</span>
+        <div class="w-full max-w-lg bg-white border border-surface-300 shadow-2xl p-6">
+            <!-- Modal Header -->
+            <div class="flex items-start justify-between pb-4 mb-4 border-b border-surface-200">
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-amber-100 text-amber-800 text-base flex-shrink-0">🪙</span>
                     <div>
-                        <h3 class="text-sm font-bold text-[#1c3633]">Today's Market Bullion Rates</h3>
-                        <p class="text-[11px] text-surface-500">Live base prices used across sales billing & valuations</p>
+                        <h3 class="text-base font-bold text-[#1c3633] leading-tight">Today's Market Bullion Rates</h3>
+                        <p class="text-xs text-surface-500 mt-0.5">Live base prices used across sales billing & valuations</p>
                     </div>
                 </div>
-                <button type="button" @click="isRatesModalOpen = false" class="text-surface-400 hover:text-surface-700">
-                    <i class="pi pi-times"></i>
+                <button
+                    type="button"
+                    @click="isRatesModalOpen = false"
+                    class="p-1.5 text-surface-400 hover:text-surface-700 cursor-pointer rounded-sm hover:bg-surface-100 transition-colors"
+                >
+                    <i class="pi pi-times text-sm"></i>
                 </button>
             </div>
 
+            <!-- Modal Form -->
             <form @submit.prevent="saveRates" class="space-y-4">
-                <div class="space-y-1">
-                    <label class="text-xs font-bold text-surface-700">24K Gold Sell Rate (₹/gram)</label>
-                    <div class="relative">
-                        <span class="absolute left-3 top-2.5 text-xs text-surface-400 font-bold">₹</span>
+                <!-- 24K Gold Sell Rate -->
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-surface-700 uppercase tracking-wider">
+                        24K Gold Sell Rate <span class="text-surface-400 font-normal lowercase">(₹/gram)</span>
+                    </label>
+                    <div class="relative flex items-center">
+                        <span class="absolute left-3.5 text-sm text-surface-400 font-bold pointer-events-none">₹</span>
                         <input
                             v-model="rateForm.gold_sell"
                             type="number"
                             step="0.01"
                             required
                             placeholder="e.g. 7160.00"
-                            class="w-full pl-7 pr-3 py-2 border border-surface-300 text-sm font-bold text-[#1c3633] outline-hidden focus:border-[#1c3633]"
+                            class="w-full pl-8 pr-4 h-11 border border-surface-300 text-sm font-bold text-[#1c3633] outline-hidden focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="space-y-1">
-                        <label class="text-xs font-bold text-surface-700">Gold Buy Rate (₹/g)</label>
-                        <div class="relative">
-                            <span class="absolute left-3 top-2.5 text-xs text-surface-400 font-bold">₹</span>
+                <!-- 2 Column Grid: Gold Buy & Silver Sell -->
+                <div class="grid grid-cols-2 gap-3.5">
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-surface-700 uppercase tracking-wider">
+                            Gold Buy Rate <span class="text-surface-400 font-normal lowercase">(₹/g)</span>
+                        </label>
+                        <div class="relative flex items-center">
+                            <span class="absolute left-3.5 text-sm text-surface-400 font-bold pointer-events-none">₹</span>
                             <input
                                 v-model="rateForm.gold_buy"
                                 type="number"
                                 step="0.01"
                                 required
                                 placeholder="e.g. 7010.00"
-                                class="w-full pl-7 pr-3 py-2 border border-surface-300 text-sm font-medium text-surface-800 outline-hidden focus:border-[#1c3633]"
+                                class="w-full pl-8 pr-4 h-11 border border-surface-300 text-sm font-medium text-surface-800 outline-hidden focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                         </div>
                     </div>
 
-                    <div class="space-y-1">
-                        <label class="text-xs font-bold text-surface-700">Silver Sell Rate (₹/g)</label>
-                        <div class="relative">
-                            <span class="absolute left-3 top-2.5 text-xs text-surface-400 font-bold">₹</span>
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-surface-700 uppercase tracking-wider">
+                            Silver Sell Rate <span class="text-surface-400 font-normal lowercase">(₹/g)</span>
+                        </label>
+                        <div class="relative flex items-center">
+                            <span class="absolute left-3.5 text-sm text-surface-400 font-bold pointer-events-none">₹</span>
                             <input
                                 v-model="rateForm.silver_sell"
                                 type="number"
                                 step="0.01"
                                 required
                                 placeholder="e.g. 88.00"
-                                class="w-full pl-7 pr-3 py-2 border border-surface-300 text-sm font-medium text-surface-800 outline-hidden focus:border-[#1c3633]"
+                                class="w-full pl-8 pr-4 h-11 border border-surface-300 text-sm font-medium text-surface-800 outline-hidden focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                         </div>
                     </div>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 pt-3 border-t border-surface-100">
+                <!-- Modal Footer -->
+                <div class="flex items-center justify-end gap-2.5 pt-4 mt-2 border-t border-surface-100">
                     <button
                         type="button"
                         @click="isRatesModalOpen = false"
-                        class="px-4 py-2 border border-surface-300 text-xs font-semibold text-surface-600 hover:bg-surface-50 cursor-pointer"
+                        class="px-4 h-10 border border-surface-300 text-xs font-semibold text-surface-600 hover:bg-surface-50 cursor-pointer transition-colors"
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
                         :disabled="rateUpdating"
-                        class="px-5 py-2 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+                        class="px-5 h-10 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-bold cursor-pointer disabled:opacity-50 transition-colors shadow-xs"
                     >
-                        {{ rateUpdating ? 'Saving...' : 'Update Market Rates' }}
+                        {{ rateUpdating ? 'Saving Rates...' : 'Update Market Rates' }}
                     </button>
                 </div>
             </form>
