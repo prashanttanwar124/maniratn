@@ -298,7 +298,7 @@ const currentChartSummary = computed(() => {
         return { label: `Total ${chartRange.value} Collections`, value: formatCurrency(total) };
     }
     if (activeChartTab.value === 'bullion') {
-        return { label: 'Live 24K Gold Rate', value: `₹${Number(rates?.gold_sell || 0).toLocaleString('en-IN')}/g` };
+        return { label: 'Live 24K Gold Rate', value: `₹${Number(props.rates?.gold_sell || 0).toLocaleString('en-IN')}/g` };
     }
     const total = filteredSalesData.value.reduce((acc, i) => acc + Number(i.sales || 0), 0);
     return { label: `Total ${chartRange.value} Sales`, value: formatCurrency(total) };
