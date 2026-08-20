@@ -264,53 +264,16 @@ const submitLogout = () => {
 
         <!-- 3. RIGHT: Actions, Quick Create, AI, Status & User Menu -->
         <div class="layout-topbar-actions">
-            <!-- ➕ Quick Create Button with Dropdown -->
-            <div class="relative quick-create-wrapper">
-                <div class="inline-flex items-center shadow-xs">
-                    <Link
-                        href="/invoices/create"
-                        class="inline-flex items-center gap-1.5 h-10 px-3.5 bg-[#c08f34] hover:bg-[#a67a26] text-white text-xs font-bold transition-all cursor-pointer border-r border-[#a67a26]"
-                        title="Create New Jewellery Bill (Shortcut: F2)"
-                    >
-                        <i class="pi pi-plus text-xs text-white"></i>
-                        <span class="hidden sm:inline font-semibold">New Bill</span>
-                        <kbd class="hidden lg:inline px-1 py-0.2 bg-black/20 text-[9px] text-white/90 font-mono font-normal">F2</kbd>
-                    </Link>
-                    <button
-                        type="button"
-                        @click.stop="isQuickCreateOpen = !isQuickCreateOpen"
-                        class="h-10 px-2 bg-[#b58428] hover:bg-[#996e1d] text-white transition-all cursor-pointer"
-                        title="More Quick Actions"
-                    >
-                        <i class="pi pi-chevron-down text-[10px]"></i>
-                    </button>
-                </div>
-
-                <!-- Quick Create Dropdown Menu -->
-                <div
-                    v-if="isQuickCreateOpen"
-                    class="absolute right-0 mt-1 w-48 bg-white border border-surface-200 shadow-xl z-50 py-1.5 divide-y divide-surface-100 animate-in fade-in zoom-in-95 duration-100"
-                >
-                    <div class="py-1">
-                        <Link href="/invoices/create" class="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-[#1c3633] hover:bg-[#f2f6f5]">
-                            <i class="pi pi-receipt text-[#c08f34]"></i>
-                            <span>New Tax Invoice</span>
-                        </Link>
-                        <Link href="/customers" class="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-surface-700 hover:bg-[#f2f6f5]">
-                            <i class="pi pi-user-plus text-surface-500"></i>
-                            <span>Add Customer</span>
-                        </Link>
-                        <Link href="/orders" class="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-surface-700 hover:bg-[#f2f6f5]">
-                            <i class="pi pi-shopping-bag text-surface-500"></i>
-                            <span>New Custom Order</span>
-                        </Link>
-                        <Link href="/expenses" class="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-surface-700 hover:bg-[#f2f6f5]">
-                            <i class="pi pi-wallet text-surface-500"></i>
-                            <span>Record Expense</span>
-                        </Link>
-                    </div>
-                </div>
-            </div>
+            <!-- ➕ New Bill Action (F2) -->
+            <Link
+                href="/invoices/create"
+                class="layout-topbar-utility group"
+                title="Create New Retail Tax Bill (Shortcut: F2)"
+            >
+                <i class="pi pi-plus text-xs text-[#c08f34] group-hover:scale-110 transition-transform font-bold"></i>
+                <span class="hidden sm:inline font-bold text-[#1c3633]">New Bill</span>
+                <kbd class="hidden lg:inline px-1.5 py-0.5 bg-white border border-surface-200 text-[10px] font-mono text-surface-500 font-semibold shadow-xs">F2</kbd>
+            </Link>
 
             <!-- ✨ Karat AI Copilot -->
             <button
