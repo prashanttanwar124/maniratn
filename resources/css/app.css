@@ -5,6 +5,18 @@
 
 @theme {
     --font-sans: 'Poppins', sans-serif;
+    --color-surface-900: #1c3633;
+    --color-surface-950: #142826;
+    --color-surface-800: #234642;
+    --color-surface-700: #345853;
+}
+
+:root {
+    --text-color: #1c3633;
+    --surface-900: #1c3633;
+    --surface-950: #142826;
+    --surface-800: #234642;
+    --surface-700: #345853;
 }
 
 @layer base {
@@ -17,6 +29,7 @@
     }
     body {
         font-family: 'Poppins', sans-serif;
+        color: #1c3633;
         margin: 0;
         padding: 0;
     }
