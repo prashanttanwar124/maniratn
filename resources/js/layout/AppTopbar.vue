@@ -388,9 +388,9 @@ const submitLogout = () => {
                                     <div class="h-7 w-7 bg-[#1c3633]/10 text-[#1c3633] flex items-center justify-center text-xs font-bold flex-shrink-0">
                                         {{ c.name.charAt(0).toUpperCase() }}
                                     </div>
-                                    <div class="min-w-0">
-                                        <p class="text-xs font-bold text-[#1c3633] group-hover:text-[#c08f34] truncate">{{ c.name }}</p>
-                                        <p class="text-[11px] text-surface-500 truncate">{{ c.mobile || c.phone }} {{ c.city ? '• ' + c.city : '' }}</p>
+                                    <div class="min-w-0 flex flex-col justify-center gap-0.5">
+                                        <p class="text-xs font-bold text-[#1c3633] leading-none group-hover:text-[#c08f34] truncate">{{ c.name }}</p>
+                                        <p class="text-[11px] text-surface-500 leading-none truncate">{{ c.mobile || c.phone }} {{ c.city ? '• ' + c.city : '' }}</p>
                                     </div>
                                 </div>
                                 <span class="text-[10px] font-medium text-surface-500 group-hover:text-[#1c3633] flex items-center gap-1">
@@ -421,9 +421,9 @@ const submitLogout = () => {
                                     <div class="h-7 w-7 bg-amber-50 text-amber-800 flex items-center justify-center text-xs font-bold flex-shrink-0 border border-amber-200/60">
                                         <i class="pi pi-receipt text-xs"></i>
                                     </div>
-                                    <div class="min-w-0">
-                                        <p class="text-xs font-bold text-[#1c3633] group-hover:text-[#c08f34] truncate">{{ inv.invoice_number }}</p>
-                                        <p class="text-[11px] text-surface-500 truncate">{{ inv.customer?.name || 'Walk-in' }} • ₹{{ Number(inv.total_amount).toLocaleString('en-IN') }}</p>
+                                    <div class="min-w-0 flex flex-col justify-center gap-0.5">
+                                        <p class="text-xs font-bold text-[#1c3633] leading-none group-hover:text-[#c08f34] truncate">{{ inv.invoice_number }}</p>
+                                        <p class="text-[11px] text-surface-500 leading-none truncate">{{ inv.customer?.name || 'Walk-in' }} • ₹{{ Number(inv.total_amount).toLocaleString('en-IN') }}</p>
                                     </div>
                                 </div>
                                 <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200 flex items-center gap-1">
@@ -452,9 +452,9 @@ const submitLogout = () => {
                                     <div class="h-7 w-7 bg-zinc-100 text-zinc-700 flex items-center justify-center text-xs font-mono font-bold flex-shrink-0 border border-zinc-200">
                                         🏷️
                                     </div>
-                                    <div class="min-w-0">
-                                        <p class="text-xs font-bold text-[#1c3633] group-hover:text-[#c08f34] truncate">{{ p.name }}</p>
-                                        <p class="text-[11px] font-mono text-surface-500 truncate">{{ p.barcode }} • {{ p.gross_weight }}g</p>
+                                    <div class="min-w-0 flex flex-col justify-center gap-0.5">
+                                        <p class="text-xs font-bold text-[#1c3633] leading-none group-hover:text-[#c08f34] truncate">{{ p.name }}</p>
+                                        <p class="text-[11px] font-mono text-surface-500 leading-none truncate">{{ p.barcode }} • {{ p.gross_weight }}g</p>
                                     </div>
                                 </div>
                                 <span class="text-[10px] font-mono font-bold bg-surface-100 px-1.5 py-0.5 border border-surface-200 text-surface-700">{{ p.barcode }}</span>
