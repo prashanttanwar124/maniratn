@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { Bot, Clock, Coins, Mic, MicOff, PackagePlus, Receipt, RefreshCw, Send, Sparkles, TrendingUp, Volume2, VolumeX, Wallet, X } from 'lucide-vue-next';
+import { Bot, Calculator, Clock, Coins, Mic, MicOff, PackagePlus, Receipt, RefreshCw, Send, Sparkles, TrendingUp, Volume2, VolumeX, Wallet, X } from 'lucide-vue-next';
 import Drawer from 'primevue/drawer';
 import Textarea from 'primevue/textarea';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
@@ -758,6 +758,52 @@ onMounted(() => {
                                                     <p class="mt-1 font-mono text-sm font-bold text-surface-900">
                                                         ₹{{ Number(action.result.silver_per_gm || 89.2).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}/g
                                                     </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- 7. Estimate Quotation Card (Sleek Compact Light Luxury) -->
+                                        <div
+                                            v-else-if="action.tool === 'calculate_estimate'"
+                                            class="my-3 overflow-hidden border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
+                                        >
+                                            <div
+                                                class="flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5"
+                                            >
+                                                <div class="flex items-center gap-2.5">
+                                                    <span class="flex h-7 w-7 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                                                        <Calculator class="h-3.5 w-3.5" />
+                                                    </span>
+                                                    <div class="flex flex-col justify-center">
+                                                        <p class="!m-0 !p-0 !text-xs font-semibold tracking-wide text-surface-900 !leading-tight">
+                                                            {{ action.result.item_name ? (action.result.item_name + (action.result.barcode ? ' (' + action.result.barcode + ')' : '')) : 'Price Estimate Quotation' }}
+                                                        </p>
+                                                        <p class="!m-0 !p-0 !text-[10px] font-normal text-surface-500 !leading-tight">
+                                                            {{ action.result.purity || '22K (916 Hallmark)' }} · {{ action.result.weight }}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <span class="inline-flex items-center gap-1 border border-amber-300 bg-amber-50 px-2 py-0.5 text-[9.5px] font-semibold tracking-wide text-amber-900 uppercase">
+                                                    Estimate
+                                                </span>
+                                            </div>
+
+                                            <div class="grid grid-cols-2 divide-x divide-y divide-surface-200 bg-white text-left text-xs min-[460px]:grid-cols-4 min-[460px]:divide-y-0">
+                                                <div class="p-2.5">
+                                                    <span class="block text-[10px] font-medium text-surface-400">Rate / g</span>
+                                                    <span class="font-mono font-semibold text-surface-800">{{ action.result.rate_per_gm }}</span>
+                                                </div>
+                                                <div class="p-2.5">
+                                                    <span class="block text-[10px] font-medium text-surface-400">Metal Value</span>
+                                                    <span class="font-mono font-semibold text-surface-800">{{ action.result.metal_value }}</span>
+                                                </div>
+                                                <div class="p-2.5">
+                                                    <span class="block text-[10px] font-medium text-surface-400">Making</span>
+                                                    <span class="font-mono font-semibold text-surface-800">{{ action.result.making_charges }}</span>
+                                                </div>
+                                                <div class="bg-amber-50/50 p-2.5">
+                                                    <span class="block text-[10px] font-medium text-amber-800">Total (+3% GST)</span>
+                                                    <span class="font-mono text-sm font-bold text-[#9b6f1e]">{{ action.result.total_estimate }}</span>
                                                 </div>
                                             </div>
                                         </div>
