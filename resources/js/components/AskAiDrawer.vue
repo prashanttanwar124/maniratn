@@ -502,12 +502,12 @@ onMounted(() => {
                         </div>
                         <div>
                             <div class="flex items-center gap-2">
-                                <span class="font-bold text-xs tracking-wider text-white uppercase">Karat AI Copilot</span>
+                                <span class="font-bold text-xs tracking-wider !text-white uppercase">Karat AI Copilot</span>
                                 <span class="px-1.5 py-0.2 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[9.5px] font-mono font-semibold rounded-none">
                                     ERP Live
                                 </span>
                             </div>
-                            <p class="text-[10.5px] text-[#c08f34] flex items-center gap-1.5 font-medium">
+                            <p class="text-[10.5px] !text-[#c08f34] flex items-center gap-1.5 font-medium">
                                 <span class="w-1.5 h-1.5 rounded-none bg-emerald-400 animate-ping"></span>
                                 Voice & POS Operations Online
                             </p>
