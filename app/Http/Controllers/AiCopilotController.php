@@ -929,6 +929,42 @@ class AiCopilotController extends Controller
             'is_sold' => false,
         ]);
 
+        $messageId = $request->input('message_id');
+        $setting = BusinessSetting::first();
+        $aiHubUrl = rtrim($setting?->ai_hub_url ?: 'http://127.0.0.1:8001', '/');
+        $apiKey = $setting?->ai_api_key ?: env('MANIRATN_AI_KEY', 'mn_live_d8f4e2a1c90b6732e45a89f0');
+
+        if ($messageId) {
+            try {
+                Http::timeout(3)->withHeaders(['Authorization' => 'Bearer ' . $apiKey])
+                    ->post("{$aiHubUrl}/api/ai/history/update-action", [
+                        'message_id' => $messageId,
+                        'reply' => "Done. {$product->gross_weight}g {$purity->name} {$product->name} stock me save ho gayi, Barcode {$product->barcode}.",
+                        'actions' => [
+                            [
+                                'tool' => 'add_product',
+                                'args' => $request->all(),
+                                'result' => [
+                                    'success' => true,
+                                    'is_preview' => false,
+                                    'product_id' => $product->id,
+                                    'barcode' => $product->barcode,
+                                    'name' => $product->name,
+                                    'metal' => $metal,
+                                    'purity' => $purity->name,
+                                    'weight' => floatval($product->gross_weight),
+                                    'category' => $category->name,
+                                    'making_charge_per_gm' => floatval($makingCharge),
+                                    'status' => 'IN_STOCK_REAL_DB',
+                                ],
+                            ],
+                        ],
+                    ]);
+            } catch (\Throwable $e) {
+                // Ignore background sync errors
+            }
+        }
+
         return response()->json([
             'success' => true,
             'product_id' => $product->id,
@@ -936,9 +972,9 @@ class AiCopilotController extends Controller
             'name' => $product->name,
             'metal' => $metal,
             'purity' => $purity->name,
-            'weight' => $product->gross_weight . ' g',
+            'weight' => floatval($product->gross_weight),
             'category' => $category->name,
-            'making_charge_per_gm' => '₹' . $makingCharge,
+            'making_charge_per_gm' => floatval($makingCharge),
             'message' => "Done! Product '{$product->name}' (Barcode: {$product->barcode}) showroom stock me add ho gaya hai.",
         ]);
     }

@@ -325,7 +325,7 @@ const confirmBillAction = async (action: ActionItem, msgId: string) => {
     const key = `bill_${msgId}`;
     isConfirming.value[key] = true;
     try {
-        const payload = { ...action.result };
+        const payload = { ...action.result, message_id: msgId };
         const res = await axios.post('/api/ai/copilot/confirm-bill', payload);
         if (res.data && res.data.success) {
             action.result = {
@@ -335,6 +335,10 @@ const confirmBillAction = async (action: ActionItem, msgId: string) => {
                 found: true,
                 status: 'INVOICE_GENERATED_REAL_DB',
             };
+            const targetMsg = messages.value.find(m => m.id === msgId);
+            if (targetMsg) {
+                targetMsg.content = `Done! Customer ${res.data.customer_name} ke liye Bill #${res.data.invoice_number} successfully create ho gaya hai.`;
+            }
             if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
                 speakText(`Done! Bill number ${res.data.invoice_number} successfully create ho gaya hai.`);
             }
@@ -350,7 +354,7 @@ const confirmProductAction = async (action: ActionItem, msgId: string) => {
     const key = `prod_${msgId}`;
     isConfirming.value[key] = true;
     try {
-        const payload = { ...action.result };
+        const payload = { ...action.result, message_id: msgId };
         const res = await axios.post('/api/ai/copilot/confirm-product', payload);
         if (res.data && res.data.success) {
             action.result = {
@@ -359,6 +363,10 @@ const confirmProductAction = async (action: ActionItem, msgId: string) => {
                 is_preview: false,
                 status: 'IN_STOCK_REAL_DB',
             };
+            const targetMsg = messages.value.find(m => m.id === msgId);
+            if (targetMsg) {
+                targetMsg.content = `Done! Product stock me save ho gayi, Barcode ${res.data.barcode}.`;
+            }
             if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
                 speakText(`Done! Product stock me save ho gayi, Barcode ${res.data.barcode}.`);
             }
@@ -374,7 +382,7 @@ const confirmRatesAction = async (action: ActionItem, msgId: string) => {
     const key = `rates_${msgId}`;
     isConfirming.value[key] = true;
     try {
-        const payload = { ...action.result };
+        const payload = { ...action.result, message_id: msgId };
         const res = await axios.post('/api/ai/copilot/confirm-rates', payload);
         if (res.data && res.data.success) {
             action.result = {
@@ -383,6 +391,10 @@ const confirmRatesAction = async (action: ActionItem, msgId: string) => {
                 is_preview: false,
                 status: 'UPDATED_IN_DATABASE',
             };
+            const targetMsg = messages.value.find(m => m.id === msgId);
+            if (targetMsg) {
+                targetMsg.content = `Done! Aaj ke live rates database me update ho gaye.`;
+            }
             if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
                 speakText(`Done! Aaj ke live rates update ho gaye.`);
             }
@@ -394,9 +406,15 @@ const confirmRatesAction = async (action: ActionItem, msgId: string) => {
     }
 };
 
-const discardAction = (action: ActionItem) => {
+const discardAction = (action: ActionItem, msgId?: string) => {
     action.result.is_preview = false;
     action.result.is_discarded = true;
+    if (msgId) {
+        const targetMsg = messages.value.find(m => m.id === msgId);
+        if (targetMsg) {
+            targetMsg.content = 'Action draft discard kar diya gaya.';
+        }
+    }
 };
 
 const fetchChatHistory = async (isLoadMore = false) => {
@@ -839,7 +857,7 @@ onMounted(() => {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    @click="discardAction(action)"
+                                                    @click="discardAction(action, msg.id)"
                                                     class="px-3.5 py-2.5 bg-white border border-surface-300 text-surface-700 hover:text-red-700 hover:border-red-300 text-xs font-semibold transition-all"
                                                 >
                                                     Discard
@@ -847,18 +865,21 @@ onMounted(() => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div v-else class="p-3.5 bg-[#fcfaf6] border-t border-[#e8dfcf] space-y-2">
+                                    <div v-else-if="!action.result.is_discarded" class="p-3.5 bg-[#fcfaf6] border-t border-[#e8dfcf] space-y-2">
                                         <div class="flex items-center justify-between">
                                             <span class="font-bold text-xs text-[#1c3633]">{{ action.result.name }}</span>
-                                            <span class="font-mono text-xs px-2.5 py-0.5 bg-[#1c3633] text-[#c08f34] font-bold tracking-widest">
+                                            <span class="font-mono text-xs px-2.5 py-0.5 bg-[#1c3633] text-[#c08f34] font-bold tracking-widest rounded-xs">
                                                 {{ action.result.barcode }}
                                             </span>
                                         </div>
                                         <div class="grid grid-cols-3 gap-2 text-[11px] text-surface-600 pt-1 border-t border-surface-200">
-                                            <div>Weight: <strong class="text-[#1c3633]">{{ action.result.weight }}g</strong></div>
+                                            <div>Weight: <strong class="text-[#1c3633]">{{ formatWeight(action.result.weight) }}</strong></div>
                                             <div>Purity: <strong class="text-[#1c3633]">{{ action.result.purity }}</strong></div>
-                                            <div>Making: <strong class="text-[#1c3633]">₹{{ action.result.making_charge_per_gm }}/g</strong></div>
+                                            <div>Making: <strong class="text-[#1c3633]">₹{{ formatMoney(action.result.making_charge_per_gm) }}/g</strong></div>
                                         </div>
+                                    </div>
+                                    <div v-else class="p-2 bg-slate-100 text-slate-500 text-xs italic text-center rounded">
+                                        Product draft was discarded.
                                     </div>
                                 </div>
 
