@@ -260,8 +260,9 @@ const sendMessage = async (customText?: string) => {
 const isConfirming = ref<Record<string, boolean>>({});
 
 const calculateLiveBill = (draft: any) => {
-    const weight = parseFloat(draft.weight || 0);
-    const rate = parseFloat(draft.rate_per_gm || 0);
+    const weight = Math.round(parseFloat(draft.weight || 0) * 1000) / 1000;
+    const rate = Math.round(parseFloat(draft.rate_per_gm || 0) * 100) / 100;
+    draft.rate_per_gm = rate;
     const metalVal = Math.round(weight * rate * 100) / 100;
     draft.metal_value = metalVal;
 
@@ -889,398 +890,310 @@ onMounted(() => {
                                     </div>
                                 </div>
 
-                                <!-- 5. 💎 LUXURY INVOICE DRAFT & CONFIRMATION (HUMAN-IN-THE-LOOP) -->
+                                <!-- 5. 💎 INVOICE DRAFT & CONFIRMATION (COMPACT & HIGH CONTRAST) -->
                                 <div v-if="action.tool === 'create_bill' || action.tool === 'create_invoice'">
                                     <!-- Error State -->
-                                    <div v-if="action.result.found === false" class="p-3.5 bg-red-50 border-l-4 border-l-red-500 text-xs text-red-900 space-y-1">
-                                        <p class="font-bold flex items-center gap-1.5 text-red-800">
-                                            <AlertCircle class="w-4 h-4 text-red-600" />
-                                            {{ action.result.message || 'Bill generate nahi ho paya.' }}
-                                        </p>
-                                        <p class="text-[11px] text-surface-600">Kripya customer details ya valid unsold barcode batayein.</p>
+                                    <div v-if="action.result.found === false" class="p-3 bg-red-50 border border-red-200 text-xs text-red-900 flex items-center gap-2">
+                                        <AlertCircle class="w-4 h-4 text-red-600 shrink-0" />
+                                        <p class="font-bold text-red-800">{{ action.result.message || 'Bill generate nahi ho paya.' }}</p>
                                     </div>
 
-                                    <!-- 📝 HUMAN-IN-THE-LOOP: LUXURY DRAFT PREVIEW FORM -->
-                                    <div v-else-if="action.result.is_preview" class="space-y-0">
-                                        <!-- Header Bar -->
-                                        <div class="px-3.5 py-2.5 bg-gradient-to-r from-[#142926] via-[#1c3633] to-[#142926] text-white flex items-center justify-between border-b-2 border-b-[#c08f34]">
+                                    <!-- 📝 COMPACT HUMAN-IN-THE-LOOP INVOICE DRAFT -->
+                                    <div v-else-if="action.result.is_preview" class="p-3 bg-white space-y-2.5">
+                                        <!-- Header -->
+                                        <div class="flex items-center justify-between pb-2 border-b border-slate-200">
                                             <div class="flex items-center gap-2">
-                                                <div class="w-6 h-6 rounded bg-[#c08f34]/20 border border-[#c08f34]/40 text-[#c08f34] flex items-center justify-center font-bold">
+                                                <div class="w-6 h-6 rounded bg-[#1c3633] text-[#c08f34] flex items-center justify-center font-bold">
                                                     <Receipt class="w-3.5 h-3.5" />
                                                 </div>
                                                 <div>
-                                                    <div class="font-bold text-xs tracking-wide text-white font-serif">Invoice Draft Preview</div>
-                                                    <div class="text-[10px] text-[#c08f34]">Live Calculation • Verify & Edit Before DB Commit</div>
+                                                    <div class="font-bold text-xs text-slate-900">Invoice Draft Preview</div>
+                                                    <div class="text-[10px] text-slate-500">Live Calculation • Verify & Edit Before Saving</div>
                                                 </div>
                                             </div>
-                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-200 text-[10px] font-bold tracking-wide">
-                                                <ShieldCheck class="w-3 h-3" />
-                                                <span>Review Draft</span>
+                                            <span class="px-2 py-0.5 rounded bg-amber-50 border border-amber-300 text-amber-900 text-[10px] font-bold">
+                                                Review Required
                                             </span>
                                         </div>
 
-                                        <!-- Interactive Form Body -->
-                                        <div class="p-3.5 bg-surface-50/60 space-y-3 text-xs">
-                                            <!-- Section 1: Customer Info -->
-                                            <div class="bg-white p-2.5 border border-surface-200/90 shadow-2xs space-y-2">
-                                                <div class="text-[10px] font-bold text-surface-500 uppercase tracking-wider flex items-center gap-1">
-                                                    <User class="w-3 h-3 text-[#c08f34]" />
-                                                    Customer Information
+                                        <!-- 2-Column Compact Input Grid -->
+                                        <div class="grid grid-cols-2 gap-2 text-xs">
+                                            <!-- Row 1: Customer & Phone -->
+                                            <div>
+                                                <label class="text-[11px] font-bold text-slate-700">Customer Name *</label>
+                                                <input
+                                                    v-model="action.result.customer_name"
+                                                    type="text"
+                                                    placeholder="Customer Name"
+                                                    class="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-slate-300 text-xs font-semibold text-slate-900 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label class="text-[11px] font-bold text-slate-700">Mobile Number</label>
+                                                <input
+                                                    v-model="action.result.customer_phone"
+                                                    type="text"
+                                                    placeholder="Phone Number"
+                                                    class="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-slate-300 text-xs font-mono font-medium text-slate-900 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                />
+                                            </div>
+
+                                            <!-- Row 2: Item Description & Barcode -->
+                                            <div>
+                                                <label class="text-[11px] font-bold text-slate-700">Item Description *</label>
+                                                <input
+                                                    v-model="action.result.item_name"
+                                                    type="text"
+                                                    class="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-slate-300 text-xs font-semibold text-slate-900 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label class="text-[11px] font-bold text-slate-700">Stock Barcode</label>
+                                                <input
+                                                    v-model="action.result.barcode"
+                                                    type="text"
+                                                    placeholder="e.g. G00026"
+                                                    class="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-slate-300 text-xs font-mono font-bold uppercase text-slate-900 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                />
+                                            </div>
+
+                                            <!-- Row 3: Weight & Live Rate -->
+                                            <div>
+                                                <label class="text-[11px] font-bold text-slate-700">Net Weight (g) *</label>
+                                                <div class="relative mt-0.5">
+                                                    <input
+                                                        v-model.number="action.result.weight"
+                                                        type="number"
+                                                        step="0.001"
+                                                        @input="calculateLiveBill(action.result)"
+                                                        class="w-full pl-2.5 pr-6 py-1.5 bg-white border border-slate-300 text-xs font-bold text-slate-900 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                    />
+                                                    <span class="absolute right-2 top-1.5 text-[10px] font-bold text-slate-400">g</span>
                                                 </div>
-                                                <div class="grid grid-cols-2 gap-2">
-                                                    <div>
-                                                        <label class="text-[10.5px] font-medium text-surface-700">Customer Name *</label>
-                                                        <input
-                                                            v-model="action.result.customer_name"
-                                                            type="text"
-                                                            placeholder="Customer Name"
-                                                            class="w-full mt-0.5 px-2 py-1.5 bg-surface-50/80 border border-surface-300 text-xs font-semibold text-surface-900 focus:bg-white focus:border-[#c08f34] focus:ring-1 focus:ring-[#c08f34]/30"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label class="text-[10.5px] font-medium text-surface-700">Mobile Number</label>
-                                                        <input
-                                                            v-model="action.result.customer_phone"
-                                                            type="text"
-                                                            placeholder="10-digit Phone"
-                                                            class="w-full mt-0.5 px-2 py-1.5 bg-surface-50/80 border border-surface-300 text-xs font-mono text-surface-900 focus:bg-white focus:border-[#c08f34] focus:ring-1 focus:ring-[#c08f34]/30"
-                                                        />
-                                                    </div>
+                                            </div>
+                                            <div>
+                                                <label class="text-[11px] font-bold text-slate-700">Live Rate (₹/g) *</label>
+                                                <div class="relative mt-0.5">
+                                                    <span class="absolute left-2.5 top-1.5 text-xs font-bold text-slate-500">₹</span>
+                                                    <input
+                                                        v-model.number="action.result.rate_per_gm"
+                                                        type="number"
+                                                        step="1"
+                                                        @input="calculateLiveBill(action.result)"
+                                                        class="w-full pl-6 pr-2 py-1.5 bg-white border border-slate-300 text-xs font-bold text-slate-900 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                    />
                                                 </div>
                                             </div>
 
-                                            <!-- Section 2: Ornament & Weight -->
-                                            <div class="bg-white p-2.5 border border-surface-200/90 shadow-2xs space-y-2">
-                                                <div class="text-[10px] font-bold text-surface-500 uppercase tracking-wider flex items-center gap-1">
-                                                    <Tag class="w-3 h-3 text-[#c08f34]" />
-                                                    Ornament & Metal Specs
-                                                </div>
-                                                <div class="grid grid-cols-2 gap-2">
-                                                    <div>
-                                                        <label class="text-[10.5px] font-medium text-surface-700">Item Description *</label>
-                                                        <input
-                                                            v-model="action.result.item_name"
-                                                            type="text"
-                                                            class="w-full mt-0.5 px-2 py-1.5 bg-surface-50/80 border border-surface-300 text-xs font-semibold text-surface-900 focus:bg-white focus:border-[#c08f34] focus:ring-1 focus:ring-[#c08f34]/30"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label class="text-[10.5px] font-medium text-surface-700">Stock Barcode</label>
-                                                        <input
-                                                            v-model="action.result.barcode"
-                                                            type="text"
-                                                            placeholder="e.g. G00021"
-                                                            class="w-full mt-0.5 px-2 py-1.5 bg-surface-50/80 border border-surface-300 text-xs font-mono font-bold uppercase text-[#1c3633] focus:bg-white focus:border-[#c08f34] focus:ring-1 focus:ring-[#c08f34]/30"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label class="text-[10.5px] font-medium text-surface-700">Net Weight *</label>
-                                                        <div class="relative mt-0.5">
-                                                            <input
-                                                                v-model.number="action.result.weight"
-                                                                type="number"
-                                                                step="0.001"
-                                                                @input="calculateLiveBill(action.result)"
-                                                                class="w-full pl-2 pr-7 py-1.5 bg-surface-50/80 border border-surface-300 text-xs font-bold text-[#1c3633] focus:bg-white focus:border-[#c08f34] focus:ring-1 focus:ring-[#c08f34]/30"
-                                                            />
-                                                            <span class="absolute right-2 top-1.5 text-[10.5px] font-bold text-surface-400">g</span>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <label class="text-[10.5px] font-medium text-surface-700">Purity</label>
-                                                        <div class="flex gap-1 mt-0.5">
-                                                            <button
-                                                                v-for="p in ['22K', '18K', '24K', 'Silver']"
-                                                                :key="p"
-                                                                type="button"
-                                                                @click="setPurity(action.result, p)"
-                                                                :class="[
-                                                                    'flex-1 py-1 text-[10.5px] font-bold border transition-all',
-                                                                    action.result.purity === p
-                                                                        ? 'bg-[#1c3633] text-[#c08f34] border-[#1c3633]'
-                                                                        : 'bg-surface-50 text-surface-600 border-surface-300 hover:bg-surface-100'
-                                                                ]"
-                                                            >
-                                                                {{ p }}
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Section 3: Live Rate & Making Charges (Segmented Controls) -->
-                                            <div class="bg-white p-2.5 border border-surface-200/90 shadow-2xs space-y-2">
-                                                <div class="text-[10px] font-bold text-surface-500 uppercase tracking-wider flex items-center gap-1">
-                                                    <Coins class="w-3 h-3 text-[#c08f34]" />
-                                                    Pricing & Making Charges
-                                                </div>
-                                                <div class="grid grid-cols-2 gap-2">
-                                                    <div>
-                                                        <label class="text-[10.5px] font-medium text-surface-700">Live Rate (₹/g) *</label>
-                                                        <div class="relative mt-0.5">
-                                                            <span class="absolute left-2 top-1.5 text-xs font-bold text-[#c08f34]">₹</span>
-                                                            <input
-                                                                v-model.number="action.result.rate_per_gm"
-                                                                type="number"
-                                                                step="1"
-                                                                @input="calculateLiveBill(action.result)"
-                                                                class="w-full pl-6 pr-2 py-1.5 bg-surface-50/80 border border-surface-300 text-xs font-bold text-surface-900 focus:bg-white focus:border-[#c08f34] focus:ring-1 focus:ring-[#c08f34]/30"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <label class="text-[10.5px] font-medium text-surface-700">Discount Amount (₹)</label>
-                                                        <div class="relative mt-0.5">
-                                                            <span class="absolute left-2 top-1.5 text-xs font-bold text-emerald-700">₹</span>
-                                                            <input
-                                                                v-model.number="action.result.discount_amount"
-                                                                type="number"
-                                                                step="1"
-                                                                @input="calculateLiveBill(action.result)"
-                                                                class="w-full pl-6 pr-2 py-1.5 bg-surface-50/80 border border-surface-300 text-xs font-bold text-emerald-800 focus:bg-white focus:border-[#c08f34] focus:ring-1 focus:ring-[#c08f34]/30"
-                                                            />
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Making Charge Segmented Switcher -->
-                                                    <div class="col-span-2 space-y-1.5 pt-1 border-t border-surface-100">
-                                                        <label class="text-[10.5px] font-medium text-surface-700">Making Charge Calculation Method</label>
-                                                        <div class="grid grid-cols-3 gap-1.5">
-                                                            <button
-                                                                type="button"
-                                                                @click="setMakingType(action.result, 'percentage')"
-                                                                :class="[
-                                                                    'py-1.5 px-2 text-[11px] font-bold border transition-all flex items-center justify-center gap-1',
-                                                                    action.result.making_type === 'percentage'
-                                                                        ? 'bg-[#1c3633] text-white border-[#1c3633] shadow-xs'
-                                                                        : 'bg-surface-50 text-surface-600 border-surface-300 hover:bg-surface-100'
-                                                                ]"
-                                                            >
-                                                                <Percent class="w-3 h-3 text-[#c08f34]" />
-                                                                <span>% Percentage</span>
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                @click="setMakingType(action.result, 'per_gram')"
-                                                                :class="[
-                                                                    'py-1.5 px-2 text-[11px] font-bold border transition-all flex items-center justify-center gap-1',
-                                                                    action.result.making_type === 'per_gram'
-                                                                        ? 'bg-[#1c3633] text-white border-[#1c3633] shadow-xs'
-                                                                        : 'bg-surface-50 text-surface-600 border-surface-300 hover:bg-surface-100'
-                                                                ]"
-                                                            >
-                                                                <span>₹/g Per Gram</span>
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                @click="setMakingType(action.result, 'flat')"
-                                                                :class="[
-                                                                    'py-1.5 px-2 text-[11px] font-bold border transition-all flex items-center justify-center gap-1',
-                                                                    action.result.making_type === 'flat'
-                                                                        ? 'bg-[#1c3633] text-white border-[#1c3633] shadow-xs'
-                                                                        : 'bg-surface-50 text-surface-600 border-surface-300 hover:bg-surface-100'
-                                                                ]"
-                                                            >
-                                                                <span>₹ Flat Amount</span>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="col-span-2">
-                                                        <label class="text-[10.5px] font-medium text-surface-700">
-                                                            Making Value
-                                                            <span class="text-surface-400">
-                                                                ({{ action.result.making_type === 'percentage' ? '% on metal' : (action.result.making_type === 'per_gram' ? '₹ per gram' : 'flat ₹') }})
-                                                            </span>
-                                                        </label>
-                                                        <div class="relative mt-0.5">
-                                                            <input
-                                                                v-model.number="action.result.making_value"
-                                                                type="number"
-                                                                step="0.1"
-                                                                @input="calculateLiveBill(action.result)"
-                                                                class="w-full px-2 py-1.5 bg-surface-50/80 border border-surface-300 text-xs font-bold text-[#1c3633] focus:bg-white focus:border-[#c08f34] focus:ring-1 focus:ring-[#c08f34]/30"
-                                                            />
-                                                            <span class="absolute right-2 top-1.5 text-[10.5px] font-bold text-[#c08f34]">
-                                                                = ₹{{ Number(action.result.making_charges || 0).toLocaleString('en-IN') }}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Section 4: Settlement & Payment Mode Pills -->
-                                            <div class="bg-white p-2.5 border border-surface-200/90 shadow-2xs space-y-2">
-                                                <div class="text-[10px] font-bold text-surface-500 uppercase tracking-wider flex items-center gap-1">
-                                                    <CreditCard class="w-3 h-3 text-[#c08f34]" />
-                                                    Settlement & Payment Method
-                                                </div>
-                                                <div class="flex flex-wrap gap-1">
+                                            <!-- Row 4: Purity Chips -->
+                                            <div class="col-span-2">
+                                                <label class="text-[11px] font-bold text-slate-700">Purity</label>
+                                                <div class="flex gap-1.5 mt-0.5">
                                                     <button
-                                                        v-for="mode in [
-                                                            { id: 'CASH', label: '💵 Cash' },
-                                                            { id: 'UPI', label: '📱 UPI' },
-                                                            { id: 'CARD', label: '💳 Card' },
-                                                            { id: 'BANK_TRANSFER', label: '🏦 Bank' },
-                                                            { id: 'UNPAID', label: '⏳ Credit' }
-                                                        ]"
-                                                        :key="mode.id"
+                                                        v-for="p in ['22K', '18K', '24K', '14K', 'Silver']"
+                                                        :key="p"
                                                         type="button"
-                                                        @click="setPaymentMode(action.result, mode.id)"
+                                                        @click="setPurity(action.result, p)"
                                                         :class="[
-                                                            'flex-1 min-w-[55px] py-1.5 px-2 text-[10.5px] font-bold border transition-all text-center',
-                                                            action.result.payment_mode === mode.id
-                                                                ? 'bg-[#1c3633] text-[#c08f34] border-[#1c3633] shadow-xs'
-                                                                : 'bg-surface-50 text-surface-600 border-surface-300 hover:bg-surface-100'
+                                                            'flex-1 py-1 text-[11px] font-bold border rounded transition-all',
+                                                            action.result.purity === p
+                                                                ? 'bg-slate-900 text-amber-400 border-slate-900 shadow-xs'
+                                                                : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                                                         ]"
                                                     >
-                                                        {{ mode.label }}
+                                                        {{ p }}
                                                     </button>
                                                 </div>
                                             </div>
 
-                                            <!-- 🧾 LUXURY TAX INVOICE BREAKDOWN TICKET -->
-                                            <div class="bg-gradient-to-b from-[#fcfaf6] to-[#f6f2ea] border border-[#e5dcce] p-3 space-y-2 shadow-xs">
-                                                <div class="text-[10px] font-bold text-[#1c3633] uppercase tracking-wider flex items-center justify-between border-b border-[#e8dfcf] pb-1.5">
-                                                    <span class="font-serif">Invoice Calculation Summary</span>
-                                                    <span class="text-[10px] text-surface-500 font-normal">GSTIN Tax Invoice</span>
-                                                </div>
-
-                                                <div class="space-y-1 text-xs">
-                                                    <div class="flex justify-between text-surface-600">
-                                                        <span>Metal Value ({{ action.result.weight || 0 }}g @ ₹{{ action.result.rate_per_gm || 0 }})</span>
-                                                        <span class="font-semibold text-surface-900">₹{{ Number(action.result.metal_value || 0).toLocaleString('en-IN') }}</span>
-                                                    </div>
-                                                    <div class="flex justify-between text-surface-600">
-                                                        <span>Making Charges ({{ action.result.making_type === 'percentage' ? (action.result.making_value || 12) + '%' : (action.result.making_type === 'per_gram' ? '₹' + action.result.making_value + '/g' : 'Flat') }})</span>
-                                                        <span class="font-semibold text-surface-900">+ ₹{{ Number(action.result.making_charges || 0).toLocaleString('en-IN') }}</span>
-                                                    </div>
-                                                    <div v-if="action.result.discount_amount > 0" class="flex justify-between text-emerald-700">
-                                                        <span>Special Discount</span>
-                                                        <span class="font-semibold">- ₹{{ Number(action.result.discount_amount || 0).toLocaleString('en-IN') }}</span>
-                                                    </div>
-                                                    <div class="flex justify-between text-surface-600 pt-1 border-t border-[#e8dfcf]">
-                                                        <span>Taxable Subtotal</span>
-                                                        <span class="font-semibold text-surface-900">₹{{ Number(action.result.subtotal || 0).toLocaleString('en-IN') }}</span>
-                                                    </div>
-                                                    <div class="flex justify-between text-surface-600">
-                                                        <span>GST Tax (3% CGST+SGST)</span>
-                                                        <span class="font-semibold text-surface-900">+ ₹{{ Number(action.result.gst_3_percent || 0).toLocaleString('en-IN') }}</span>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Grand Total Payable Bar -->
-                                                <div class="p-2.5 bg-[#1c3633] text-white flex items-center justify-between border-l-4 border-l-[#c08f34]">
-                                                    <div>
-                                                        <div class="text-[9.5px] uppercase tracking-wider text-white/70">Grand Total (Net Payable)</div>
-                                                        <div class="text-base font-bold font-serif text-[#c08f34]">
-                                                            ₹{{ Number(action.result.grand_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}
-                                                        </div>
-                                                    </div>
-                                                    <span class="px-2 py-0.5 bg-white/10 border border-[#c08f34]/40 text-[#c08f34] text-[11px] font-bold font-mono">
-                                                        {{ action.result.payment_mode }}
+                                            <!-- Row 5: Making Charge Method & Value -->
+                                            <div class="col-span-2 space-y-1 pt-1 border-t border-slate-100">
+                                                <div class="flex items-center justify-between">
+                                                    <label class="text-[11px] font-bold text-slate-700">Making Charge</label>
+                                                    <span class="text-[11px] font-bold text-slate-800">
+                                                        = ₹{{ Number(action.result.making_charges || 0).toLocaleString('en-IN') }}
                                                     </span>
                                                 </div>
+                                                <div class="grid grid-cols-3 gap-1">
+                                                    <button
+                                                        type="button"
+                                                        @click="setMakingType(action.result, 'percentage')"
+                                                        :class="[
+                                                            'py-1 text-[10.5px] font-bold border rounded transition-all text-center',
+                                                            action.result.making_type === 'percentage'
+                                                                ? 'bg-slate-900 text-white border-slate-900'
+                                                                : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                                                        ]"
+                                                    >
+                                                        % Percent
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        @click="setMakingType(action.result, 'per_gram')"
+                                                        :class="[
+                                                            'py-1 text-[10.5px] font-bold border rounded transition-all text-center',
+                                                            action.result.making_type === 'per_gram'
+                                                                ? 'bg-slate-900 text-white border-slate-900'
+                                                                : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                                                        ]"
+                                                    >
+                                                        ₹/g Per Gram
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        @click="setMakingType(action.result, 'flat')"
+                                                        :class="[
+                                                            'py-1 text-[10.5px] font-bold border rounded transition-all text-center',
+                                                            action.result.making_type === 'flat'
+                                                                ? 'bg-slate-900 text-white border-slate-900'
+                                                                : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                                                        ]"
+                                                    >
+                                                        ₹ Flat
+                                                    </button>
+                                                </div>
+                                                <div class="grid grid-cols-2 gap-2 pt-1">
+                                                    <div>
+                                                        <label class="text-[10px] text-slate-600">
+                                                            Value {{ action.result.making_type === 'percentage' ? '(%)' : '(₹)' }}
+                                                        </label>
+                                                        <input
+                                                            v-model.number="action.result.making_value"
+                                                            type="number"
+                                                            step="0.1"
+                                                            @input="calculateLiveBill(action.result)"
+                                                            class="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-slate-300 text-xs font-bold text-slate-900 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label class="text-[10px] text-slate-600">Discount (₹)</label>
+                                                        <input
+                                                            v-model.number="action.result.discount_amount"
+                                                            type="number"
+                                                            step="1"
+                                                            @input="calculateLiveBill(action.result)"
+                                                            class="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-slate-300 text-xs font-bold text-emerald-800 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                        />
+                                                    </div>
+                                                </div>
                                             </div>
 
-                                            <!-- 🚀 Action CTAs -->
-                                            <div class="flex items-center gap-2 pt-1">
-                                                <button
-                                                    type="button"
-                                                    :disabled="isConfirming[`bill_${msg.id}`]"
-                                                    @click="confirmBillAction(action, msg.id)"
-                                                    class="flex-1 py-3 bg-gradient-to-r from-emerald-700 via-emerald-800 to-emerald-700 hover:from-emerald-600 hover:to-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-50 active:scale-[0.99] cursor-pointer"
-                                                >
-                                                    <CheckCircle2 class="w-4 h-4 text-emerald-200" />
-                                                    <span>{{ isConfirming[`bill_${msg.id}`] ? 'Creating Invoice in Database...' : 'Confirm & Create Invoice in Database' }}</span>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    @click="discardAction(action)"
-                                                    class="px-3.5 py-3 bg-white border border-surface-300 text-surface-700 hover:text-red-700 hover:border-red-300 text-xs font-semibold transition-all cursor-pointer"
-                                                >
-                                                    Discard
-                                                </button>
+                                            <!-- Row 6: Payment Method -->
+                                            <div class="col-span-2 pt-1 border-t border-slate-100">
+                                                <label class="text-[11px] font-bold text-slate-700">Payment Mode</label>
+                                                <div class="flex gap-1 mt-0.5">
+                                                    <button
+                                                        v-for="m in [
+                                                            { id: 'CASH', label: 'Cash' },
+                                                            { id: 'UPI', label: 'UPI' },
+                                                            { id: 'CARD', label: 'Card' },
+                                                            { id: 'BANK_TRANSFER', label: 'Bank' },
+                                                            { id: 'UNPAID', label: 'Credit' }
+                                                        ]"
+                                                        :key="m.id"
+                                                        type="button"
+                                                        @click="setPaymentMode(action.result, m.id)"
+                                                        :class="[
+                                                            'flex-1 py-1 text-[10.5px] font-bold border rounded transition-all text-center',
+                                                            action.result.payment_mode === m.id
+                                                                ? 'bg-slate-900 text-amber-400 border-slate-900'
+                                                                : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                                                        ]"
+                                                    >
+                                                        {{ m.label }}
+                                                    </button>
+                                                </div>
                                             </div>
+                                        </div>
+
+                                        <!-- Compact Calculation Summary Table -->
+                                        <div class="bg-slate-50 border border-slate-200 rounded p-2.5 space-y-1 text-xs">
+                                            <div class="flex justify-between text-slate-700 text-[11px]">
+                                                <span>Metal Value ({{ action.result.weight || 0 }}g @ ₹{{ Number(action.result.rate_per_gm || 0).toLocaleString('en-IN') }})</span>
+                                                <span class="font-bold text-slate-900">₹{{ Number(action.result.metal_value || 0).toLocaleString('en-IN') }}</span>
+                                            </div>
+                                            <div class="flex justify-between text-slate-700 text-[11px]">
+                                                <span>Making Charges</span>
+                                                <span class="font-bold text-slate-900">+ ₹{{ Number(action.result.making_charges || 0).toLocaleString('en-IN') }}</span>
+                                            </div>
+                                            <div v-if="action.result.discount_amount > 0" class="flex justify-between text-emerald-800 text-[11px]">
+                                                <span>Discount</span>
+                                                <span class="font-bold">- ₹{{ Number(action.result.discount_amount || 0).toLocaleString('en-IN') }}</span>
+                                            </div>
+                                            <div class="flex justify-between text-slate-700 text-[11px]">
+                                                <span>3% GST</span>
+                                                <span class="font-bold text-slate-900">+ ₹{{ Number(action.result.gst_3_percent || 0).toLocaleString('en-IN') }}</span>
+                                            </div>
+                                            <div class="flex justify-between items-center pt-2 border-t border-slate-200">
+                                                <span class="font-bold text-slate-800 text-xs uppercase tracking-wide">Grand Total</span>
+                                                <span class="text-base font-bold font-serif text-emerald-800">
+                                                    ₹{{ Number(action.result.grand_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Action Buttons -->
+                                        <div class="flex items-center gap-2 pt-1">
+                                            <button
+                                                type="button"
+                                                :disabled="isConfirming[`bill_${msg.id}`]"
+                                                @click="confirmBillAction(action, msg.id)"
+                                                class="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded flex items-center justify-center gap-1.5 shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                                            >
+                                                <CheckCircle2 class="w-4 h-4 text-emerald-200" />
+                                                <span>{{ isConfirming[`bill_${msg.id}`] ? 'Creating Invoice...' : 'Confirm & Create Invoice in Database' }}</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                @click="discardAction(action)"
+                                                class="px-3.5 py-2.5 bg-white border border-slate-300 text-slate-700 hover:text-red-700 hover:border-red-300 text-xs font-semibold rounded transition-all cursor-pointer"
+                                            >
+                                                Discard
+                                            </button>
                                         </div>
                                     </div>
 
                                     <!-- ✅ CONFIRMED FINAL REAL INVOICE VOUCHER (Post-Confirmation) -->
-                                    <div v-else-if="!action.result.is_discarded" class="space-y-0">
-                                        <!-- Invoice Meta Banner -->
-                                        <div class="p-3 bg-emerald-700 text-white flex items-center justify-between border-b-2 border-b-[#c08f34]">
-                                            <div class="flex items-center gap-2.5">
-                                                <div class="w-8 h-8 bg-white/15 border border-white/30 text-white flex items-center justify-center font-bold">
-                                                    <Receipt class="w-4 h-4 text-emerald-200" />
-                                                </div>
+                                    <div v-else-if="!action.result.is_discarded" class="p-3 bg-white space-y-2.5">
+                                        <div class="p-2.5 bg-emerald-700 text-white rounded flex items-center justify-between">
+                                            <div class="flex items-center gap-2">
+                                                <Receipt class="w-4 h-4 text-emerald-200" />
                                                 <div>
-                                                    <div class="font-bold text-xs font-mono tracking-wide text-white">{{ action.result.invoice_number }}</div>
-                                                    <div class="text-[10.5px] text-emerald-100">
-                                                        Customer: <strong>{{ action.result.customer_name }}</strong> ({{ action.result.customer_phone || 'Walk-in' }})
-                                                    </div>
+                                                    <div class="font-bold text-xs font-mono">{{ action.result.invoice_number }}</div>
+                                                    <div class="text-[10px] text-emerald-100">{{ action.result.customer_name }}</div>
                                                 </div>
                                             </div>
-                                            <span class="px-2.5 py-1 bg-white text-emerald-800 text-[10px] font-bold uppercase tracking-wider shadow-xs">
-                                                Bill Created
+                                            <span class="text-xs font-bold font-serif text-amber-200">
+                                                ₹{{ Number(action.result.grand_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}
                                             </span>
                                         </div>
 
-                                        <!-- Item Breakdown Grid -->
-                                        <div class="p-3 bg-[#fcfaf6] space-y-2.5 text-xs border-b border-[#e8dfcf]">
-                                            <div class="grid grid-cols-2 gap-2 text-[11px]">
-                                                <div>
-                                                    <span class="text-surface-500 text-[10px]">Item & Purity</span>
-                                                    <p class="font-semibold text-surface-900">{{ action.result.item_name }} ({{ action.result.purity }})</p>
-                                                </div>
-                                                <div>
-                                                    <span class="text-surface-500 text-[10px]">Weight & Live Rate</span>
-                                                    <p class="font-semibold text-surface-900">{{ action.result.weight }}g @ ₹{{ Number(action.result.rate_per_gm || 0).toLocaleString('en-IN') }}/g</p>
-                                                </div>
-                                                <div>
-                                                    <span class="text-surface-500 text-[10px]">Metal Value</span>
-                                                    <p class="font-semibold text-surface-900">₹{{ Number(action.result.metal_value || 0).toLocaleString('en-IN') }}</p>
-                                                </div>
-                                                <div>
-                                                    <span class="text-surface-500 text-[10px]">Making Charges</span>
-                                                    <p class="font-semibold text-surface-900">₹{{ Number(action.result.making_charges || 0).toLocaleString('en-IN') }}</p>
-                                                </div>
-                                            </div>
-
-                                            <!-- Grand Total Bar -->
-                                            <div class="p-2.5 bg-[#1c3633] text-white flex items-center justify-between border-l-4 border-l-[#c08f34]">
-                                                <div>
-                                                    <span class="text-[9.5px] uppercase tracking-wider text-white/70">Grand Total (Inc. 3% GST)</span>
-                                                    <div class="text-base font-bold font-serif text-[#c08f34]">
-                                                        ₹{{ Number(action.result.grand_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}
-                                                    </div>
-                                                </div>
-                                                <span class="px-2 py-0.5 bg-white/10 border border-[#c08f34]/40 text-[#c08f34] text-[11px] font-mono font-bold">
-                                                    Paid via {{ action.result.payment_mode }}
-                                                </span>
-                                            </div>
-
-                                            <!-- Action Buttons: View Invoice & Print Bill PDF -->
-                                            <div class="flex items-center gap-2 pt-1">
-                                                <a
-                                                    :href="action.result.view_url"
-                                                    target="_blank"
-                                                    class="flex-1 py-2 bg-white border border-surface-300 hover:border-[#1c3633] text-[#1c3633] text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all hover:bg-surface-50 text-center"
-                                                >
-                                                    <FileText class="w-3.5 h-3.5 text-[#c08f34]" />
-                                                    <span>View Invoice</span>
-                                                    <ExternalLink class="w-3 h-3 text-surface-400" />
-                                                </a>
-                                                <a
-                                                    :href="action.result.print_url"
-                                                    target="_blank"
-                                                    class="flex-1 py-2 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all text-center"
-                                                >
-                                                    <Printer class="w-3.5 h-3.5 text-[#c08f34]" />
-                                                    <span>Print PDF</span>
-                                                </a>
-                                            </div>
+                                        <div class="flex items-center gap-2 pt-1">
+                                            <a
+                                                :href="action.result.view_url"
+                                                target="_blank"
+                                                class="flex-1 py-2 bg-white border border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold rounded flex items-center justify-center gap-1 shadow-xs text-center"
+                                            >
+                                                <FileText class="w-3.5 h-3.5 text-amber-600" />
+                                                <span>View Invoice</span>
+                                                <ExternalLink class="w-3 h-3 text-slate-400" />
+                                            </a>
+                                            <a
+                                                :href="action.result.print_url"
+                                                target="_blank"
+                                                class="flex-1 py-2 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-bold rounded flex items-center justify-center gap-1 shadow-xs text-center"
+                                            >
+                                                <Printer class="w-3.5 h-3.5 text-amber-400" />
+                                                <span>Print PDF</span>
+                                            </a>
                                         </div>
                                     </div>
+
+                                    <!-- Discarded Note -->
+                                    <div v-else class="p-2 bg-slate-100 text-slate-500 text-xs italic text-center rounded">
+                                        Invoice draft was discarded.
+                                    </div>
+                                </div>
 
                                     <!-- Discarded Note -->
                                     <div v-else class="p-2.5 bg-surface-100 text-surface-500 text-xs italic text-center">
@@ -1338,7 +1251,6 @@ onMounted(() => {
                             </div>
                         </div>
                     </div>
-                </div>
 
                 <!-- Thinking Wave -->
                 <div v-if="isLoading" class="flex items-center gap-3">

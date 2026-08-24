@@ -517,12 +517,13 @@ class AiCopilotController extends Controller
                         } elseif (str_contains($purityStr, '14') || str_contains($purityStr, '585')) {
                             $effectiveRate = $gold24k * 0.585;
                         } else {
-                            $effectiveRate = $gold24k * 0.916; // Default 22K (916)
+                            $effectiveRate = round($gold24k * 0.916, 2); // Default 22K (916)
                         }
                     }
                 } else {
                     $effectiveRate = ($metal === 'SILVER') ? 89.0 : 6830.0;
                 }
+                $effectiveRate = round((float) $effectiveRate, 2);
 
                 // 3. Compute Metal value, making charges (Percentage, Per gram, or Flat), GST & Totals
                 $metalValue = round($weight * $effectiveRate, 2);
