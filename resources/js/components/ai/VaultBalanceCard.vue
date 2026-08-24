@@ -18,10 +18,10 @@ defineProps<{
         <div class="px-3.5 py-2.5 bg-[#1c3633] text-white flex items-center justify-between border-b border-[#c08f34]/40 rounded-none">
             <div class="space-y-0.5">
                 <div class="flex items-center gap-1.5">
-                    <Landmark class="w-4 h-4 text-[#c08f34]" />
+                    <Landmark class="w-4 h-4 text-[#e5c278]" />
                     <h4 class="font-bold text-xs !text-white tracking-wide uppercase leading-none">Showroom Vault Holdings</h4>
                 </div>
-                <p class="text-[10px] !text-[#c08f34] font-medium pl-5.5">Safe & Liquidity Balance</p>
+                <p class="text-[10px] !text-[#e5c278] font-medium pl-5.5">Safe & Liquidity Balance</p>
             </div>
             <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[10px] font-bold uppercase rounded-none">
                 <ShieldCheck class="w-3 h-3" />
