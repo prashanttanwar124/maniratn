@@ -673,12 +673,12 @@ onMounted(() => {
                                         <div class="flex items-center gap-2 pt-1">
                                             <button
                                                 type="button"
-                                                :disabled="isConfirming[`rates_${message.id}`]"
-                                                @click="confirmRatesAction(action, message.id)"
+                                                :disabled="isConfirming[`rates_${msg.id}`]"
+                                                @click="confirmRatesAction(action, msg.id)"
                                                 class="flex-1 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all disabled:opacity-50"
                                             >
                                                 <Check class="w-3.5 h-3.5" />
-                                                <span>{{ isConfirming[`rates_${message.id}`] ? 'Updating...' : 'Confirm & Update Live Rates' }}</span>
+                                                <span>{{ isConfirming[`rates_${msg.id}`] ? 'Updating...' : 'Confirm & Update Live Rates' }}</span>
                                             </button>
                                             <button
                                                 type="button"
@@ -763,12 +763,12 @@ onMounted(() => {
                                         <div class="flex items-center gap-2 pt-1">
                                             <button
                                                 type="button"
-                                                :disabled="isConfirming[`prod_${message.id}`]"
-                                                @click="confirmProductAction(action, message.id)"
+                                                :disabled="isConfirming[`prod_${msg.id}`]"
+                                                @click="confirmProductAction(action, msg.id)"
                                                 class="flex-1 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all disabled:opacity-50"
                                             >
                                                 <PackagePlus class="w-3.5 h-3.5" />
-                                                <span>{{ isConfirming[`prod_${message.id}`] ? 'Saving...' : 'Confirm & Save to Stock' }}</span>
+                                                <span>{{ isConfirming[`prod_${msg.id}`] ? 'Saving...' : 'Confirm & Save to Stock' }}</span>
                                             </button>
                                             <button
                                                 type="button"
@@ -1029,12 +1029,12 @@ onMounted(() => {
                                         <div class="flex items-center gap-2 pt-1">
                                             <button
                                                 type="button"
-                                                :disabled="isConfirming[`bill_${message.id}`]"
-                                                @click="confirmBillAction(action, message.id)"
+                                                :disabled="isConfirming[`bill_${msg.id}`]"
+                                                @click="confirmBillAction(action, msg.id)"
                                                 class="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
                                             >
                                                 <CheckCircle2 class="w-4 h-4 text-emerald-200" />
-                                                <span>{{ isConfirming[`bill_${message.id}`] ? 'Creating Invoice...' : 'Confirm & Create Invoice in Database' }}</span>
+                                                <span>{{ isConfirming[`bill_${msg.id}`] ? 'Creating Invoice...' : 'Confirm & Create Invoice in Database' }}</span>
                                             </button>
                                             <button
                                                 type="button"
