@@ -243,7 +243,7 @@ class AiCopilotController extends Controller
                     }
                 } elseif ($tool === 'create_bill' || $tool === 'create_invoice') {
                     if (isset($realData['found']) && $realData['found'] === false) {
-                        $finalReply = "Aaj ka live gold rate set nahi hai. Bill banane ke liye kripya aaj ka 24K rate batayein.";
+                        $finalReply = $realData['message'] ?? "Aaj ka live gold rate set nahi hai. Bill banane ke liye kripya aaj ka 24K rate batayein.";
                     } else {
                         $finalReply = "Done! Customer {$realData['customer_name']} ke liye Bill #{$realData['invoice_number']} create ho gaya hai. Total amount {$realData['grand_total']} hai.";
                     }
@@ -476,6 +476,7 @@ class AiCopilotController extends Controller
             case 'create_invoice':
                 $customerName = trim((string) ($args['customer_name'] ?? 'Walk-in Customer'));
                 $customerPhone = trim((string) ($args['customer_phone'] ?? ''));
+                $barcode = trim((string) ($args['barcode'] ?? ''));
                 $itemName = trim((string) ($args['item_name'] ?? 'Gold Ornament'));
                 $weight = floatval($args['weight'] ?? 10);
                 $metal = strtoupper($args['metal'] ?? 'GOLD');
@@ -486,7 +487,58 @@ class AiCopilotController extends Controller
                 $paymentMode = strtoupper((string) ($args['payment_mode'] ?? 'CASH'));
                 $discountAmount = floatval($args['discount_amount'] ?? 0);
 
-                // 1. Find or create customer
+                $matchedProduct = null;
+                $matchedSilverProduct = null;
+
+                // 1. If Barcode provided, fetch exact stock item from database
+                if (! empty($barcode)) {
+                    $matchedProduct = Product::where('barcode', $barcode)->first();
+                    if (! $matchedProduct) {
+                        $matchedSilverProduct = SilverProduct::where('barcode', $barcode)->first();
+                    }
+
+                    if (! $matchedProduct && ! $matchedSilverProduct) {
+                        return [
+                            'found' => false,
+                            'message' => "Barcode '{$barcode}' database me nahi mila. Kripya barcode check karein.",
+                            'status' => 'BARCODE_NOT_FOUND',
+                        ];
+                    }
+
+                    if ($matchedProduct) {
+                        if ($matchedProduct->is_sold) {
+                            return [
+                                'found' => false,
+                                'message' => "Product '{$matchedProduct->name}' (Barcode: {$barcode}) pehle se hi sold hai!",
+                                'status' => 'PRODUCT_ALREADY_SOLD',
+                            ];
+                        }
+                        $itemName = $matchedProduct->name;
+                        $weight = floatval($matchedProduct->net_weight);
+                        $metal = 'GOLD';
+                        $purityStr = $matchedProduct->purity?->name ?? '22K';
+                        if ($matchedProduct->making_charge > 0) {
+                            $makingPerGm = floatval($matchedProduct->making_charge);
+                        }
+                    } elseif ($matchedSilverProduct) {
+                        if ($matchedSilverProduct->is_sold) {
+                            return [
+                                'found' => false,
+                                'message' => "Silver item '{$matchedSilverProduct->name}' (Barcode: {$barcode}) pehle se sold hai!",
+                                'status' => 'PRODUCT_ALREADY_SOLD',
+                            ];
+                        }
+                        $itemName = $matchedSilverProduct->name;
+                        $weight = floatval($matchedSilverProduct->net_weight);
+                        $metal = 'SILVER';
+                        $purityStr = 'Silver';
+                        if ($matchedSilverProduct->making_charge > 0) {
+                            $makingPerGm = floatval($matchedSilverProduct->making_charge);
+                        }
+                    }
+                }
+
+                // 2. Find or create customer
                 $customer = null;
                 if (! empty($customerPhone)) {
                     $customer = Customer::where('mobile', $customerPhone)->first();
@@ -504,7 +556,7 @@ class AiCopilotController extends Controller
                     ]);
                 }
 
-                // 2. Fetch live daily rate from database
+                // 3. Fetch live daily rate from database
                 $rateRecord = DailyRate::whereDate('date', Carbon::today())->where('gold_sell', '>', 0)->first();
                 if (! $rateRecord) {
                     $rateRecord = DailyRate::where('gold_sell', '>', 0)->latest('date')->first();
@@ -531,7 +583,7 @@ class AiCopilotController extends Controller
                     $effectiveRate = ($metal === 'SILVER') ? 89.0 : 6830.0;
                 }
 
-                // 3. Compute Metal value, making charges (Default 12%), GST & Totals
+                // 4. Compute Metal value, making charges (Default 12%), GST & Totals
                 $metalValue = round($weight * $effectiveRate, 2);
 
                 if ($makingPercent !== null && $makingPercent > 0) {
@@ -555,7 +607,7 @@ class AiCopilotController extends Controller
                 $gstAmount = round($subtotal * 0.03, 2);
                 $grandTotal = round($subtotal + $gstAmount, 2);
 
-                // 4. Create Invoice Header
+                // 5. Create Invoice Header
                 $actingUserId = Auth::id() ?: \App\Models\User::first()?->id;
 
                 $invoice = Invoice::create([
@@ -575,10 +627,11 @@ class AiCopilotController extends Controller
                 $invoiceNumber = sprintf('INV-%s-%06d', now()->format('Ymd'), $invoice->id);
                 $invoice->update(['invoice_number' => $invoiceNumber]);
 
-                // 5. Create InvoiceItem
+                // 6. Create InvoiceItem & Mark Stock Sold
                 InvoiceItem::create([
                     'invoice_id' => $invoice->id,
-                    'product_id' => null,
+                    'product_id' => $matchedProduct?->id,
+                    'silver_product_id' => $matchedSilverProduct?->id,
                     'description' => ! empty($itemName) ? $itemName : "{$purityStr} {$metal} Item ({$weight}g)",
                     'quantity' => 1,
                     'weight' => $weight,
@@ -589,20 +642,27 @@ class AiCopilotController extends Controller
                     'final_price' => $subtotal,
                 ]);
 
-                // 6. Accounting Ledger Entry: DEBIT Customer
+                if ($matchedProduct) {
+                    $matchedProduct->update(['is_sold' => true]);
+                }
+                if ($matchedSilverProduct) {
+                    $matchedSilverProduct->update(['is_sold' => true]);
+                }
+
+                // 7. Accounting Ledger Entry: DEBIT Customer
                 Transaction::create([
                     'transactable_type' => Customer::class,
                     'transactable_id' => $customer->id,
                     'invoice_id' => $invoice->id,
                     'type' => 'SALE',
                     'amount' => $grandTotal,
-                    'description' => "Bill #" . $invoiceNumber . " (Created via Karat AI)",
+                    'description' => "Bill #" . $invoiceNumber . ($barcode ? " (Barcode: {$barcode})" : "") . " (via Karat AI)",
                     'date' => Carbon::today()->format('Y-m-d'),
                     'user_id' => $actingUserId,
                     'entry_type_code' => 'INVOICE_SALE',
                 ]);
 
-                // 7. Payment Transaction: CREDIT Customer if payment made
+                // 8. Payment Transaction: CREDIT Customer if payment made
                 if (in_array($paymentMode, ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'ONLINE'])) {
                     Transaction::create([
                         'transactable_type' => Customer::class,
@@ -622,6 +682,7 @@ class AiCopilotController extends Controller
                     'found' => true,
                     'invoice_id' => $invoice->id,
                     'invoice_number' => $invoiceNumber,
+                    'barcode' => $barcode ?: ($matchedProduct?->barcode ?? $matchedSilverProduct?->barcode ?? null),
                     'customer_name' => $customer->name,
                     'customer_phone' => $customer->mobile,
                     'item_name' => ! empty($itemName) ? $itemName : "{$purityStr} {$metal} Ornament",
