@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { Check, CheckCircle2, Edit3, ShieldCheck } from 'lucide-vue-next';
 import InputText from 'primevue/inputtext';
-import { Edit3, ShieldCheck, Check, CheckCircle2 } from 'lucide-vue-next';
+import { computed } from 'vue';
 
 interface ActionItem {
     tool: string;
@@ -21,10 +21,7 @@ const emit = defineEmits<{
 }>();
 
 const isConfirmed = computed(() => {
-    return Boolean(
-        props.action.result?.status === 'UPDATED_IN_DATABASE' ||
-        props.action.result?.is_preview === false
-    );
+    return Boolean(props.action.result?.status === 'UPDATED_IN_DATABASE' || props.action.result?.is_preview === false);
 });
 
 const isDraft = computed(() => {
@@ -33,64 +30,60 @@ const isDraft = computed(() => {
 </script>
 
 <template>
-    <div class="border border-surface-200 bg-white shadow-xs rounded-none overflow-hidden my-2 font-sans border-t-2 border-t-[#c08f34]" style="font-family: 'Poppins', sans-serif !important;">
+    <section
+        class="my-2 overflow-hidden rounded-none border border-t-2 border-surface-200 border-t-[#c08f34] bg-white font-sans shadow-xs"
+        style="font-family: 'Poppins', sans-serif !important"
+        aria-label="Daily rates update draft"
+    >
         <!-- 📝 1. DAILY RATES DRAFT PREVIEW -->
-        <div v-if="isDraft" class="p-3 bg-white space-y-3">
-            <div class="flex items-center justify-between border-b border-surface-200 pb-2">
+        <div v-if="isDraft" class="space-y-3 bg-white p-3">
+            <div class="flex flex-col gap-2 border-b border-surface-200 pb-2.5 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
                 <div class="space-y-0.5">
                     <div class="flex items-center gap-1.5">
-                        <Edit3 class="w-4 h-4 text-[#c08f34]" />
-                        <h4 class="font-bold text-xs text-surface-900 tracking-wide uppercase leading-none">Daily Rates Update Preview</h4>
+                        <Edit3 class="h-4 w-4 text-[#c08f34]" />
+                        <h4 class="text-xs leading-none font-semibold tracking-wide text-surface-900">Daily rates update</h4>
                     </div>
-                    <p class="text-[10.5px] text-surface-500 font-medium pl-5.5">Review rates before updating database</p>
+                    <p class="pl-5.5 text-[10.5px] font-normal text-surface-500">Aaj ke rates verify karke live karein</p>
                 </div>
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-300 text-amber-900 text-[10px] font-bold uppercase rounded-none">
-                    <ShieldCheck class="w-3 h-3 text-amber-700" />
-                    Review Required
+                <span class="inline-flex items-center gap-1 rounded-none border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-900 uppercase">
+                    <ShieldCheck class="h-3 w-3 text-amber-700" />
+                    Review required
                 </span>
             </div>
 
-            <div class="grid grid-cols-2 gap-2.5">
-                <div class="bg-slate-50 p-2.5 border border-slate-200 rounded-none">
-                    <label class="text-[10px] font-bold text-slate-700 uppercase tracking-wide block">Gold 24K Sell (₹/g)</label>
+            <div class="grid grid-cols-1 gap-2.5 min-[400px]:grid-cols-2">
+                <div class="rounded-none border border-amber-200 bg-amber-50/40 p-2.5">
+                    <label class="block text-[11px] font-medium text-surface-700">Gold 24K sell rate <span class="text-surface-400">(₹/g)</span></label>
                     <div class="relative mt-1">
-                        <span class="absolute left-2.5 top-2 text-xs font-bold text-[#c08f34] z-1">₹</span>
-                        <InputText
-                            v-model.number="action.result.gold_24k_sell"
-                            type="number"
-                            size="small"
-                            class="w-full pl-6 pr-2 font-bold rounded-none !font-sans"
-                        />
+                        <span class="absolute top-2 left-2.5 z-1 text-xs font-bold text-[#c08f34]">₹</span>
+                        <InputText v-model.number="action.result.gold_24k_sell" type="number" size="small" class="w-full rounded-none pr-2 pl-6 !font-sans font-bold" />
                     </div>
                 </div>
-                <div class="bg-slate-50 p-2.5 border border-slate-200 rounded-none">
-                    <label class="text-[10px] font-bold text-slate-700 uppercase tracking-wide block">Silver Sell (₹/g)</label>
+                <div class="rounded-none border border-surface-200 bg-surface-50 p-2.5">
+                    <label class="block text-[11px] font-medium text-surface-700">Silver sell rate <span class="text-surface-400">(₹/g)</span></label>
                     <div class="relative mt-1">
-                        <span class="absolute left-2.5 top-2 text-xs font-bold text-slate-500 z-1">₹</span>
-                        <InputText
-                            v-model.number="action.result.silver_sell"
-                            type="number"
-                            size="small"
-                            class="w-full pl-6 pr-2 font-bold rounded-none !font-sans"
-                        />
+                        <span class="absolute top-2 left-2.5 z-1 text-xs font-bold text-slate-500">₹</span>
+                        <InputText v-model.number="action.result.silver_sell" type="number" size="small" class="w-full rounded-none pr-2 pl-6 !font-sans font-bold" />
                     </div>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 pt-1">
+            <p class="border-l-2 border-amber-400 bg-amber-50/60 px-2.5 py-2 text-[10.5px] leading-4 text-amber-900">Ye rates billing aur estimates mein turant use honge.</p>
+
+            <div class="flex flex-col-reverse gap-2 border-t border-surface-100 pt-3 min-[430px]:flex-row min-[430px]:items-center">
                 <button
                     type="button"
                     :disabled="isConfirming"
                     @click="emit('confirm', action, msgId)"
-                    class="flex-1 py-2.5 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 rounded-none cursor-pointer border border-[#1c3633]"
+                    class="flex flex-1 items-center justify-center gap-1.5 rounded-none border border-[#1c3633] bg-[#1c3633] py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#254642] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                    <Check class="w-4 h-4 text-[#c08f34]" />
-                    <span>{{ isConfirming ? 'Updating Database...' : 'Confirm & Update Live Rates' }}</span>
+                    <Check class="h-4 w-4 text-[#c08f34]" />
+                    <span>{{ isConfirming ? 'Rates update ho rahe hain...' : 'Confirm and update rates' }}</span>
                 </button>
                 <button
                     type="button"
                     @click="emit('discard', action, msgId)"
-                    class="px-4 py-2.5 bg-white border border-slate-300 text-slate-700 hover:text-red-700 hover:border-red-300 text-xs font-semibold transition-all rounded-none cursor-pointer"
+                    class="rounded-none border border-surface-300 bg-white px-4 py-2.5 text-xs font-medium text-surface-600 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700"
                 >
                     Discard
                 </button>
@@ -98,17 +91,25 @@ const isDraft = computed(() => {
         </div>
 
         <!-- 📈 2. CONFIRMED RATES STATE -->
-        <div v-else-if="isConfirmed" class="p-3 bg-emerald-50 border-t border-emerald-300 flex items-center justify-between rounded-none">
-            <div class="flex items-center gap-2">
-                <CheckCircle2 class="w-4 h-4 text-emerald-700" />
-                <span class="text-xs font-bold text-emerald-900">Rates updated successfully in database!</span>
+        <div v-else-if="isConfirmed" class="flex flex-col gap-2 rounded-none border-t border-emerald-300 bg-emerald-50 p-3 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
+            <div class="flex items-start gap-2">
+                <CheckCircle2 class="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+                <div>
+                    <span class="block text-xs font-semibold text-emerald-900">Rates updated successfully</span>
+                    <span class="text-[10px] text-emerald-700">New rates ab billing mein active hain</span>
+                </div>
             </div>
-            <span class="text-xs font-bold text-[#1c3633] font-mono">24K: ₹{{ Number(action.result.gold_24k_sell).toLocaleString('en-IN') }}/g</span>
+            <div class="flex shrink-0 divide-x divide-emerald-200 border border-emerald-200 bg-white text-[10.5px]">
+                <span class="px-2 py-1.5 text-emerald-900"
+                    >Gold <strong class="font-mono">₹{{ Number(action.result.gold_24k_sell).toLocaleString('en-IN') }}/g</strong></span
+                >
+                <span class="px-2 py-1.5 text-surface-700"
+                    >Silver <strong class="font-mono">₹{{ Number(action.result.silver_sell || 0).toLocaleString('en-IN') }}/g</strong></span
+                >
+            </div>
         </div>
 
         <!-- 🚫 3. DISCARDED STATE -->
-        <div v-else class="p-2 bg-slate-100 text-slate-500 text-xs italic text-center rounded-none">
-            Rate update draft was discarded.
-        </div>
-    </div>
+        <div v-else class="rounded-none bg-slate-100 p-2 text-center text-xs text-slate-500 italic">Rate update draft was discarded.</div>
+    </section>
 </template>

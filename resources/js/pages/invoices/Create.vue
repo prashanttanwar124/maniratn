@@ -288,21 +288,26 @@ const fetchProduct = async () => {
         }
 
         if (inventoryType === 'silver_product') {
-            const silverWeight = parseFloat(product.net_weight || 0);
-            const silverRate = form.silver_rate || 0;
-            const quantity = product.pricing_mode === 'PIECE' ? 1 : 1;
-
-            if (product.pricing_mode === 'PIECE' && Number(product.quantity || 0) <= 0) {
-                toast.add({ severity: 'error', summary: 'Out of Stock', detail: 'This silver piece item has no available stock.', life: 3000 });
-                scannedBarcode.value = '';
-                return;
-            }
+            const quantity = Number(product.quantity || 1);
+            const silverRate = Number(form.silver_rate || 0);
+            const silverWeight = parseFloat(product.net_weight || product.gross_weight || 0);
 
             const piecePrice = parseFloat(product.piece_price || 0);
             const makingCharge = parseFloat(product.making_charge || 0);
-            const price = product.pricing_mode === 'PIECE'
-                ? piecePrice * quantity + silverWeight * quantity * makingCharge
-                : silverWeight * (silverRate + makingCharge);
+            const makingType = product.making_charge_type || 'per_gram';
+
+            const metalBase = product.pricing_mode === 'PIECE' ? piecePrice * quantity : silverWeight * silverRate;
+            let makingTotal = 0;
+
+            if (makingType === 'flat') {
+                makingTotal = makingCharge;
+            } else if (makingType === 'percentage') {
+                makingTotal = metalBase * (makingCharge / 100);
+            } else {
+                makingTotal = silverWeight * makingCharge;
+            }
+
+            const price = metalBase + makingTotal;
 
             form.items.push({
                 type: 'silver_product',
@@ -314,14 +319,27 @@ const fetchProduct = async () => {
                 pricing_mode: product.pricing_mode,
                 rate: product.pricing_mode === 'PIECE' ? piecePrice : silverRate,
                 making_charges: makingCharge,
-                making_charge_type: 'per_gram',
+                making_charge_type: makingType,
                 final_price: price,
             });
         } else {
             const currentRate = form.gold_rate || 0;
-            const weight = parseFloat(product.net_weight);
-            const makingCharge = parseFloat(product.making_charge);
-            const price = weight * (currentRate + currentRate * (makingCharge / 100));
+            const weight = parseFloat(product.net_weight || 0);
+            const makingCharge = parseFloat(product.making_charge || 0);
+            const makingType = product.making_charge_type || 'percentage';
+
+            const metalBase = weight * currentRate;
+            let makingTotal = 0;
+
+            if (makingType === 'flat') {
+                makingTotal = makingCharge;
+            } else if (makingType === 'per_gram') {
+                makingTotal = weight * makingCharge;
+            } else {
+                makingTotal = metalBase * (makingCharge / 100);
+            }
+
+            const price = metalBase + makingTotal;
 
             form.items.push({
                 type: 'product',
@@ -331,7 +349,7 @@ const fetchProduct = async () => {
                 quantity: 1,
                 rate: currentRate,
                 making_charges: makingCharge,
-                making_charge_type: 'percentage',
+                making_charge_type: makingType,
                 final_price: price,
             });
         }

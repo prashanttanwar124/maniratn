@@ -227,6 +227,9 @@ class SilverProductController extends Controller
 
     public function bulkUpdate(Request $request)
     {
+        $makingType = $request->input('making_charge_type', 'per_gram');
+        $makingMaxRule = ($makingType === 'percentage') ? '|max:100' : '';
+
         $validated = $request->validate([
             'product_ids' => ['required', 'array', 'min:1'],
             'product_ids.*' => ['required', 'integer', 'exists:silver_products,id'],
@@ -234,13 +237,14 @@ class SilverProductController extends Controller
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'counter_id' => ['nullable', 'exists:counters,id'],
             'pricing_mode' => ['nullable', 'in:PIECE,WEIGHT'],
-            'making_charge' => ['nullable', 'numeric', 'min:0'],
+            'making_charge' => 'nullable|numeric|min:0'.$makingMaxRule,
+            'making_charge_type' => ['nullable', 'string', 'in:percentage,flat,per_gram'],
             'piece_price' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $updates = collect($validated)
-            ->only(['category_id', 'supplier_id', 'counter_id', 'pricing_mode', 'making_charge', 'piece_price', 'notes'])
+            ->only(['category_id', 'supplier_id', 'counter_id', 'pricing_mode', 'making_charge', 'making_charge_type', 'piece_price', 'notes'])
             ->filter(fn ($value) => $value !== null)
             ->all();
 
@@ -280,33 +284,26 @@ class SilverProductController extends Controller
                     'category' => $silverProduct->category?->name,
                     'supplier' => $silverProduct->supplier?->company_name,
                     'counter' => $silverProduct->counter?->name,
-                    'pricing_mode' => $silverProduct->pricing_mode,
                 ],
             ],
             $silverProduct->updated_at && $silverProduct->updated_at->ne($silverProduct->created_at) ? [
                 'type' => 'updated',
                 'title' => 'Silver product updated',
                 'occurred_at' => optional($silverProduct->updated_at)?->toISOString(),
-                'meta' => [
-                    'status' => $silverProduct->is_sold ? 'Sold' : 'In Stock',
-                    'quantity' => (int) $silverProduct->quantity,
-                ],
             ] : null,
         ])->filter();
 
-        $saleEvents = $silverProduct->invoiceItems->map(function ($invoiceItem) {
-            return [
+        $saleEvents = $silverProduct->invoiceItems->map(function ($item) {
+            return $item->invoice && $item->invoice->status !== 'CANCELLED' ? [
                 'type' => 'sold',
-                'title' => 'Silver product billed',
-                'occurred_at' => optional($invoiceItem->invoice?->created_at ?? $invoiceItem->created_at)?->toISOString(),
+                'title' => 'Sold via invoice #'.$item->invoice->invoice_number,
+                'occurred_at' => optional($item->created_at)?->toISOString(),
                 'meta' => [
-                    'invoice_number' => $invoiceItem->invoice?->invoice_number,
-                    'customer_name' => $invoiceItem->invoice?->customer?->name ?? 'Walk-in',
-                    'invoice_status' => $invoiceItem->invoice?->status,
-                    'weight' => $invoiceItem->weight,
+                    'customer' => $item->invoice->customer?->name,
+                    'amount' => (float) $item->final_price,
                 ],
-            ];
-        });
+            ] : null;
+        })->filter();
 
         $tagEvents = $silverProduct->verificationTags->flatMap(function ($tag) {
             return collect([
@@ -361,6 +358,7 @@ class SilverProductController extends Controller
                 'net_weight' => (float) ($silverProduct->net_weight ?? 0),
                 'piece_price' => (float) ($silverProduct->piece_price ?? 0),
                 'making_charge' => (float) $silverProduct->making_charge,
+                'making_charge_type' => $silverProduct->making_charge_type ?? 'per_gram',
                 'status' => $silverProduct->is_sold ? 'Sold' : 'In Stock',
             ],
             'timeline' => $timeline,
@@ -380,6 +378,7 @@ class SilverProductController extends Controller
             'net_weight' => $silverProduct->net_weight,
             'piece_price' => $silverProduct->piece_price,
             'making_charge' => $silverProduct->making_charge,
+            'making_charge_type' => $silverProduct->making_charge_type ?? 'per_gram',
             'notes' => $silverProduct->notes,
         ]);
 
@@ -426,6 +425,9 @@ class SilverProductController extends Controller
 
     protected function validatePayload(Request $request): array
     {
+        $makingType = $request->input('making_charge_type', 'per_gram');
+        $makingMaxRule = ($makingType === 'percentage') ? '|max:100' : '';
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'category_id' => ['required', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('metal_type', 'SILVER'))],
@@ -436,13 +438,16 @@ class SilverProductController extends Controller
             'gross_weight' => ['nullable', 'numeric', 'min:0'],
             'net_weight' => ['nullable', 'numeric', 'min:0'],
             'piece_price' => ['nullable', 'numeric', 'min:0'],
-            'making_charge' => ['required', 'numeric', 'min:0'],
+            'making_charge' => ['required', 'numeric', 'min:0'.$makingMaxRule],
+            'making_charge_type' => ['nullable', 'string', 'in:percentage,flat,per_gram'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'image' => ['nullable', 'image', 'max:2048'],
             'batch_items' => ['nullable', 'array', 'min:1', 'max:10'],
             'batch_items.*.gross_weight' => ['required_with:batch_items', 'numeric', 'min:0.001'],
             'batch_items.*.net_weight' => ['required_with:batch_items', 'numeric', 'min:0.001'],
         ]);
+
+        $validated['making_charge_type'] = $validated['making_charge_type'] ?? 'per_gram';
 
         if (! empty($validated['batch_items'])) {
             if ($validated['pricing_mode'] === 'PIECE' && empty($validated['piece_price'])) {

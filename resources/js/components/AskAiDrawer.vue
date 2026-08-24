@@ -1,31 +1,15 @@
 <script setup lang="ts">
-import axios from 'axios';
-import {
-    Bot,
-    Coins,
-    Mic,
-    MicOff,
-    PackagePlus,
-    Receipt,
-    RefreshCw,
-    Send,
-    Sparkles,
-    TrendingUp,
-    Volume2,
-    VolumeX,
-    Wallet,
-    X,
-    Clock,
-} from 'lucide-vue-next';
-import Drawer from 'primevue/drawer';
-import InputText from 'primevue/inputtext';
 import { usePage } from '@inertiajs/vue3';
+import axios from 'axios';
+import { Bot, Clock, Coins, Mic, MicOff, PackagePlus, Receipt, RefreshCw, Send, Sparkles, TrendingUp, Volume2, VolumeX, Wallet, X } from 'lucide-vue-next';
+import Drawer from 'primevue/drawer';
+import Textarea from 'primevue/textarea';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 // Subcomponents
+import DailyRatesCard from './ai/DailyRatesCard.vue';
 import InvoiceDraftCard from './ai/InvoiceDraftCard.vue';
 import ProductDraftCard from './ai/ProductDraftCard.vue';
-import DailyRatesCard from './ai/DailyRatesCard.vue';
 import StockCheckCard from './ai/StockCheckCard.vue';
 import VaultBalanceCard from './ai/VaultBalanceCard.vue';
 
@@ -56,7 +40,8 @@ const messages = ref<Message[]>([
     {
         id: 'welcome',
         role: 'assistant',
-        content: 'Namaste! Main Karat AI Voice Copilot hoon. Aap live market bhav pooch sakte hain, naya stock add karwa sakte hain, ya quotation / bill bana sakte hain. Mic button daba kar boliye ya type kijiye.',
+        content:
+            'Namaste! Main Karat AI Voice Copilot hoon. Aap live market bhav pooch sakte hain, naya stock add karwa sakte hain, ya quotation / bill bana sakte hain. Mic button daba kar boliye ya type kijiye.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
 ]);
@@ -70,9 +55,16 @@ const inputPrompt = ref('');
 const isLoading = ref(false);
 const isListening = ref(false);
 const isSpeaking = ref(false);
+const recognitionSupported = ref(true);
+const speechError = ref('');
+const chatError = ref('');
+const showResetConfirm = ref(false);
 const autoVoiceOutput = ref(true);
 const selectedVoice = ref('Aoede');
 const messageContainer = ref<HTMLElement | null>(null);
+const composerRef = ref<any>(null);
+
+const isStarterConversation = computed(() => messages.value.length === 1 && messages.value[0]?.id.startsWith('welcome'));
 
 const quickSuggestions = [
     { label: 'Aaj ka 22K & Silver bhav?', icon: TrendingUp, prompt: 'Aaj 22K gold aur silver ka bhav kya hai?' },
@@ -95,6 +87,7 @@ const initSpeech = () => {
             recognition.lang = 'hi-IN';
 
             recognition.onstart = () => {
+                speechError.value = '';
                 isListening.value = true;
             };
 
@@ -107,19 +100,23 @@ const initSpeech = () => {
 
             recognition.onerror = (err: any) => {
                 console.warn('Speech recognition error:', err);
+                speechError.value =
+                    err.error === 'not-allowed' ? 'Mic permission blocked hai. Browser settings me microphone allow karein.' : 'Awaaz samajh nahi aayi. Dobara boliye ya command type karein.';
                 isListening.value = false;
             };
 
             recognition.onend = () => {
                 isListening.value = false;
             };
+        } else {
+            recognitionSupported.value = false;
         }
     }
 };
 
 const toggleListening = () => {
     if (!recognition) {
-        alert('Aapke browser me speech recognition support nahi hai. Kripya Google Chrome use karein.');
+        speechError.value = 'Is browser me voice input available nahi hai. Aap command type kar sakte hain.';
         return;
     }
 
@@ -128,6 +125,7 @@ const toggleListening = () => {
         isListening.value = false;
     } else {
         stopAudio();
+        speechError.value = '';
         try {
             recognition.start();
         } catch (e) {
@@ -187,6 +185,8 @@ const sendMessage = async (customText?: string) => {
     if (!textToSend || isLoading.value) return;
 
     stopAudio();
+    speechError.value = '';
+    chatError.value = '';
 
     const userMessage: Message = {
         id: Date.now().toString(),
@@ -235,7 +235,7 @@ const sendMessage = async (customText?: string) => {
         if (autoVoiceOutput.value && isVoiceGloballyEnabled.value && audioUri) {
             playAudio(audioUri);
         }
-    } catch (error: any) {
+    } catch {
         messages.value.push({
             id: (Date.now() + 1).toString(),
             role: 'assistant',
@@ -296,7 +296,7 @@ const confirmBillAction = async (action: ActionItem, msgId: string) => {
                 found: true,
                 status: 'INVOICE_GENERATED_REAL_DB',
             };
-            const targetMsg = messages.value.find(m => m.id === msgId);
+            const targetMsg = messages.value.find((m) => m.id === msgId);
             if (targetMsg) {
                 targetMsg.content = `Done! Customer ${res.data.customer_name} ke liye Bill #${res.data.invoice_number} successfully create ho gaya hai.`;
             }
@@ -324,7 +324,7 @@ const confirmProductAction = async (action: ActionItem, msgId: string) => {
                 is_preview: false,
                 status: 'IN_STOCK_REAL_DB',
             };
-            const targetMsg = messages.value.find(m => m.id === msgId);
+            const targetMsg = messages.value.find((m) => m.id === msgId);
             if (targetMsg) {
                 targetMsg.content = `Done! Product stock me save ho gayi, Barcode ${res.data.barcode}.`;
             }
@@ -352,7 +352,7 @@ const confirmRatesAction = async (action: ActionItem, msgId: string) => {
                 is_preview: false,
                 status: 'UPDATED_IN_DATABASE',
             };
-            const targetMsg = messages.value.find(m => m.id === msgId);
+            const targetMsg = messages.value.find((m) => m.id === msgId);
             if (targetMsg) {
                 targetMsg.content = `Done! Aaj ke live rates database me update ho gaye.`;
             }
@@ -371,7 +371,7 @@ const discardAction = (action: ActionItem, msgId?: string) => {
     action.result.is_preview = false;
     action.result.is_discarded = true;
     if (msgId) {
-        const targetMsg = messages.value.find(m => m.id === msgId);
+        const targetMsg = messages.value.find((m) => m.id === msgId);
         if (targetMsg) {
             targetMsg.content = 'Action draft discard kar diya gaya.';
         }
@@ -422,10 +422,14 @@ const fetchChatHistory = async (isLoadMore = false) => {
 
 const resetChat = async () => {
     stopAudio();
+    chatError.value = '';
     try {
         await axios.delete('/api/ai/copilot/history');
     } catch (e) {
         console.warn(e);
+        chatError.value = 'Chat history clear nahi ho paayi. Connection check karke dobara try karein.';
+        showResetConfirm.value = false;
+        return;
     }
     messages.value = [
         {
@@ -437,6 +441,7 @@ const resetChat = async () => {
     ];
     hasMoreHistory.value = false;
     oldestMessageId.value = null;
+    showResetConfirm.value = false;
 };
 
 const speakText = async (text: string) => {
@@ -458,17 +463,22 @@ watch(
     (newVal) => {
         if (newVal) {
             scrollToBottom();
+            nextTick(() => {
+                const input = composerRef.value?.$el ?? composerRef.value;
+                input?.focus?.();
+            });
             if (!historyLoaded.value) {
                 fetchChatHistory(false);
             }
         } else {
             stopAudio();
+            showResetConfirm.value = false;
             if (isListening.value && recognition) {
                 recognition.stop();
                 isListening.value = false;
             }
         }
-    }
+    },
 );
 
 onMounted(() => {
@@ -480,322 +490,374 @@ onMounted(() => {
     <Drawer
         :visible="props.visible"
         position="right"
-        class="!w-full sm:!w-[520px] md:!w-[560px] !p-0 !border-l !border-surface-200 !shadow-2xl font-sans rounded-none"
+        class="!w-full !border-l !border-surface-200 !p-0 font-sans !shadow-2xl sm:!w-[560px] xl:!w-[600px]"
         :modal="false"
         :dismissable="true"
         :show-close-icon="false"
         :pt="{
             root: { class: '!p-0 !border-0 !rounded-none !bg-white' },
             header: { class: '!hidden !p-0' },
-            content: { class: '!p-0 !overflow-hidden flex flex-col h-full' }
+            content: { class: '!p-0 !overflow-hidden flex flex-col h-full' },
         }"
         @update:visible="emit('update:visible', $event)"
     >
         <template #container>
-            <div class="flex flex-col h-full w-full bg-white text-surface-800 relative select-none rounded-none font-sans" style="font-family: 'Poppins', sans-serif !important;">
-                <!-- 🏛️ 1. Enterprise Top Header (Sharp Rectangular, Edge-to-Edge) -->
-                <div class="px-4 py-3 bg-gradient-to-r from-[#142926] via-[#1c3633] to-[#142926] text-white flex items-center justify-between border-b-2 border-b-[#c08f34] shrink-0 z-10 rounded-none w-full">
-                    <!-- Left: Branding & Status -->
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 bg-gradient-to-br from-[#c08f34] to-[#9b6f1e] text-[#142926] flex items-center justify-center font-bold shadow-xs rounded-none">
-                            <Bot class="w-4.5 h-4.5 text-white" />
+            <div class="relative flex h-full w-full flex-col bg-white font-sans text-surface-800" style="font-family: 'Poppins', sans-serif !important">
+                <div class="z-10 flex w-full shrink-0 items-center justify-between border-b border-b-[#c08f34] bg-[#1c3633] px-4 py-3.5 text-white sm:px-5">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center border border-white/10 bg-white/10">
+                            <Bot class="h-5 w-5 text-[#e1b65f]" />
                         </div>
-                        <div>
+                        <div class="min-w-0">
                             <div class="flex items-center gap-2">
-                                <span class="font-bold text-xs tracking-wider !text-white uppercase">Karat AI Copilot</span>
-                                <span class="px-1.5 py-0.2 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[9.5px] font-mono font-semibold rounded-none">
-                                    ERP Live
+                                <span class="truncate text-sm font-semibold tracking-wide text-white">Karat AI</span>
+                                <span
+                                    class="hidden items-center gap-1 border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-emerald-200 uppercase min-[390px]:inline-flex"
+                                >
+                                    <span class="h-1.5 w-1.5 bg-emerald-400"></span>
+                                    ERP live
                                 </span>
                             </div>
-                            <p class="text-[10.5px] !text-[#c08f34] flex items-center gap-1.5 font-medium">
-                                <span class="w-1.5 h-1.5 rounded-none bg-emerald-400 animate-ping"></span>
-                                Voice & POS Operations Online
-                            </p>
+                            <p class="truncate text-[11px] text-white/65">Billing, stock, rates aur vault assistant</p>
                         </div>
                     </div>
 
-                    <!-- Right: Controls -->
-                    <div class="flex items-center gap-1.5">
-                        <!-- Voice Toggle -->
+                    <div class="flex shrink-0 items-center gap-1.5">
                         <button
                             v-if="isVoiceGloballyEnabled"
                             type="button"
-                            class="px-2 py-1 text-xs font-semibold border transition-colors flex items-center gap-1.5 cursor-pointer rounded-none"
-                            :class="autoVoiceOutput ? 'bg-[#c08f34] text-[#142926] border-[#c08f34]' : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'"
-                            :title="autoVoiceOutput ? 'Voice is Enabled (Click to Mute)' : 'Voice is Muted (Click to Enable)'"
-                            @click="autoVoiceOutput = !autoVoiceOutput; if(!autoVoiceOutput) stopAudio();"
+                            class="inline-flex h-9 items-center gap-1.5 border px-2.5 text-[11px] font-medium transition-colors"
+                            :class="autoVoiceOutput ? 'border-[#c08f34]/70 bg-[#c08f34] text-[#142926]' : 'border-white/15 bg-white/5 text-white/70 hover:bg-white/10'"
+                            :aria-pressed="autoVoiceOutput"
+                            :aria-label="autoVoiceOutput ? 'Mute AI voice replies' : 'Enable AI voice replies'"
+                            @click="
+                                autoVoiceOutput = !autoVoiceOutput;
+                                if (!autoVoiceOutput) stopAudio();
+                            "
                         >
-                            <Volume2 v-if="autoVoiceOutput" class="w-3.5 h-3.5" />
-                            <VolumeX v-else class="w-3.5 h-3.5 text-white/50" />
-                            <span>{{ autoVoiceOutput ? 'Voice ON' : 'Muted' }}</span>
+                            <Volume2 v-if="autoVoiceOutput" class="h-3.5 w-3.5" />
+                            <VolumeX v-else class="h-3.5 w-3.5" />
+                            <span class="hidden sm:inline">{{ autoVoiceOutput ? 'Voice on' : 'Muted' }}</span>
                         </button>
 
-                        <!-- Reset Chat -->
                         <button
                             type="button"
-                            class="w-7 h-7 flex items-center justify-center border border-white/20 bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer rounded-none"
-                            title="Reset Chat History"
-                            @click="resetChat"
+                            class="flex h-9 w-9 items-center justify-center border border-white/15 bg-white/5 text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+                            aria-label="Clear chat history"
+                            title="Clear chat history"
+                            @click="showResetConfirm = true"
                         >
-                            <RefreshCw class="w-3 h-3" />
+                            <RefreshCw class="h-3.5 w-3.5" />
                         </button>
 
-                        <!-- Close Button -->
                         <button
                             type="button"
-                            class="w-7 h-7 flex items-center justify-center border border-white/20 bg-white/10 hover:bg-red-700 text-white transition-colors cursor-pointer rounded-none"
-                            title="Close Copilot (ESC)"
-                            @click="emit('update:visible', false); stopAudio();"
+                            class="flex h-9 w-9 items-center justify-center border border-white/15 bg-white/5 text-white/75 transition-colors hover:border-red-300/40 hover:bg-red-500/20 hover:text-white"
+                            aria-label="Close Karat AI"
+                            title="Close Karat AI"
+                            @click="
+                                emit('update:visible', false);
+                                stopAudio();
+                            "
                         >
-                            <X class="w-3.5 h-3.5" />
+                            <X class="h-4 w-4" />
                         </button>
                     </div>
                 </div>
 
-            <!-- 💬 2. Main Body: Structured Chat Area -->
-            <div class="flex flex-col flex-1 h-full min-h-0 overflow-hidden bg-[#f8faf9] rounded-none">
-                <!-- Live Chat Scroll Area -->
-                <div ref="messageContainer" class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 rounded-none">
-                    <!-- 📜 Load Earlier Chats Button -->
-                    <div v-if="hasMoreHistory" class="flex justify-center pb-2">
+                <div v-if="showResetConfirm" class="flex shrink-0 items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2.5 sm:px-5" role="alert">
+                    <p class="text-[10.5px] leading-4 font-medium text-amber-900">Poori chat history clear karni hai?</p>
+                    <div class="flex shrink-0 items-center gap-1.5">
                         <button
                             type="button"
-                            :disabled="isLoadingHistory"
-                            class="px-3 py-1.5 bg-white border border-slate-300 hover:border-[#1c3633] text-slate-700 hover:text-[#1c3633] text-[11px] font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50 rounded-none"
-                            @click="fetchChatHistory(true)"
+                            class="border border-transparent px-2.5 py-1.5 text-[10.5px] font-medium text-surface-600 hover:border-surface-300 hover:bg-white"
+                            @click="showResetConfirm = false"
                         >
-                            <RefreshCw v-if="isLoadingHistory" class="w-3 h-3 animate-spin text-[#c08f34]" />
-                            <Clock v-else class="w-3 h-3 text-[#c08f34]" />
-                            <span>{{ isLoadingHistory ? 'Loading earlier chats...' : 'Load Earlier Chats (+10)' }}</span>
+                            Cancel
+                        </button>
+                        <button type="button" class="border border-[#1c3633] bg-[#1c3633] px-2.5 py-1.5 text-[10.5px] font-semibold text-white hover:bg-[#254642]" @click="resetChat">
+                            Clear chat
                         </button>
                     </div>
+                </div>
 
-                    <!-- Chat Messages List -->
-                    <div
-                        v-for="msg in messages"
-                        :key="msg.id"
-                        :class="[
-                            'flex gap-2.5 max-w-full transition-all duration-300',
-                            msg.role === 'user' ? 'ml-auto flex-row-reverse max-w-[85%]' : 'mr-auto max-w-[95%]',
-                        ]"
-                    >
-                        <!-- Role Avatar (Sharp Square) -->
-                        <div
-                            :class="[
-                                'w-7 h-7 flex items-center justify-center shrink-0 text-xs font-bold mt-0.5 rounded-none',
-                                msg.role === 'user'
-                                    ? 'bg-[#1c3633] text-white shadow-xs'
-                                    : 'bg-white border border-[#c08f34] text-[#c08f34] shadow-xs',
-                            ]"
-                        >
-                            <Sparkles v-if="msg.role === 'assistant'" class="w-3.5 h-3.5 text-[#c08f34]" />
-                            <span v-else>You</span>
+                <div class="flex shrink-0 items-center justify-between gap-3 border-b border-surface-200 bg-white px-4 py-2 sm:px-5">
+                    <p class="text-[10.5px] leading-4 text-surface-500">Live ERP data connected · Save hone se pehle aap review karenge</p>
+                    <span class="shrink-0 border border-emerald-200 bg-emerald-50 px-2 py-1 text-[9.5px] font-semibold text-emerald-700">Secure</span>
+                </div>
+
+                <div class="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#f7f9f8]">
+                    <div ref="messageContainer" class="min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-5 sm:px-5" aria-live="polite" aria-label="Conversation">
+                        <div v-if="isLoadingHistory && !historyLoaded" class="flex h-full items-center justify-center">
+                            <div class="flex items-center gap-2 text-xs font-medium text-surface-500">
+                                <RefreshCw class="h-4 w-4 animate-spin text-[#c08f34]" />
+                                Pichli conversation load ho rahi hai...
+                            </div>
                         </div>
 
-                        <!-- Message Bubble & Action Cards -->
-                        <div class="space-y-2.5 flex-1 min-w-0">
-                            <!-- Text Bubble (Sharp Rectangular) -->
+                        <div v-if="historyLoaded && isStarterConversation" class="mx-auto flex min-h-full max-w-lg flex-col justify-center py-4">
+                            <div class="mb-6 text-center">
+                                <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center border border-amber-200 bg-amber-50">
+                                    <Sparkles class="h-5 w-5 text-[#b07b24]" />
+                                </div>
+                                <h3 class="text-lg font-semibold text-[#1c3633]">Aaj kya kaam karna hai?</h3>
+                                <p class="mx-auto mt-1.5 max-w-sm text-xs leading-5 text-surface-500">Hindi ya English mein poochiye. Koi bhi database change confirm karne ke baad hi save hoga.</p>
+                            </div>
+                            <p class="mb-2 text-[10px] font-semibold tracking-[0.14em] text-surface-400 uppercase">Popular tasks</p>
+                            <div class="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
+                                <button
+                                    v-for="(item, idx) in quickSuggestions"
+                                    :key="idx"
+                                    type="button"
+                                    :disabled="isLoading"
+                                    class="group flex min-h-14 items-center gap-3 border border-surface-200 bg-white px-3 py-2.5 text-left shadow-xs transition-colors hover:border-[#c08f34] hover:bg-amber-50/40 disabled:opacity-50"
+                                    @click="sendMessage(item.prompt)"
+                                >
+                                    <span class="flex h-8 w-8 shrink-0 items-center justify-center bg-[#1c3633] text-[#e1b65f]">
+                                        <component :is="item.icon" class="h-4 w-4" />
+                                    </span>
+                                    <span class="text-[11.5px] leading-4 font-medium text-surface-700 group-hover:text-[#1c3633]">{{ item.label }}</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-if="!isStarterConversation && hasMoreHistory" class="flex justify-center pb-2">
+                            <button
+                                type="button"
+                                :disabled="isLoadingHistory"
+                                class="flex items-center gap-2 border border-surface-200 bg-white px-3 py-1.5 text-[10.5px] font-medium text-surface-600 shadow-xs transition-colors hover:border-[#c08f34] hover:text-[#1c3633] disabled:opacity-50"
+                                @click="fetchChatHistory(true)"
+                            >
+                                <RefreshCw v-if="isLoadingHistory" class="h-3 w-3 animate-spin text-[#c08f34]" />
+                                <Clock v-else class="h-3 w-3 text-[#c08f34]" />
+                                <span>{{ isLoadingHistory ? 'Loading...' : 'Earlier chats' }}</span>
+                            </button>
+                        </div>
+
+                        <!-- Chat Messages List -->
+                        <div
+                            v-for="msg in messages"
+                            :key="msg.id"
+                            v-show="!isStarterConversation"
+                            :class="['flex max-w-full gap-2.5', msg.role === 'user' ? 'ml-auto max-w-[88%] flex-row-reverse' : 'mr-auto max-w-[96%]']"
+                        >
                             <div
                                 :class="[
-                                    'p-3.5 text-xs leading-relaxed border shadow-xs rounded-none transition-all',
-                                    msg.role === 'user'
-                                        ? 'bg-[#1c3633] border-[#1c3633] text-white'
-                                        : 'bg-white border-slate-200 text-slate-900',
+                                    'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center border text-[9px] font-semibold',
+                                    msg.role === 'user' ? 'border-[#1c3633] bg-[#1c3633] text-white' : 'border-amber-200 bg-amber-50 text-[#b07b24]',
                                 ]"
                             >
-                                <p class="whitespace-pre-wrap font-normal text-[13px] leading-relaxed">{{ msg.content }}</p>
-
-                                <!-- Bubble Footer -->
-                                <div class="flex items-center justify-between mt-2.5 pt-2 border-t" :class="msg.role === 'user' ? 'border-white/10' : 'border-slate-100'">
-                                    <button
-                                        v-if="msg.role === 'assistant' && msg.audio && isVoiceGloballyEnabled"
-                                        type="button"
-                                        class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-[#9b6f1e] text-[11px] font-bold border border-amber-200 cursor-pointer rounded-none transition-all"
-                                        @click="playAudio(msg.audio)"
-                                    >
-                                        <Volume2 class="w-3 h-3 text-[#c08f34]" />
-                                        <span>{{ isSpeaking ? 'Playing Voice...' : 'Play HD Voice' }}</span>
-                                    </button>
-                                    <span v-else />
-
-                                    <span :class="['text-[10px] font-mono', msg.role === 'user' ? 'text-white/60' : 'text-slate-400']">
-                                        {{ msg.timestamp }}
-                                    </span>
-                                </div>
+                                <Sparkles v-if="msg.role === 'assistant'" class="h-3.5 w-3.5" />
+                                <span v-else>Aap</span>
                             </div>
 
-                            <!-- ⚡ Dedicated Sub-Component Action Cards -->
-                            <div v-if="msg.actions && msg.actions.length > 0" class="space-y-2">
-                                <template v-for="(action, idx) in msg.actions" :key="idx">
-                                    <!-- 1. Invoice / Bill Draft Card -->
-                                    <InvoiceDraftCard
-                                        v-if="action.tool === 'create_bill' || action.tool === 'create_invoice'"
-                                        :action="action"
-                                        :msg-id="msg.id"
-                                        :is-confirming="Boolean(isConfirming[`bill_${msg.id}`])"
-                                        @confirm="confirmBillAction"
-                                        @discard="discardAction"
-                                        @recalculate="calculateLiveBill"
-                                    />
+                            <div class="min-w-0 flex-1 space-y-2.5">
+                                <div
+                                    :class="[
+                                        'border px-3.5 py-3 text-[12.5px] leading-5 shadow-xs',
+                                        msg.role === 'user' ? 'border-[#1c3633] bg-[#1c3633] text-white' : 'border-surface-200 bg-white text-surface-800',
+                                    ]"
+                                >
+                                    <div class="mb-2 flex items-center gap-2" :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
+                                        <span :class="['text-[10px] font-semibold', msg.role === 'user' ? 'text-white/75' : 'text-surface-500']">
+                                            {{ msg.role === 'user' ? 'Aap' : 'Karat AI' }}
+                                        </span>
+                                        <span :class="['text-[9.5px]', msg.role === 'user' ? 'text-white/50' : 'text-surface-400']">{{ msg.timestamp }}</span>
+                                    </div>
+                                    <p class="whitespace-pre-wrap select-text">{{ msg.content }}</p>
 
-                                    <!-- 2. Product Add Draft Card -->
-                                    <ProductDraftCard
-                                        v-else-if="action.tool === 'add_product'"
-                                        :action="action"
-                                        :msg-id="msg.id"
-                                        :is-confirming="Boolean(isConfirming[`prod_${msg.id}`])"
-                                        @confirm="confirmProductAction"
-                                        @discard="discardAction"
-                                    />
+                                    <div v-if="msg.role === 'assistant' && msg.audio && isVoiceGloballyEnabled" class="mt-2.5 border-t border-surface-100 pt-2">
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center gap-1.5 border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10.5px] font-medium text-amber-800 transition-colors hover:bg-amber-100"
+                                            @click="playAudio(msg.audio)"
+                                        >
+                                            <Volume2 class="h-3 w-3" />
+                                            <span>{{ isSpeaking ? 'Voice chal rahi hai' : 'Voice mein sunein' }}</span>
+                                        </button>
+                                    </div>
+                                </div>
 
-                                    <!-- 3. Daily Rates Draft Card -->
-                                    <DailyRatesCard
-                                        v-else-if="action.tool === 'update_daily_rates'"
-                                        :action="action"
-                                        :msg-id="msg.id"
-                                        :is-confirming="Boolean(isConfirming[`rates_${msg.id}`])"
-                                        @confirm="confirmRatesAction"
-                                        @discard="discardAction"
-                                    />
+                                <!-- ⚡ Dedicated Sub-Component Action Cards -->
+                                <div v-if="msg.actions && msg.actions.length > 0" class="space-y-2">
+                                    <template v-for="(action, idx) in msg.actions" :key="idx">
+                                        <!-- 1. Invoice / Bill Draft Card -->
+                                        <InvoiceDraftCard
+                                            v-if="action.tool === 'create_bill' || action.tool === 'create_invoice'"
+                                            :action="action"
+                                            :msg-id="msg.id"
+                                            :is-confirming="Boolean(isConfirming[`bill_${msg.id}`])"
+                                            @confirm="confirmBillAction"
+                                            @discard="discardAction"
+                                            @recalculate="calculateLiveBill"
+                                        />
 
-                                    <!-- 4. Stock Inventory Check Card -->
-                                    <StockCheckCard
-                                        v-else-if="action.tool === 'check_stock'"
-                                        :action="action"
-                                    />
+                                        <!-- 2. Product Add Draft Card -->
+                                        <ProductDraftCard
+                                            v-else-if="action.tool === 'add_product'"
+                                            :action="action"
+                                            :msg-id="msg.id"
+                                            :is-confirming="Boolean(isConfirming[`prod_${msg.id}`])"
+                                            @confirm="confirmProductAction"
+                                            @discard="discardAction"
+                                        />
 
-                                    <!-- 5. Vault Balance Holdings Card -->
-                                    <VaultBalanceCard
-                                        v-else-if="action.tool === 'get_vault_balance'"
-                                        :action="action"
-                                    />
+                                        <!-- 3. Daily Rates Draft Card -->
+                                        <DailyRatesCard
+                                            v-else-if="action.tool === 'update_daily_rates'"
+                                            :action="action"
+                                            :msg-id="msg.id"
+                                            :is-confirming="Boolean(isConfirming[`rates_${msg.id}`])"
+                                            @confirm="confirmRatesAction"
+                                            @discard="discardAction"
+                                        />
 
-                                    <!-- 6. Daily Rate Inquire Card (Sleek Compact Light Luxury) -->
-                                    <div
-                                        v-else-if="action.tool === 'get_daily_rates'"
-                                        class="border border-surface-200 bg-white shadow-xs rounded-none overflow-hidden my-2 font-sans border-t-2 border-t-[#c08f34]"
-                                    >
-                                        <div class="px-3 py-2 bg-surface-50/90 border-b border-surface-200 flex items-center justify-between">
-                                            <div class="flex items-center gap-2">
-                                                <Coins class="w-4 h-4 text-[#c08f34]" />
-                                                <div>
-                                                    <h4 class="font-semibold text-xs text-surface-900 tracking-wide leading-none">Today's Live Bullion Rates</h4>
-                                                    <span class="text-[10px] text-surface-500 font-normal">Real-time Database Rates</span>
+                                        <!-- 4. Stock Inventory Check Card -->
+                                        <StockCheckCard v-else-if="action.tool === 'check_stock'" :action="action" />
+
+                                        <!-- 5. Vault Balance Holdings Card -->
+                                        <VaultBalanceCard v-else-if="action.tool === 'get_vault_balance'" :action="action" />
+
+                                        <!-- 6. Daily Rate Inquire Card (Sleek Compact Light Luxury) -->
+                                        <div
+                                            v-else-if="action.tool === 'get_daily_rates'"
+                                            class="my-2 overflow-hidden border border-t-2 border-surface-200 border-t-[#c08f34] bg-white font-sans shadow-xs"
+                                        >
+                                            <div
+                                                class="flex flex-col gap-2 border-b border-surface-200 bg-surface-50/90 px-3 py-2 min-[410px]:flex-row min-[410px]:items-center min-[410px]:justify-between"
+                                            >
+                                                <div class="flex items-center gap-2">
+                                                    <Coins class="h-4 w-4 text-[#c08f34]" />
+                                                    <div>
+                                                        <h4 class="text-xs leading-none font-semibold tracking-wide text-surface-900">Today's Live Bullion Rates</h4>
+                                                        <span class="text-[10px] font-normal text-surface-500">Real-time Database Rates</span>
+                                                    </div>
+                                                </div>
+                                                <span class="inline-flex items-center gap-1 border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800 uppercase">
+                                                    <span class="h-1.5 w-1.5 bg-emerald-500"></span>
+                                                    Live Active
+                                                </span>
+                                            </div>
+                                            <div
+                                                class="grid grid-cols-1 divide-y divide-surface-200 bg-white text-left min-[400px]:grid-cols-3 min-[400px]:divide-x min-[400px]:divide-y-0 min-[400px]:text-center"
+                                            >
+                                                <div class="bg-surface-50 p-2.5">
+                                                    <p class="text-[10px] font-semibold text-amber-800 uppercase">Gold 24K</p>
+                                                    <p class="mt-0.5 font-mono text-xs font-bold text-[#c08f34]">₹{{ Number(action.result.gold_24k_per_gm || 7520).toLocaleString('en-IN') }}/g</p>
+                                                </div>
+                                                <div class="bg-surface-50 p-2.5">
+                                                    <p class="text-[10px] font-semibold text-amber-800 uppercase">Gold 22K</p>
+                                                    <p class="mt-0.5 font-mono text-xs font-bold text-surface-900">
+                                                        ₹{{ Number(action.result.gold_22k_per_gm || 6888.32).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}/g
+                                                    </p>
+                                                </div>
+                                                <div class="bg-surface-50 p-2.5">
+                                                    <p class="text-[10px] font-semibold text-slate-700 uppercase">Silver (999)</p>
+                                                    <p class="mt-0.5 font-mono text-xs font-bold text-surface-900">
+                                                        ₹{{ Number(action.result.silver_per_gm || 89.2).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}/g
+                                                    </p>
                                                 </div>
                                             </div>
-                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-medium uppercase rounded-none">
-                                                <span class="w-1.5 h-1.5 rounded-none bg-emerald-500"></span>
-                                                Live Active
-                                            </span>
                                         </div>
-                                        <div class="p-2.5 bg-white grid grid-cols-3 gap-2 text-center">
-                                            <div class="p-2 bg-surface-50 border border-surface-200 rounded-none">
-                                                <p class="text-[10px] font-semibold text-amber-800 uppercase">Gold 24K</p>
-                                                <p class="text-xs font-bold text-[#c08f34] mt-0.5 font-mono">
-                                                    ₹{{ Number(action.result.gold_24k_per_gm || 7520).toLocaleString('en-IN') }}/g
-                                                </p>
-                                            </div>
-                                            <div class="p-2 bg-surface-50 border border-surface-200 rounded-none">
-                                                <p class="text-[10px] font-semibold text-amber-800 uppercase">Gold 22K</p>
-                                                <p class="text-xs font-bold text-surface-900 mt-0.5 font-mono">
-                                                    ₹{{ Number(action.result.gold_22k_per_gm || 6888.32).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}/g
-                                                </p>
-                                            </div>
-                                            <div class="p-2 bg-surface-50 border border-surface-200 rounded-none">
-                                                <p class="text-[10px] font-semibold text-slate-700 uppercase">Silver (999)</p>
-                                                <p class="text-xs font-bold text-surface-900 mt-0.5 font-mono">
-                                                    ₹{{ Number(action.result.silver_per_gm || 89.20).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}/g
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </template>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="isLoading" class="flex items-center gap-2.5">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center border border-amber-200 bg-amber-50">
+                                <Sparkles class="h-3.5 w-3.5 animate-pulse text-[#b07b24]" />
+                            </div>
+                            <div class="flex items-center gap-2 border border-surface-200 bg-white px-3.5 py-3 shadow-xs">
+                                <span class="h-1.5 w-1.5 animate-bounce bg-[#c08f34]" />
+                                <span class="h-1.5 w-1.5 animate-bounce bg-[#c08f34] [animation-delay:0.15s]" />
+                                <span class="h-1.5 w-1.5 animate-bounce bg-[#c08f34] [animation-delay:0.3s]" />
+                                <span class="ml-1 text-[11.5px] font-medium text-surface-500">
+                                    {{ autoVoiceOutput ? 'Jawab aur voice taiyar ho rahe hain...' : 'ERP command process ho rahi hai...' }}
+                                </span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Loading / Thinking Indicator -->
-                    <div v-if="isLoading" class="flex items-center gap-2.5">
-                        <div class="w-7 h-7 bg-white border border-[#c08f34] flex items-center justify-center shrink-0 rounded-none">
-                            <Sparkles class="w-3.5 h-3.5 text-[#c08f34] animate-spin" />
+                    <!-- 🎙️ 3. Bottom Command Area: Enterprise Sharp Pinned Footer -->
+                    <div class="z-10 shrink-0 space-y-2.5 border-t border-surface-200 bg-white px-3 py-3 sm:px-5">
+                        <!-- Quick Suggestion Chips (Sharp Rectangular Buttons) -->
+                        <div v-if="!isStarterConversation" class="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                            <button
+                                v-for="(item, idx) in quickSuggestions.slice(0, 3)"
+                                :key="idx"
+                                type="button"
+                                :disabled="isLoading"
+                                class="flex shrink-0 items-center gap-1.5 border border-surface-200 bg-surface-50 px-2.5 py-1.5 text-[10.5px] font-medium text-surface-600 transition-colors hover:border-[#c08f34] hover:bg-amber-50 hover:text-[#1c3633] disabled:opacity-50"
+                                @click="sendMessage(item.prompt)"
+                            >
+                                <component :is="item.icon" class="h-3 w-3 text-[#b07b24]" />
+                                <span>{{ item.label }}</span>
+                            </button>
                         </div>
-                        <div class="px-3.5 py-2.5 bg-white border border-slate-200 flex items-center gap-2 rounded-none shadow-xs">
-                            <span class="w-1.5 h-1.5 bg-[#c08f34] animate-bounce" />
-                            <span class="w-1.5 h-1.5 bg-[#c08f34] animate-bounce [animation-delay:0.2s]" />
-                            <span class="w-1.5 h-1.5 bg-[#c08f34] animate-bounce [animation-delay:0.4s]" />
-                            <span class="text-xs text-slate-600 font-medium ml-1">
-                                {{ autoVoiceOutput ? 'Thinking & Generating Studio Voice...' : 'Processing ERP Command...' }}
-                            </span>
+
+                        <div v-if="isListening" class="flex items-center justify-between border border-red-200 bg-red-50 px-3 py-2" role="status">
+                            <div class="flex items-center gap-2 text-[11px] font-medium text-red-700">
+                                <span class="relative flex h-2 w-2">
+                                    <span class="absolute inline-flex h-full w-full animate-ping bg-red-400 opacity-75"></span>
+                                    <span class="relative inline-flex h-2 w-2 bg-red-600"></span>
+                                </span>
+                                <span>Sun raha hoon... Hindi ya English mein boliye</span>
+                            </div>
+                            <button type="button" class="ml-3 text-[11px] font-semibold text-red-700 underline-offset-2 hover:underline" @click="toggleListening">Stop</button>
                         </div>
-                    </div>
-                </div>
 
-                <!-- 🎙️ 3. Bottom Command Area: Enterprise Sharp Pinned Footer -->
-                <div class="shrink-0 border-t border-slate-200 bg-white p-3.5 space-y-2.5 z-10 rounded-none">
-                    <!-- Quick Suggestion Chips (Sharp Rectangular Buttons) -->
-                    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                        <button
-                            v-for="(item, idx) in quickSuggestions"
-                            :key="idx"
-                            type="button"
-                            class="shrink-0 px-2.5 py-1 text-xs font-semibold bg-slate-50 hover:bg-slate-100 border border-slate-300 hover:border-[#1c3633] text-[#1c3633] transition-all cursor-pointer flex items-center gap-1.5 rounded-none"
-                            @click="sendMessage(item.prompt)"
-                        >
-                            <component :is="item.icon" class="w-3 h-3 text-[#c08f34]" />
-                            <span>{{ item.label }}</span>
-                        </button>
-                    </div>
-
-                    <!-- Listening Active Banner (Sharp Rectangular) -->
-                    <div v-if="isListening" class="px-3 py-2 bg-red-50 border border-red-300 flex items-center justify-between animate-pulse rounded-none">
-                        <div class="flex items-center gap-2 text-xs text-red-700 font-bold">
-                            <span class="w-2 h-2 bg-red-600 animate-ping"></span>
-                            <span>Listening... Boliye (e.g. "14 gram gold chain add karo")</span>
+                        <div v-if="speechError || chatError" class="border border-amber-200 bg-amber-50 px-3 py-2 text-[10.5px] leading-4 text-amber-800" role="alert">
+                            {{ speechError || chatError }}
                         </div>
-                        <button type="button" class="text-xs text-red-700 font-bold hover:underline cursor-pointer" @click="toggleListening">
-                            Stop
-                        </button>
-                    </div>
 
-                    <!-- Input & Mic Bar (Sharp Clean Rectangular) -->
-                    <div class="flex items-center gap-2">
-                        <!-- Mic Button -->
-                        <button
-                            type="button"
-                            :class="[
-                                'w-10 h-10 flex items-center justify-center shrink-0 transition-all cursor-pointer rounded-none border',
-                                isListening
-                                    ? 'bg-red-600 text-white border-red-600 animate-pulse'
-                                    : 'bg-[#1c3633] hover:bg-[#254642] text-[#c08f34] border-[#1c3633]',
-                            ]"
-                            :title="isListening ? 'Stop Listening' : 'Click to Speak (Voice Command)'"
-                            @click="toggleListening"
-                        >
-                            <MicOff v-if="isListening" class="w-4 h-4" />
-                            <Mic v-else class="w-4 h-4" />
-                        </button>
+                        <div class="border border-surface-300 bg-white p-2 shadow-xs transition-colors focus-within:border-[#c08f34] focus-within:ring-2 focus-within:ring-amber-100">
+                            <Textarea
+                                ref="composerRef"
+                                v-model="inputPrompt"
+                                :auto-resize="true"
+                                :rows="1"
+                                :disabled="isLoading"
+                                placeholder="Jaise: 12g 22K ring ka estimate banao..."
+                                class="karat-composer !max-h-28 !min-h-10 !w-full !resize-none !border-0 !bg-transparent !px-2 !py-2 text-xs !shadow-none focus:!ring-0"
+                                aria-label="Ask Karat AI"
+                                @keydown.enter.exact.prevent="sendMessage()"
+                            />
 
-                        <!-- Text Input (Sakai Theme InputText, Rounded None) -->
-                        <InputText
-                            v-model="inputPrompt"
-                            placeholder="Ask Karat AI or speak via mic..."
-                            class="flex-1 !h-10 text-xs bg-white rounded-none"
-                            @keydown.enter="sendMessage()"
-                        />
+                            <div class="mt-1 flex items-center justify-between gap-2 border-t border-surface-100 pt-2">
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        :disabled="!recognitionSupported || isLoading"
+                                        :class="[
+                                            'flex h-8 items-center gap-1.5 border px-2.5 text-[10.5px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+                                            isListening ? 'border-red-600 bg-red-600 text-white' : 'border-surface-200 bg-surface-50 text-surface-600 hover:border-[#c08f34] hover:text-[#1c3633]',
+                                        ]"
+                                        :aria-label="isListening ? 'Stop listening' : 'Start voice input'"
+                                        @click="toggleListening"
+                                    >
+                                        <MicOff v-if="isListening" class="h-3.5 w-3.5" />
+                                        <Mic v-else class="h-3.5 w-3.5" />
+                                        <span>{{ isListening ? 'Stop' : 'Boliye' }}</span>
+                                    </button>
+                                    <span class="hidden text-[9.5px] text-surface-400 sm:inline">Enter send · Shift+Enter new line</span>
+                                </div>
 
-                        <!-- Send Button -->
-                        <button
-                            type="button"
-                            :disabled="!inputPrompt.trim() || isLoading"
-                            class="w-10 h-10 flex items-center justify-center bg-[#1c3633] hover:bg-[#254642] text-[#c08f34] disabled:opacity-30 disabled:hover:bg-[#1c3633] transition-all cursor-pointer shrink-0 rounded-none border border-[#1c3633]"
-                            @click="sendMessage()"
-                        >
-                            <Send class="w-4 h-4" />
-                        </button>
+                                <button
+                                    type="button"
+                                    :disabled="!inputPrompt.trim() || isLoading"
+                                    class="flex h-8 items-center gap-1.5 border border-[#1c3633] bg-[#1c3633] px-3 text-[10.5px] font-semibold text-white transition-colors hover:bg-[#254642] disabled:cursor-not-allowed disabled:opacity-35"
+                                    aria-label="Send message"
+                                    @click="sendMessage()"
+                                >
+                                    <span>Send</span>
+                                    <Send class="h-3.5 w-3.5 text-[#e1b65f]" />
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
         </template>
     </Drawer>
 </template>
@@ -812,7 +874,9 @@ onMounted(() => {
 :deep(.p-drawer-content) {
     padding: 0 !important;
 }
-:deep(.p-inputtext) {
-    border-radius: 0px !important;
+:deep(.karat-composer:focus),
+:deep(.karat-composer:focus-visible) {
+    box-shadow: none !important;
+    outline: none !important;
 }
 </style>

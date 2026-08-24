@@ -1,16 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { Check, ExternalLink, FileText, Printer, Receipt, ShieldCheck, Tag, X } from 'lucide-vue-next';
 import InputText from 'primevue/inputtext';
-import {
-    FileText,
-    Printer,
-    Receipt,
-    ExternalLink,
-    ShieldCheck,
-    Check,
-    Tag,
-    X,
-} from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 
 interface ActionItem {
     tool: string;
@@ -33,10 +24,7 @@ const emit = defineEmits<{
 const showBarcodeField = ref(!!props.action.result?.barcode);
 
 const isConfirmed = computed(() => {
-    return Boolean(
-        props.action.result?.invoice_number &&
-        (props.action.result?.status === 'INVOICE_GENERATED_REAL_DB' || props.action.result?.is_preview === false)
-    );
+    return Boolean(props.action.result?.invoice_number && (props.action.result?.status === 'INVOICE_GENERATED_REAL_DB' || props.action.result?.is_preview === false));
 });
 
 const isDraft = computed(() => {
@@ -75,94 +63,81 @@ const setPurity = (draft: any, purity: string) => {
 </script>
 
 <template>
-    <div class="border border-surface-200 bg-white shadow-xs rounded-none overflow-hidden my-2 font-sans border-t-2 border-t-[#c08f34]" style="font-family: 'Poppins', sans-serif !important;">
+    <section
+        class="my-2 overflow-hidden rounded-none border border-t-2 border-surface-200 border-t-[#c08f34] bg-white font-sans shadow-xs"
+        style="font-family: 'Poppins', sans-serif !important"
+        aria-label="Invoice draft"
+    >
         <!-- 📝 1. DRAFT PREVIEW STATE (Before DB Insert) -->
-        <div v-if="isDraft" class="p-3 bg-white space-y-3">
+        <div v-if="isDraft" class="space-y-3 bg-white p-3">
             <!-- Header Banner (Sharp rectangular, perfectly aligned) -->
-            <div class="flex items-center justify-between border-b border-surface-200 pb-2">
+            <div class="flex flex-col gap-2 border-b border-surface-200 pb-2.5 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
                 <div class="space-y-0.5">
                     <div class="flex items-center gap-1.5">
-                        <Receipt class="w-4 h-4 text-[#c08f34]" />
-                        <h4 class="font-bold text-xs text-surface-900 tracking-wide uppercase leading-none">Invoice Draft Preview</h4>
+                        <Receipt class="h-4 w-4 text-[#c08f34]" />
+                        <h4 class="text-xs leading-none font-semibold tracking-wide text-surface-900">Invoice draft</h4>
                     </div>
-                    <p class="text-[10.5px] text-surface-500 font-medium pl-5.5">Verify & edit details before creating in database</p>
+                    <p class="pl-5.5 text-[10.5px] font-normal text-surface-500">Details verify karein, phir invoice create karein</p>
                 </div>
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-300 text-amber-900 text-[10px] font-bold uppercase rounded-none">
-                    <ShieldCheck class="w-3 h-3 text-amber-700" />
-                    Review Required
+                <span class="inline-flex items-center gap-1 rounded-none border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-900 uppercase">
+                    <ShieldCheck class="h-3 w-3 text-amber-700" />
+                    Review required
                 </span>
             </div>
 
             <!-- 2-Column Compact Input Grid -->
-            <div class="grid grid-cols-2 gap-2.5 text-xs">
+            <div class="grid grid-cols-1 gap-3 text-xs min-[430px]:grid-cols-2">
                 <!-- Customer Name -->
                 <div>
-                    <label class="text-[10.5px] font-bold text-slate-700 block uppercase tracking-wider">Customer Name *</label>
-                    <InputText
-                        v-model="action.result.customer_name"
-                        size="small"
-                        placeholder="Customer Name (or Walk-in)"
-                        class="w-full mt-1 font-semibold text-slate-900 rounded-none !font-sans"
-                    />
+                    <label class="block text-[11px] font-medium text-surface-700">Customer name <span class="text-red-600">*</span></label>
+                    <InputText v-model="action.result.customer_name" size="small" placeholder="Customer Name (or Walk-in)" class="mt-1 w-full rounded-none !font-sans font-semibold text-slate-900" />
                 </div>
 
                 <!-- Mobile Number -->
                 <div>
-                    <label class="text-[10.5px] font-bold text-slate-700 block uppercase tracking-wider">Mobile Number</label>
+                    <label class="block text-[11px] font-medium text-surface-700">Mobile number <span class="font-normal text-surface-400">(optional)</span></label>
                     <InputText
                         v-model="action.result.customer_phone"
                         size="small"
                         placeholder="10-digit mobile (optional)"
-                        class="w-full mt-1 font-mono font-medium text-slate-900 rounded-none !font-sans"
+                        class="mt-1 w-full rounded-none !font-sans font-mono font-medium text-slate-900"
                     />
                 </div>
 
                 <!-- Item Description & Barcode Toggle -->
-                <div :class="[showBarcodeField ? 'col-span-1' : 'col-span-2']">
+                <div :class="[showBarcodeField ? '' : 'min-[430px]:col-span-2']">
                     <div class="flex items-center justify-between">
-                        <label class="text-[10.5px] font-bold text-slate-700 block uppercase tracking-wider">Item Description *</label>
-                        <button
-                            v-if="!showBarcodeField"
-                            type="button"
-                            @click="showBarcodeField = true"
-                            class="text-[10px] font-bold text-[#c08f34] hover:underline cursor-pointer flex items-center gap-0.5"
-                        >
-                            <Tag class="w-2.5 h-2.5" />
-                            <span>+ Attach Barcode</span>
+                        <label class="block text-[11px] font-medium text-surface-700">Item description <span class="text-red-600">*</span></label>
+                        <button v-if="!showBarcodeField" type="button" @click="showBarcodeField = true" class="flex items-center gap-0.5 text-[10px] font-medium text-[#a8741f] hover:underline">
+                            <Tag class="h-2.5 w-2.5" />
+                            <span>Add barcode</span>
                         </button>
                     </div>
-                    <InputText
-                        v-model="action.result.item_name"
-                        size="small"
-                        placeholder="e.g. 22K Gold Chain"
-                        class="w-full mt-1 font-semibold text-slate-900 rounded-none !font-sans"
-                    />
+                    <InputText v-model="action.result.item_name" size="small" placeholder="e.g. 22K Gold Chain" class="mt-1 w-full rounded-none !font-sans font-semibold text-slate-900" />
                 </div>
 
                 <!-- Optional Barcode Field (Only if present or clicked) -->
-                <div v-if="showBarcodeField" class="col-span-1">
+                <div v-if="showBarcodeField">
                     <div class="flex items-center justify-between">
-                        <label class="text-[10.5px] font-bold text-slate-700 block uppercase tracking-wider">Stock Barcode</label>
+                        <label class="block text-[11px] font-medium text-surface-700">Stock barcode</label>
                         <button
                             type="button"
-                            @click="showBarcodeField = false; action.result.barcode = ''"
-                            class="text-slate-400 hover:text-red-600 cursor-pointer"
+                            @click="
+                                showBarcodeField = false;
+                                action.result.barcode = '';
+                            "
+                            class="flex h-5 w-5 items-center justify-center border border-transparent text-slate-400 hover:border-red-200 hover:text-red-600"
                             title="Remove Barcode"
                         >
-                            <X class="w-3 h-3" />
+                            <X class="h-3 w-3" />
                         </button>
                     </div>
-                    <InputText
-                        v-model="action.result.barcode"
-                        size="small"
-                        placeholder="e.g. G00026"
-                        class="w-full mt-1 font-mono font-bold uppercase text-slate-900 rounded-none !font-sans"
-                    />
+                    <InputText v-model="action.result.barcode" size="small" placeholder="e.g. G00026" class="mt-1 w-full rounded-none !font-sans font-mono font-bold text-slate-900 uppercase" />
                 </div>
 
                 <!-- Weight & Live Rate -->
                 <div>
-                    <label class="text-[10.5px] font-bold text-slate-700 block uppercase tracking-wider">Net Weight (g) *</label>
+                    <label class="block text-[11px] font-medium text-surface-700">Net weight (g) <span class="text-red-600">*</span></label>
                     <div class="relative mt-1">
                         <InputText
                             v-model.number="action.result.weight"
@@ -170,40 +145,38 @@ const setPurity = (draft: any, purity: string) => {
                             step="0.001"
                             size="small"
                             @input="emit('recalculate', action.result)"
-                            class="w-full pl-2.5 pr-6 font-bold text-slate-900 rounded-none !font-sans"
+                            class="w-full rounded-none pr-6 pl-2.5 !font-sans font-bold text-slate-900"
                         />
-                        <span class="absolute right-2.5 top-2 text-[10px] font-bold text-slate-400">g</span>
+                        <span class="absolute top-2 right-2.5 text-[10px] font-bold text-slate-400">g</span>
                     </div>
                 </div>
                 <div>
-                    <label class="text-[10.5px] font-bold text-slate-700 block uppercase tracking-wider">Live Rate (₹/g) *</label>
+                    <label class="block text-[11px] font-medium text-surface-700">Live rate (₹/g) <span class="text-red-600">*</span></label>
                     <div class="relative mt-1">
-                        <span class="absolute left-2.5 top-2 text-xs font-bold text-slate-500 z-1">₹</span>
+                        <span class="absolute top-2 left-2.5 z-1 text-xs font-bold text-slate-500">₹</span>
                         <InputText
                             v-model.number="action.result.rate_per_gm"
                             type="number"
                             step="1"
                             size="small"
                             @input="emit('recalculate', action.result)"
-                            class="w-full pl-6 pr-2 font-bold text-slate-900 rounded-none !font-sans"
+                            class="w-full rounded-none pr-2 pl-6 !font-sans font-bold text-slate-900"
                         />
                     </div>
                 </div>
 
                 <!-- Purity Chips (Sharp rectangular) -->
-                <div class="col-span-2">
-                    <label class="text-[10.5px] font-bold text-slate-700 block uppercase tracking-wider mb-1">Purity</label>
-                    <div class="grid grid-cols-5 gap-1.5">
+                <div class="min-[430px]:col-span-2">
+                    <label class="mb-1 block text-[11px] font-medium text-surface-700">Purity</label>
+                    <div class="grid grid-cols-3 gap-1.5 min-[480px]:grid-cols-5">
                         <button
                             v-for="p in ['22K', '18K', '24K', '14K', 'Silver']"
                             :key="p"
                             type="button"
                             @click="setPurity(action.result, p)"
                             :class="[
-                                'py-1 text-[11px] font-bold border transition-all text-center rounded-none cursor-pointer',
-                                action.result.purity === p
-                                    ? 'bg-[#1c3633] text-[#c08f34] border-[#1c3633]'
-                                    : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                                'min-h-8 rounded-none border py-1 text-center text-[11px] font-semibold transition-colors',
+                                action.result.purity === p ? 'border-[#1c3633] bg-[#1c3633] text-[#c08f34]' : 'border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400 hover:bg-slate-100',
                             ]"
                         >
                             {{ p }}
@@ -212,22 +185,18 @@ const setPurity = (draft: any, purity: string) => {
                 </div>
 
                 <!-- Making Charge (Sharp rectangular tabs) -->
-                <div class="col-span-2 space-y-1.5 pt-1 border-t border-slate-100">
+                <div class="space-y-2 border-t border-slate-100 pt-3 min-[430px]:col-span-2">
                     <div class="flex items-center justify-between">
-                        <label class="text-[10.5px] font-bold text-slate-700 uppercase tracking-wider">Making Charge</label>
-                        <span class="text-[11px] font-bold text-slate-800 font-mono">
-                            = ₹{{ formatMoney(action.result.making_charges) }}
-                        </span>
+                        <label class="text-[11px] font-medium text-surface-700">Making charge</label>
+                        <span class="font-mono text-[11px] font-bold text-slate-800"> = ₹{{ formatMoney(action.result.making_charges) }} </span>
                     </div>
                     <div class="grid grid-cols-3 gap-1">
                         <button
                             type="button"
                             @click="setMakingType(action.result, 'percentage')"
                             :class="[
-                                'py-1 text-[10.5px] font-bold border transition-all text-center rounded-none cursor-pointer',
-                                action.result.making_type === 'percentage'
-                                    ? 'bg-[#1c3633] text-white border-[#1c3633]'
-                                    : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                                'min-h-8 rounded-none border py-1 text-center text-[10.5px] font-semibold transition-colors',
+                                action.result.making_type === 'percentage' ? 'border-[#1c3633] bg-[#1c3633] text-white' : 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100',
                             ]"
                         >
                             % Percent
@@ -236,10 +205,8 @@ const setPurity = (draft: any, purity: string) => {
                             type="button"
                             @click="setMakingType(action.result, 'per_gram')"
                             :class="[
-                                'py-1 text-[10.5px] font-bold border transition-all text-center rounded-none cursor-pointer',
-                                action.result.making_type === 'per_gram'
-                                    ? 'bg-[#1c3633] text-white border-[#1c3633]'
-                                    : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                                'min-h-8 rounded-none border py-1 text-center text-[10.5px] font-semibold transition-colors',
+                                action.result.making_type === 'per_gram' ? 'border-[#1c3633] bg-[#1c3633] text-white' : 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100',
                             ]"
                         >
                             ₹/g Per Gram
@@ -248,58 +215,52 @@ const setPurity = (draft: any, purity: string) => {
                             type="button"
                             @click="setMakingType(action.result, 'flat')"
                             :class="[
-                                'py-1 text-[10.5px] font-bold border transition-all text-center rounded-none cursor-pointer',
-                                action.result.making_type === 'flat'
-                                    ? 'bg-[#1c3633] text-white border-[#1c3633]'
-                                    : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                                'min-h-8 rounded-none border py-1 text-center text-[10.5px] font-semibold transition-colors',
+                                action.result.making_type === 'flat' ? 'border-[#1c3633] bg-[#1c3633] text-white' : 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100',
                             ]"
                         >
                             ₹ Flat
                         </button>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2 pt-1">
+                    <div class="grid grid-cols-1 gap-2 pt-1 min-[400px]:grid-cols-2">
                         <div>
-                            <label class="text-[10px] text-slate-600 block">
-                                Value {{ action.result.making_type === 'percentage' ? '(%)' : '(₹)' }}
-                            </label>
+                            <label class="block text-[10.5px] font-medium text-surface-600"> Value {{ action.result.making_type === 'percentage' ? '(%)' : '(₹)' }} </label>
                             <InputText
                                 v-model.number="action.result.making_value"
                                 type="number"
                                 step="0.1"
                                 size="small"
                                 @input="emit('recalculate', action.result)"
-                                class="w-full mt-0.5 font-bold text-slate-900 rounded-none !font-sans"
+                                class="mt-0.5 w-full rounded-none !font-sans font-bold text-slate-900"
                             />
                         </div>
                         <div>
-                            <label class="text-[10px] text-slate-600 block">Discount (₹)</label>
+                            <label class="block text-[10.5px] font-medium text-surface-600">Discount (₹)</label>
                             <InputText
                                 v-model.number="action.result.discount_amount"
                                 type="number"
                                 step="1"
                                 size="small"
                                 @input="emit('recalculate', action.result)"
-                                class="w-full mt-0.5 font-bold text-emerald-800 rounded-none !font-sans"
+                                class="mt-0.5 w-full rounded-none !font-sans font-bold text-emerald-800"
                             />
                         </div>
                     </div>
                 </div>
 
                 <!-- Payment Mode (Sharp rectangular) -->
-                <div class="col-span-2 pt-1 border-t border-slate-100">
-                    <label class="text-[10.5px] font-bold text-slate-700 block uppercase tracking-wider mb-1">Payment Mode</label>
-                    <div class="grid grid-cols-5 gap-1">
+                <div class="border-t border-slate-100 pt-3 min-[430px]:col-span-2">
+                    <label class="mb-1 block text-[11px] font-medium text-surface-700">Payment mode</label>
+                    <div class="grid grid-cols-3 gap-1 min-[480px]:grid-cols-5">
                         <button
                             v-for="mode in ['Cash', 'UPI', 'Card', 'Bank', 'Credit']"
                             :key="mode"
                             type="button"
                             @click="setPaymentMode(action.result, mode)"
                             :class="[
-                                'py-1 text-[10.5px] font-bold border transition-all text-center rounded-none cursor-pointer',
-                                action.result.payment_mode === mode
-                                    ? 'bg-[#1c3633] text-white border-[#1c3633]'
-                                    : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                                'min-h-8 rounded-none border py-1 text-center text-[10.5px] font-semibold transition-colors',
+                                action.result.payment_mode === mode ? 'border-[#1c3633] bg-[#1c3633] text-white' : 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100',
                             ]"
                         >
                             {{ mode }}
@@ -309,46 +270,50 @@ const setPurity = (draft: any, purity: string) => {
             </div>
 
             <!-- Live Bill Summary Box (Sharp rectangular) -->
-            <div class="bg-slate-50 border border-slate-200 p-2.5 space-y-1.5 text-xs rounded-none">
-                <div class="flex justify-between text-slate-700">
-                    <span>Metal Value ({{ formatWeight(action.result.weight) }} @ ₹{{ formatMoney(action.result.rate_per_gm) }})</span>
-                    <span class="font-bold text-slate-900 font-mono">₹{{ formatMoney(action.result.metal_value) }}</span>
+            <div class="space-y-2 rounded-none border border-slate-200 bg-slate-50 p-3 text-xs">
+                <div class="mb-1 flex items-center justify-between border-b border-surface-200 pb-2">
+                    <span class="text-[10px] font-semibold tracking-wide text-surface-500 uppercase">Bill summary</span>
+                    <span class="text-[10px] text-surface-400">Live calculation</span>
+                </div>
+                <div class="flex items-start justify-between gap-3 text-slate-700">
+                    <span class="leading-4"
+                        >Metal value <span class="block text-[9.5px] text-surface-400">{{ formatWeight(action.result.weight) }} × ₹{{ formatMoney(action.result.rate_per_gm) }}/g</span></span
+                    >
+                    <span class="shrink-0 font-mono font-semibold text-slate-900">₹{{ formatMoney(action.result.metal_value) }}</span>
                 </div>
                 <div class="flex justify-between text-slate-700">
                     <span>Making Charges</span>
-                    <span class="font-bold text-slate-900 font-mono">+ ₹{{ formatMoney(action.result.making_charges) }}</span>
+                    <span class="font-mono font-semibold text-slate-900">+ ₹{{ formatMoney(action.result.making_charges) }}</span>
                 </div>
                 <div v-if="action.result.discount_amount > 0" class="flex justify-between text-emerald-700">
                     <span>Discount</span>
-                    <span class="font-bold font-mono">- ₹{{ formatMoney(action.result.discount_amount) }}</span>
+                    <span class="font-mono font-semibold">- ₹{{ formatMoney(action.result.discount_amount) }}</span>
                 </div>
                 <div class="flex justify-between text-slate-700">
                     <span>3% GST</span>
-                    <span class="font-bold text-slate-900 font-mono">+ ₹{{ formatMoney(action.result.gst_3_percent) }}</span>
+                    <span class="font-mono font-semibold text-slate-900">+ ₹{{ formatMoney(action.result.gst_3_percent) }}</span>
                 </div>
-                <div class="flex justify-between items-center pt-2 border-t border-slate-200">
-                    <span class="font-bold text-slate-900 uppercase tracking-wide text-xs">GRAND TOTAL</span>
-                    <span class="text-base font-bold text-emerald-800 font-mono">
-                        ₹{{ formatMoney(action.result.grand_total) }}
-                    </span>
+                <div class="flex items-center justify-between border-t border-slate-200 pt-2">
+                    <span class="text-xs font-semibold tracking-wide text-slate-900 uppercase">Grand total</span>
+                    <span class="font-mono text-base font-bold text-emerald-800"> ₹{{ formatMoney(action.result.grand_total) }} </span>
                 </div>
             </div>
 
             <!-- Confirmation & Discard Buttons (Sharp rectangular) -->
-            <div class="flex items-center gap-2 pt-1">
+            <div class="flex flex-col-reverse gap-2 border-t border-surface-100 pt-3 min-[430px]:flex-row min-[430px]:items-center">
                 <button
                     type="button"
                     :disabled="isConfirming"
                     @click="emit('confirm', action, msgId)"
-                    class="flex-1 py-2.5 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 rounded-none cursor-pointer border border-[#1c3633]"
+                    class="flex flex-1 items-center justify-center gap-1.5 rounded-none border border-[#1c3633] bg-[#1c3633] py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#254642] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                    <Check class="w-4 h-4 text-[#c08f34]" />
-                    <span>{{ isConfirming ? 'Creating Invoice in Database...' : 'Confirm & Create Invoice in Database' }}</span>
+                    <Check class="h-4 w-4 text-[#c08f34]" />
+                    <span>{{ isConfirming ? 'Invoice create ho raha hai...' : 'Confirm and create invoice' }}</span>
                 </button>
                 <button
                     type="button"
                     @click="emit('discard', action, msgId)"
-                    class="px-4 py-2.5 bg-white border border-slate-300 text-slate-700 hover:text-red-700 hover:border-red-300 text-xs font-semibold transition-all rounded-none cursor-pointer"
+                    class="rounded-none border border-surface-300 bg-white px-4 py-2.5 text-xs font-medium text-surface-600 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700"
                 >
                     Discard
                 </button>
@@ -356,84 +321,78 @@ const setPurity = (draft: any, purity: string) => {
         </div>
 
         <!-- 📄 2. CONFIRMED FINAL INVOICE VOUCHER (Post-Confirmation) -->
-        <div v-else-if="isConfirmed" class="p-3 bg-white space-y-2.5">
+        <div v-else-if="isConfirmed" class="space-y-3 bg-white p-3">
             <!-- Invoice Header Banner (Sharp rectangular) -->
-            <div class="p-2.5 bg-emerald-700 text-white flex items-center justify-between rounded-none">
+            <div class="flex flex-col gap-2 rounded-none bg-emerald-700 p-2.5 text-white min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
                 <div class="flex items-center gap-2">
-                    <div class="w-6 h-6 bg-white/20 flex items-center justify-center font-bold text-white rounded-none">
-                        <Receipt class="w-3.5 h-3.5" />
+                    <div class="flex h-6 w-6 items-center justify-center rounded-none bg-white/20 font-bold text-white">
+                        <Receipt class="h-3.5 w-3.5" />
                     </div>
                     <div>
-                        <div class="font-bold text-xs font-mono tracking-wide">{{ action.result.invoice_number }}</div>
-                        <div class="text-[10.5px] text-emerald-100 font-medium">
+                        <div class="font-mono text-xs font-bold tracking-wide">{{ action.result.invoice_number }}</div>
+                        <div class="text-[10.5px] font-medium text-emerald-100">
                             Customer: <strong>{{ action.result.customer_name || 'Walk-in Customer' }}</strong> {{ action.result.customer_phone ? '(' + action.result.customer_phone + ')' : '' }}
                         </div>
                     </div>
                 </div>
-                <span class="px-2 py-0.5 bg-white text-emerald-800 text-[10px] font-bold uppercase rounded-none shadow-xs">
-                    Bill Created
-                </span>
+                <span class="rounded-none bg-white px-2 py-0.5 text-[10px] font-bold text-emerald-800 uppercase shadow-xs"> Bill created </span>
             </div>
 
             <!-- Breakdown Grid (Sharp rectangular) -->
-            <div class="bg-slate-50 border border-slate-200 p-2.5 space-y-1.5 text-xs rounded-none">
-                <div class="grid grid-cols-2 gap-2 text-[11px]">
+            <div class="space-y-1.5 rounded-none border border-slate-200 bg-slate-50 p-2.5 text-xs">
+                <div class="grid grid-cols-1 gap-3 text-[11px] min-[400px]:grid-cols-2">
                     <div>
-                        <span class="text-slate-500 text-[10px] block">Item & Purity</span>
+                        <span class="block text-[10px] text-slate-500">Item & Purity</span>
                         <span class="font-bold text-slate-900">{{ action.result.item_name }} ({{ action.result.purity || '22K' }})</span>
                     </div>
                     <div>
-                        <span class="text-slate-500 text-[10px] block">Weight & Rate</span>
+                        <span class="block text-[10px] text-slate-500">Weight & Rate</span>
                         <span class="font-bold text-slate-900">{{ formatWeight(action.result.weight) }} @ ₹{{ formatMoney(action.result.rate_per_gm) }}/g</span>
                     </div>
                     <div>
-                        <span class="text-slate-500 text-[10px] block">Metal Value</span>
+                        <span class="block text-[10px] text-slate-500">Metal Value</span>
                         <span class="font-bold text-slate-900">₹{{ formatMoney(action.result.metal_value) }}</span>
                     </div>
                     <div>
-                        <span class="text-slate-500 text-[10px] block">Making Charges</span>
+                        <span class="block text-[10px] text-slate-500">Making Charges</span>
                         <span class="font-bold text-slate-900">₹{{ formatMoney(action.result.making_charges) }}</span>
                     </div>
                 </div>
 
-                <div class="flex justify-between items-center pt-2 border-t border-slate-200">
+                <div class="flex flex-col gap-2 border-t border-slate-200 pt-2 min-[390px]:flex-row min-[390px]:items-center min-[390px]:justify-between">
                     <div>
-                        <span class="text-[10px] text-slate-500 uppercase tracking-wider block">Grand Total (Inc. 3% GST)</span>
-                        <span class="text-base font-bold font-mono text-emerald-800">
-                            ₹{{ formatMoney(action.result.grand_total) }}
-                        </span>
+                        <span class="block text-[10px] tracking-wider text-slate-500 uppercase">Grand Total (Inc. 3% GST)</span>
+                        <span class="font-mono text-base font-bold text-emerald-800"> ₹{{ formatMoney(action.result.grand_total) }} </span>
                     </div>
-                    <span class="px-2 py-0.5 bg-emerald-50 border border-emerald-300 text-emerald-800 text-[10px] font-bold font-mono rounded-none">
+                    <span class="rounded-none border border-emerald-300 bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-800">
                         Paid via {{ action.result.payment_mode || 'Cash' }}
                     </span>
                 </div>
             </div>
 
             <!-- Action Buttons: View Invoice & Print Bill PDF (Sharp rectangular) -->
-            <div class="flex items-center gap-2 pt-0.5">
+            <div class="grid grid-cols-1 gap-2 pt-0.5 min-[390px]:grid-cols-2">
                 <a
                     :href="action.result.view_url"
                     target="_blank"
-                    class="flex-1 py-2 bg-white border border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all text-center rounded-none cursor-pointer"
+                    class="flex items-center justify-center gap-1.5 rounded-none border border-slate-300 bg-white py-2 text-center text-xs font-semibold text-slate-800 shadow-xs transition-colors hover:border-slate-800"
                 >
-                    <FileText class="w-3.5 h-3.5 text-amber-600" />
+                    <FileText class="h-3.5 w-3.5 text-amber-600" />
                     <span>View Invoice</span>
-                    <ExternalLink class="w-3 h-3 text-slate-400" />
+                    <ExternalLink class="h-3 w-3 text-slate-400" />
                 </a>
                 <a
                     :href="action.result.print_url"
                     target="_blank"
-                    class="flex-1 py-2 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all text-center rounded-none cursor-pointer"
+                    class="flex items-center justify-center gap-1.5 rounded-none border border-[#1c3633] bg-[#1c3633] py-2 text-center text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[#254642]"
                 >
-                    <Printer class="w-3.5 h-3.5 text-amber-400" />
+                    <Printer class="h-3.5 w-3.5 text-amber-400" />
                     <span>Print PDF</span>
                 </a>
             </div>
         </div>
 
         <!-- 🚫 3. DISCARDED STATE -->
-        <div v-else class="p-2 bg-slate-100 text-slate-500 text-xs italic text-center rounded-none">
-            Invoice draft was discarded.
-        </div>
-    </div>
+        <div v-else class="rounded-none bg-slate-100 p-2 text-center text-xs text-slate-500 italic">Invoice draft was discarded.</div>
+    </section>
 </template>

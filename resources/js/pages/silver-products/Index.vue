@@ -132,6 +132,12 @@ const pricingModes = [
     { label: 'By Weight', value: 'WEIGHT' },
 ];
 
+const makingChargeTypeOptions = [
+    { label: '% (Percentage)', value: 'percentage' },
+    { label: '₹ Flat (Lump sum)', value: 'flat' },
+    { label: '₹/g (Per gram)', value: 'per_gram' },
+];
+
 const form = useForm({
     id: null,
     name: '',
@@ -144,6 +150,7 @@ const form = useForm({
     net_weight: null,
     piece_price: null,
     making_charge: 0,
+    making_charge_type: 'per_gram',
     notes: '',
     batch_items: [],
     image: null,
@@ -157,6 +164,7 @@ const bulkForm = useForm({
     pricing_mode: null,
     piece_price: null,
     making_charge: null,
+    making_charge_type: null,
     notes: null,
 });
 
@@ -223,6 +231,7 @@ const resetForm = () => {
     form.pricing_mode = 'PIECE';
     form.quantity = 1;
     form.making_charge = 0;
+    form.making_charge_type = 'per_gram';
     form.batch_items = [];
     batchMode.value = false;
     batchRows.value = [{ gross_weight: null, net_weight: null }];
@@ -266,6 +275,7 @@ const editProduct = (item) => {
     form.net_weight = item.net_weight ? Number(item.net_weight) : null;
     form.piece_price = item.piece_price ? Number(item.piece_price) : null;
     form.making_charge = Number(item.making_charge || 0);
+    form.making_charge_type = item.making_charge_type || 'per_gram';
     form.notes = item.notes || '';
     form.image = null;
     previewImage.value = item.image_path ? `/storage/${item.image_path}` : null;
@@ -777,7 +787,11 @@ const copyBarcode = async (barcode) => {
                             <template #body="{ data }">
                                 <div class="text-sm">
                                     <p class="text-xs tracking-wide text-surface-500 uppercase">Making</p>
-                                    <p class="mt-1 font-semibold text-surface-900">{{ formatCurrency(data.making_charge) }}</p>
+                                    <p class="mt-1 font-semibold text-surface-900">
+                                        <span v-if="data.making_charge_type === 'flat'">₹{{ Number(data.making_charge || 0).toLocaleString('en-IN') }}</span>
+                                        <span v-else-if="data.making_charge_type === 'percentage'">{{ Number(data.making_charge || 0).toFixed(2) }}%</span>
+                                        <span v-else>₹{{ Number(data.making_charge || 0).toLocaleString('en-IN') }}/g</span>
+                                    </p>
                                 </div>
                             </template>
                         </Column>
@@ -975,8 +989,28 @@ const copyBarcode = async (barcode) => {
                         </div>
                         <div>
                             <label class="mb-2 block text-sm font-medium text-surface-700">Making Charge</label>
-                            <InputNumber v-model="form.making_charge" mode="currency" currency="INR" locale="en-IN" class="w-full" />
+                            <div class="grid grid-cols-[1fr_150px] gap-2">
+                                <InputNumber
+                                    v-model="form.making_charge"
+                                    mode="decimal"
+                                    :prefix="form.making_charge_type !== 'percentage' ? '₹ ' : undefined"
+                                    :suffix="form.making_charge_type === 'percentage' ? ' %' : (form.making_charge_type === 'per_gram' ? ' /g' : undefined)"
+                                    :min="0"
+                                    :max="form.making_charge_type === 'percentage' ? 100 : undefined"
+                                    :minFractionDigits="form.making_charge_type === 'percentage' ? 2 : 0"
+                                    :maxFractionDigits="2"
+                                    class="w-full"
+                                />
+                                <Select
+                                    v-model="form.making_charge_type"
+                                    :options="makingChargeTypeOptions"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    class="w-full"
+                                />
+                            </div>
                             <small v-if="form.errors.making_charge" class="mt-1 block text-xs text-red-500">{{ form.errors.making_charge }}</small>
+                            <small v-if="form.errors.making_charge_type" class="mt-1 block text-xs text-red-500">{{ form.errors.making_charge_type }}</small>
                         </div>
                     </div>
 
@@ -1027,15 +1061,35 @@ const copyBarcode = async (barcode) => {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700">Making Charge</label>
-                            <InputNumber v-model="bulkForm.making_charge" mode="currency" currency="INR" locale="en-IN" class="w-full" />
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Making Charge</label>
+                        <div class="grid grid-cols-[1fr_160px] gap-2">
+                            <InputNumber
+                                v-model="bulkForm.making_charge"
+                                mode="decimal"
+                                :prefix="bulkForm.making_charge_type && bulkForm.making_charge_type !== 'percentage' ? '₹ ' : undefined"
+                                :suffix="bulkForm.making_charge_type === 'percentage' ? ' %' : (bulkForm.making_charge_type === 'per_gram' ? ' /g' : undefined)"
+                                :min="0"
+                                :max="bulkForm.making_charge_type === 'percentage' ? 100 : undefined"
+                                :minFractionDigits="0"
+                                :maxFractionDigits="2"
+                                placeholder="Leave unchanged"
+                                class="w-full"
+                            />
+                            <Select
+                                v-model="bulkForm.making_charge_type"
+                                :options="makingChargeTypeOptions"
+                                optionLabel="label"
+                                optionValue="value"
+                                placeholder="Type"
+                                class="w-full"
+                            />
                         </div>
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700">Notes</label>
-                            <InputText v-model="bulkForm.notes" class="w-full" />
-                        </div>
+                    </div>
+
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Notes</label>
+                        <InputText v-model="bulkForm.notes" class="w-full" />
                     </div>
 
                     <small v-if="bulkForm.errors.bulk_update" class="block text-xs text-red-500">{{ bulkForm.errors.bulk_update }}</small>

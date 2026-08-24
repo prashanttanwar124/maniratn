@@ -399,6 +399,8 @@ class AiCopilotController extends Controller
             'phone' => '0000000000',
         ]);
 
+        $makingType = $request->input('making_charge_type', 'per_gram');
+
         $product = Product::create([
             'name' => $name,
             'category_id' => $category->id,
@@ -407,6 +409,7 @@ class AiCopilotController extends Controller
             'gross_weight' => $weight,
             'net_weight' => $weight,
             'making_charge' => $makingCharge,
+            'making_charge_type' => $makingType,
             'is_sold' => false,
         ]);
 

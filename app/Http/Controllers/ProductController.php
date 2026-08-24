@@ -136,6 +136,12 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        $makingType = $request->input('making_charge_type');
+        if (! $makingType) {
+            $makingType = ((float) $request->input('making_charge', 0) > 100) ? 'per_gram' : 'percentage';
+        }
+        $makingMaxRule = ($makingType === 'percentage') ? '|max:100' : '';
+
         $validated = $request->validate([
             'name' => 'required',
             'category_id' => ['required', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('metal_type', 'GOLD'))],
@@ -144,13 +150,16 @@ class ProductController extends Controller
             'counter_id' => 'nullable|exists:counters,id',
             'gross_weight' => 'required_without:batch_items|nullable|numeric|min:0.001',
             'net_weight' => 'required_without:batch_items|nullable|numeric|min:0.001',
-            'making_charge' => 'required|numeric|min:0|max:100',
+            'making_charge' => 'required|numeric|min:0'.$makingMaxRule,
+            'making_charge_type' => 'nullable|string|in:percentage,flat,per_gram',
             'image' => 'nullable|image|max:2048',
             'image_path' => 'nullable|image|max:2048',
             'batch_items' => ['nullable', 'array', 'min:1', 'max:10'],
             'batch_items.*.gross_weight' => ['required_with:batch_items', 'numeric', 'min:0.001'],
             'batch_items.*.net_weight' => ['required_with:batch_items', 'numeric', 'min:0.001'],
         ]);
+
+        $validated['making_charge_type'] = $validated['making_charge_type'] ?? $makingType;
 
         if ($request->hasFile('image')) {
             $validated['image_path'] = $request->file('image')->store('products', 'public');
@@ -219,6 +228,9 @@ class ProductController extends Controller
 
     public function bulkUpdate(Request $request)
     {
+        $makingType = $request->input('making_charge_type', 'percentage');
+        $makingMaxRule = ($makingType === 'percentage') ? '|max:100' : '';
+
         $validated = $request->validate([
             'product_ids' => ['required', 'array', 'min:1'],
             'product_ids.*' => ['required', 'integer', 'exists:products,id'],
@@ -226,11 +238,12 @@ class ProductController extends Controller
             'purity_id' => ['nullable', 'exists:purities,id'],
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'counter_id' => ['nullable', 'exists:counters,id'],
-            'making_charge' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'making_charge' => 'nullable|numeric|min:0'.$makingMaxRule,
+            'making_charge_type' => ['nullable', 'string', 'in:percentage,flat,per_gram'],
         ]);
 
         $updates = collect($validated)
-            ->only(['category_id', 'purity_id', 'supplier_id', 'counter_id', 'making_charge'])
+            ->only(['category_id', 'purity_id', 'supplier_id', 'counter_id', 'making_charge', 'making_charge_type'])
             ->filter(fn ($value) => $value !== null)
             ->all();
 
@@ -349,6 +362,7 @@ class ProductController extends Controller
                 'gross_weight' => (float) $product->gross_weight,
                 'net_weight' => (float) $product->net_weight,
                 'making_charge' => (float) $product->making_charge,
+                'making_charge_type' => $product->making_charge_type ?? 'percentage',
                 'status' => $product->is_sold ? 'Sold' : 'In Stock',
             ],
             'timeline' => $timeline,
@@ -366,6 +380,7 @@ class ProductController extends Controller
             'gross_weight' => $product->gross_weight,
             'net_weight' => $product->net_weight,
             'making_charge' => $product->making_charge,
+            'making_charge_type' => $product->making_charge_type ?? 'percentage',
         ]);
 
         $baseName = preg_replace('/\s*-\s*G\d{5}$/', '', (string) $product->name) ?: $product->name;
@@ -385,6 +400,12 @@ class ProductController extends Controller
             ]);
         }
 
+        $makingType = $request->input('making_charge_type');
+        if (! $makingType) {
+            $makingType = ((float) $request->input('making_charge', 0) > 100) ? 'per_gram' : ($product->making_charge_type ?? 'percentage');
+        }
+        $makingMaxRule = ($makingType === 'percentage') ? '|max:100' : '';
+
         // Note: Rules are sometimes 'nullable' on update so user doesn't have to re-upload image
         $validated = $request->validate([
             'name' => 'required',
@@ -394,10 +415,13 @@ class ProductController extends Controller
             'counter_id' => 'nullable|exists:counters,id',
             'gross_weight' => 'required|numeric',
             'net_weight' => 'required|numeric',
-            'making_charge' => 'required|numeric|min:0|max:100',
+            'making_charge' => 'required|numeric|min:0'.$makingMaxRule,
+            'making_charge_type' => 'nullable|string|in:percentage,flat,per_gram',
             'image' => 'nullable|image|max:2048',
             'image_path' => 'nullable|image|max:2048',
         ]);
+
+        $validated['making_charge_type'] = $validated['making_charge_type'] ?? $product->making_charge_type ?? 'percentage';
 
         if ($request->hasFile('image')) {
             // Delete old image if exists
