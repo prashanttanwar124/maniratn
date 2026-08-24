@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import InputText from 'primevue/inputtext';
 import { PackagePlus, ShieldCheck, Check } from 'lucide-vue-next';
 
@@ -19,6 +20,17 @@ const emit = defineEmits<{
     (e: 'discard', action: ActionItem, msgId: string): void;
 }>();
 
+const isConfirmed = computed(() => {
+    return Boolean(
+        props.action.result?.barcode &&
+        (props.action.result?.status === 'IN_STOCK_REAL_DB' || props.action.result?.is_preview === false)
+    );
+});
+
+const isDraft = computed(() => {
+    return !isConfirmed.value && !props.action.result?.is_discarded;
+});
+
 const formatMoney = (val: any) => {
     if (val === null || val === undefined || val === '') return '0.00';
     if (typeof val === 'number') {
@@ -38,9 +50,9 @@ const formatWeight = (val: any) => {
 </script>
 
 <template>
-    <div class="border border-slate-300 bg-white shadow-xs rounded-none overflow-hidden my-2">
+    <div class="border border-slate-300 bg-white shadow-xs rounded-none overflow-hidden my-2 font-sans" style="font-family: 'Poppins', sans-serif !important;">
         <!-- 📝 1. PRODUCT ADD DRAFT PREVIEW -->
-        <div v-if="action.result.is_preview" class="p-3 bg-white space-y-3">
+        <div v-if="isDraft" class="p-3 bg-white space-y-3">
             <!-- Header Banner (Sharp rectangular) -->
             <div class="flex items-center justify-between border-b border-slate-200 pb-2">
                 <div class="flex items-center gap-2">
@@ -48,7 +60,7 @@ const formatWeight = (val: any) => {
                         <PackagePlus class="w-3.5 h-3.5" />
                     </div>
                     <div>
-                        <h4 class="font-bold text-xs text-slate-900 font-serif tracking-wide uppercase">Add Ornament to Stock</h4>
+                        <h4 class="font-bold text-xs text-slate-900 tracking-wide uppercase">Add Ornament to Stock</h4>
                         <p class="text-[10px] text-slate-500 font-medium">Review specs before saving barcode in ERP</p>
                     </div>
                 </div>
@@ -66,7 +78,7 @@ const formatWeight = (val: any) => {
                         v-model="action.result.name"
                         size="small"
                         placeholder="e.g. 22K Gold Chain"
-                        class="w-full mt-1 font-semibold text-slate-900 rounded-none"
+                        class="w-full mt-1 font-semibold text-slate-900 rounded-none !font-sans"
                     />
                 </div>
                 <div>
@@ -77,7 +89,7 @@ const formatWeight = (val: any) => {
                             type="number"
                             step="0.001"
                             size="small"
-                            class="w-full pl-2.5 pr-7 font-bold text-slate-900 rounded-none"
+                            class="w-full pl-2.5 pr-7 font-bold text-slate-900 rounded-none !font-sans"
                         />
                         <span class="absolute right-2.5 top-2 text-[10.5px] font-bold text-slate-400">g</span>
                     </div>
@@ -88,7 +100,7 @@ const formatWeight = (val: any) => {
                         v-model="action.result.purity"
                         placeholder="22K, 18K, 24K"
                         size="small"
-                        class="w-full mt-1 font-semibold text-slate-900 rounded-none"
+                        class="w-full mt-1 font-semibold text-slate-900 rounded-none !font-sans"
                     />
                 </div>
                 <div>
@@ -97,7 +109,7 @@ const formatWeight = (val: any) => {
                         v-model="action.result.category"
                         placeholder="Chain, Ring, Bangle"
                         size="small"
-                        class="w-full mt-1 text-slate-900 rounded-none"
+                        class="w-full mt-1 text-slate-900 rounded-none !font-sans"
                     />
                 </div>
                 <div>
@@ -106,7 +118,7 @@ const formatWeight = (val: any) => {
                         v-model.number="action.result.making_charge_per_gm"
                         type="number"
                         size="small"
-                        class="w-full mt-1 font-semibold text-slate-900 rounded-none"
+                        class="w-full mt-1 font-semibold text-slate-900 rounded-none !font-sans"
                     />
                 </div>
             </div>
@@ -133,7 +145,7 @@ const formatWeight = (val: any) => {
         </div>
 
         <!-- 📦 2. CONFIRMED SAVED PRODUCT STATE -->
-        <div v-else-if="!action.result.is_discarded" class="p-3 bg-white space-y-2">
+        <div v-else-if="isConfirmed" class="p-3 bg-white space-y-2">
             <div class="flex items-center justify-between border-b border-slate-200 pb-2">
                 <div class="flex items-center gap-2">
                     <div class="w-6 h-6 bg-emerald-700 text-white flex items-center justify-center rounded-none">

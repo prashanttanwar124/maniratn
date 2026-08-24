@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import InputText from 'primevue/inputtext';
 import { Edit3, ShieldCheck, Check, CheckCircle2 } from 'lucide-vue-next';
 
@@ -18,19 +19,30 @@ const emit = defineEmits<{
     (e: 'confirm', action: ActionItem, msgId: string): void;
     (e: 'discard', action: ActionItem, msgId: string): void;
 }>();
+
+const isConfirmed = computed(() => {
+    return Boolean(
+        props.action.result?.status === 'UPDATED_IN_DATABASE' ||
+        props.action.result?.is_preview === false
+    );
+});
+
+const isDraft = computed(() => {
+    return !isConfirmed.value && !props.action.result?.is_discarded;
+});
 </script>
 
 <template>
-    <div class="border border-slate-300 bg-white shadow-xs rounded-none overflow-hidden my-2">
+    <div class="border border-slate-300 bg-white shadow-xs rounded-none overflow-hidden my-2 font-sans" style="font-family: 'Poppins', sans-serif !important;">
         <!-- 📝 1. DAILY RATES DRAFT PREVIEW -->
-        <div v-if="action.result.is_preview" class="p-3 bg-white space-y-3">
+        <div v-if="isDraft" class="p-3 bg-white space-y-3">
             <div class="flex items-center justify-between border-b border-slate-200 pb-2">
                 <div class="flex items-center gap-2">
                     <div class="w-6 h-6 bg-[#1c3633] text-[#c08f34] flex items-center justify-center rounded-none">
                         <Edit3 class="w-3.5 h-3.5" />
                     </div>
                     <div>
-                        <h4 class="font-bold text-xs text-slate-900 font-serif tracking-wide uppercase">Daily Rates Update Preview</h4>
+                        <h4 class="font-bold text-xs text-slate-900 tracking-wide uppercase">Daily Rates Update Preview</h4>
                         <p class="text-[10px] text-slate-500 font-medium">Review rates before updating database</p>
                     </div>
                 </div>
@@ -49,7 +61,7 @@ const emit = defineEmits<{
                             v-model.number="action.result.gold_24k_sell"
                             type="number"
                             size="small"
-                            class="w-full pl-6 pr-2 font-bold rounded-none"
+                            class="w-full pl-6 pr-2 font-bold rounded-none !font-sans"
                         />
                     </div>
                 </div>
@@ -61,7 +73,7 @@ const emit = defineEmits<{
                             v-model.number="action.result.silver_sell"
                             type="number"
                             size="small"
-                            class="w-full pl-6 pr-2 font-bold rounded-none"
+                            class="w-full pl-6 pr-2 font-bold rounded-none !font-sans"
                         />
                     </div>
                 </div>
@@ -88,7 +100,7 @@ const emit = defineEmits<{
         </div>
 
         <!-- 📈 2. CONFIRMED RATES STATE -->
-        <div v-else-if="!action.result.is_discarded" class="p-3 bg-emerald-50 border-t border-emerald-300 flex items-center justify-between rounded-none">
+        <div v-else-if="isConfirmed" class="p-3 bg-emerald-50 border-t border-emerald-300 flex items-center justify-between rounded-none">
             <div class="flex items-center gap-2">
                 <CheckCircle2 class="w-4 h-4 text-emerald-700" />
                 <span class="text-xs font-bold text-emerald-900">Rates updated successfully in database!</span>

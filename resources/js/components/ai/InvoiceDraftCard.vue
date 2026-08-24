@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import InputText from 'primevue/inputtext';
 import {
     FileText,
@@ -31,6 +31,17 @@ const emit = defineEmits<{
 }>();
 
 const showBarcodeField = ref(!!props.action.result?.barcode);
+
+const isConfirmed = computed(() => {
+    return Boolean(
+        props.action.result?.invoice_number &&
+        (props.action.result?.status === 'INVOICE_GENERATED_REAL_DB' || props.action.result?.is_preview === false)
+    );
+});
+
+const isDraft = computed(() => {
+    return !isConfirmed.value && !props.action.result?.is_discarded;
+});
 
 const formatMoney = (val: any) => {
     if (val === null || val === undefined || val === '') return '0.00';
@@ -64,9 +75,9 @@ const setPurity = (draft: any, purity: string) => {
 </script>
 
 <template>
-    <div class="border border-slate-300 bg-white shadow-xs rounded-none overflow-hidden my-2">
+    <div class="border border-slate-300 bg-white shadow-xs rounded-none overflow-hidden my-2 font-sans" style="font-family: 'Poppins', sans-serif !important;">
         <!-- 📝 1. DRAFT PREVIEW STATE (Before DB Insert) -->
-        <div v-if="action.result.is_preview" class="p-3 bg-white space-y-3">
+        <div v-if="isDraft" class="p-3 bg-white space-y-3">
             <!-- Header Banner (Sharp rectangular) -->
             <div class="flex items-center justify-between border-b border-slate-200 pb-2">
                 <div class="flex items-center gap-2">
@@ -74,7 +85,7 @@ const setPurity = (draft: any, purity: string) => {
                         <Receipt class="w-3.5 h-3.5" />
                     </div>
                     <div>
-                        <h4 class="font-bold text-xs text-slate-900 font-serif tracking-wide uppercase">Invoice Draft Preview</h4>
+                        <h4 class="font-bold text-xs text-slate-900 tracking-wide uppercase">Invoice Draft Preview</h4>
                         <p class="text-[10px] text-slate-500 font-medium">Verify & edit details before creating in database</p>
                     </div>
                 </div>
@@ -93,7 +104,7 @@ const setPurity = (draft: any, purity: string) => {
                         v-model="action.result.customer_name"
                         size="small"
                         placeholder="Customer Name (or Walk-in)"
-                        class="w-full mt-1 font-semibold text-slate-900 rounded-none"
+                        class="w-full mt-1 font-semibold text-slate-900 rounded-none !font-sans"
                     />
                 </div>
 
@@ -104,7 +115,7 @@ const setPurity = (draft: any, purity: string) => {
                         v-model="action.result.customer_phone"
                         size="small"
                         placeholder="10-digit mobile (optional)"
-                        class="w-full mt-1 font-mono font-medium text-slate-900 rounded-none"
+                        class="w-full mt-1 font-mono font-medium text-slate-900 rounded-none !font-sans"
                     />
                 </div>
 
@@ -126,7 +137,7 @@ const setPurity = (draft: any, purity: string) => {
                         v-model="action.result.item_name"
                         size="small"
                         placeholder="e.g. 22K Gold Chain"
-                        class="w-full mt-1 font-semibold text-slate-900 rounded-none"
+                        class="w-full mt-1 font-semibold text-slate-900 rounded-none !font-sans"
                     />
                 </div>
 
@@ -147,7 +158,7 @@ const setPurity = (draft: any, purity: string) => {
                         v-model="action.result.barcode"
                         size="small"
                         placeholder="e.g. G00026"
-                        class="w-full mt-1 font-mono font-bold uppercase text-slate-900 rounded-none"
+                        class="w-full mt-1 font-mono font-bold uppercase text-slate-900 rounded-none !font-sans"
                     />
                 </div>
 
@@ -161,7 +172,7 @@ const setPurity = (draft: any, purity: string) => {
                             step="0.001"
                             size="small"
                             @input="emit('recalculate', action.result)"
-                            class="w-full pl-2.5 pr-6 font-bold text-slate-900 rounded-none"
+                            class="w-full pl-2.5 pr-6 font-bold text-slate-900 rounded-none !font-sans"
                         />
                         <span class="absolute right-2.5 top-2 text-[10px] font-bold text-slate-400">g</span>
                     </div>
@@ -176,7 +187,7 @@ const setPurity = (draft: any, purity: string) => {
                             step="1"
                             size="small"
                             @input="emit('recalculate', action.result)"
-                            class="w-full pl-6 pr-2 font-bold text-slate-900 rounded-none"
+                            class="w-full pl-6 pr-2 font-bold text-slate-900 rounded-none !font-sans"
                         />
                     </div>
                 </div>
@@ -260,7 +271,7 @@ const setPurity = (draft: any, purity: string) => {
                                 step="0.1"
                                 size="small"
                                 @input="emit('recalculate', action.result)"
-                                class="w-full mt-0.5 font-bold text-slate-900 rounded-none"
+                                class="w-full mt-0.5 font-bold text-slate-900 rounded-none !font-sans"
                             />
                         </div>
                         <div>
@@ -271,7 +282,7 @@ const setPurity = (draft: any, purity: string) => {
                                 step="1"
                                 size="small"
                                 @input="emit('recalculate', action.result)"
-                                class="w-full mt-0.5 font-bold text-emerald-800 rounded-none"
+                                class="w-full mt-0.5 font-bold text-emerald-800 rounded-none !font-sans"
                             />
                         </div>
                     </div>
@@ -319,7 +330,7 @@ const setPurity = (draft: any, purity: string) => {
                 </div>
                 <div class="flex justify-between items-center pt-2 border-t border-slate-200">
                     <span class="font-bold text-slate-900 uppercase tracking-wide text-xs">GRAND TOTAL</span>
-                    <span class="text-base font-bold font-serif text-emerald-800">
+                    <span class="text-base font-bold text-emerald-800 font-mono">
                         ₹{{ formatMoney(action.result.grand_total) }}
                     </span>
                 </div>
@@ -347,7 +358,7 @@ const setPurity = (draft: any, purity: string) => {
         </div>
 
         <!-- 📄 2. CONFIRMED FINAL INVOICE VOUCHER (Post-Confirmation) -->
-        <div v-else-if="!action.result.is_discarded" class="p-3 bg-white space-y-2.5">
+        <div v-else-if="isConfirmed" class="p-3 bg-white space-y-2.5">
             <!-- Invoice Header Banner (Sharp rectangular) -->
             <div class="p-2.5 bg-emerald-700 text-white flex items-center justify-between rounded-none">
                 <div class="flex items-center gap-2">
@@ -357,7 +368,7 @@ const setPurity = (draft: any, purity: string) => {
                     <div>
                         <div class="font-bold text-xs font-mono tracking-wide">{{ action.result.invoice_number }}</div>
                         <div class="text-[10.5px] text-emerald-100 font-medium">
-                            Customer: <strong>{{ action.result.customer_name }}</strong> {{ action.result.customer_phone ? '(' + action.result.customer_phone + ')' : '' }}
+                            Customer: <strong>{{ action.result.customer_name || 'Walk-in Customer' }}</strong> {{ action.result.customer_phone ? '(' + action.result.customer_phone + ')' : '' }}
                         </div>
                     </div>
                 </div>
@@ -390,7 +401,7 @@ const setPurity = (draft: any, purity: string) => {
                 <div class="flex justify-between items-center pt-2 border-t border-slate-200">
                     <div>
                         <span class="text-[10px] text-slate-500 uppercase tracking-wider block">Grand Total (Inc. 3% GST)</span>
-                        <span class="text-base font-bold font-serif text-emerald-800">
+                        <span class="text-base font-bold font-mono text-emerald-800">
                             ₹{{ formatMoney(action.result.grand_total) }}
                         </span>
                     </div>

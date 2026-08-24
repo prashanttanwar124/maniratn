@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Search, PackageCheck } from 'lucide-vue-next';
+import { Search } from 'lucide-vue-next';
 
 interface ActionItem {
     tool: string;
@@ -13,11 +13,11 @@ defineProps<{
 </script>
 
 <template>
-    <div class="border border-slate-300 bg-white shadow-xs rounded-none overflow-hidden my-2">
+    <div class="border border-slate-300 bg-white shadow-xs rounded-none overflow-hidden my-2 font-sans" style="font-family: 'Poppins', sans-serif !important;">
         <div class="px-3 py-2 bg-[#1c3633] text-white flex items-center justify-between border-b-2 border-b-[#c08f34] rounded-none">
             <div class="flex items-center gap-1.5">
                 <Search class="w-3.5 h-3.5 text-[#c08f34]" />
-                <span class="font-serif text-xs font-bold tracking-wide uppercase">Live Inventory Stock</span>
+                <span class="text-xs font-bold tracking-wide uppercase">Live Inventory Stock</span>
             </div>
             <span class="text-[10px] text-[#c08f34] font-mono font-bold">{{ action.result.total_items }} Available</span>
         </div>

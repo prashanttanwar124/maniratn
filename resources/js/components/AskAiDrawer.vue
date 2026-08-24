@@ -484,67 +484,73 @@ onMounted(() => {
         :modal="false"
         :dismissable="true"
         :show-close-icon="false"
+        :pt="{
+            root: { class: '!p-0 !border-0 !rounded-none !bg-white' },
+            header: { class: '!hidden !p-0' },
+            content: { class: '!p-0 !overflow-hidden flex flex-col h-full' }
+        }"
         @update:visible="emit('update:visible', $event)"
     >
-        <div class="flex flex-col h-full bg-white text-surface-800 relative select-none rounded-none">
-            <!-- 🏛️ 1. Enterprise Top Header (Sharp Rectangular) -->
-            <div class="px-5 py-3.5 bg-gradient-to-r from-[#142926] via-[#1c3633] to-[#142926] text-white flex items-center justify-between border-b-2 border-b-[#c08f34] shrink-0 z-10 rounded-none">
-                <!-- Left: Branding & Status -->
-                <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 bg-gradient-to-br from-[#c08f34] to-[#9b6f1e] text-[#142926] flex items-center justify-center font-bold font-serif shadow-xs rounded-none">
-                        <Bot class="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="font-serif font-bold text-sm tracking-wider text-white uppercase">Karat AI Copilot</span>
-                            <span class="px-1.5 py-0.2 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-mono font-semibold rounded-none">
-                                ERP Live
-                            </span>
+        <template #container>
+            <div class="flex flex-col h-full w-full bg-white text-surface-800 relative select-none rounded-none font-sans" style="font-family: 'Poppins', sans-serif !important;">
+                <!-- 🏛️ 1. Enterprise Top Header (Sharp Rectangular, Edge-to-Edge) -->
+                <div class="px-4 py-3 bg-gradient-to-r from-[#142926] via-[#1c3633] to-[#142926] text-white flex items-center justify-between border-b-2 border-b-[#c08f34] shrink-0 z-10 rounded-none w-full">
+                    <!-- Left: Branding & Status -->
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 bg-gradient-to-br from-[#c08f34] to-[#9b6f1e] text-[#142926] flex items-center justify-center font-bold shadow-xs rounded-none">
+                            <Bot class="w-4.5 h-4.5 text-white" />
                         </div>
-                        <p class="text-[11px] text-[#c08f34] flex items-center gap-1.5 font-medium">
-                            <span class="w-1.5 h-1.5 rounded-none bg-emerald-400 animate-ping"></span>
-                            Voice & POS Operations Online
-                        </p>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-xs tracking-wider text-white uppercase">Karat AI Copilot</span>
+                                <span class="px-1.5 py-0.2 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[9.5px] font-mono font-semibold rounded-none">
+                                    ERP Live
+                                </span>
+                            </div>
+                            <p class="text-[10.5px] text-[#c08f34] flex items-center gap-1.5 font-medium">
+                                <span class="w-1.5 h-1.5 rounded-none bg-emerald-400 animate-ping"></span>
+                                Voice & POS Operations Online
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Right: Controls -->
+                    <div class="flex items-center gap-1.5">
+                        <!-- Voice Toggle -->
+                        <button
+                            v-if="isVoiceGloballyEnabled"
+                            type="button"
+                            class="px-2 py-1 text-xs font-semibold border transition-colors flex items-center gap-1.5 cursor-pointer rounded-none"
+                            :class="autoVoiceOutput ? 'bg-[#c08f34] text-[#142926] border-[#c08f34]' : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'"
+                            :title="autoVoiceOutput ? 'Voice is Enabled (Click to Mute)' : 'Voice is Muted (Click to Enable)'"
+                            @click="autoVoiceOutput = !autoVoiceOutput; if(!autoVoiceOutput) stopAudio();"
+                        >
+                            <Volume2 v-if="autoVoiceOutput" class="w-3.5 h-3.5" />
+                            <VolumeX v-else class="w-3.5 h-3.5 text-white/50" />
+                            <span>{{ autoVoiceOutput ? 'Voice ON' : 'Muted' }}</span>
+                        </button>
+
+                        <!-- Reset Chat -->
+                        <button
+                            type="button"
+                            class="w-7 h-7 flex items-center justify-center border border-white/20 bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer rounded-none"
+                            title="Reset Chat History"
+                            @click="resetChat"
+                        >
+                            <RefreshCw class="w-3 h-3" />
+                        </button>
+
+                        <!-- Close Button -->
+                        <button
+                            type="button"
+                            class="w-7 h-7 flex items-center justify-center border border-white/20 bg-white/10 hover:bg-red-700 text-white transition-colors cursor-pointer rounded-none"
+                            title="Close Copilot (ESC)"
+                            @click="emit('update:visible', false); stopAudio();"
+                        >
+                            <X class="w-3.5 h-3.5" />
+                        </button>
                     </div>
                 </div>
-
-                <!-- Right: Controls -->
-                <div class="flex items-center gap-2">
-                    <!-- Voice Toggle -->
-                    <button
-                        v-if="isVoiceGloballyEnabled"
-                        type="button"
-                        class="px-2.5 py-1.5 text-xs font-semibold border transition-colors flex items-center gap-1.5 cursor-pointer rounded-none"
-                        :class="autoVoiceOutput ? 'bg-[#c08f34] text-[#142926] border-[#c08f34]' : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'"
-                        :title="autoVoiceOutput ? 'Voice is Enabled (Click to Mute)' : 'Voice is Muted (Click to Enable)'"
-                        @click="autoVoiceOutput = !autoVoiceOutput; if(!autoVoiceOutput) stopAudio();"
-                    >
-                        <Volume2 v-if="autoVoiceOutput" class="w-3.5 h-3.5" />
-                        <VolumeX v-else class="w-3.5 h-3.5 text-white/50" />
-                        <span>{{ autoVoiceOutput ? 'Voice ON' : 'Muted' }}</span>
-                    </button>
-
-                    <!-- Reset Chat -->
-                    <button
-                        type="button"
-                        class="w-8 h-8 flex items-center justify-center border border-white/20 bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer rounded-none"
-                        title="Reset Chat History"
-                        @click="resetChat"
-                    >
-                        <RefreshCw class="w-3.5 h-3.5" />
-                    </button>
-
-                    <!-- Close Button -->
-                    <button
-                        type="button"
-                        class="w-8 h-8 flex items-center justify-center border border-white/20 bg-white/10 hover:bg-red-700 text-white transition-colors cursor-pointer rounded-none"
-                        title="Close Copilot (ESC)"
-                        @click="emit('update:visible', false); stopAudio();"
-                    >
-                        <X class="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
 
             <!-- 💬 2. Main Body: Structured Chat Area -->
             <div class="flex flex-col flex-1 h-full min-h-0 overflow-hidden bg-[#f8faf9] rounded-none">
@@ -786,6 +792,7 @@ onMounted(() => {
                 </div>
             </div>
         </div>
+        </template>
     </Drawer>
 </template>
 
