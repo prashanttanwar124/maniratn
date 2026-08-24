@@ -65,6 +65,12 @@ Route::get('/api/website/vault/{token}/invoices/{invoice}/print', [WebsiteApiCon
 // --- AI COPILOT VOICE & CHAT ENDPOINTS ---
 Route::post('/api/ai/copilot/chat', [AiCopilotController::class, 'chat'])
     ->name('ai.copilot.chat');
+Route::post('/api/ai/copilot/confirm-bill', [AiCopilotController::class, 'confirmBill'])
+    ->name('ai.copilot.confirm-bill');
+Route::post('/api/ai/copilot/confirm-product', [AiCopilotController::class, 'confirmProduct'])
+    ->name('ai.copilot.confirm-product');
+Route::post('/api/ai/copilot/confirm-rates', [AiCopilotController::class, 'confirmRates'])
+    ->name('ai.copilot.confirm-rates');
 Route::get('/api/ai/copilot/history', [AiCopilotController::class, 'history'])
     ->name('ai.copilot.history');
 Route::delete('/api/ai/copilot/history', [AiCopilotController::class, 'clearHistory'])

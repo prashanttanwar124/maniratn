@@ -317,13 +317,14 @@ class AiCopilotController extends Controller
 
                 return [
                     'found' => true,
-                    'date' => $rate->date ?? date('Y-m-d'),
-                    'gold_24k_per_gm' => $gold24k,
-                    'gold_22k_per_gm' => $gold22k,
-                    'gold_18k_per_gm' => $gold18k,
-                    'silver_per_gm' => $silver,
-                    'status' => 'REAL_ERP_DATABASE',
-                ];
+                                'found' => true,
+                                'date' => $rate->date ?? date('Y-m-d'),
+                                'gold_24k_per_gm' => $gold24k,
+                                'gold_22k_per_gm' => $gold22k,
+                                'gold_18k_per_gm' => $gold18k,
+                                'silver_per_gm' => $silver,
+                                'status' => 'REAL_ERP_DATABASE',
+                            ];
 
             case 'update_daily_rates':
                 $today = date('Y-m-d');
@@ -331,22 +332,15 @@ class AiCopilotController extends Controller
                 $goldBuy = floatval($args['gold_24k_buy'] ?? round($goldSell * 0.98, 2));
                 $silverSell = floatval($args['silver_sell'] ?? 88.50);
 
-                $rate = DailyRate::updateOrCreate(
-                    ['date' => $today],
-                    [
-                        'gold_buy' => $goldBuy,
-                        'gold_sell' => $goldSell,
-                        'silver_sell' => $silverSell,
-                    ]
-                );
-
                 return [
-                    'success' => true,
+                    'found' => true,
+                    'is_preview' => true,
+                    'action_type' => 'UPDATE_DAILY_RATES',
                     'date' => $today,
                     'gold_24k_sell' => $goldSell,
-                    'gold_22k_sell' => round($goldSell * 0.916, 2),
+                    'gold_24k_buy' => $goldBuy,
                     'silver_sell' => $silverSell,
-                    'status' => 'UPDATED_IN_DATABASE',
+                    'status' => 'CONFIRMATION_REQUIRED',
                 ];
 
             case 'add_product':
@@ -357,46 +351,17 @@ class AiCopilotController extends Controller
                 $catName = $args['category'] ?? 'General';
                 $makingCharge = floatval($args['making_charge_per_gram'] ?? 450);
 
-                // Find or create Category
-                $category = Category::firstOrCreate(['name' => $catName], [
-                    'metal_type' => strtolower($metal),
-                ]);
-
-                // Find Purity
-                $purity = Purity::where('name', 'like', "%{$purityName}%")->first()
-                    ?? Purity::firstOrCreate(['name' => $purityName], ['purity_percent' => 91.6]);
-
-                // Find or create Supplier
-                $supplier = Supplier::first() ?? Supplier::create([
-                    'name' => 'Self Stock',
-                    'contact_person' => 'Store Owner',
-                    'phone' => '0000000000',
-                ]);
-
-                // Insert Real Product into ERP Database
-                $product = Product::create([
-                    'name' => $name,
-                    'category_id' => $category->id,
-                    'purity_id' => $purity->id,
-                    'supplier_id' => $supplier->id,
-                    'gross_weight' => $weight,
-                    'net_weight' => $weight,
-                    'making_charge' => $makingCharge,
-                    'is_sold' => false,
-                ]);
-
                 return [
-                    'success' => true,
-                    'product_id' => $product->id,
-                    'barcode' => $product->barcode,
-                    'name' => $product->name,
+                    'found' => true,
+                    'is_preview' => true,
+                    'action_type' => 'ADD_PRODUCT',
+                    'name' => $name,
                     'metal' => $metal,
-                    'purity' => $purity->name,
-                    'weight' => $product->gross_weight . ' g',
-                    'category' => $category->name,
-                    'making_charge_per_gm' => '₹' . $makingCharge,
-                    'status' => 'IN_STOCK_REAL_DB',
-                    'view_url' => "/products",
+                    'purity' => $purityName,
+                    'weight' => $weight,
+                    'category' => $catName,
+                    'making_charge_per_gm' => $makingCharge,
+                    'status' => 'CONFIRMATION_REQUIRED',
                 ];
 
             case 'get_vault_balance':
@@ -450,8 +415,7 @@ class AiCopilotController extends Controller
                     $makingTotal = $weight * $makingPerGm;
                     $makingLabel = "(@ ₹{$makingPerGm}/g)";
                 } else {
-                    $makingPercent = 12.0;
-                    $makingTotal = round($metalValue * 0.12, 2);
+                    $makingTotal = $metalValue * 0.12; // Standard 12% making
                     $makingLabel = "(12%)";
                 }
 
@@ -460,7 +424,6 @@ class AiCopilotController extends Controller
                 $grandTotal = $subtotal + $gst;
 
                 return [
-                    'found' => true,
                     'weight' => $weight . ' g',
                     'metal' => $metal,
                     'purity' => $purity,
@@ -540,25 +503,7 @@ class AiCopilotController extends Controller
                     }
                 }
 
-                // 2. Find or create customer
-                $customer = null;
-                if (! empty($customerPhone)) {
-                    $customer = Customer::where('mobile', $customerPhone)->first();
-                }
-                if (! $customer && ! empty($customerName) && strtolower($customerName) !== 'walk-in customer') {
-                    $customer = Customer::where('name', 'like', "%{$customerName}%")->first();
-                }
-                if (! $customer) {
-                    $customer = Customer::create([
-                        'name' => ! empty($customerName) ? $customerName : 'Walk-in Customer',
-                        'mobile' => ! empty($customerPhone) ? $customerPhone : ('98' . rand(10000000, 99999999)),
-                        'address' => 'Store Counter Sale',
-                        'city' => 'Local',
-                        'vault_token' => Customer::generateVaultToken(),
-                    ]);
-                }
-
-                // 3. Fetch live daily rate from database
+                // 2. Fetch live daily rate from database
                 $rateRecord = DailyRate::whereDate('date', Carbon::today())->where('gold_sell', '>', 0)->first();
                 if (! $rateRecord) {
                     $rateRecord = DailyRate::where('gold_sell', '>', 0)->latest('date')->first();
@@ -585,7 +530,7 @@ class AiCopilotController extends Controller
                     $effectiveRate = ($metal === 'SILVER') ? 89.0 : 6830.0;
                 }
 
-                // 4. Compute Metal value, making charges (Percentage, Per gram, or Flat), GST & Totals
+                // 3. Compute Metal value, making charges (Percentage, Per gram, or Flat), GST & Totals
                 $metalValue = round($weight * $effectiveRate, 2);
 
                 if ($makingFlat !== null && $makingFlat > 0) {
@@ -614,98 +559,31 @@ class AiCopilotController extends Controller
                 $gstAmount = round($subtotal * 0.03, 2);
                 $grandTotal = round($subtotal + $gstAmount, 2);
 
-                // 5. Create Invoice Header
-                $actingUserId = Auth::id() ?: \App\Models\User::first()?->id;
-
-                $invoice = Invoice::create([
-                    'invoice_number' => 'TMP-' . Str::uuid(),
-                    'customer_id' => $customer->id,
-                    'gold_rate_applied' => floatval($rateRecord?->gold_sell ?: $effectiveRate),
-                    'silver_rate_applied' => floatval($rateRecord?->silver_sell ?: 89.0),
-                    'tax_amount' => $gstAmount,
-                    'discount_type' => $discountAmount > 0 ? 'fixed' : null,
-                    'discount_value' => $discountAmount,
-                    'discount_amount' => $discountAmount,
-                    'date' => Carbon::today()->format('Y-m-d'),
-                    'total_amount' => $grandTotal,
-                    'user_id' => $actingUserId,
-                ]);
-
-                $invoiceNumber = sprintf('INV-%s-%06d', now()->format('Ymd'), $invoice->id);
-                $invoice->update(['invoice_number' => $invoiceNumber]);
-
-                // 6. Create InvoiceItem & Mark Stock Sold
-                InvoiceItem::create([
-                    'invoice_id' => $invoice->id,
-                    'product_id' => $matchedProduct?->id,
-                    'silver_product_id' => $matchedSilverProduct?->id,
-                    'description' => ! empty($itemName) ? $itemName : "{$purityStr} {$metal} Item ({$weight}g)",
-                    'quantity' => 1,
-                    'weight' => $weight,
-                    'purity' => $purityStr,
-                    'rate' => $effectiveRate,
-                    'making_charges' => $makingValue,
-                    'making_charge_type' => $makingType,
-                    'final_price' => $subtotal,
-                ]);
-
-                if ($matchedProduct) {
-                    $matchedProduct->update(['is_sold' => true]);
-                }
-                if ($matchedSilverProduct) {
-                    $matchedSilverProduct->update(['is_sold' => true]);
-                }
-
-                // 7. Accounting Ledger Entry: DEBIT Customer
-                Transaction::create([
-                    'transactable_type' => Customer::class,
-                    'transactable_id' => $customer->id,
-                    'invoice_id' => $invoice->id,
-                    'type' => 'SALE',
-                    'amount' => $grandTotal,
-                    'description' => "Bill #" . $invoiceNumber . ($barcode ? " (Barcode: {$barcode})" : "") . " (via Karat AI)",
-                    'date' => Carbon::today()->format('Y-m-d'),
-                    'user_id' => $actingUserId,
-                    'entry_type_code' => 'INVOICE_SALE',
-                ]);
-
-                // 8. Payment Transaction: CREDIT Customer if payment made
-                if (in_array($paymentMode, ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'ONLINE'])) {
-                    Transaction::create([
-                        'transactable_type' => Customer::class,
-                        'transactable_id' => $customer->id,
-                        'invoice_id' => $invoice->id,
-                        'type' => 'PAYMENT',
-                        'amount' => $grandTotal,
-                        'description' => "{$paymentMode} Payment received (Bill #{$invoiceNumber})",
-                        'date' => Carbon::today()->format('Y-m-d'),
-                        'user_id' => $actingUserId,
-                        'payment_method' => $paymentMode,
-                        'entry_type_code' => 'INVOICE_PAYMENT',
-                    ]);
-                }
-
+                // RETURN DRAFT PREVIEW (Human Review & Edit Required Before DB Commit)
                 return [
                     'found' => true,
-                    'invoice_id' => $invoice->id,
-                    'invoice_number' => $invoiceNumber,
-                    'barcode' => $barcode ?: ($matchedProduct?->barcode ?? $matchedSilverProduct?->barcode ?? null),
-                    'customer_name' => $customer->name,
-                    'customer_phone' => $customer->mobile,
+                    'is_preview' => true,
+                    'action_type' => 'CREATE_BILL',
+                    'customer_name' => $customerName,
+                    'customer_phone' => $customerPhone,
+                    'barcode' => $barcode ?: ($matchedProduct?->barcode ?? $matchedSilverProduct?->barcode ?? ''),
                     'item_name' => ! empty($itemName) ? $itemName : "{$purityStr} {$metal} Ornament",
-                    'weight' => $weight . ' g',
+                    'weight' => $weight,
                     'metal' => $metal,
                     'purity' => $purityStr,
-                    'rate_per_gm' => '₹' . number_format($effectiveRate, 2),
-                    'metal_value' => '₹' . number_format($metalValue, 2),
-                    'making_charges' => '₹' . number_format($makingTotal, 2) . " {$makingLabel}",
-                    'subtotal' => '₹' . number_format($subtotal, 2),
-                    'gst_3_percent' => '₹' . number_format($gstAmount, 2),
-                    'grand_total' => '₹' . number_format($grandTotal, 2),
+                    'rate_per_gm' => $effectiveRate,
+                    'metal_value' => $metalValue,
+                    'making_type' => $makingType,
+                    'making_value' => $makingValue,
+                    'making_label' => $makingLabel,
+                    'making_charges' => $makingTotal,
+                    'discount_amount' => $discountAmount,
+                    'subtotal' => $subtotal,
+                    'gst_3_percent' => $gstAmount,
+                    'grand_total' => $grandTotal,
                     'payment_mode' => $paymentMode,
-                    'view_url' => "/invoices/{$invoice->id}",
-                    'print_url' => "/invoices/{$invoice->id}/print",
-                    'status' => 'INVOICE_GENERATED_REAL_DB',
+                    'payment_amount' => $paymentAmount ?? $grandTotal,
+                    'status' => 'CONFIRMATION_REQUIRED',
                 ];
 
             case 'check_stock':
@@ -843,5 +721,258 @@ class AiCopilotController extends Controller
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Confirm & Create Real Invoice in Database (Triggered by user clicking Confirm in AI Drawer)
+     */
+    public function confirmBill(Request $request): JsonResponse
+    {
+        $customerName = trim((string) $request->input('customer_name', 'Walk-in Customer'));
+        $customerPhone = trim((string) $request->input('customer_phone', ''));
+        $barcode = trim((string) $request->input('barcode', ''));
+        $itemName = trim((string) $request->input('item_name', 'Jewellery Ornament'));
+        $weight = floatval($request->input('weight', 1));
+        $metal = strtoupper((string) $request->input('metal', 'GOLD'));
+        $purityStr = strtoupper((string) $request->input('purity', '22K'));
+        $effectiveRate = floatval($request->input('rate_per_gm', 7000));
+        $makingType = (string) $request->input('making_type', 'percentage');
+        $makingValue = floatval($request->input('making_value', 12));
+        $discountAmount = floatval($request->input('discount_amount', 0));
+        $paymentMode = strtoupper((string) $request->input('payment_mode', 'CASH'));
+        $paymentAmount = $request->has('payment_amount') ? floatval($request->input('payment_amount')) : null;
+
+        $matchedProduct = null;
+        $matchedSilverProduct = null;
+
+        if (! empty($barcode)) {
+            $matchedProduct = Product::where('barcode', $barcode)->first();
+            if (! $matchedProduct) {
+                $matchedSilverProduct = SilverProduct::where('barcode', $barcode)->first();
+            }
+
+            if ($matchedProduct && $matchedProduct->is_sold) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Product '{$matchedProduct->name}' (Barcode: {$barcode}) pehle se hi bik chuka hai!",
+                ], 422);
+            }
+            if ($matchedSilverProduct && $matchedSilverProduct->is_sold) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Silver item '{$matchedSilverProduct->name}' (Barcode: {$barcode}) pehle se sold hai!",
+                ], 422);
+            }
+        }
+
+        // 1. Customer
+        $customer = null;
+        if (! empty($customerPhone)) {
+            $customer = Customer::where('mobile', $customerPhone)->first();
+        }
+        if (! $customer && ! empty($customerName) && strtolower($customerName) !== 'walk-in customer') {
+            $customer = Customer::where('name', 'like', "%{$customerName}%")->first();
+        }
+        if (! $customer) {
+            $customer = Customer::create([
+                'name' => ! empty($customerName) ? $customerName : 'Walk-in Customer',
+                'mobile' => ! empty($customerPhone) ? $customerPhone : ('98' . rand(10000000, 99999999)),
+                'address' => 'Store Counter Sale',
+                'city' => 'Local',
+                'vault_token' => Customer::generateVaultToken(),
+            ]);
+        }
+
+        // 2. Calculations
+        $metalValue = round($weight * $effectiveRate, 2);
+
+        if ($makingType === 'flat') {
+            $makingTotal = round($makingValue, 2);
+            $makingLabel = "(₹{$makingValue} Flat)";
+        } elseif ($makingType === 'per_gram') {
+            $makingTotal = round($weight * $makingValue, 2);
+            $makingLabel = "(@ ₹{$makingValue}/g)";
+        } else {
+            $makingType = 'percentage';
+            $makingTotal = round($metalValue * ($makingValue / 100), 2);
+            $makingLabel = "({$makingValue}%)";
+        }
+
+        $subtotal = max(0, $metalValue + $makingTotal - $discountAmount);
+        $gstAmount = round($subtotal * 0.03, 2);
+        $grandTotal = round($subtotal + $gstAmount, 2);
+
+        $actingUserId = Auth::id() ?: \App\Models\User::first()?->id;
+
+        // 3. Create Invoice
+        $invoice = Invoice::create([
+            'invoice_number' => 'TMP-' . Str::uuid(),
+            'customer_id' => $customer->id,
+            'gold_rate_applied' => $effectiveRate,
+            'silver_rate_applied' => 89.0,
+            'tax_amount' => $gstAmount,
+            'discount_type' => $discountAmount > 0 ? 'fixed' : null,
+            'discount_value' => $discountAmount,
+            'discount_amount' => $discountAmount,
+            'date' => Carbon::today()->format('Y-m-d'),
+            'total_amount' => $grandTotal,
+            'user_id' => $actingUserId,
+        ]);
+
+        $invoiceNumber = sprintf('INV-%s-%06d', now()->format('Ymd'), $invoice->id);
+        $invoice->update(['invoice_number' => $invoiceNumber]);
+
+        // 4. Create InvoiceItem & Mark Stock Sold
+        InvoiceItem::create([
+            'invoice_id' => $invoice->id,
+            'product_id' => $matchedProduct?->id,
+            'silver_product_id' => $matchedSilverProduct?->id,
+            'description' => ! empty($itemName) ? $itemName : "{$purityStr} {$metal} Item ({$weight}g)",
+            'quantity' => 1,
+            'weight' => $weight,
+            'purity' => $purityStr,
+            'rate' => $effectiveRate,
+            'making_charges' => $makingValue,
+            'making_charge_type' => $makingType,
+            'final_price' => $subtotal,
+        ]);
+
+        if ($matchedProduct) {
+            $matchedProduct->update(['is_sold' => true]);
+        }
+        if ($matchedSilverProduct) {
+            $matchedSilverProduct->update(['is_sold' => true]);
+        }
+
+        // 5. Transactions (SALE Debit & PAYMENT Credit)
+        Transaction::create([
+            'transactable_type' => Customer::class,
+            'transactable_id' => $customer->id,
+            'invoice_id' => $invoice->id,
+            'type' => 'SALE',
+            'amount' => $grandTotal,
+            'description' => "Bill #" . $invoiceNumber . ($barcode ? " (Barcode: {$barcode})" : "") . " (Confirmed via Karat AI)",
+            'date' => Carbon::today()->format('Y-m-d'),
+            'user_id' => $actingUserId,
+            'entry_type_code' => 'INVOICE_SALE',
+        ]);
+
+        $actualPaid = ($paymentAmount !== null && $paymentAmount >= 0) ? min($grandTotal, $paymentAmount) : $grandTotal;
+
+        if (in_array($paymentMode, ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'ONLINE', 'BANK']) && $actualPaid > 0) {
+            Transaction::create([
+                'transactable_type' => Customer::class,
+                'transactable_id' => $customer->id,
+                'invoice_id' => $invoice->id,
+                'type' => 'PAYMENT',
+                'amount' => $actualPaid,
+                'description' => "{$paymentMode} Payment received (Bill #{$invoiceNumber})",
+                'date' => Carbon::today()->format('Y-m-d'),
+                'user_id' => $actingUserId,
+                'payment_method' => $paymentMode,
+                'entry_type_code' => 'INVOICE_PAYMENT',
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'invoice_id' => $invoice->id,
+            'invoice_number' => $invoiceNumber,
+            'customer_name' => $customer->name,
+            'customer_phone' => $customer->mobile,
+            'item_name' => $itemName,
+            'weight' => $weight . ' g',
+            'metal' => $metal,
+            'purity' => $purityStr,
+            'rate_per_gm' => '₹' . number_format($effectiveRate, 2),
+            'metal_value' => '₹' . number_format($metalValue, 2),
+            'making_charges' => '₹' . number_format($makingTotal, 2) . " {$makingLabel}",
+            'subtotal' => '₹' . number_format($subtotal, 2),
+            'gst_3_percent' => '₹' . number_format($gstAmount, 2),
+            'grand_total' => '₹' . number_format($grandTotal, 2),
+            'payment_mode' => $paymentMode,
+            'view_url' => "/invoices/{$invoice->id}",
+            'print_url' => "/invoices/{$invoice->id}/print",
+            'message' => "Done! Bill #{$invoiceNumber} database me successfully save ho gaya hai.",
+        ]);
+    }
+
+    /**
+     * Confirm & Add Product into Stock Database
+     */
+    public function confirmProduct(Request $request): JsonResponse
+    {
+        $name = trim((string) $request->input('name', 'Gold Ornament'));
+        $weight = floatval($request->input('weight', 0));
+        $metal = strtoupper((string) $request->input('metal', 'GOLD'));
+        $purityName = (string) $request->input('purity', ($metal === 'GOLD' ? '22K' : '92.5'));
+        $catName = (string) $request->input('category', 'General');
+        $makingCharge = floatval($request->input('making_charge_per_gm', 450));
+
+        $category = Category::firstOrCreate(['name' => $catName], [
+            'metal_type' => strtolower($metal),
+        ]);
+
+        $purity = Purity::where('name', 'like', "%{$purityName}%")->first()
+            ?? Purity::firstOrCreate(['name' => $purityName], ['purity_percent' => 91.6]);
+
+        $supplier = Supplier::first() ?? Supplier::create([
+            'name' => 'Self Stock',
+            'contact_person' => 'Store Owner',
+            'phone' => '0000000000',
+        ]);
+
+        $product = Product::create([
+            'name' => $name,
+            'category_id' => $category->id,
+            'purity_id' => $purity->id,
+            'supplier_id' => $supplier->id,
+            'gross_weight' => $weight,
+            'net_weight' => $weight,
+            'making_charge' => $makingCharge,
+            'is_sold' => false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'product_id' => $product->id,
+            'barcode' => $product->barcode,
+            'name' => $product->name,
+            'metal' => $metal,
+            'purity' => $purity->name,
+            'weight' => $product->gross_weight . ' g',
+            'category' => $category->name,
+            'making_charge_per_gm' => '₹' . $makingCharge,
+            'message' => "Done! Product '{$product->name}' (Barcode: {$product->barcode}) showroom stock me add ho gaya hai.",
+        ]);
+    }
+
+    /**
+     * Confirm & Update Live Daily Rates in Database
+     */
+    public function confirmRates(Request $request): JsonResponse
+    {
+        $today = date('Y-m-d');
+        $goldSell = floatval($request->input('gold_24k_sell', 7450));
+        $goldBuy = floatval($request->input('gold_24k_buy', round($goldSell * 0.98, 2)));
+        $silverSell = floatval($request->input('silver_sell', 88.50));
+
+        $rate = DailyRate::updateOrCreate(
+            ['date' => $today],
+            [
+                'gold_buy' => $goldBuy,
+                'gold_sell' => $goldSell,
+                'silver_sell' => $silverSell,
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'date' => $today,
+            'gold_24k_sell' => $goldSell,
+            'gold_22k_sell' => round($goldSell * 0.916, 2),
+            'silver_sell' => $silverSell,
+            'message' => "Done! Aaj ka 24K rate ₹" . number_format($goldSell) . " aur Silver ₹" . number_format($silverSell, 2) . " database me update ho gaya.",
+        ]);
     }
 }

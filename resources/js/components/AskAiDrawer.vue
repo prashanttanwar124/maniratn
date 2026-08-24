@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import axios from 'axios';
 import {
+    AlertCircle,
     Bot,
+    Check,
+    CheckCircle2,
     Clock,
     Coins,
+    Edit3,
     ExternalLink,
     FileText,
     Mic,
@@ -14,6 +18,7 @@ import {
     RefreshCw,
     Send,
     Sparkles,
+    Trash2,
     TrendingUp,
     Volume2,
     VolumeX,
@@ -239,6 +244,117 @@ const sendMessage = async (customText?: string) => {
         isLoading.value = false;
         scrollToBottom();
     }
+};
+
+const isConfirming = ref<Record<string, boolean>>({});
+
+const calculateLiveBill = (draft: any) => {
+    const weight = parseFloat(draft.weight || 0);
+    const rate = parseFloat(draft.rate_per_gm || 0);
+    const metalVal = Math.round(weight * rate * 100) / 100;
+    draft.metal_value = metalVal;
+
+    let making = 0;
+    if (draft.making_type === 'flat') {
+        making = parseFloat(draft.making_value || 0);
+    } else if (draft.making_type === 'per_gram') {
+        making = Math.round(weight * parseFloat(draft.making_value || 0) * 100) / 100;
+    } else {
+        making = Math.round(metalVal * (parseFloat(draft.making_value || 12) / 100) * 100) / 100;
+    }
+    draft.making_charges = making;
+
+    const discount = parseFloat(draft.discount_amount || 0);
+    const subtotal = Math.max(0, metalVal + making - discount);
+    draft.subtotal = Math.round(subtotal * 100) / 100;
+
+    const gst = Math.round(subtotal * 0.03 * 100) / 100;
+    draft.gst_3_percent = gst;
+
+    const grandTotal = Math.round((subtotal + gst) * 100) / 100;
+    draft.grand_total = grandTotal;
+    if (!draft.payment_amount || draft.payment_amount === draft.prev_grand_total) {
+        draft.payment_amount = grandTotal;
+    }
+    draft.prev_grand_total = grandTotal;
+};
+
+const confirmBillAction = async (action: ActionItem, msgId: string) => {
+    const key = `bill_${msgId}`;
+    isConfirming.value[key] = true;
+    try {
+        const payload = { ...action.result };
+        const res = await axios.post('/api/ai/copilot/confirm-bill', payload);
+        if (res.data && res.data.success) {
+            action.result = {
+                ...action.result,
+                ...res.data,
+                is_preview: false,
+                found: true,
+                status: 'INVOICE_GENERATED_REAL_DB',
+            };
+            if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
+                speakText(`Done! Bill number ${res.data.invoice_number} successfully create ho gaya hai.`);
+            }
+        }
+    } catch (err: any) {
+        alert(err.response?.data?.message || 'Error creating invoice in database.');
+    } finally {
+        isConfirming.value[key] = false;
+    }
+};
+
+const confirmProductAction = async (action: ActionItem, msgId: string) => {
+    const key = `prod_${msgId}`;
+    isConfirming.value[key] = true;
+    try {
+        const payload = { ...action.result };
+        const res = await axios.post('/api/ai/copilot/confirm-product', payload);
+        if (res.data && res.data.success) {
+            action.result = {
+                ...action.result,
+                ...res.data,
+                is_preview: false,
+                status: 'IN_STOCK_REAL_DB',
+            };
+            if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
+                speakText(`Done! Product stock me save ho gayi, Barcode ${res.data.barcode}.`);
+            }
+        }
+    } catch (err: any) {
+        alert(err.response?.data?.message || 'Error adding product.');
+    } finally {
+        isConfirming.value[key] = false;
+    }
+};
+
+const confirmRatesAction = async (action: ActionItem, msgId: string) => {
+    const key = `rates_${msgId}`;
+    isConfirming.value[key] = true;
+    try {
+        const payload = { ...action.result };
+        const res = await axios.post('/api/ai/copilot/confirm-rates', payload);
+        if (res.data && res.data.success) {
+            action.result = {
+                ...action.result,
+                ...res.data,
+                is_preview: false,
+                status: 'UPDATED_IN_DATABASE',
+            };
+            if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
+                speakText(`Done! Aaj ke live rates update ho gaye.`);
+            }
+        }
+    } catch (err: any) {
+        alert(err.response?.data?.message || 'Error updating rates.');
+    } finally {
+        isConfirming.value[key] = false;
+    }
+};
+
+const discardAction = (action: ActionItem) => {
+    action.result.is_preview = false;
+    action.result.is_discarded = true;
 };
 
 const fetchChatHistory = async (isLoadMore = false) => {
@@ -520,34 +636,160 @@ onMounted(() => {
                                     </div>
                                 </div>
 
-                                <!-- 1b. Rates Updated Card -->
-                                <div v-else-if="action.tool === 'update_daily_rates'" class="grid grid-cols-2 gap-3 pt-1">
-                                    <div class="p-3 bg-[#fcfaf6] border border-emerald-300 text-center">
-                                        <p class="text-xs font-medium text-emerald-800 uppercase tracking-wider">Set Gold 24K</p>
-                                        <p class="text-base font-bold text-[#c08f34] mt-1">
-                                            ₹{{ Number(action.result.gold_24k_sell).toLocaleString('en-IN') }}/g
-                                        </p>
+                                <!-- 1b. Daily Rates Card (Preview vs Confirmed) -->
+                                <div v-else-if="action.tool === 'update_daily_rates'">
+                                    <!-- Editable Preview Form -->
+                                    <div v-if="action.result.is_preview" class="p-3 bg-amber-50/70 border border-amber-300 space-y-2.5">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                                                <Edit3 class="w-3.5 h-3.5 text-[#c08f34]" />
+                                                Review Daily Rates Before Updating
+                                            </span>
+                                            <span class="px-2 py-0.5 bg-amber-200 text-amber-900 text-[10px] font-bold uppercase">
+                                                Confirmation Required
+                                            </span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2 text-xs">
+                                            <div>
+                                                <label class="text-[10.5px] text-surface-600 font-medium">Gold 24K Sell (₹/g)</label>
+                                                <input
+                                                    v-model.number="action.result.gold_24k_sell"
+                                                    type="number"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-bold text-[#1c3633]"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label class="text-[10.5px] text-surface-600 font-medium">Silver Sell (₹/g)</label>
+                                                <input
+                                                    v-model.number="action.result.silver_sell"
+                                                    type="number"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-bold text-surface-800"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2 pt-1">
+                                            <button
+                                                type="button"
+                                                :disabled="isConfirming[`rates_${message.id}`]"
+                                                @click="confirmRatesAction(action, message.id)"
+                                                class="flex-1 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all disabled:opacity-50"
+                                            >
+                                                <Check class="w-3.5 h-3.5" />
+                                                <span>{{ isConfirming[`rates_${message.id}`] ? 'Updating...' : 'Confirm & Update Live Rates' }}</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                @click="discardAction(action)"
+                                                class="px-3 py-2 bg-white border border-surface-300 text-surface-700 hover:text-red-700 text-xs font-medium"
+                                            >
+                                                Discard
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="p-3 bg-[#fcfaf6] border border-emerald-300 text-center">
-                                        <p class="text-xs font-medium text-emerald-800 uppercase tracking-wider">Set Silver</p>
-                                        <p class="text-base font-bold text-surface-700 mt-1">
-                                            ₹{{ Number(action.result.silver_sell).toLocaleString('en-IN') }}/g
-                                        </p>
+
+                                    <!-- Confirmed Rates Display -->
+                                    <div v-else class="grid grid-cols-2 gap-3 pt-1">
+                                        <div class="p-3 bg-[#fcfaf6] border border-emerald-300 text-center">
+                                            <p class="text-xs font-medium text-emerald-800 uppercase tracking-wider">Set Gold 24K</p>
+                                            <p class="text-base font-bold text-[#c08f34] mt-1">
+                                                ₹{{ Number(action.result.gold_24k_sell).toLocaleString('en-IN') }}/g
+                                            </p>
+                                        </div>
+                                        <div class="p-3 bg-[#fcfaf6] border border-emerald-300 text-center">
+                                            <p class="text-xs font-medium text-emerald-800 uppercase tracking-wider">Set Silver</p>
+                                            <p class="text-base font-bold text-surface-700 mt-1">
+                                                ₹{{ Number(action.result.silver_sell).toLocaleString('en-IN') }}/g
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <!-- 2. Product Added Real Barcode Card -->
-                                <div v-else-if="action.tool === 'add_product'" class="p-3.5 bg-[#fcfaf6] border border-[#e8dfcf] space-y-2.5">
-                                    <div class="flex items-center justify-between">
-                                        <span class="font-bold text-sm text-[#1c3633]">{{ action.result.name }}</span>
-                                        <span class="font-mono text-xs px-3 py-1 bg-[#1c3633] text-[#c08f34] font-bold tracking-widest">
-                                            {{ action.result.barcode }}
-                                        </span>
+                                <!-- 2. Product Added (Preview vs Confirmed) -->
+                                <div v-else-if="action.tool === 'add_product'">
+                                    <!-- Editable Preview Form -->
+                                    <div v-if="action.result.is_preview" class="p-3 bg-amber-50/70 border border-amber-300 space-y-2.5">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                                                <Edit3 class="w-3.5 h-3.5 text-[#c08f34]" />
+                                                Review Ornament Before Saving to Stock
+                                            </span>
+                                            <span class="px-2 py-0.5 bg-amber-200 text-amber-900 text-[10px] font-bold uppercase">
+                                                Confirmation Required
+                                            </span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2 text-xs">
+                                            <div class="col-span-2">
+                                                <label class="text-[10.5px] text-surface-600 font-medium">Ornament Name</label>
+                                                <input
+                                                    v-model="action.result.name"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-semibold text-surface-900"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label class="text-[10.5px] text-surface-600 font-medium">Gross/Net Weight (g)</label>
+                                                <input
+                                                    v-model.number="action.result.weight"
+                                                    type="number"
+                                                    step="0.001"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-bold text-[#1c3633]"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label class="text-[10.5px] text-surface-600 font-medium">Purity (e.g. 22K, 18K)</label>
+                                                <input
+                                                    v-model="action.result.purity"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-semibold"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label class="text-[10.5px] text-surface-600 font-medium">Category</label>
+                                                <input
+                                                    v-model="action.result.category"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label class="text-[10.5px] text-surface-600 font-medium">Making Charge (₹/g)</label>
+                                                <input
+                                                    v-model.number="action.result.making_charge_per_gm"
+                                                    type="number"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-semibold"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2 pt-1">
+                                            <button
+                                                type="button"
+                                                :disabled="isConfirming[`prod_${message.id}`]"
+                                                @click="confirmProductAction(action, message.id)"
+                                                class="flex-1 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all disabled:opacity-50"
+                                            >
+                                                <PackagePlus class="w-3.5 h-3.5" />
+                                                <span>{{ isConfirming[`prod_${message.id}`] ? 'Saving...' : 'Confirm & Save to Stock' }}</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                @click="discardAction(action)"
+                                                class="px-3 py-2 bg-white border border-surface-300 text-surface-700 hover:text-red-700 text-xs font-medium"
+                                            >
+                                                Discard
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="grid grid-cols-3 gap-2 text-xs text-surface-600 border-t border-surface-200 pt-2">
-                                        <div>Weight: <strong class="text-[#1c3633]">{{ action.result.weight }}</strong></div>
-                                        <div>Purity: <strong class="text-[#1c3633]">{{ action.result.purity }}</strong></div>
-                                        <div>Making: <strong class="text-[#1c3633]">{{ action.result.making_charge_per_gm }}</strong></div>
+
+                                    <!-- Confirmed Product Barcode Card -->
+                                    <div v-else class="p-3.5 bg-[#fcfaf6] border border-[#e8dfcf] space-y-2.5">
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-bold text-sm text-[#1c3633]">{{ action.result.name }}</span>
+                                            <span class="font-mono text-xs px-3 py-1 bg-[#1c3633] text-[#c08f34] font-bold tracking-widest">
+                                                {{ action.result.barcode }}
+                                            </span>
+                                        </div>
+                                        <div class="grid grid-cols-3 gap-2 text-xs text-surface-600 border-t border-surface-200 pt-2">
+                                            <div>Weight: <strong class="text-[#1c3633]">{{ action.result.weight }}</strong></div>
+                                            <div>Purity: <strong class="text-[#1c3633]">{{ action.result.purity }}</strong></div>
+                                            <div>Making: <strong class="text-[#1c3633]">{{ action.result.making_charge_per_gm }}</strong></div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -597,12 +839,212 @@ onMounted(() => {
                                     </div>
                                 </div>
 
-                                <!-- 5. Real Bill / Invoice Creation Card -->
+                                <!-- 5. Bill / Invoice (Interactive Preview Draft vs Confirmed Invoice) -->
                                 <div v-if="action.tool === 'create_bill' || action.tool === 'create_invoice'">
+                                    <!-- Error Alert -->
                                     <div v-if="action.result.found === false" class="p-3 bg-red-50 border border-red-300 text-xs text-red-900">
                                         <p class="font-bold">⚠️ {{ action.result.message || 'Bill generate nahi ho paya.' }}</p>
                                     </div>
-                                    <div v-else class="space-y-2.5">
+
+                                    <!-- 📝 HUMAN-IN-THE-LOOP: EDITABLE INVOICE DRAFT PREVIEW -->
+                                    <div v-else-if="action.result.is_preview" class="p-3.5 bg-amber-50/70 border-2 border-amber-300 shadow-sm space-y-3">
+                                        <!-- Draft Header -->
+                                        <div class="flex items-center justify-between pb-2 border-b border-amber-200">
+                                            <div class="flex items-center gap-2">
+                                                <div class="w-7 h-7 bg-[#1c3633] text-[#c08f34] flex items-center justify-center font-bold">
+                                                    <Edit3 class="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <div class="font-bold text-xs text-amber-950">Invoice Draft Preview</div>
+                                                    <div class="text-[10.5px] text-amber-800">Review & edit fields below before saving to DB</div>
+                                                </div>
+                                            </div>
+                                            <span class="px-2 py-0.5 bg-amber-200 border border-amber-300 text-amber-900 text-[10px] font-bold uppercase tracking-wider">
+                                                Approval Required
+                                            </span>
+                                        </div>
+
+                                        <!-- Interactive Form Grid (Live 2-way data binding) -->
+                                        <div class="grid grid-cols-2 gap-2 text-xs">
+                                            <!-- Customer Details -->
+                                            <div>
+                                                <label class="text-[10.5px] font-semibold text-surface-700">Customer Name *</label>
+                                                <input
+                                                    v-model="action.result.customer_name"
+                                                    type="text"
+                                                    placeholder="Customer Name"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-semibold text-surface-900 focus:border-[#1c3633] focus:ring-0"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label class="text-[10.5px] font-semibold text-surface-700">Customer Mobile</label>
+                                                <input
+                                                    v-model="action.result.customer_phone"
+                                                    type="text"
+                                                    placeholder="Mobile Number"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-mono text-surface-900 focus:border-[#1c3633] focus:ring-0"
+                                                />
+                                            </div>
+
+                                            <!-- Item & Barcode -->
+                                            <div>
+                                                <label class="text-[10.5px] font-semibold text-surface-700">Item Description *</label>
+                                                <input
+                                                    v-model="action.result.item_name"
+                                                    type="text"
+                                                    placeholder="Item Name"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-semibold text-surface-900 focus:border-[#1c3633] focus:ring-0"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label class="text-[10.5px] font-semibold text-surface-700">Stock Barcode</label>
+                                                <input
+                                                    v-model="action.result.barcode"
+                                                    type="text"
+                                                    placeholder="Barcode (Optional)"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-mono font-bold uppercase text-surface-900 focus:border-[#1c3633] focus:ring-0"
+                                                />
+                                            </div>
+
+                                            <!-- Weight & Purity -->
+                                            <div>
+                                                <label class="text-[10.5px] font-semibold text-surface-700">Net Weight (g) *</label>
+                                                <input
+                                                    v-model.number="action.result.weight"
+                                                    type="number"
+                                                    step="0.001"
+                                                    @input="calculateLiveBill(action.result)"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-bold text-[#1c3633] focus:border-[#1c3633] focus:ring-0"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label class="text-[10.5px] font-semibold text-surface-700">Purity</label>
+                                                <input
+                                                    v-model="action.result.purity"
+                                                    type="text"
+                                                    placeholder="22K, 18K, Silver"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-semibold focus:border-[#1c3633] focus:ring-0"
+                                                />
+                                            </div>
+
+                                            <!-- Rate & Discount -->
+                                            <div>
+                                                <label class="text-[10.5px] font-semibold text-surface-700">Rate / gm (₹) *</label>
+                                                <input
+                                                    v-model.number="action.result.rate_per_gm"
+                                                    type="number"
+                                                    step="1"
+                                                    @input="calculateLiveBill(action.result)"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-bold text-surface-900 focus:border-[#1c3633] focus:ring-0"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label class="text-[10.5px] font-semibold text-surface-700">Discount Amount (₹)</label>
+                                                <input
+                                                    v-model.number="action.result.discount_amount"
+                                                    type="number"
+                                                    step="1"
+                                                    @input="calculateLiveBill(action.result)"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-semibold text-emerald-800 focus:border-[#1c3633] focus:ring-0"
+                                                />
+                                            </div>
+
+                                            <!-- Making Type & Value -->
+                                            <div>
+                                                <label class="text-[10.5px] font-semibold text-surface-700">Making Charge Type</label>
+                                                <select
+                                                    v-model="action.result.making_type"
+                                                    @change="calculateLiveBill(action.result)"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-semibold focus:border-[#1c3633] focus:ring-0"
+                                                >
+                                                    <option value="percentage">% (Percentage on Metal)</option>
+                                                    <option value="per_gram">₹/g (Per Gram)</option>
+                                                    <option value="flat">₹ Flat (Lump-Sum)</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="text-[10.5px] font-semibold text-surface-700">
+                                                    Making Value {{ action.result.making_type === 'percentage' ? '(%)' : '(₹)' }}
+                                                </label>
+                                                <input
+                                                    v-model.number="action.result.making_value"
+                                                    type="number"
+                                                    step="0.1"
+                                                    @input="calculateLiveBill(action.result)"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-bold text-[#1c3633] focus:border-[#1c3633] focus:ring-0"
+                                                />
+                                            </div>
+
+                                            <!-- Payment Mode & Paid Amount -->
+                                            <div>
+                                                <label class="text-[10.5px] font-semibold text-surface-700">Payment Mode</label>
+                                                <select
+                                                    v-model="action.result.payment_mode"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-semibold focus:border-[#1c3633] focus:ring-0"
+                                                >
+                                                    <option value="CASH">CASH</option>
+                                                    <option value="UPI">UPI / QR</option>
+                                                    <option value="BANK_TRANSFER">BANK TRANSFER</option>
+                                                    <option value="CARD">CARD (DEBIT/CREDIT)</option>
+                                                    <option value="UNPAID">CREDIT / UNPAID</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="text-[10.5px] font-semibold text-surface-700">Amount Received (₹)</label>
+                                                <input
+                                                    v-model.number="action.result.payment_amount"
+                                                    type="number"
+                                                    step="1"
+                                                    class="w-full mt-0.5 p-1.5 bg-white border border-surface-300 text-xs font-bold text-emerald-800 focus:border-[#1c3633] focus:ring-0"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <!-- Live Real-Time Calculation Bar -->
+                                        <div class="p-2.5 bg-white border border-amber-200 grid grid-cols-3 gap-2 text-xs">
+                                            <div>
+                                                <span class="text-[10px] text-surface-500">Metal Value</span>
+                                                <p class="font-bold text-surface-900">₹{{ Number(action.result.metal_value || 0).toLocaleString('en-IN') }}</p>
+                                            </div>
+                                            <div>
+                                                <span class="text-[10px] text-surface-500">Making Charges</span>
+                                                <p class="font-bold text-surface-900">₹{{ Number(action.result.making_charges || 0).toLocaleString('en-IN') }}</p>
+                                            </div>
+                                            <div>
+                                                <span class="text-[10px] text-surface-500">3% GST</span>
+                                                <p class="font-bold text-surface-900">₹{{ Number(action.result.gst_3_percent || 0).toLocaleString('en-IN') }}</p>
+                                            </div>
+                                            <div class="col-span-3 pt-2 border-t border-surface-200 flex items-center justify-between">
+                                                <span class="font-bold text-surface-800 text-xs uppercase tracking-wider">Grand Total (Inc. GST)</span>
+                                                <span class="text-base font-bold font-serif text-[#c08f34]">
+                                                    ₹{{ Number(action.result.grand_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Action Buttons: Confirm vs Discard -->
+                                        <div class="flex items-center gap-2 pt-1">
+                                            <button
+                                                type="button"
+                                                :disabled="isConfirming[`bill_${message.id}`]"
+                                                @click="confirmBillAction(action, message.id)"
+                                                class="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
+                                            >
+                                                <CheckCircle2 class="w-4 h-4 text-emerald-200" />
+                                                <span>{{ isConfirming[`bill_${message.id}`] ? 'Creating Invoice...' : 'Confirm & Create Invoice in Database' }}</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                @click="discardAction(action)"
+                                                class="px-3.5 py-2.5 bg-white border border-surface-300 text-surface-700 hover:text-red-700 hover:border-red-300 text-xs font-semibold transition-all"
+                                            >
+                                                Discard
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- ✅ CONFIRMED FINAL REAL INVOICE CARD (Shown After Confirmation) -->
+                                    <div v-else-if="!action.result.is_discarded" class="space-y-2.5">
                                         <!-- Invoice Meta Banner -->
                                         <div class="p-3 bg-emerald-50/90 border border-emerald-300 flex items-center justify-between">
                                             <div class="flex items-center gap-2.5">
@@ -680,6 +1122,11 @@ onMounted(() => {
                                                 <span>Print PDF</span>
                                             </a>
                                         </div>
+                                    </div>
+
+                                    <!-- Discarded Note -->
+                                    <div v-else class="p-2.5 bg-surface-100 text-surface-500 text-xs italic text-center">
+                                        Invoice draft was discarded.
                                     </div>
                                 </div>
 
