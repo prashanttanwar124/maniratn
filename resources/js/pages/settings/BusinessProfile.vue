@@ -4,11 +4,20 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
+import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
 
 const props = defineProps({
     businessSetting: Object,
 });
+
+const voiceOptions = [
+    { label: 'Aoede (Warm Female)', value: 'Aoede' },
+    { label: 'Kore (Calm Female)', value: 'Kore' },
+    { label: 'Puck (Natural Male)', value: 'Puck' },
+    { label: 'Fenrir (Deep Male)', value: 'Fenrir' },
+    { label: 'Charon (Authoritative Male)', value: 'Charon' },
+];
 
 const form = useForm({
     store_name: props.businessSetting?.store_name || '',
@@ -169,12 +178,14 @@ const openStandee = () => {
 
                                 <div>
                                     <label class="mb-1.5 block text-xs font-semibold text-surface-700">HD Voice Persona</label>
-                                    <select v-model="form.ai_voice_name" class="w-full h-10 px-3 border border-surface-300 rounded bg-white text-xs text-surface-800">
-                                        <option value="Aoede">Aoede (Warm Female)</option>
-                                        <option value="Kore">Kore (Calm Female)</option>
-                                        <option value="Puck">Puck (Natural Male)</option>
-                                        <option value="Fenrir">Fenrir (Deep Male)</option>
-                                    </select>
+                                    <Select
+                                        v-model="form.ai_voice_name"
+                                        :options="voiceOptions"
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        placeholder="Select Voice Persona"
+                                        class="w-full text-xs"
+                                    />
                                 </div>
 
                                 <div class="flex items-center gap-2 pt-6">
