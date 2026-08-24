@@ -443,10 +443,13 @@ class AiCopilotController extends Controller
                 if ($makingPercent !== null && $makingPercent > 0) {
                     $makingTotal = $metalValue * ($makingPercent / 100);
                     $makingLabel = "({$makingPercent}%)";
+                } elseif ($makingPerGm !== null && $makingPerGm > 0) {
+                    $makingTotal = $weight * $makingPerGm;
+                    $makingLabel = "(@ ₹{$makingPerGm}/g)";
                 } else {
-                    $makingPerGmVal = $makingPerGm ?? 450;
-                    $makingTotal = $weight * $makingPerGmVal;
-                    $makingLabel = "(@ ₹{$makingPerGmVal}/g)";
+                    $makingPercent = 12.0;
+                    $makingTotal = round($metalValue * 0.12, 2);
+                    $makingLabel = "(12%)";
                 }
 
                 $subtotal = $metalValue + $makingTotal;
@@ -525,7 +528,7 @@ class AiCopilotController extends Controller
                     $effectiveRate = ($metal === 'SILVER') ? 89.0 : 6830.0;
                 }
 
-                // 3. Compute Metal value, making charges, GST & Totals
+                // 3. Compute Metal value, making charges (Default 12%), GST & Totals
                 $metalValue = round($weight * $effectiveRate, 2);
 
                 if ($makingPercent !== null && $makingPercent > 0) {
@@ -533,12 +536,16 @@ class AiCopilotController extends Controller
                     $makingType = 'percentage';
                     $makingValue = $makingPercent;
                     $makingLabel = "({$makingPercent}%)";
-                } else {
-                    $makingPerGmVal = $makingPerGm ?: 450.0;
-                    $makingTotal = round($weight * $makingPerGmVal, 2);
+                } elseif ($makingPerGm !== null && $makingPerGm > 0) {
+                    $makingTotal = round($weight * $makingPerGm, 2);
                     $makingType = 'flat';
-                    $makingValue = $makingPerGmVal;
-                    $makingLabel = "(@ ₹{$makingPerGmVal}/g)";
+                    $makingValue = $makingPerGm;
+                    $makingLabel = "(@ ₹{$makingPerGm}/g)";
+                } else {
+                    $makingType = 'percentage';
+                    $makingValue = 12.0;
+                    $makingTotal = round($metalValue * 0.12, 2);
+                    $makingLabel = "(12%)";
                 }
 
                 $subtotal = max(0, $metalValue + $makingTotal - $discountAmount);
@@ -553,6 +560,7 @@ class AiCopilotController extends Controller
                     'customer_id' => $customer->id,
                     'gold_rate_applied' => floatval($rateRecord?->gold_sell ?: $effectiveRate),
                     'silver_rate_applied' => floatval($rateRecord?->silver_sell ?: 89.0),
+                    'tax_amount' => $gstAmount,
                     'discount_type' => $discountAmount > 0 ? 'fixed' : null,
                     'discount_value' => $discountAmount,
                     'discount_amount' => $discountAmount,
