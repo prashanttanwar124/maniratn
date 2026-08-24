@@ -10,6 +10,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\Purity;
+use App\Models\SilverProduct;
 use App\Models\Supplier;
 use App\Models\Transaction;
 use App\Models\Vault;
@@ -224,28 +225,30 @@ class AiCopilotController extends Controller
                 // Generate 100% accurate 1-line reply with exact ERP numbers
                 if ($tool === 'get_daily_rates') {
                     if (isset($realData['found']) && $realData['found'] === false) {
-                        $finalReply = "Maaf kijiye, aaj ka bhav abhi tak add nahi kiya gaya hai. Kripya pehle aaj ka bhav update karein.";
+                        $finalReply = "Aaj ka live gold aur silver bhav database me set nahi hai. Kripya aaj ka 24K rate (jaise '7450') aur silver rate batayein taaki main update kar doon.";
                     } else {
                         $finalReply = "Aaj ka 24K Gold ₹" . number_format($realData['gold_24k_per_gm']) . ", 22K ₹" . number_format($realData['gold_22k_per_gm']) . ", Silver ₹" . number_format($realData['silver_per_gm'], 2) . " per gram hai.";
                     }
                 } elseif ($tool === 'update_daily_rates') {
-                    $finalReply = "Done. Aaj ka 24K rate ₹" . number_format($realData['gold_24k_sell']) . " aur Silver ₹" . number_format($realData['silver_sell'], 2) . " database me update ho gaya.";
+                    $finalReply = "Done! Aaj ka 24K rate ₹" . number_format($realData['gold_24k_sell']) . " aur Silver ₹" . number_format($realData['silver_sell'], 2) . " database me update ho gaya. Ab aap kisi bhi ornament ka estimate ya bill banwa sakte hain.";
                 } elseif ($tool === 'add_product') {
                     $finalReply = "Done. {$realData['weight']} {$realData['purity']} {$realData['name']} add ho gayi, Barcode {$realData['barcode']}.";
                 } elseif ($tool === 'get_vault_balance') {
                     $finalReply = "Vault me Cash {$realData['cash_in_hand']}, Gold {$realData['gold_in_vault']}, aur Silver {$realData['silver_in_vault']} hai.";
                 } elseif ($tool === 'calculate_estimate') {
                     if (isset($realData['found']) && $realData['found'] === false) {
-                        $finalReply = "Maaf kijiye, aaj ka live gold bhav database me add nahi hai. Estimate nikalne ke liye pehle aaj ka bhav add karein (jaise: 'Aaj ka 24k rate 7450 set karo').";
+                        $finalReply = "Aaj ka live gold bhav database me set nahi hai. Estimate nikalne ke liye kripya aaj ka 24K gold bhav (jaise '7450') batayein.";
                     } else {
-                        $finalReply = "Total estimate quotation {$realData['total_estimate']} banega.";
+                        $finalReply = "Total estimate quotation {$realData['total_estimate']} banega (12% making aur 3% GST ke sath).";
                     }
                 } elseif ($tool === 'create_bill' || $tool === 'create_invoice') {
                     if (isset($realData['found']) && $realData['found'] === false) {
-                        $finalReply = "Maaf kijiye, bill generate nahi ho paya. Kripya rates ya weight check karein.";
+                        $finalReply = "Aaj ka live gold rate set nahi hai. Bill banane ke liye kripya aaj ka 24K rate batayein.";
                     } else {
                         $finalReply = "Done! Customer {$realData['customer_name']} ke liye Bill #{$realData['invoice_number']} create ho gaya hai. Total amount {$realData['grand_total']} hai.";
                     }
+                } elseif ($tool === 'check_stock') {
+                    $finalReply = "Showroom inventory me {$realData['total_items']} items available hain, kul weight {$realData['total_weight']} hai.";
                 }
             }
 
@@ -635,6 +638,72 @@ class AiCopilotController extends Controller
                     'view_url' => "/invoices/{$invoice->id}",
                     'print_url' => "/invoices/{$invoice->id}/print",
                     'status' => 'INVOICE_GENERATED_REAL_DB',
+                ];
+
+            case 'check_stock':
+                $q = trim((string) ($args['query'] ?? ''));
+                $metalFilter = strtoupper(trim((string) ($args['metal'] ?? '')));
+                $catFilter = trim((string) ($args['category'] ?? ''));
+
+                $goldQuery = Product::where('is_sold', false);
+                $silverQuery = SilverProduct::where('is_sold', false);
+
+                if (! empty($q)) {
+                    $goldQuery->where(function ($query) use ($q) {
+                        $query->where('name', 'like', "%{$q}%")
+                            ->orWhere('barcode', 'like', "%{$q}%");
+                    });
+                    $silverQuery->where(function ($query) use ($q) {
+                        $query->where('name', 'like', "%{$q}%")
+                            ->orWhere('barcode', 'like', "%{$q}%");
+                    });
+                }
+
+                $goldItems = $goldQuery->with(['category', 'purity'])->take(6)->get();
+                $goldCount = Product::where('is_sold', false)->count();
+                $goldWeight = Product::where('is_sold', false)->sum('net_weight');
+
+                $silverItems = $silverQuery->with('category')->take(6)->get();
+                $silverCount = SilverProduct::where('is_sold', false)->count();
+                $silverWeight = SilverProduct::where('is_sold', false)->sum('net_weight');
+
+                $totalCount = $goldCount + $silverCount;
+                $totalWeight = round($goldWeight + $silverWeight, 3);
+
+                $items = [];
+                foreach ($goldItems as $g) {
+                    $items[] = [
+                        'barcode' => $g->barcode,
+                        'name' => $g->name,
+                        'metal' => 'GOLD',
+                        'purity' => $g->purity?->name ?? '22K',
+                        'weight' => $g->net_weight . ' g',
+                        'category' => $g->category?->name ?? 'General',
+                        'making' => '₹' . $g->making_charge . '/g',
+                    ];
+                }
+                foreach ($silverItems as $s) {
+                    $items[] = [
+                        'barcode' => $s->barcode,
+                        'name' => $s->name,
+                        'metal' => 'SILVER',
+                        'purity' => 'Silver',
+                        'weight' => $s->net_weight . ' g',
+                        'category' => $s->category?->name ?? 'Silver',
+                        'making' => '₹' . $s->making_charge,
+                    ];
+                }
+
+                return [
+                    'query' => ! empty($q) ? $q : 'All Showroom Stock',
+                    'total_items' => $totalCount,
+                    'total_weight' => $totalWeight . ' g',
+                    'gold_count' => $goldCount,
+                    'gold_weight' => round($goldWeight, 3) . ' g',
+                    'silver_count' => $silverCount,
+                    'silver_weight' => round($silverWeight, 3) . ' g',
+                    'items' => $items,
+                    'status' => 'REAL_ERP_INVENTORY',
                 ];
 
             default:

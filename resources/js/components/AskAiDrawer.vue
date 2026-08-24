@@ -682,6 +682,48 @@ onMounted(() => {
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- 6. Real Stock / Inventory Check Card -->
+                                <div v-if="action.tool === 'check_stock'" class="space-y-2.5">
+                                    <div class="grid grid-cols-2 gap-2 text-xs border border-surface-200 p-2.5 bg-surface-50">
+                                        <div>
+                                            <span class="text-surface-500 text-[10.5px]">Total In-Stock Items</span>
+                                            <p class="font-bold text-surface-900 text-sm">{{ action.result.total_items }} Items</p>
+                                        </div>
+                                        <div>
+                                            <span class="text-surface-500 text-[10.5px]">Total Net Weight</span>
+                                            <p class="font-bold text-surface-900 text-sm">{{ action.result.total_weight }}</p>
+                                        </div>
+                                        <div>
+                                            <span class="text-surface-500 text-[10.5px]">Gold Stock</span>
+                                            <p class="font-semibold text-amber-800">{{ action.result.gold_count }} items ({{ action.result.gold_weight }})</p>
+                                        </div>
+                                        <div>
+                                            <span class="text-surface-500 text-[10.5px]">Silver Stock</span>
+                                            <p class="font-semibold text-slate-700">{{ action.result.silver_count }} items ({{ action.result.silver_weight }})</p>
+                                        </div>
+                                    </div>
+
+                                    <div v-if="action.result.items && action.result.items.length > 0" class="space-y-1.5 pt-1">
+                                        <div class="text-[11px] font-bold text-surface-600 uppercase tracking-wider">Matching Showcase Stock</div>
+                                        <div class="space-y-1 max-h-36 overflow-y-auto">
+                                            <div
+                                                v-for="(it, i) in action.result.items"
+                                                :key="i"
+                                                class="p-2 bg-white border border-surface-200 flex items-center justify-between text-xs hover:border-[#c08f34]"
+                                            >
+                                                <div>
+                                                    <div class="font-semibold text-surface-900">{{ it.name }} ({{ it.purity }})</div>
+                                                    <div class="text-[10.5px] font-mono text-surface-500">{{ it.barcode }} • {{ it.category }}</div>
+                                                </div>
+                                                <div class="text-right">
+                                                    <div class="font-bold text-[#1c3633]">{{ it.weight }}</div>
+                                                    <div class="text-[10px] text-surface-400">Making: {{ it.making }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
