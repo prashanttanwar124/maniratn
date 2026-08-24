@@ -36,7 +36,7 @@ interface Message {
     timestamp: string;
 }
 
-defineProps<{
+const props = defineProps<{
     visible: boolean;
 }>();
 
@@ -310,6 +310,7 @@ watch(
 
 onMounted(() => {
     initSpeech();
+    fetchChatHistory(false);
 });
 </script>
 
