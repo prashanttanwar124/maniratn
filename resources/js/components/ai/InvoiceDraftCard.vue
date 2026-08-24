@@ -77,13 +77,13 @@ const setPurity = (draft: any, purity: string) => {
         <div v-if="isDraft" class="space-y-4 bg-white p-4">
             <!-- Header Banner (Sharp rectangular, perfectly aligned) -->
             <div class="-mx-4 -mt-4 flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
-                <div class="flex items-center gap-2">
-                    <span class="flex h-6 w-6 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                <div class="flex items-center gap-2.5">
+                    <span class="flex h-7 w-7 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
                         <Receipt class="h-3.5 w-3.5" />
                     </span>
                     <div class="flex flex-col justify-center">
-                        <h4 class="text-xs font-semibold tracking-wide text-surface-900 leading-tight">Invoice draft</h4>
-                        <p class="text-[10px] font-normal text-surface-500 leading-tight">Details verify karein, phir invoice create karein</p>
+                        <p class="!m-0 !p-0 !text-xs font-semibold tracking-wide text-surface-900 !leading-tight">Invoice draft</p>
+                        <p class="!m-0 !p-0 !text-[10px] font-normal text-surface-500 !leading-tight">Details verify karein, phir invoice create karein</p>
                     </div>
                 </div>
                 <span class="inline-flex w-fit items-center gap-1 border border-amber-300 bg-amber-50 px-2 py-0.5 text-[9.5px] font-semibold tracking-wide text-amber-900 uppercase">

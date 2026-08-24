@@ -20,13 +20,13 @@ defineProps<{
     >
         <!-- 🏛️ 1. Sleek Compact Header -->
         <div class="flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
-            <div class="flex items-center gap-2">
-                <span class="flex h-6 w-6 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+            <div class="flex items-center gap-2.5">
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
                     <Landmark class="h-3.5 w-3.5" />
                 </span>
                 <div class="flex flex-col justify-center">
-                    <h4 class="text-xs font-semibold tracking-wide text-surface-900 leading-tight">Showroom vault balance</h4>
-                    <span class="text-[10px] font-normal text-surface-500 leading-tight">Cash aur bullion holdings</span>
+                    <p class="!m-0 !p-0 !text-xs font-semibold tracking-wide text-surface-900 !leading-tight">Showroom vault balance</p>
+                    <p class="!m-0 !p-0 !text-[10px] font-normal text-surface-500 !leading-tight">Cash aur bullion holdings</p>
                 </div>
             </div>
             <span class="inline-flex items-center gap-1 border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800 uppercase">
