@@ -14,20 +14,22 @@ defineProps<{
 
 <template>
     <section
-        class="my-2 overflow-hidden rounded-none border border-t-2 border-surface-200 border-t-[#c08f34] bg-white font-sans shadow-xs"
+        class="my-3 overflow-hidden rounded-none border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
         style="font-family: 'Poppins', sans-serif !important"
         aria-label="Vault balance"
     >
         <!-- 🏛️ 1. Sleek Compact Header -->
-        <div class="flex flex-col gap-2 border-b border-surface-200 bg-surface-50/90 px-3 py-2.5 min-[410px]:flex-row min-[410px]:items-center min-[410px]:justify-between">
+        <div class="flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
             <div class="flex items-center gap-2">
-                <Landmark class="h-4 w-4 text-[#c08f34]" />
-                <div>
-                    <h4 class="text-xs leading-none font-semibold tracking-wide text-surface-900">Showroom vault balance</h4>
-                    <span class="text-[10px] font-normal text-surface-500">Cash aur bullion holdings</span>
+                <span class="flex h-6 w-6 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                    <Landmark class="h-3.5 w-3.5" />
+                </span>
+                <div class="flex flex-col justify-center">
+                    <h4 class="text-xs font-semibold tracking-wide text-surface-900 leading-tight">Showroom vault balance</h4>
+                    <span class="text-[10px] font-normal text-surface-500 leading-tight">Cash aur bullion holdings</span>
                 </div>
             </div>
-            <span class="inline-flex items-center gap-1 rounded-none border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800 uppercase">
+            <span class="inline-flex items-center gap-1 border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800 uppercase">
                 <ShieldCheck class="h-3 w-3 text-emerald-600" />
                 Live balance
             </span>

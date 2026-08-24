@@ -26,22 +26,26 @@ const copyBarcode = (barcode: string) => {
 
 <template>
     <section
-        class="my-2 overflow-hidden rounded-none border border-t-2 border-surface-200 border-t-[#c08f34] bg-white font-sans shadow-xs"
+        class="my-3 overflow-hidden rounded-none border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
         style="font-family: 'Poppins', sans-serif !important"
         aria-label="Stock availability results"
     >
         <!-- 🏛️ 1. Sleek Compact Header (Light Luxury ERP Style) -->
-        <div class="flex items-start justify-between gap-3 border-b border-surface-200 bg-surface-50/90 px-3 py-2.5">
+        <div class="flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
             <div class="flex items-center gap-2">
-                <Boxes class="h-4 w-4 text-[#c08f34]" />
-                <div>
-                    <h4 class="text-xs leading-4 font-semibold tracking-wide text-surface-900">
+                <span class="flex h-6 w-6 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                    <Boxes class="h-3.5 w-3.5" />
+                </span>
+                <div class="flex flex-col justify-center">
+                    <h4 class="text-xs font-semibold tracking-wide text-surface-900 leading-tight">
                         {{ action.result.query || 'Showroom Inventory' }}
                     </h4>
-                    <span class="text-[10px] font-normal text-surface-500">Live showroom stock</span>
+                    <span class="text-[10px] font-normal text-surface-500 leading-tight">Live showroom stock</span>
                 </div>
             </div>
-            <span class="shrink-0 rounded-none border border-surface-200 bg-white px-2 py-1 text-[10.5px] font-semibold text-surface-700 shadow-2xs"> {{ action.result.total_items ?? 0 }} Items </span>
+            <span class="shrink-0 border border-surface-300 bg-white px-2 py-0.5 text-[10.5px] font-mono font-medium text-surface-700 shadow-2xs">
+                {{ action.result.total_items ?? 0 }} items
+            </span>
         </div>
 
         <!-- 💡 2. Smart Proximity Info (If requested weight is unavailable) -->

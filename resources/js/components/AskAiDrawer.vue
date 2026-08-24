@@ -721,21 +721,23 @@ onMounted(() => {
                                         <!-- 6. Daily Rate Inquire Card (Sleek Compact Light Luxury) -->
                                         <div
                                             v-else-if="action.tool === 'get_daily_rates'"
-                                            class="my-2 overflow-hidden border border-t-2 border-surface-200 border-t-[#c08f34] bg-white font-sans shadow-xs"
+                                            class="my-3 overflow-hidden border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
                                         >
                                             <div
-                                                class="flex flex-col gap-2 border-b border-surface-200 bg-surface-50/90 px-3 py-2 min-[410px]:flex-row min-[410px]:items-center min-[410px]:justify-between"
+                                                class="flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5"
                                             >
                                                 <div class="flex items-center gap-2">
-                                                    <Coins class="h-4 w-4 text-[#c08f34]" />
-                                                    <div>
-                                                        <h4 class="text-xs leading-none font-semibold tracking-wide text-surface-900">Today's Live Bullion Rates</h4>
-                                                        <span class="text-[10px] font-normal text-surface-500">Real-time Database Rates</span>
+                                                    <span class="flex h-6 w-6 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                                                        <Coins class="h-3.5 w-3.5" />
+                                                    </span>
+                                                    <div class="flex flex-col justify-center">
+                                                        <h4 class="text-xs font-semibold tracking-wide text-surface-900 leading-tight">Today's Live Bullion Rates</h4>
+                                                        <span class="text-[10px] font-normal text-surface-500 leading-tight">Real-time database rates</span>
                                                     </div>
                                                 </div>
                                                 <span class="inline-flex items-center gap-1 border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800 uppercase">
                                                     <span class="h-1.5 w-1.5 bg-emerald-500"></span>
-                                                    Live Active
+                                                    Live
                                                 </span>
                                             </div>
                                             <div
@@ -743,17 +745,17 @@ onMounted(() => {
                                             >
                                                 <div class="bg-surface-50 p-2.5">
                                                     <p class="text-[10px] font-semibold text-amber-800 uppercase">Gold 24K</p>
-                                                    <p class="mt-0.5 font-mono text-xs font-bold text-[#c08f34]">₹{{ Number(action.result.gold_24k_per_gm || 7520).toLocaleString('en-IN') }}/g</p>
+                                                    <p class="mt-1 font-mono text-sm font-bold text-[#9b6f1e]">₹{{ Number(action.result.gold_24k_per_gm || 7520).toLocaleString('en-IN') }}/g</p>
                                                 </div>
                                                 <div class="bg-surface-50 p-2.5">
                                                     <p class="text-[10px] font-semibold text-amber-800 uppercase">Gold 22K</p>
-                                                    <p class="mt-0.5 font-mono text-xs font-bold text-surface-900">
+                                                    <p class="mt-1 font-mono text-sm font-bold text-surface-900">
                                                         ₹{{ Number(action.result.gold_22k_per_gm || 6888.32).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}/g
                                                     </p>
                                                 </div>
                                                 <div class="bg-surface-50 p-2.5">
                                                     <p class="text-[10px] font-semibold text-slate-700 uppercase">Silver (999)</p>
-                                                    <p class="mt-0.5 font-mono text-xs font-bold text-surface-900">
+                                                    <p class="mt-1 font-mono text-sm font-bold text-surface-900">
                                                         ₹{{ Number(action.result.silver_per_gm || 89.2).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}/g
                                                     </p>
                                                 </div>

@@ -27,58 +27,76 @@ const isConfirmed = computed(() => {
 const isDraft = computed(() => {
     return !isConfirmed.value && !props.action.result?.is_discarded;
 });
+
+const canConfirm = computed(() => {
+    return Number(props.action.result?.gold_24k_sell) > 0 && Number(props.action.result?.silver_sell) > 0;
+});
 </script>
 
 <template>
     <section
-        class="my-2 overflow-hidden rounded-none border border-t-2 border-surface-200 border-t-[#c08f34] bg-white font-sans shadow-xs"
+        class="my-3 overflow-hidden rounded-none border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
         style="font-family: 'Poppins', sans-serif !important"
         aria-label="Daily rates update draft"
     >
         <!-- 📝 1. DAILY RATES DRAFT PREVIEW -->
-        <div v-if="isDraft" class="space-y-3 bg-white p-3">
-            <div class="flex flex-col gap-2 border-b border-surface-200 pb-2.5 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
-                <div class="space-y-0.5">
-                    <div class="flex items-center gap-1.5">
-                        <Edit3 class="h-4 w-4 text-[#c08f34]" />
-                        <h4 class="text-xs leading-none font-semibold tracking-wide text-surface-900">Daily rates update</h4>
+        <div v-if="isDraft" class="space-y-4 bg-white p-4">
+            <div class="-mx-4 -mt-4 flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-6 w-6 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                        <Edit3 class="h-3.5 w-3.5" />
+                    </span>
+                    <div class="flex flex-col justify-center">
+                        <h4 class="text-xs font-semibold tracking-wide text-surface-900 leading-tight">Daily rates update</h4>
+                        <p class="text-[10px] font-normal text-surface-500 leading-tight">Aaj ke rates verify karke live karein</p>
                     </div>
-                    <p class="pl-5.5 text-[10.5px] font-normal text-surface-500">Aaj ke rates verify karke live karein</p>
                 </div>
-                <span class="inline-flex items-center gap-1 rounded-none border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-900 uppercase">
+                <span class="inline-flex w-fit items-center gap-1 border border-amber-300 bg-amber-50 px-2 py-0.5 text-[9.5px] font-semibold tracking-wide text-amber-900 uppercase">
                     <ShieldCheck class="h-3 w-3 text-amber-700" />
-                    Review required
+                    Review
                 </span>
             </div>
 
             <div class="grid grid-cols-1 gap-2.5 min-[400px]:grid-cols-2">
-                <div class="rounded-none border border-amber-200 bg-amber-50/40 p-2.5">
+                <div class="rounded-none border border-amber-200 bg-amber-50/40 p-3">
                     <label class="block text-[11px] font-medium text-surface-700">Gold 24K sell rate <span class="text-surface-400">(₹/g)</span></label>
                     <div class="relative mt-1">
                         <span class="absolute top-2 left-2.5 z-1 text-xs font-bold text-[#c08f34]">₹</span>
-                        <InputText v-model.number="action.result.gold_24k_sell" type="number" size="small" class="w-full rounded-none pr-2 pl-6 !font-sans font-bold" />
+                        <InputText
+                            v-model.number="action.result.gold_24k_sell"
+                            type="number"
+                            size="small"
+                            class="w-full rounded-none pr-2 pl-6 !font-sans font-mono text-base font-bold text-[#9b6f1e]"
+                        />
                     </div>
                 </div>
-                <div class="rounded-none border border-surface-200 bg-surface-50 p-2.5">
+                <div class="rounded-none border border-surface-200 bg-surface-50 p-3">
                     <label class="block text-[11px] font-medium text-surface-700">Silver sell rate <span class="text-surface-400">(₹/g)</span></label>
                     <div class="relative mt-1">
                         <span class="absolute top-2 left-2.5 z-1 text-xs font-bold text-slate-500">₹</span>
-                        <InputText v-model.number="action.result.silver_sell" type="number" size="small" class="w-full rounded-none pr-2 pl-6 !font-sans font-bold" />
+                        <InputText
+                            v-model.number="action.result.silver_sell"
+                            type="number"
+                            size="small"
+                            class="w-full rounded-none pr-2 pl-6 !font-sans font-mono text-base font-bold text-surface-800"
+                        />
                     </div>
                 </div>
             </div>
 
             <p class="border-l-2 border-amber-400 bg-amber-50/60 px-2.5 py-2 text-[10.5px] leading-4 text-amber-900">Ye rates billing aur estimates mein turant use honge.</p>
 
-            <div class="flex flex-col-reverse gap-2 border-t border-surface-100 pt-3 min-[430px]:flex-row min-[430px]:items-center">
+            <p v-if="!canConfirm" class="border-l-2 border-red-500 bg-red-50 px-2.5 py-2 text-[10.5px] text-red-700">Gold aur silver dono rates required hain.</p>
+
+            <div class="-mx-4 -mb-4 flex flex-col-reverse gap-2 border-t border-surface-200 bg-surface-50 px-4 py-3 min-[430px]:flex-row min-[430px]:items-center">
                 <button
                     type="button"
-                    :disabled="isConfirming"
+                    :disabled="isConfirming || !canConfirm"
                     @click="emit('confirm', action, msgId)"
                     class="flex flex-1 items-center justify-center gap-1.5 rounded-none border border-[#1c3633] bg-[#1c3633] py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#254642] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <Check class="h-4 w-4 text-[#c08f34]" />
-                    <span>{{ isConfirming ? 'Rates update ho rahe hain...' : 'Confirm and update rates' }}</span>
+                    <span>{{ isConfirming ? 'Rates update ho rahe hain...' : canConfirm ? 'Confirm and update rates' : 'Enter both rates' }}</span>
                 </button>
                 <button
                     type="button"
@@ -91,7 +109,7 @@ const isDraft = computed(() => {
         </div>
 
         <!-- 📈 2. CONFIRMED RATES STATE -->
-        <div v-else-if="isConfirmed" class="flex flex-col gap-2 rounded-none border-t border-emerald-300 bg-emerald-50 p-3 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
+        <div v-else-if="isConfirmed" class="flex flex-col gap-3 rounded-none bg-emerald-50 p-4 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
             <div class="flex items-start gap-2">
                 <CheckCircle2 class="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
                 <div>

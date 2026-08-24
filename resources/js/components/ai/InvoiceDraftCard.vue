@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, ExternalLink, FileText, Printer, Receipt, ShieldCheck, Tag, X } from 'lucide-vue-next';
+import { Check, ExternalLink, FileText, Pencil, Printer, Receipt, ShieldCheck, Tag, X } from 'lucide-vue-next';
 import InputText from 'primevue/inputtext';
 import { computed, ref } from 'vue';
 
@@ -22,6 +22,7 @@ const emit = defineEmits<{
 }>();
 
 const showBarcodeField = ref(!!props.action.result?.barcode);
+const isEditing = ref(!props.action.result?.item_name || !props.action.result?.weight || !props.action.result?.rate_per_gm);
 
 const isConfirmed = computed(() => {
     return Boolean(props.action.result?.invoice_number && (props.action.result?.status === 'INVOICE_GENERATED_REAL_DB' || props.action.result?.is_preview === false));
@@ -29,6 +30,10 @@ const isConfirmed = computed(() => {
 
 const isDraft = computed(() => {
     return !isConfirmed.value && !props.action.result?.is_discarded;
+});
+
+const canConfirm = computed(() => {
+    return Boolean(props.action.result?.item_name && Number(props.action.result?.weight) > 0 && Number(props.action.result?.rate_per_gm) > 0);
 });
 
 const formatMoney = (val: any) => {
@@ -64,32 +69,66 @@ const setPurity = (draft: any, purity: string) => {
 
 <template>
     <section
-        class="my-2 overflow-hidden rounded-none border border-t-2 border-surface-200 border-t-[#c08f34] bg-white font-sans shadow-xs"
+        class="my-3 overflow-hidden rounded-none border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
         style="font-family: 'Poppins', sans-serif !important"
         aria-label="Invoice draft"
     >
         <!-- 📝 1. DRAFT PREVIEW STATE (Before DB Insert) -->
-        <div v-if="isDraft" class="space-y-3 bg-white p-3">
+        <div v-if="isDraft" class="space-y-4 bg-white p-4">
             <!-- Header Banner (Sharp rectangular, perfectly aligned) -->
-            <div class="flex flex-col gap-2 border-b border-surface-200 pb-2.5 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
-                <div class="space-y-0.5">
-                    <div class="flex items-center gap-1.5">
-                        <Receipt class="h-4 w-4 text-[#c08f34]" />
-                        <h4 class="text-xs leading-none font-semibold tracking-wide text-surface-900">Invoice draft</h4>
+            <div class="-mx-4 -mt-4 flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-6 w-6 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                        <Receipt class="h-3.5 w-3.5" />
+                    </span>
+                    <div class="flex flex-col justify-center">
+                        <h4 class="text-xs font-semibold tracking-wide text-surface-900 leading-tight">Invoice draft</h4>
+                        <p class="text-[10px] font-normal text-surface-500 leading-tight">Details verify karein, phir invoice create karein</p>
                     </div>
-                    <p class="pl-5.5 text-[10.5px] font-normal text-surface-500">Details verify karein, phir invoice create karein</p>
                 </div>
-                <span class="inline-flex items-center gap-1 rounded-none border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-900 uppercase">
+                <span class="inline-flex w-fit items-center gap-1 border border-amber-300 bg-amber-50 px-2 py-0.5 text-[9.5px] font-semibold tracking-wide text-amber-900 uppercase">
                     <ShieldCheck class="h-3 w-3 text-amber-700" />
-                    Review required
+                    Review
                 </span>
             </div>
 
-            <!-- 2-Column Compact Input Grid -->
-            <div class="grid grid-cols-1 gap-3 text-xs min-[430px]:grid-cols-2">
+            <div class="border border-surface-200 bg-[#fafbfa]">
+                <div class="flex items-center justify-between gap-3 border-b border-surface-200 px-3 py-2">
+                    <span class="text-[10px] font-semibold tracking-wide text-surface-500 uppercase">Review summary</span>
+                    <button
+                        type="button"
+                        class="flex items-center gap-1 border border-surface-300 bg-white px-2 py-1 text-[10px] font-medium text-surface-700 transition-colors hover:border-[#c08f34] hover:text-[#1c3633]"
+                        :aria-expanded="isEditing"
+                        @click="isEditing = !isEditing"
+                    >
+                        <Pencil class="h-3 w-3 text-[#b07b24]" />
+                        {{ isEditing ? 'Hide details' : 'Edit details' }}
+                    </button>
+                </div>
+                <dl class="grid grid-cols-2 divide-x divide-y divide-surface-200 text-[10.5px] min-[460px]:grid-cols-4 min-[460px]:divide-y-0">
+                    <div class="p-2.5">
+                        <dt class="text-surface-400">Customer</dt>
+                        <dd class="mt-0.5 truncate font-semibold text-surface-800">{{ action.result.customer_name || 'Walk-in' }}</dd>
+                    </div>
+                    <div class="p-2.5">
+                        <dt class="text-surface-400">Item</dt>
+                        <dd class="mt-0.5 truncate font-semibold text-surface-800">{{ action.result.item_name || 'Not added' }}</dd>
+                    </div>
+                    <div class="p-2.5">
+                        <dt class="text-surface-400">Weight / purity</dt>
+                        <dd class="mt-0.5 font-mono font-semibold text-surface-800">{{ formatWeight(action.result.weight) }} · {{ action.result.purity || '22K' }}</dd>
+                    </div>
+                    <div class="p-2.5">
+                        <dt class="text-surface-400">Payment</dt>
+                        <dd class="mt-0.5 font-semibold text-surface-800">{{ action.result.payment_mode || 'Cash' }}</dd>
+                    </div>
+                </dl>
+            </div>
+
+            <div v-if="isEditing" class="grid grid-cols-1 gap-3 border-l-2 border-[#c08f34] bg-surface-50/50 p-3 text-xs min-[430px]:grid-cols-2">
                 <!-- Customer Name -->
                 <div>
-                    <label class="block text-[11px] font-medium text-surface-700">Customer name <span class="text-red-600">*</span></label>
+                    <label class="block text-[11px] font-medium text-surface-700">Customer name <span class="font-normal text-surface-400">(Walk-in allowed)</span></label>
                     <InputText v-model="action.result.customer_name" size="small" placeholder="Customer Name (or Walk-in)" class="mt-1 w-full rounded-none !font-sans font-semibold text-slate-900" />
                 </div>
 
@@ -270,7 +309,7 @@ const setPurity = (draft: any, purity: string) => {
             </div>
 
             <!-- Live Bill Summary Box (Sharp rectangular) -->
-            <div class="space-y-2 rounded-none border border-slate-200 bg-slate-50 p-3 text-xs">
+            <div class="space-y-2 rounded-none border border-slate-200 bg-[#fafafa] p-3 text-xs">
                 <div class="mb-1 flex items-center justify-between border-b border-surface-200 pb-2">
                     <span class="text-[10px] font-semibold tracking-wide text-surface-500 uppercase">Bill summary</span>
                     <span class="text-[10px] text-surface-400">Live calculation</span>
@@ -293,22 +332,24 @@ const setPurity = (draft: any, purity: string) => {
                     <span>3% GST</span>
                     <span class="font-mono font-semibold text-slate-900">+ ₹{{ formatMoney(action.result.gst_3_percent) }}</span>
                 </div>
-                <div class="flex items-center justify-between border-t border-slate-200 pt-2">
+                <div class="-mx-3 mt-2 -mb-3 flex items-center justify-between border-t border-slate-200 bg-[#f3f7f5] px-3 py-3">
                     <span class="text-xs font-semibold tracking-wide text-slate-900 uppercase">Grand total</span>
                     <span class="font-mono text-base font-bold text-emerald-800"> ₹{{ formatMoney(action.result.grand_total) }} </span>
                 </div>
             </div>
 
             <!-- Confirmation & Discard Buttons (Sharp rectangular) -->
-            <div class="flex flex-col-reverse gap-2 border-t border-surface-100 pt-3 min-[430px]:flex-row min-[430px]:items-center">
+            <p v-if="!canConfirm" class="border-l-2 border-red-500 bg-red-50 px-2.5 py-2 text-[10.5px] text-red-700">Item, weight aur live rate complete karna zaroori hai.</p>
+
+            <div class="-mx-4 -mb-4 flex flex-col-reverse gap-2 border-t border-surface-200 bg-surface-50 px-4 py-3 min-[430px]:flex-row min-[430px]:items-center">
                 <button
                     type="button"
-                    :disabled="isConfirming"
+                    :disabled="isConfirming || !canConfirm"
                     @click="emit('confirm', action, msgId)"
                     class="flex flex-1 items-center justify-center gap-1.5 rounded-none border border-[#1c3633] bg-[#1c3633] py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#254642] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <Check class="h-4 w-4 text-[#c08f34]" />
-                    <span>{{ isConfirming ? 'Invoice create ho raha hai...' : 'Confirm and create invoice' }}</span>
+                    <span>{{ isConfirming ? 'Invoice create ho raha hai...' : canConfirm ? 'Confirm and create invoice' : 'Complete required details' }}</span>
                 </button>
                 <button
                     type="button"
@@ -321,9 +362,9 @@ const setPurity = (draft: any, purity: string) => {
         </div>
 
         <!-- 📄 2. CONFIRMED FINAL INVOICE VOUCHER (Post-Confirmation) -->
-        <div v-else-if="isConfirmed" class="space-y-3 bg-white p-3">
+        <div v-else-if="isConfirmed" class="space-y-3 bg-white p-4">
             <!-- Invoice Header Banner (Sharp rectangular) -->
-            <div class="flex flex-col gap-2 rounded-none bg-emerald-700 p-2.5 text-white min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
+            <div class="-mx-4 -mt-4 flex flex-col gap-2 rounded-none bg-emerald-700 px-4 py-3 text-white min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
                 <div class="flex items-center gap-2">
                     <div class="flex h-6 w-6 items-center justify-center rounded-none bg-white/20 font-bold text-white">
                         <Receipt class="h-3.5 w-3.5" />
@@ -371,7 +412,7 @@ const setPurity = (draft: any, purity: string) => {
             </div>
 
             <!-- Action Buttons: View Invoice & Print Bill PDF (Sharp rectangular) -->
-            <div class="grid grid-cols-1 gap-2 pt-0.5 min-[390px]:grid-cols-2">
+            <div class="-mx-4 -mb-4 grid grid-cols-1 gap-2 border-t border-surface-200 bg-surface-50 px-4 py-3 min-[390px]:grid-cols-2">
                 <a
                     :href="action.result.view_url"
                     target="_blank"
