@@ -35,6 +35,7 @@ import {
     Zap,
 } from 'lucide-vue-next';
 import Drawer from 'primevue/drawer';
+import InputText from 'primevue/inputtext';
 import { usePage } from '@inertiajs/vue3';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
@@ -707,22 +708,24 @@ onMounted(() => {
                                                 <div class="bg-white p-2.5 border border-surface-200 shadow-2xs">
                                                     <label class="text-[10px] font-bold text-surface-600 uppercase tracking-wide">Gold 24K Sell (₹/g)</label>
                                                     <div class="relative mt-1">
-                                                        <span class="absolute left-2 top-1.5 text-xs font-bold text-[#c08f34]">₹</span>
-                                                        <input
+                                                        <span class="absolute left-2.5 top-2 text-xs font-bold text-[#c08f34] z-1">₹</span>
+                                                        <InputText
                                                             v-model.number="action.result.gold_24k_sell"
                                                             type="number"
-                                                            class="w-full pl-6 pr-2 py-1.5 bg-surface-50 border border-surface-300 text-xs font-bold text-[#1c3633] focus:bg-white focus:border-[#c08f34] focus:ring-1 focus:ring-[#c08f34]/30"
+                                                            size="small"
+                                                            class="w-full pl-6 pr-2 font-bold"
                                                         />
                                                     </div>
                                                 </div>
                                                 <div class="bg-white p-2.5 border border-surface-200 shadow-2xs">
                                                     <label class="text-[10px] font-bold text-surface-600 uppercase tracking-wide">Silver Sell (₹/g)</label>
                                                     <div class="relative mt-1">
-                                                        <span class="absolute left-2 top-1.5 text-xs font-bold text-slate-500">₹</span>
-                                                        <input
+                                                        <span class="absolute left-2.5 top-2 text-xs font-bold text-slate-500 z-1">₹</span>
+                                                        <InputText
                                                             v-model.number="action.result.silver_sell"
                                                             type="number"
-                                                            class="w-full pl-6 pr-2 py-1.5 bg-surface-50 border border-surface-300 text-xs font-bold text-slate-800 focus:bg-white focus:border-[#c08f34] focus:ring-1 focus:ring-[#c08f34]/30"
+                                                            size="small"
+                                                            class="w-full pl-6 pr-2 font-bold"
                                                         />
                                                     </div>
                                                 </div>
@@ -778,44 +781,49 @@ onMounted(() => {
                                             <div class="grid grid-cols-2 gap-2.5">
                                                 <div class="col-span-2">
                                                     <label class="text-[10.5px] font-semibold text-surface-700">Ornament Name *</label>
-                                                    <input
+                                                    <InputText
                                                         v-model="action.result.name"
-                                                        class="w-full mt-1 p-2 bg-white border border-surface-300 text-xs font-semibold text-surface-900 focus:border-[#c08f34] focus:ring-1 focus:ring-[#c08f34]/30"
+                                                        size="small"
+                                                        class="w-full mt-1 font-semibold"
                                                     />
                                                 </div>
                                                 <div>
                                                     <label class="text-[10.5px] font-semibold text-surface-700">Net Weight (g) *</label>
                                                     <div class="relative mt-1">
-                                                        <input
+                                                        <InputText
                                                             v-model.number="action.result.weight"
                                                             type="number"
                                                             step="0.001"
-                                                            class="w-full pl-2 pr-7 py-1.5 bg-white border border-surface-300 text-xs font-bold text-[#1c3633] focus:border-[#c08f34] focus:ring-1 focus:ring-[#c08f34]/30"
+                                                            size="small"
+                                                            class="w-full pl-2.5 pr-7 font-bold"
                                                         />
-                                                        <span class="absolute right-2 top-1.5 text-[10.5px] font-bold text-surface-400">g</span>
+                                                        <span class="absolute right-2.5 top-2 text-[10.5px] font-bold text-surface-400">g</span>
                                                     </div>
                                                 </div>
                                                 <div>
                                                     <label class="text-[10.5px] font-semibold text-surface-700">Purity</label>
-                                                    <input
+                                                    <InputText
                                                         v-model="action.result.purity"
                                                         placeholder="22K, 18K"
-                                                        class="w-full mt-1 p-1.5 bg-white border border-surface-300 text-xs font-semibold focus:border-[#c08f34] focus:ring-1 focus:ring-[#c08f34]/30"
+                                                        size="small"
+                                                        class="w-full mt-1 font-semibold"
                                                     />
                                                 </div>
                                                 <div>
                                                     <label class="text-[10.5px] font-semibold text-surface-700">Category</label>
-                                                    <input
+                                                    <InputText
                                                         v-model="action.result.category"
-                                                        class="w-full mt-1 p-1.5 bg-white border border-surface-300 text-xs focus:border-[#c08f34] focus:ring-1 focus:ring-[#c08f34]/30"
+                                                        size="small"
+                                                        class="w-full mt-1"
                                                     />
                                                 </div>
                                                 <div>
                                                     <label class="text-[10.5px] font-semibold text-surface-700">Making Charge (₹/g)</label>
-                                                    <input
+                                                    <InputText
                                                         v-model.number="action.result.making_charge_per_gm"
                                                         type="number"
-                                                        class="w-full mt-1 p-1.5 bg-white border border-surface-300 text-xs font-semibold focus:border-[#c08f34] focus:ring-1 focus:ring-[#c08f34]/30"
+                                                        size="small"
+                                                        class="w-full mt-1 font-semibold"
                                                     />
                                                 </div>
                                             </div>
@@ -937,39 +945,39 @@ onMounted(() => {
                                             <!-- Row 1: Customer & Phone -->
                                             <div>
                                                 <label class="text-[11px] font-bold text-slate-700">Customer Name *</label>
-                                                <input
+                                                <InputText
                                                     v-model="action.result.customer_name"
-                                                    type="text"
+                                                    size="small"
                                                     placeholder="Customer Name"
-                                                    class="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-slate-300 text-xs font-semibold text-slate-900 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                    class="w-full mt-0.5 font-semibold text-slate-900"
                                                 />
                                             </div>
                                             <div>
                                                 <label class="text-[11px] font-bold text-slate-700">Mobile Number</label>
-                                                <input
+                                                <InputText
                                                     v-model="action.result.customer_phone"
-                                                    type="text"
+                                                    size="small"
                                                     placeholder="Phone Number"
-                                                    class="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-slate-300 text-xs font-mono font-medium text-slate-900 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                    class="w-full mt-0.5 font-mono font-medium text-slate-900"
                                                 />
                                             </div>
 
                                             <!-- Row 2: Item Description & Barcode -->
                                             <div>
                                                 <label class="text-[11px] font-bold text-slate-700">Item Description *</label>
-                                                <input
+                                                <InputText
                                                     v-model="action.result.item_name"
-                                                    type="text"
-                                                    class="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-slate-300 text-xs font-semibold text-slate-900 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                    size="small"
+                                                    class="w-full mt-0.5 font-semibold text-slate-900"
                                                 />
                                             </div>
                                             <div>
                                                 <label class="text-[11px] font-bold text-slate-700">Stock Barcode</label>
-                                                <input
+                                                <InputText
                                                     v-model="action.result.barcode"
-                                                    type="text"
+                                                    size="small"
                                                     placeholder="e.g. G00026"
-                                                    class="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-slate-300 text-xs font-mono font-bold uppercase text-slate-900 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                    class="w-full mt-0.5 font-mono font-bold uppercase text-slate-900"
                                                 />
                                             </div>
 
@@ -977,26 +985,28 @@ onMounted(() => {
                                             <div>
                                                 <label class="text-[11px] font-bold text-slate-700">Net Weight (g) *</label>
                                                 <div class="relative mt-0.5">
-                                                    <input
+                                                    <InputText
                                                         v-model.number="action.result.weight"
                                                         type="number"
                                                         step="0.001"
+                                                        size="small"
                                                         @input="calculateLiveBill(action.result)"
-                                                        class="w-full pl-2.5 pr-6 py-1.5 bg-white border border-slate-300 text-xs font-bold text-slate-900 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                        class="w-full pl-2.5 pr-6 font-bold text-slate-900"
                                                     />
-                                                    <span class="absolute right-2 top-1.5 text-[10px] font-bold text-slate-400">g</span>
+                                                    <span class="absolute right-2.5 top-2 text-[10.5px] font-bold text-slate-400">g</span>
                                                 </div>
                                             </div>
                                             <div>
                                                 <label class="text-[11px] font-bold text-slate-700">Live Rate (₹/g) *</label>
                                                 <div class="relative mt-0.5">
-                                                    <span class="absolute left-2.5 top-1.5 text-xs font-bold text-slate-500">₹</span>
-                                                    <input
+                                                    <span class="absolute left-2.5 top-2 text-xs font-bold text-slate-500 z-1">₹</span>
+                                                    <InputText
                                                         v-model.number="action.result.rate_per_gm"
                                                         type="number"
                                                         step="1"
+                                                        size="small"
                                                         @input="calculateLiveBill(action.result)"
-                                                        class="w-full pl-6 pr-2 py-1.5 bg-white border border-slate-300 text-xs font-bold text-slate-900 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                        class="w-full pl-6 pr-2 font-bold text-slate-900"
                                                     />
                                                 </div>
                                             </div>
@@ -1027,7 +1037,7 @@ onMounted(() => {
                                                 <div class="flex items-center justify-between">
                                                     <label class="text-[11px] font-bold text-slate-700">Making Charge</label>
                                                     <span class="text-[11px] font-bold text-slate-800">
-                                                        = ₹{{ Number(action.result.making_charges || 0).toLocaleString('en-IN') }}
+                                                        = ₹{{ formatMoney(action.result.making_charges) }}
                                                     </span>
                                                 </div>
                                                 <div class="grid grid-cols-3 gap-1">
@@ -1073,22 +1083,24 @@ onMounted(() => {
                                                         <label class="text-[10px] text-slate-600">
                                                             Value {{ action.result.making_type === 'percentage' ? '(%)' : '(₹)' }}
                                                         </label>
-                                                        <input
+                                                        <InputText
                                                             v-model.number="action.result.making_value"
                                                             type="number"
                                                             step="0.1"
+                                                            size="small"
                                                             @input="calculateLiveBill(action.result)"
-                                                            class="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-slate-300 text-xs font-bold text-slate-900 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                            class="w-full mt-0.5 font-bold text-slate-900"
                                                         />
                                                     </div>
                                                     <div>
                                                         <label class="text-[10px] text-slate-600">Discount (₹)</label>
-                                                        <input
+                                                        <InputText
                                                             v-model.number="action.result.discount_amount"
                                                             type="number"
                                                             step="1"
+                                                            size="small"
                                                             @input="calculateLiveBill(action.result)"
-                                                            class="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-slate-300 text-xs font-bold text-emerald-800 rounded focus:border-[#1c3633] focus:ring-1 focus:ring-[#1c3633]/20"
+                                                            class="w-full mt-0.5 font-bold text-emerald-800"
                                                         />
                                                     </div>
                                                 </div>
@@ -1364,11 +1376,10 @@ onMounted(() => {
                     </button>
 
                     <!-- Text Input -->
-                    <input
+                    <InputText
                         v-model="inputPrompt"
-                        type="text"
                         placeholder="Ask Karat AI or speak via mic..."
-                        class="flex-1 h-11 px-3.5 text-sm bg-[#f8faf9] border border-surface-200 text-surface-900 placeholder:text-surface-400 focus:outline-none focus:border-[#1c3633] transition-colors"
+                        class="flex-1 !h-11 text-sm bg-white"
                         @keydown.enter="sendMessage()"
                     />
 
