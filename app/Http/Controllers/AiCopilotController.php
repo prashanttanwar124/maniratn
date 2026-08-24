@@ -97,8 +97,6 @@ class AiCopilotController extends Controller
             $aiResult = $response->json();
             $actions = $aiResult['actions'] ?? [];
             $executedActions = [];
-            $finalReply = $aiResult['reply'] ?? 'Done.';
-
             // Dispatch tool actions through dedicated Action handlers
             foreach ($actions as $action) {
                 $tool = $action['tool'] ?? '';
@@ -111,11 +109,6 @@ class AiCopilotController extends Controller
                     $realData = ['error' => $e->getMessage(), 'status' => 'FAILED'];
                 }
 
-                // If tool is get_daily_rates, guarantee 100% exact match between speech/reply & card
-                if ($tool === 'get_daily_rates' && ! empty($realData['found'])) {
-                    $finalReply = "Aaj 24K Gold ₹" . number_format($realData['gold_24k_per_gm']) . ", 22K ₹" . number_format($realData['gold_22k_per_gm'], 2) . " aur Silver ₹" . number_format($realData['silver_per_gm'], 2) . " per gram hai.";
-                }
-
                 $executedActions[] = [
                     'tool' => $tool,
                     'args' => $args,
@@ -124,7 +117,7 @@ class AiCopilotController extends Controller
             }
 
             return response()->json([
-                'reply' => $finalReply,
+                'reply' => $aiResult['reply'] ?? 'Done.',
                 'actions' => ! empty($executedActions) ? $executedActions : $actions,
                 'audio' => $aiResult['audio'] ?? null,
                 'cached' => $aiResult['cached'] ?? false,
