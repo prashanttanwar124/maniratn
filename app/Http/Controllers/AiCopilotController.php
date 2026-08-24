@@ -228,7 +228,11 @@ class AiCopilotController extends Controller
                 } elseif ($tool === 'get_vault_balance') {
                     $finalReply = "Vault me Cash {$realData['cash_in_hand']}, Gold {$realData['gold_in_vault']}, aur Silver {$realData['silver_in_vault']} hai.";
                 } elseif ($tool === 'calculate_estimate') {
-                    $finalReply = "Total estimate quotation {$realData['total_estimate']} banega.";
+                    if (isset($realData['found']) && $realData['found'] === false) {
+                        $finalReply = "Maaf kijiye, aaj ka live gold bhav database me add nahi hai. Estimate nikalne ke liye pehle aaj ka bhav add karein (jaise: 'Aaj ka 24k rate 7450 set karo').";
+                    } else {
+                        $finalReply = "Total estimate quotation {$realData['total_estimate']} banega.";
+                    }
                 }
             }
 
@@ -397,16 +401,29 @@ class AiCopilotController extends Controller
                 $weight = floatval($args['weight'] ?? 10);
                 $metal = strtoupper($args['metal'] ?? 'GOLD');
                 $purity = $args['purity'] ?? '22K';
+                $customRate = (isset($args['custom_rate']) || isset($args['rate'])) ? floatval($args['custom_rate'] ?? $args['rate']) : null;
                 $makingPercent = isset($args['making_percent']) ? floatval($args['making_percent']) : null;
                 $makingPerGm = isset($args['making_charge_per_gram']) ? floatval($args['making_charge_per_gram']) : null;
 
-                // Prefer today's rate if available, else latest non-zero
-                $rateRecord = DailyRate::whereDate('date', Carbon::today())->where('gold_sell', '>', 0)->first()
-                    ?? DailyRate::where('gold_sell', '>', 0)->orderByDesc('date')->first();
+                // STRICT CHECK: Check today's rate in database
+                $rateRecord = DailyRate::whereDate('date', Carbon::today())->where('gold_sell', '>', 0)->first();
 
-                $ratePerGm = ($metal === 'SILVER')
-                    ? ($rateRecord ? floatval($rateRecord->silver_sell) : 88.50)
-                    : ($rateRecord ? floatval($rateRecord->gold_sell) * 0.916 : 6830);
+                // If user didn't mention a custom rate AND today's rate is not in DB, fail gracefully
+                if ($customRate === null && ! $rateRecord) {
+                    return [
+                        'found' => false,
+                        'message' => 'Aaj ka live gold bhav database me add nahi hai.',
+                        'status' => 'RATE_NOT_SET_TODAY',
+                    ];
+                }
+
+                if ($customRate !== null && $customRate > 0) {
+                    $ratePerGm = $customRate;
+                } else {
+                    $ratePerGm = ($metal === 'SILVER')
+                        ? floatval($rateRecord->silver_sell)
+                        : (floatval($rateRecord->gold_sell) * 0.916);
+                }
 
                 $metalValue = $weight * $ratePerGm;
 
@@ -424,6 +441,7 @@ class AiCopilotController extends Controller
                 $grandTotal = $subtotal + $gst;
 
                 return [
+                    'found' => true,
                     'weight' => $weight . ' g',
                     'metal' => $metal,
                     'purity' => $purity,

@@ -482,22 +482,32 @@ onMounted(() => {
                                 </div>
 
                                 <!-- 4. Estimate Calculation Card -->
-                                <div v-else-if="action.tool === 'calculate_estimate'" class="p-3.5 bg-[#fcfaf6] border border-[#e8dfcf] space-y-2 text-xs">
-                                    <div class="flex justify-between text-surface-600">
-                                        <span>Metal Value ({{ action.result.weight }} @ {{ action.result.rate_per_gm }})</span>
-                                        <span class="font-medium text-[#1c3633]">{{ action.result.metal_value }}</span>
+                                <div v-else-if="action.tool === 'calculate_estimate'">
+                                    <div v-if="action.result.found === false" class="p-3.5 bg-amber-50/80 border border-amber-300/80 text-xs text-amber-900 space-y-1">
+                                        <p class="font-bold flex items-center gap-1.5 text-amber-800">
+                                            <span>⚠️</span> Aaj ka gold rate set nahi hai
+                                        </p>
+                                        <p class="text-surface-600 text-[12px]">
+                                            Quotation nikalne ke liye pehle aaj ka bhav update karein (jaise: <em>"Aaj ka 24k rate 7450 set karo"</em>) ya command me rate batayein (jaise: <em>"15g chain 7100 bhav se estimate banao"</em>).
+                                        </p>
                                     </div>
-                                    <div class="flex justify-between text-surface-600">
-                                        <span>Making Charges</span>
-                                        <span class="font-medium text-[#1c3633]">{{ action.result.making_charges }}</span>
-                                    </div>
-                                    <div class="flex justify-between text-surface-600">
-                                        <span>GST (3%)</span>
-                                        <span class="font-medium text-[#1c3633]">{{ action.result.gst_3_percent }}</span>
-                                    </div>
-                                    <div class="flex justify-between pt-2.5 border-t border-surface-200 font-bold text-sm text-[#1c3633]">
-                                        <span>Total Estimated Quotation</span>
-                                        <span class="text-[#c08f34] text-base font-bold">{{ action.result.total_estimate }}</span>
+                                    <div v-else class="p-3.5 bg-[#fcfaf6] border border-[#e8dfcf] space-y-2 text-xs">
+                                        <div class="flex justify-between text-surface-600">
+                                            <span>Metal Value ({{ action.result.weight }} @ {{ action.result.rate_per_gm }})</span>
+                                            <span class="font-medium text-[#1c3633]">{{ action.result.metal_value }}</span>
+                                        </div>
+                                        <div class="flex justify-between text-surface-600">
+                                            <span>Making Charges</span>
+                                            <span class="font-medium text-[#1c3633]">{{ action.result.making_charges }}</span>
+                                        </div>
+                                        <div class="flex justify-between text-surface-600">
+                                            <span>GST (3%)</span>
+                                            <span class="font-medium text-[#1c3633]">{{ action.result.gst_3_percent }}</span>
+                                        </div>
+                                        <div class="flex justify-between pt-2.5 border-t border-surface-200 font-bold text-sm text-[#1c3633]">
+                                            <span>Total Estimated Quotation</span>
+                                            <span class="text-[#c08f34] text-base font-bold">{{ action.result.total_estimate }}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
