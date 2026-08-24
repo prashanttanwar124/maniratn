@@ -4,9 +4,13 @@ import {
     Bot,
     Clock,
     Coins,
+    ExternalLink,
+    FileText,
     Mic,
     MicOff,
     PackagePlus,
+    Printer,
+    Receipt,
     RefreshCw,
     Send,
     Sparkles,
@@ -68,6 +72,7 @@ const messageContainer = ref<HTMLElement | null>(null);
 
 const quickSuggestions = [
     { label: 'Aaj ka 22K & Silver bhav?', icon: TrendingUp, prompt: 'Aaj 22K gold aur silver ka bhav kya hai?' },
+    { label: '15g Chain Bill banao', icon: Receipt, prompt: 'Customer Rahul Sharma (phone: 9876543210) ke liye 15g 22K Gold Chain ka bill bana do' },
     { label: '14.5g 22K Gold Chain add karo', icon: PackagePlus, prompt: '14.5 gram ki 22K gold chain add kar do' },
     { label: '15g 22K Chain quotation estimate', icon: Sparkles, prompt: '15 gram 22K chain ka total estimate kitna banega?' },
     { label: 'Vault cash & gold balance', icon: Wallet, prompt: 'Vault me abhi kitna cash aur sona hai?' },
@@ -588,6 +593,92 @@ onMounted(() => {
                                         <div class="flex justify-between pt-2.5 border-t border-surface-200 font-bold text-sm text-[#1c3633]">
                                             <span>Total Estimated Quotation</span>
                                             <span class="text-[#c08f34] text-base font-bold">{{ action.result.total_estimate }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 5. Real Bill / Invoice Creation Card -->
+                                <div v-if="action.tool === 'create_bill' || action.tool === 'create_invoice'">
+                                    <div v-if="action.result.found === false" class="p-3 bg-red-50 border border-red-300 text-xs text-red-900">
+                                        <p class="font-bold">⚠️ {{ action.result.message || 'Bill generate nahi ho paya.' }}</p>
+                                    </div>
+                                    <div v-else class="space-y-2.5">
+                                        <!-- Invoice Meta Banner -->
+                                        <div class="p-3 bg-emerald-50/90 border border-emerald-300 flex items-center justify-between">
+                                            <div class="flex items-center gap-2.5">
+                                                <div class="w-8 h-8 bg-emerald-600 text-white flex items-center justify-center font-bold">
+                                                    <Receipt class="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <div class="font-bold text-xs text-emerald-950 font-mono tracking-wide">{{ action.result.invoice_number }}</div>
+                                                    <div class="text-[11px] text-emerald-800">
+                                                        Customer: <strong>{{ action.result.customer_name }}</strong> ({{ action.result.customer_phone }})
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <span class="px-2 py-0.5 bg-emerald-600 text-white text-[10px] font-bold uppercase tracking-wider">
+                                                Bill Created
+                                            </span>
+                                        </div>
+
+                                        <!-- Item Breakdown Grid -->
+                                        <div class="grid grid-cols-2 gap-2 text-xs border border-surface-200 p-2.5 bg-surface-50">
+                                            <div>
+                                                <span class="text-surface-500 text-[10.5px]">Item & Purity</span>
+                                                <p class="font-semibold text-surface-800">{{ action.result.item_name }} ({{ action.result.purity }})</p>
+                                            </div>
+                                            <div>
+                                                <span class="text-surface-500 text-[10.5px]">Weight & Live Rate</span>
+                                                <p class="font-semibold text-surface-800">{{ action.result.weight }} @ {{ action.result.rate_per_gm }}/g</p>
+                                            </div>
+                                            <div>
+                                                <span class="text-surface-500 text-[10.5px]">Metal Value</span>
+                                                <p class="font-semibold text-surface-800">{{ action.result.metal_value }}</p>
+                                            </div>
+                                            <div>
+                                                <span class="text-surface-500 text-[10.5px]">Making Charges</span>
+                                                <p class="font-semibold text-surface-800">{{ action.result.making_charges }}</p>
+                                            </div>
+                                            <div>
+                                                <span class="text-surface-500 text-[10.5px]">Subtotal (Pre-GST)</span>
+                                                <p class="font-semibold text-surface-800">{{ action.result.subtotal }}</p>
+                                            </div>
+                                            <div>
+                                                <span class="text-surface-500 text-[10.5px]">3% GST Amount</span>
+                                                <p class="font-semibold text-surface-800">{{ action.result.gst_3_percent }}</p>
+                                            </div>
+                                        </div>
+
+                                        <!-- Total & Payment Mode Bar -->
+                                        <div class="p-3 bg-[#1c3633] text-white flex items-center justify-between border-l-4 border-l-[#c08f34]">
+                                            <div>
+                                                <span class="text-[10px] uppercase tracking-wider text-white/70">Grand Total Bill Amount</span>
+                                                <div class="text-lg font-bold font-serif text-[#c08f34]">{{ action.result.grand_total }}</div>
+                                            </div>
+                                            <span class="px-2.5 py-1 bg-white/10 border border-[#c08f34]/40 text-[#c08f34] text-xs font-bold font-mono">
+                                                Paid via {{ action.result.payment_mode }}
+                                            </span>
+                                        </div>
+
+                                        <!-- Action Buttons: View Invoice & Print Bill PDF -->
+                                        <div class="flex items-center gap-2 pt-1">
+                                            <a
+                                                :href="action.result.view_url"
+                                                target="_blank"
+                                                class="flex-1 py-2 bg-white border border-surface-300 hover:border-[#1c3633] text-[#1c3633] text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all hover:bg-surface-50 text-center"
+                                            >
+                                                <FileText class="w-3.5 h-3.5 text-[#c08f34]" />
+                                                <span>View Invoice</span>
+                                                <ExternalLink class="w-3 h-3 text-surface-400" />
+                                            </a>
+                                            <a
+                                                :href="action.result.print_url"
+                                                target="_blank"
+                                                class="flex-1 py-2 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all text-center"
+                                            >
+                                                <Printer class="w-3.5 h-3.5 text-[#c08f34]" />
+                                                <span>Print PDF</span>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>

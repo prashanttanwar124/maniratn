@@ -6,16 +6,21 @@ use App\Models\BusinessSetting;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\DailyRate;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\Purity;
 use App\Models\Supplier;
+use App\Models\Transaction;
 use App\Models\Vault;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class AiCopilotController extends Controller
 {
@@ -235,6 +240,12 @@ class AiCopilotController extends Controller
                     } else {
                         $finalReply = "Total estimate quotation {$realData['total_estimate']} banega.";
                     }
+                } elseif ($tool === 'create_bill' || $tool === 'create_invoice') {
+                    if (isset($realData['found']) && $realData['found'] === false) {
+                        $finalReply = "Maaf kijiye, bill generate nahi ho paya. Kripya rates ya weight check karein.";
+                    } else {
+                        $finalReply = "Done! Customer {$realData['customer_name']} ke liye Bill #{$realData['invoice_number']} create ho gaya hai. Total amount {$realData['grand_total']} hai.";
+                    }
                 }
             }
 
@@ -453,6 +464,169 @@ class AiCopilotController extends Controller
                     'subtotal' => '₹' . number_format($subtotal, 2),
                     'gst_3_percent' => '₹' . number_format($gst, 2),
                     'total_estimate' => '₹' . number_format($grandTotal, 2),
+                ];
+
+            case 'create_bill':
+            case 'create_invoice':
+                $customerName = trim((string) ($args['customer_name'] ?? 'Walk-in Customer'));
+                $customerPhone = trim((string) ($args['customer_phone'] ?? ''));
+                $itemName = trim((string) ($args['item_name'] ?? 'Gold Ornament'));
+                $weight = floatval($args['weight'] ?? 10);
+                $metal = strtoupper($args['metal'] ?? 'GOLD');
+                $purityStr = strtoupper($args['purity'] ?? '22K');
+                $customRate = (isset($args['rate_per_gm']) || isset($args['rate'])) ? floatval($args['rate_per_gm'] ?? $args['rate']) : null;
+                $makingPercent = isset($args['making_percent']) ? floatval($args['making_percent']) : null;
+                $makingPerGm = isset($args['making_charge_per_gram']) ? floatval($args['making_charge_per_gram']) : null;
+                $paymentMode = strtoupper((string) ($args['payment_mode'] ?? 'CASH'));
+                $discountAmount = floatval($args['discount_amount'] ?? 0);
+
+                // 1. Find or create customer
+                $customer = null;
+                if (! empty($customerPhone)) {
+                    $customer = Customer::where('mobile', $customerPhone)->first();
+                }
+                if (! $customer && ! empty($customerName) && strtolower($customerName) !== 'walk-in customer') {
+                    $customer = Customer::where('name', 'like', "%{$customerName}%")->first();
+                }
+                if (! $customer) {
+                    $customer = Customer::create([
+                        'name' => ! empty($customerName) ? $customerName : 'Walk-in Customer',
+                        'mobile' => ! empty($customerPhone) ? $customerPhone : ('98' . rand(10000000, 99999999)),
+                        'address' => 'Store Counter Sale',
+                        'city' => 'Local',
+                        'vault_token' => Customer::generateVaultToken(),
+                    ]);
+                }
+
+                // 2. Fetch live daily rate from database
+                $rateRecord = DailyRate::whereDate('date', Carbon::today())->where('gold_sell', '>', 0)->first();
+                if (! $rateRecord) {
+                    $rateRecord = DailyRate::where('gold_sell', '>', 0)->latest('date')->first();
+                }
+
+                if ($customRate !== null && $customRate > 0) {
+                    $effectiveRate = $customRate;
+                } elseif ($rateRecord) {
+                    if ($metal === 'SILVER') {
+                        $effectiveRate = floatval($rateRecord->silver_sell ?: 89.0);
+                    } else {
+                        $gold24k = floatval($rateRecord->gold_sell ?: 7450.0);
+                        if (str_contains($purityStr, '18') || str_contains($purityStr, '750')) {
+                            $effectiveRate = $gold24k * 0.750;
+                        } elseif (str_contains($purityStr, '24') || str_contains($purityStr, '999')) {
+                            $effectiveRate = $gold24k;
+                        } elseif (str_contains($purityStr, '14') || str_contains($purityStr, '585')) {
+                            $effectiveRate = $gold24k * 0.585;
+                        } else {
+                            $effectiveRate = $gold24k * 0.916; // Default 22K (916)
+                        }
+                    }
+                } else {
+                    $effectiveRate = ($metal === 'SILVER') ? 89.0 : 6830.0;
+                }
+
+                // 3. Compute Metal value, making charges, GST & Totals
+                $metalValue = round($weight * $effectiveRate, 2);
+
+                if ($makingPercent !== null && $makingPercent > 0) {
+                    $makingTotal = round($metalValue * ($makingPercent / 100), 2);
+                    $makingType = 'percentage';
+                    $makingValue = $makingPercent;
+                    $makingLabel = "({$makingPercent}%)";
+                } else {
+                    $makingPerGmVal = $makingPerGm ?: 450.0;
+                    $makingTotal = round($weight * $makingPerGmVal, 2);
+                    $makingType = 'flat';
+                    $makingValue = $makingPerGmVal;
+                    $makingLabel = "(@ ₹{$makingPerGmVal}/g)";
+                }
+
+                $subtotal = max(0, $metalValue + $makingTotal - $discountAmount);
+                $gstAmount = round($subtotal * 0.03, 2);
+                $grandTotal = round($subtotal + $gstAmount, 2);
+
+                // 4. Create Invoice Header
+                $actingUserId = Auth::id() ?: \App\Models\User::first()?->id;
+
+                $invoice = Invoice::create([
+                    'invoice_number' => 'TMP-' . Str::uuid(),
+                    'customer_id' => $customer->id,
+                    'gold_rate_applied' => floatval($rateRecord?->gold_sell ?: $effectiveRate),
+                    'silver_rate_applied' => floatval($rateRecord?->silver_sell ?: 89.0),
+                    'discount_type' => $discountAmount > 0 ? 'fixed' : null,
+                    'discount_value' => $discountAmount,
+                    'discount_amount' => $discountAmount,
+                    'date' => Carbon::today()->format('Y-m-d'),
+                    'total_amount' => $grandTotal,
+                    'user_id' => $actingUserId,
+                ]);
+
+                $invoiceNumber = sprintf('INV-%s-%06d', now()->format('Ymd'), $invoice->id);
+                $invoice->update(['invoice_number' => $invoiceNumber]);
+
+                // 5. Create InvoiceItem
+                InvoiceItem::create([
+                    'invoice_id' => $invoice->id,
+                    'product_id' => null,
+                    'description' => ! empty($itemName) ? $itemName : "{$purityStr} {$metal} Item ({$weight}g)",
+                    'quantity' => 1,
+                    'weight' => $weight,
+                    'purity' => $purityStr,
+                    'rate' => $effectiveRate,
+                    'making_charges' => $makingValue,
+                    'making_charge_type' => $makingType,
+                    'final_price' => $subtotal,
+                ]);
+
+                // 6. Accounting Ledger Entry: DEBIT Customer
+                Transaction::create([
+                    'transactable_type' => Customer::class,
+                    'transactable_id' => $customer->id,
+                    'invoice_id' => $invoice->id,
+                    'type' => 'SALE',
+                    'amount' => $grandTotal,
+                    'description' => "Bill #" . $invoiceNumber . " (Created via Karat AI)",
+                    'date' => Carbon::today()->format('Y-m-d'),
+                    'user_id' => $actingUserId,
+                    'entry_type_code' => 'INVOICE_SALE',
+                ]);
+
+                // 7. Payment Transaction: CREDIT Customer if payment made
+                if (in_array($paymentMode, ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'ONLINE'])) {
+                    Transaction::create([
+                        'transactable_type' => Customer::class,
+                        'transactable_id' => $customer->id,
+                        'invoice_id' => $invoice->id,
+                        'type' => 'PAYMENT',
+                        'amount' => $grandTotal,
+                        'description' => "{$paymentMode} Payment received (Bill #{$invoiceNumber})",
+                        'date' => Carbon::today()->format('Y-m-d'),
+                        'user_id' => $actingUserId,
+                        'payment_method' => $paymentMode,
+                        'entry_type_code' => 'INVOICE_PAYMENT',
+                    ]);
+                }
+
+                return [
+                    'found' => true,
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoiceNumber,
+                    'customer_name' => $customer->name,
+                    'customer_phone' => $customer->mobile,
+                    'item_name' => ! empty($itemName) ? $itemName : "{$purityStr} {$metal} Ornament",
+                    'weight' => $weight . ' g',
+                    'metal' => $metal,
+                    'purity' => $purityStr,
+                    'rate_per_gm' => '₹' . number_format($effectiveRate, 2),
+                    'metal_value' => '₹' . number_format($metalValue, 2),
+                    'making_charges' => '₹' . number_format($makingTotal, 2) . " {$makingLabel}",
+                    'subtotal' => '₹' . number_format($subtotal, 2),
+                    'gst_3_percent' => '₹' . number_format($gstAmount, 2),
+                    'grand_total' => '₹' . number_format($grandTotal, 2),
+                    'payment_mode' => $paymentMode,
+                    'view_url' => "/invoices/{$invoice->id}",
+                    'print_url' => "/invoices/{$invoice->id}/print",
+                    'status' => 'INVOICE_GENERATED_REAL_DB',
                 ];
 
             default:
