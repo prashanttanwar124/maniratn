@@ -62,9 +62,13 @@ Route::get('/api/website/vault/{token}/invoices/{invoice}/print', [WebsiteApiCon
     ->middleware('throttle:60,1')
     ->name('website.vault.invoice-print');
 
-// --- AI COPILOT VOICE & CHAT ENDPOINT ---
+// --- AI COPILOT VOICE & CHAT ENDPOINTS ---
 Route::post('/api/ai/copilot/chat', [AiCopilotController::class, 'chat'])
     ->name('ai.copilot.chat');
+Route::get('/api/ai/copilot/history', [AiCopilotController::class, 'history'])
+    ->name('ai.copilot.history');
+Route::delete('/api/ai/copilot/history', [AiCopilotController::class, 'clearHistory'])
+    ->name('ai.copilot.history.clear');
 
 Route::get('/api/inventory/{barcode}', function ($barcode) {
     $normalizedBarcode = strtoupper(trim($barcode));

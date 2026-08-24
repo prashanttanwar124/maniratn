@@ -2,6 +2,7 @@
 import axios from 'axios';
 import {
     Bot,
+    Clock,
     Coins,
     Mic,
     MicOff,
@@ -18,7 +19,7 @@ import {
 } from 'lucide-vue-next';
 import Drawer from 'primevue/drawer';
 import { usePage } from '@inertiajs/vue3';
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 interface ActionItem {
     tool: string;
@@ -45,12 +46,17 @@ const isVoiceGloballyEnabled = computed(() => Boolean((page.props.aiSettings as 
 
 const messages = ref<Message[]>([
     {
-        id: '1',
+        id: 'welcome',
         role: 'assistant',
         content: 'Namaste! Main Karat AI Voice Copilot hoon. Aap live market bhav pooch sakte hain, naya stock/product add karwa sakte hain, ya quotation estimate bana sakte hain. Mic button daba kar boliye ya type kijiye.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
 ]);
+
+const hasMoreHistory = ref(false);
+const isLoadingHistory = ref(false);
+const oldestMessageId = ref<string | null>(null);
+const historyLoaded = ref(false);
 
 const inputPrompt = ref('');
 const isLoading = ref(false);
@@ -230,17 +236,77 @@ const sendMessage = async (customText?: string) => {
     }
 };
 
-const resetChat = () => {
+const fetchChatHistory = async (isLoadMore = false) => {
+    if (isLoadingHistory.value) return;
+    isLoadingHistory.value = true;
+
+    try {
+        const params: any = { limit: 10 };
+        if (isLoadMore && oldestMessageId.value) {
+            params.before_id = oldestMessageId.value;
+        }
+
+        const res = await axios.get('/api/ai/copilot/history', { params });
+        if (res.data && Array.isArray(res.data.messages)) {
+            const fetched = res.data.messages;
+
+            if (isLoadMore) {
+                // Prepend older messages while maintaining scroll position
+                const prevScrollHeight = messageContainer.value?.scrollHeight || 0;
+                messages.value = [...fetched, ...messages.value];
+                nextTick(() => {
+                    if (messageContainer.value) {
+                        messageContainer.value.scrollTop = messageContainer.value.scrollHeight - prevScrollHeight;
+                    }
+                });
+            } else {
+                if (fetched.length > 0) {
+                    messages.value = fetched;
+                    scrollToBottom();
+                }
+            }
+
+            hasMoreHistory.value = Boolean(res.data.has_more);
+            if (res.data.oldest_id) {
+                oldestMessageId.value = res.data.oldest_id;
+            }
+        }
+    } catch (err) {
+        console.warn('Could not fetch chat history from AI Hub', err);
+    } finally {
+        isLoadingHistory.value = false;
+        historyLoaded.value = true;
+    }
+};
+
+const resetChat = async () => {
     stopAudio();
+    try {
+        await axios.delete('/api/ai/copilot/history');
+    } catch (e) {
+        console.warn('Could not clear history on server', e);
+    }
     messages.value = [
         {
             id: Date.now().toString(),
             role: 'assistant',
-            content: 'Chat reset ho gayi hai. Naye sawal ya ERP command ke liye mic button dabayein.',
+            content: 'Chat history reset ho gayi hai. Naye sawal ya ERP command ke liye mic button dabayein.',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
     ];
+    hasMoreHistory.value = false;
+    oldestMessageId.value = null;
 };
+
+watch(
+    () => props.visible,
+    (val) => {
+        if (val && !historyLoaded.value) {
+            fetchChatHistory(false);
+        }
+    },
+    { immediate: true }
+);
 
 onMounted(() => {
     initSpeech();
@@ -330,6 +396,20 @@ onMounted(() => {
         <div class="flex flex-col flex-1 h-full min-h-0 overflow-hidden bg-[#f8faf9]">
             <!-- Live Chat Scroll Area -->
             <div ref="messageContainer" class="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
+                <!-- 📜 Load Earlier Chats (10 more) Button -->
+                <div v-if="hasMoreHistory" class="flex justify-center pb-2">
+                    <button
+                        type="button"
+                        :disabled="isLoadingHistory"
+                        class="px-3.5 py-1.5 bg-white border border-surface-300 hover:border-[#1c3633] text-surface-700 hover:text-[#1c3633] text-[11px] font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                        @click="fetchChatHistory(true)"
+                    >
+                        <RefreshCw v-if="isLoadingHistory" class="w-3 h-3 animate-spin text-[#c08f34]" />
+                        <Clock v-else class="w-3 h-3 text-[#c08f34]" />
+                        <span>{{ isLoadingHistory ? 'Loading earlier chats...' : 'Load Earlier Chats (+10)' }}</span>
+                    </button>
+                </div>
+
                 <div
                     v-for="msg in messages"
                     :key="msg.id"

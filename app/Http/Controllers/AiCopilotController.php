@@ -186,6 +186,8 @@ class AiCopilotController extends Controller
                     'history' => $history,
                     'voice' => $voiceName,
                     'include_audio' => $includeAudio,
+                    'store_url' => config('app.url'),
+                    'session_id' => 'erp_user_' . (auth()->id() ?: 'guest'),
                 ]);
 
             if (! $response->successful()) {
@@ -455,6 +457,72 @@ class AiCopilotController extends Controller
 
             default:
                 return ['status' => 'OK'];
+        }
+    }
+
+    /**
+     * Get paginated chat history from Central AI Hub (maniratn-ai)
+     */
+    public function history(Request $request): JsonResponse
+    {
+        $setting = BusinessSetting::first();
+        $aiHubUrl = rtrim($setting?->ai_hub_url ?: 'http://127.0.0.1:8001', '/');
+        $apiKey = $setting?->ai_api_key ?: env('MANIRATN_AI_KEY', 'mn_live_d8f4e2a1c90b6732e45a89f0');
+
+        try {
+            $response = Http::timeout(10)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $apiKey,
+                ])
+                ->get("{$aiHubUrl}/api/ai/history", [
+                    'limit' => $request->input('limit', 10),
+                    'before_id' => $request->input('before_id'),
+                    'store_url' => config('app.url'),
+                    'session_id' => 'erp_user_' . (auth()->id() ?: 'guest'),
+                ]);
+
+            if ($response->successful()) {
+                return response()->json($response->json());
+            }
+
+            return response()->json([
+                'messages' => [],
+                'has_more' => false,
+                'error' => 'Could not fetch history from AI Hub',
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'messages' => [],
+                'has_more' => false,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Clear chat history on Central AI Hub
+     */
+    public function clearHistory(Request $request): JsonResponse
+    {
+        $setting = BusinessSetting::first();
+        $aiHubUrl = rtrim($setting?->ai_hub_url ?: 'http://127.0.0.1:8001', '/');
+        $apiKey = $setting?->ai_api_key ?: env('MANIRATN_AI_KEY', 'mn_live_d8f4e2a1c90b6732e45a89f0');
+
+        try {
+            $response = Http::timeout(10)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $apiKey,
+                ])
+                ->delete("{$aiHubUrl}/api/ai/history", [
+                    'store_url' => config('app.url'),
+                    'session_id' => 'erp_user_' . (auth()->id() ?: 'guest'),
+                ]);
+
+            return response()->json($response->json());
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()]);
         }
     }
 }
