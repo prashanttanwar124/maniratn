@@ -262,24 +262,8 @@ class AiCopilotController extends Controller
                 }
             }
 
-            // Synthesize Google Gemini Studio HD Voice for the exact real ERP calculated sentence
+            // Use synthesized Google Gemini HD Voice audio directly from AI Hub
             $finalAudio = $aiResult['audio'] ?? null;
-            if (! empty($executedActions) && $includeAudio && ! empty($finalReply)) {
-                $cacheKey = 'real_erp_tts_' . md5($finalReply . $voiceName);
-                $finalAudio = Cache::remember($cacheKey, now()->addDays(7), function () use ($aiHubUrl, $apiKey, $finalReply, $voiceName) {
-                    try {
-                        $ttsRes = Http::timeout(12)
-                            ->withHeaders(['Authorization' => 'Bearer ' . $apiKey])
-                            ->post("{$aiHubUrl}/api/ai/tts", [
-                                'text' => $finalReply,
-                                'voice' => $voiceName,
-                            ]);
-                        return $ttsRes->json('audio');
-                    } catch (\Throwable $e) {
-                        return null;
-                    }
-                });
-            }
 
             return response()->json([
                 'reply' => $finalReply,
