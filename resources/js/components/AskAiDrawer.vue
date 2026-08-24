@@ -259,6 +259,22 @@ const sendMessage = async (customText?: string) => {
 
 const isConfirming = ref<Record<string, boolean>>({});
 
+const formatMoney = (val: any) => {
+    if (val === null || val === undefined || val === '') return '0.00';
+    if (typeof val === 'number') {
+        return isNaN(val) ? '0.00' : val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    const clean = String(val).replace(/[^0-9.-]+/g, '');
+    const num = parseFloat(clean);
+    return isNaN(num) ? '0.00' : num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const formatWeight = (val: any) => {
+    if (val === null || val === undefined || val === '') return '0 g';
+    const str = String(val).replace(/g/gi, '').trim();
+    return `${str} g`;
+};
+
 const calculateLiveBill = (draft: any) => {
     const weight = Math.round(parseFloat(draft.weight || 0) * 1000) / 1000;
     const rate = Math.round(parseFloat(draft.rate_per_gm || 0) * 100) / 100;
@@ -1155,24 +1171,64 @@ onMounted(() => {
 
                                     <!-- ✅ CONFIRMED FINAL REAL INVOICE VOUCHER (Post-Confirmation) -->
                                     <div v-else-if="!action.result.is_discarded" class="p-3 bg-white space-y-2.5">
+                                        <!-- Invoice Banner -->
                                         <div class="p-2.5 bg-emerald-700 text-white rounded flex items-center justify-between">
                                             <div class="flex items-center gap-2">
-                                                <Receipt class="w-4 h-4 text-emerald-200" />
+                                                <div class="w-6 h-6 rounded bg-white/20 flex items-center justify-center font-bold text-white">
+                                                    <Receipt class="w-3.5 h-3.5" />
+                                                </div>
                                                 <div>
-                                                    <div class="font-bold text-xs font-mono">{{ action.result.invoice_number }}</div>
-                                                    <div class="text-[10px] text-emerald-100">{{ action.result.customer_name }}</div>
+                                                    <div class="font-bold text-xs font-mono tracking-wide">{{ action.result.invoice_number }}</div>
+                                                    <div class="text-[10.5px] text-emerald-100 font-medium">
+                                                        Customer: <strong>{{ action.result.customer_name }}</strong> {{ action.result.customer_phone ? '(' + action.result.customer_phone + ')' : '' }}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <span class="text-xs font-bold font-serif text-amber-200">
-                                                ₹{{ Number(action.result.grand_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}
+                                            <span class="px-2 py-0.5 bg-white text-emerald-800 text-[10px] font-bold uppercase rounded shadow-xs">
+                                                Bill Created
                                             </span>
                                         </div>
 
-                                        <div class="flex items-center gap-2 pt-1">
+                                        <!-- Clean Breakdown Grid -->
+                                        <div class="bg-slate-50 border border-slate-200 rounded p-2.5 space-y-1.5 text-xs">
+                                            <div class="grid grid-cols-2 gap-2 text-[11px]">
+                                                <div>
+                                                    <span class="text-slate-500 text-[10px] block">Item & Purity</span>
+                                                    <span class="font-bold text-slate-900">{{ action.result.item_name }} ({{ action.result.purity || '22K' }})</span>
+                                                </div>
+                                                <div>
+                                                    <span class="text-slate-500 text-[10px] block">Weight & Rate</span>
+                                                    <span class="font-bold text-slate-900">{{ formatWeight(action.result.weight) }} @ ₹{{ formatMoney(action.result.rate_per_gm) }}/g</span>
+                                                </div>
+                                                <div>
+                                                    <span class="text-slate-500 text-[10px] block">Metal Value</span>
+                                                    <span class="font-bold text-slate-900">₹{{ formatMoney(action.result.metal_value) }}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="text-slate-500 text-[10px] block">Making Charges</span>
+                                                    <span class="font-bold text-slate-900">₹{{ formatMoney(action.result.making_charges) }}</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex justify-between items-center pt-2 border-t border-slate-200">
+                                                <div>
+                                                    <span class="text-[10px] text-slate-500 uppercase tracking-wider block">Grand Total (Inc. 3% GST)</span>
+                                                    <span class="text-base font-bold font-serif text-emerald-800">
+                                                        ₹{{ formatMoney(action.result.grand_total) }}
+                                                    </span>
+                                                </div>
+                                                <span class="px-2 py-0.5 bg-emerald-50 border border-emerald-300 text-emerald-800 text-[10px] font-bold font-mono rounded">
+                                                    Paid via {{ action.result.payment_mode || 'Cash' }}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Action Buttons: View Invoice & Print Bill PDF -->
+                                        <div class="flex items-center gap-2 pt-0.5">
                                             <a
                                                 :href="action.result.view_url"
                                                 target="_blank"
-                                                class="flex-1 py-2 bg-white border border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold rounded flex items-center justify-center gap-1 shadow-xs text-center"
+                                                class="flex-1 py-2 bg-white border border-slate-300 hover:border-slate-800 text-slate-800 text-xs font-bold rounded flex items-center justify-center gap-1.5 shadow-xs transition-all text-center"
                                             >
                                                 <FileText class="w-3.5 h-3.5 text-amber-600" />
                                                 <span>View Invoice</span>
@@ -1181,7 +1237,7 @@ onMounted(() => {
                                             <a
                                                 :href="action.result.print_url"
                                                 target="_blank"
-                                                class="flex-1 py-2 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-bold rounded flex items-center justify-center gap-1 shadow-xs text-center"
+                                                class="flex-1 py-2 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-bold rounded flex items-center justify-center gap-1.5 shadow-xs transition-all text-center"
                                             >
                                                 <Printer class="w-3.5 h-3.5 text-amber-400" />
                                                 <span>Print PDF</span>
@@ -1191,12 +1247,6 @@ onMounted(() => {
 
                                     <!-- Discarded Note -->
                                     <div v-else class="p-2 bg-slate-100 text-slate-500 text-xs italic text-center rounded">
-                                        Invoice draft was discarded.
-                                    </div>
-                                </div>
-
-                                    <!-- Discarded Note -->
-                                    <div v-else class="p-2.5 bg-surface-100 text-surface-500 text-xs italic text-center">
                                         Invoice draft was discarded.
                                     </div>
                                 </div>
@@ -1334,6 +1384,7 @@ onMounted(() => {
                 </div>
             </div>
         </div>
+    </div>
     </Drawer>
 </template>
 
