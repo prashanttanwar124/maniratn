@@ -230,9 +230,17 @@ class AiCopilotController extends Controller
                         $finalReply = "Aaj ka 24K Gold ₹" . number_format($realData['gold_24k_per_gm']) . ", 22K ₹" . number_format($realData['gold_22k_per_gm']) . ", Silver ₹" . number_format($realData['silver_per_gm'], 2) . " per gram hai.";
                     }
                 } elseif ($tool === 'update_daily_rates') {
-                    $finalReply = "Done! Aaj ka 24K rate ₹" . number_format($realData['gold_24k_sell']) . " aur Silver ₹" . number_format($realData['silver_sell'], 2) . " database me update ho gaya. Ab aap kisi bhi ornament ka estimate ya bill banwa sakte hain.";
+                    if (! empty($realData['is_preview'])) {
+                        $finalReply = "Maine live rates update ka draft preview prepare kar diya hai. Kripya rates check karke Confirm karein.";
+                    } else {
+                        $finalReply = "Done! Aaj ka 24K rate ₹" . number_format($realData['gold_24k_sell'] ?? 7500) . " aur Silver ₹" . number_format($realData['silver_sell'] ?? 89, 2) . " database me update ho gaya.";
+                    }
                 } elseif ($tool === 'add_product') {
-                    $finalReply = "Done. {$realData['weight']} {$realData['purity']} {$realData['name']} add ho gayi, Barcode {$realData['barcode']}.";
+                    if (! empty($realData['is_preview'])) {
+                        $finalReply = "Maine naye ornament ka draft preview prepare kar diya hai. Kripya details check karke Confirm karein.";
+                    } else {
+                        $finalReply = "Done. {$realData['weight']} {$realData['purity']} {$realData['name']} add ho gayi, Barcode {$realData['barcode']}.";
+                    }
                 } elseif ($tool === 'get_vault_balance') {
                     $finalReply = "Vault me Cash {$realData['cash_in_hand']}, Gold {$realData['gold_in_vault']}, aur Silver {$realData['silver_in_vault']} hai.";
                 } elseif ($tool === 'calculate_estimate') {
@@ -244,6 +252,8 @@ class AiCopilotController extends Controller
                 } elseif ($tool === 'create_bill' || $tool === 'create_invoice') {
                     if (isset($realData['found']) && $realData['found'] === false) {
                         $finalReply = $realData['message'] ?? "Aaj ka live gold rate set nahi hai. Bill banane ke liye kripya aaj ka 24K rate batayein.";
+                    } elseif (! empty($realData['is_preview'])) {
+                        $finalReply = "Maine Bill ka draft preview prepare kar diya hai. Kripya details check karein, edit karein aur Confirm button dabayein.";
                     } else {
                         $finalReply = "Done! Customer {$realData['customer_name']} ke liye Bill #{$realData['invoice_number']} create ho gaya hai. Total amount {$realData['grand_total']} hai.";
                     }

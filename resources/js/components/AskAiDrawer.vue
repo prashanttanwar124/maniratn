@@ -201,10 +201,13 @@ const sendMessage = async (customText?: string) => {
     isLoading.value = true;
     scrollToBottom();
 
-    const historyPayload = messages.value.slice(-6, -1).map((m) => ({
-        role: m.role === 'user' ? 'user' : 'assistant',
-        content: m.content,
-    }));
+    const historyPayload = messages.value
+        .slice(-8, -1)
+        .filter((m) => m.content && m.content.trim() !== '')
+        .map((m) => ({
+            role: m.role === 'user' ? 'user' : 'assistant',
+            content: m.content.trim(),
+        }));
 
     try {
         const response = await axios.post('/api/ai/copilot/chat', {
