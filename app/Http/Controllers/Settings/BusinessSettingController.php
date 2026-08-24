@@ -38,6 +38,11 @@ class BusinessSettingController extends Controller
                 'gst_number' => $businessSetting->gst_number,
                 'logo_path' => $businessSetting->logo_path,
                 'logo_url' => $businessSetting->logo_url,
+                'ai_enabled' => (bool) $businessSetting->ai_enabled,
+                'ai_hub_url' => $businessSetting->ai_hub_url ?? 'http://127.0.0.1:8001',
+                'ai_api_key' => $businessSetting->ai_api_key,
+                'ai_voice_enabled' => (bool) $businessSetting->ai_voice_enabled,
+                'ai_voice_name' => $businessSetting->ai_voice_name ?? 'Aoede',
             ],
         ]);
     }
@@ -56,6 +61,11 @@ class BusinessSettingController extends Controller
             'gst_number' => ['nullable', 'string', 'max:50'],
             'logo' => ['nullable', 'image', 'max:2048'],
             'remove_logo' => ['nullable', 'boolean'],
+            'ai_enabled' => ['nullable', 'boolean'],
+            'ai_hub_url' => ['nullable', 'string', 'max:255'],
+            'ai_api_key' => ['nullable', 'string', 'max:255'],
+            'ai_voice_enabled' => ['nullable', 'boolean'],
+            'ai_voice_name' => ['nullable', 'string', 'max:50'],
         ]);
 
         if ($request->boolean('remove_logo') && $businessSetting->logo_path) {

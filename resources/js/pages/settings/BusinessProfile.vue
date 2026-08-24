@@ -18,6 +18,11 @@ const form = useForm({
     website: props.businessSetting?.website || '',
     google_review_url: props.businessSetting?.google_review_url || '',
     gst_number: props.businessSetting?.gst_number || '',
+    ai_enabled: props.businessSetting?.ai_enabled ?? true,
+    ai_hub_url: props.businessSetting?.ai_hub_url || 'http://127.0.0.1:8001',
+    ai_api_key: props.businessSetting?.ai_api_key || '',
+    ai_voice_enabled: props.businessSetting?.ai_voice_enabled ?? true,
+    ai_voice_name: props.businessSetting?.ai_voice_name || 'Aoede',
     logo: null,
     remove_logo: false,
 });
@@ -133,6 +138,50 @@ const openStandee = () => {
                                 When entered, a <strong>scannable Google Review QR Code</strong> appears on printed invoices, in the Customer Digital Vault, and in WhatsApp bills. You can also print a beautiful <strong>tabletop counter standee</strong> for your showroom counter!
                             </p>
                             <small v-if="form.errors.google_review_url" class="mt-1 block text-xs text-red-500">{{ form.errors.google_review_url }}</small>
+                        </div>
+
+                        <div class="md:col-span-2 border border-emerald-500/30 bg-emerald-50/20 p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <i class="pi pi-sparkles text-emerald-600 font-bold"></i>
+                                    <label class="block text-sm font-bold text-surface-900">
+                                        Karat AI Voice Assistant Configuration
+                                    </label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs text-surface-600 font-medium">Enable AI</label>
+                                    <input type="checkbox" v-model="form.ai_enabled" class="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500" />
+                                </div>
+                            </div>
+
+                            <div v-if="form.ai_enabled" class="grid gap-4 sm:grid-cols-2 pt-2 border-t border-emerald-500/20">
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Central AI Hub URL</label>
+                                    <InputText v-model="form.ai_hub_url" class="w-full bg-white" placeholder="http://127.0.0.1:8001" />
+                                    <small class="text-[10px] text-surface-500">URL of your central maniratn-ai server.</small>
+                                </div>
+
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Shop AI Secret Key</label>
+                                    <InputText v-model="form.ai_api_key" class="w-full bg-white font-mono text-xs" placeholder="mn_live_..." />
+                                    <small class="text-[10px] text-surface-500">Unique secret token from your AI subscription.</small>
+                                </div>
+
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">HD Voice Persona</label>
+                                    <select v-model="form.ai_voice_name" class="w-full h-10 px-3 border border-surface-300 rounded bg-white text-xs text-surface-800">
+                                        <option value="Aoede">Aoede (Warm Female)</option>
+                                        <option value="Kore">Kore (Calm Female)</option>
+                                        <option value="Puck">Puck (Natural Male)</option>
+                                        <option value="Fenrir">Fenrir (Deep Male)</option>
+                                    </select>
+                                </div>
+
+                                <div class="flex items-center gap-2 pt-6">
+                                    <input type="checkbox" id="ai_voice_toggle" v-model="form.ai_voice_enabled" class="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500" />
+                                    <label for="ai_voice_toggle" class="text-xs font-medium text-surface-700">Enable Spoken Audio Response</label>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="md:col-span-2">

@@ -55,10 +55,16 @@ class HandleInertiaRequests extends Middleware
         $cashVault = Vault::query()->where('type', 'CASH')->value('balance') ?? 0;
         $goldVault = Vault::query()->where('type', 'GOLD')->value('balance') ?? 0;
         $silverVault = Vault::query()->where('type', 'SILVER')->value('balance') ?? 0;
+        $businessSetting = \App\Models\BusinessSetting::first();
 
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            'aiSettings' => [
+                'enabled' => (bool) ($businessSetting?->ai_enabled ?? true),
+                'voice_enabled' => (bool) ($businessSetting?->ai_voice_enabled ?? true),
+                'voice_name' => $businessSetting?->ai_voice_name ?? 'Aoede',
+            ],
             'rates' => [
                 'gold_sell' => (float) ($todayRate?->gold_sell ?? 0),
                 'gold_buy' => (float) ($todayRate?->gold_buy ?? 0),

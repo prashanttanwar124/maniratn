@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AiCopilotController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AttendanceTerminalController;
 use App\Http\Controllers\CategoryController;
@@ -60,6 +61,10 @@ Route::get('/api/website/vault/{token}', [WebsiteApiController::class, 'vault'])
 Route::get('/api/website/vault/{token}/invoices/{invoice}/print', [WebsiteApiController::class, 'downloadInvoice'])
     ->middleware('throttle:60,1')
     ->name('website.vault.invoice-print');
+
+// --- AI COPILOT VOICE & CHAT ENDPOINT ---
+Route::post('/api/ai/copilot/chat', [AiCopilotController::class, 'chat'])
+    ->name('ai.copilot.chat');
 
 Route::get('/api/inventory/{barcode}', function ($barcode) {
     $normalizedBarcode = strtoupper(trim($barcode));

@@ -14,6 +14,7 @@ const role = computed(() => page.props.auth?.role || 'user');
 const dayStatus = computed(() => page.props.dayStatus ?? { is_open: true });
 const currentPath = computed(() => String(page.url || '/').split('?')[0]);
 const rates = computed(() => page.props.rates ?? { gold_sell: 0, gold_buy: 0, silver_sell: 0 });
+const aiSettings = computed(() => page.props.aiSettings ?? { enabled: true, voice_enabled: true });
 
 const currentDate = computed(() =>
     formatIndianDate(new Date(), {
@@ -255,6 +256,7 @@ const submitLogout = () => {
 
             <!-- Karat AI Copilot -->
             <button
+                v-if="aiSettings.enabled"
                 type="button"
                 class="inline-flex items-center justify-center h-9 w-9 border border-surface-200 bg-surface-50 hover:bg-surface-100 text-surface-600 hover:text-amber-700 transition-all cursor-pointer"
                 title="Karat AI Assistant"

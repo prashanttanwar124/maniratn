@@ -16,6 +16,11 @@ class BusinessSetting extends Model
         'google_review_url',
         'gst_number',
         'logo_path',
+        'ai_enabled',
+        'ai_hub_url',
+        'ai_api_key',
+        'ai_voice_enabled',
+        'ai_voice_name',
     ];
 
     protected $appends = [
