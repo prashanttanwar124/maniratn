@@ -483,8 +483,10 @@ class AiCopilotController extends Controller
                 $purityStr = strtoupper($args['purity'] ?? '22K');
                 $customRate = (isset($args['rate_per_gm']) || isset($args['rate'])) ? floatval($args['rate_per_gm'] ?? $args['rate']) : null;
                 $makingPercent = isset($args['making_percent']) ? floatval($args['making_percent']) : null;
-                $makingPerGm = isset($args['making_charge_per_gram']) ? floatval($args['making_charge_per_gram']) : null;
+                $makingPerGm = isset($args['making_charge_per_gram']) ? floatval($args['making_charge_per_gram']) : (isset($args['making_per_gram']) ? floatval($args['making_per_gram']) : null);
+                $makingFlat = isset($args['making_charge_flat']) ? floatval($args['making_charge_flat']) : (isset($args['making_flat']) ? floatval($args['making_flat']) : null);
                 $paymentMode = strtoupper((string) ($args['payment_mode'] ?? 'CASH'));
+                $paymentAmount = isset($args['payment_amount']) ? floatval($args['payment_amount']) : null;
                 $discountAmount = floatval($args['discount_amount'] ?? 0);
 
                 $matchedProduct = null;
@@ -517,7 +519,7 @@ class AiCopilotController extends Controller
                         $weight = floatval($matchedProduct->net_weight);
                         $metal = 'GOLD';
                         $purityStr = $matchedProduct->purity?->name ?? '22K';
-                        if ($matchedProduct->making_charge > 0) {
+                        if ($matchedProduct->making_charge > 0 && $makingPercent === null && $makingPerGm === null && $makingFlat === null) {
                             $makingPerGm = floatval($matchedProduct->making_charge);
                         }
                     } elseif ($matchedSilverProduct) {
@@ -532,7 +534,7 @@ class AiCopilotController extends Controller
                         $weight = floatval($matchedSilverProduct->net_weight);
                         $metal = 'SILVER';
                         $purityStr = 'Silver';
-                        if ($matchedSilverProduct->making_charge > 0) {
+                        if ($matchedSilverProduct->making_charge > 0 && $makingPercent === null && $makingPerGm === null && $makingFlat === null) {
                             $makingPerGm = floatval($matchedSilverProduct->making_charge);
                         }
                     }
@@ -583,19 +585,24 @@ class AiCopilotController extends Controller
                     $effectiveRate = ($metal === 'SILVER') ? 89.0 : 6830.0;
                 }
 
-                // 4. Compute Metal value, making charges (Default 12%), GST & Totals
+                // 4. Compute Metal value, making charges (Percentage, Per gram, or Flat), GST & Totals
                 $metalValue = round($weight * $effectiveRate, 2);
 
-                if ($makingPercent !== null && $makingPercent > 0) {
+                if ($makingFlat !== null && $makingFlat > 0) {
+                    $makingTotal = round($makingFlat, 2);
+                    $makingType = 'flat';
+                    $makingValue = $makingFlat;
+                    $makingLabel = "(₹{$makingFlat} Flat)";
+                } elseif ($makingPerGm !== null && $makingPerGm > 0) {
+                    $makingTotal = round($weight * $makingPerGm, 2);
+                    $makingType = 'per_gram';
+                    $makingValue = $makingPerGm;
+                    $makingLabel = "(@ ₹{$makingPerGm}/g)";
+                } elseif ($makingPercent !== null && $makingPercent > 0) {
                     $makingTotal = round($metalValue * ($makingPercent / 100), 2);
                     $makingType = 'percentage';
                     $makingValue = $makingPercent;
                     $makingLabel = "({$makingPercent}%)";
-                } elseif ($makingPerGm !== null && $makingPerGm > 0) {
-                    $makingTotal = round($weight * $makingPerGm, 2);
-                    $makingType = 'flat';
-                    $makingValue = $makingPerGm;
-                    $makingLabel = "(@ ₹{$makingPerGm}/g)";
                 } else {
                     $makingType = 'percentage';
                     $makingValue = 12.0;
