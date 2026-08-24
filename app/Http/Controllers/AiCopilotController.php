@@ -49,6 +49,25 @@ class AiCopilotController extends Controller
         $aiHubUrl = rtrim($setting?->ai_hub_url ?: 'http://127.0.0.1:8001', '/');
         $apiKey = $setting?->ai_api_key ?: env('MANIRATN_AI_KEY', 'mn_live_d8f4e2a1c90b6732e45a89f0');
 
+        // Fetch live ERP Context to ensure 100% data sync with AI Hub
+        $todayRate = DailyRate::whereDate('date', Carbon::today())->where('gold_sell', '>', 0)->first();
+        if (! $todayRate) {
+            $todayRate = DailyRate::where('gold_sell', '>', 0)->latest('date')->first();
+        }
+
+        $erpContext = [
+            'today_rates' => $todayRate ? [
+                'gold_24k' => floatval($todayRate->gold_sell),
+                'gold_22k' => round(floatval($todayRate->gold_sell) * 0.916, 2),
+                'silver' => floatval($todayRate->silver_sell),
+            ] : null,
+            'vault_balance' => [
+                'cash' => '₹' . number_format(\App\Models\Vault::whereIn('type', ['CASH', 'cash'])->sum('balance'), 2),
+                'gold' => number_format(\App\Models\Vault::whereIn('type', ['GOLD', 'gold'])->sum('balance'), 3) . ' g',
+                'silver' => number_format(\App\Models\Vault::whereIn('type', ['SILVER', 'silver'])->sum('balance'), 3) . ' g',
+            ],
+        ];
+
         try {
             // Forward request to AI Hub
             $response = Http::timeout(40)
@@ -61,6 +80,7 @@ class AiCopilotController extends Controller
                     'history' => $history,
                     'voice' => $voice,
                     'include_audio' => $includeAudio,
+                    'erp_context' => $erpContext,
                     'store_url' => config('app.url'),
                     'session_id' => 'erp_user_' . (auth()->id() ?: 'guest'),
                 ]);
@@ -77,6 +97,7 @@ class AiCopilotController extends Controller
             $aiResult = $response->json();
             $actions = $aiResult['actions'] ?? [];
             $executedActions = [];
+            $finalReply = $aiResult['reply'] ?? 'Done.';
 
             // Dispatch tool actions through dedicated Action handlers
             foreach ($actions as $action) {
@@ -90,6 +111,11 @@ class AiCopilotController extends Controller
                     $realData = ['error' => $e->getMessage(), 'status' => 'FAILED'];
                 }
 
+                // If tool is get_daily_rates, guarantee 100% exact match between speech/reply & card
+                if ($tool === 'get_daily_rates' && ! empty($realData['found'])) {
+                    $finalReply = "Aaj 24K Gold ₹" . number_format($realData['gold_24k_per_gm']) . ", 22K ₹" . number_format($realData['gold_22k_per_gm'], 2) . " aur Silver ₹" . number_format($realData['silver_per_gm'], 2) . " per gram hai.";
+                }
+
                 $executedActions[] = [
                     'tool' => $tool,
                     'args' => $args,
@@ -98,7 +124,7 @@ class AiCopilotController extends Controller
             }
 
             return response()->json([
-                'reply' => $aiResult['reply'] ?? 'Done.',
+                'reply' => $finalReply,
                 'actions' => ! empty($executedActions) ? $executedActions : $actions,
                 'audio' => $aiResult['audio'] ?? null,
                 'cached' => $aiResult['cached'] ?? false,

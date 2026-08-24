@@ -670,42 +670,41 @@ onMounted(() => {
                                         :action="action"
                                     />
 
-                                    <!-- 6. Daily Rate Inquire Card -->
+                                    <!-- 6. Daily Rate Inquire Card (Sleek Compact Light Luxury) -->
                                     <div
                                         v-else-if="action.tool === 'get_daily_rates'"
-                                        class="border border-surface-200 bg-white shadow-xs rounded-none overflow-hidden my-2 font-sans"
+                                        class="border border-surface-200 bg-white shadow-xs rounded-none overflow-hidden my-2 font-sans border-t-2 border-t-[#c08f34]"
                                     >
-                                        <div class="px-3.5 py-2.5 bg-[#1c3633] text-white flex items-center justify-between border-b border-[#c08f34]/40 rounded-none">
+                                        <div class="px-3 py-2 bg-surface-50/90 border-b border-surface-200 flex items-center justify-between">
                                             <div class="flex items-center gap-2">
-                                                <div class="w-6 h-6 bg-white/10 text-[#c08f34] flex items-center justify-center rounded-none">
-                                                    <Coins class="w-3.5 h-3.5" />
-                                                </div>
+                                                <Coins class="w-4 h-4 text-[#c08f34]" />
                                                 <div>
-                                                    <h4 class="font-bold text-xs !text-white tracking-wide uppercase">Today's Live Bullion Rates</h4>
-                                                    <p class="text-[10px] !text-[#c08f34] font-medium">Real-time Database Rates</p>
+                                                    <h4 class="font-semibold text-xs text-surface-900 tracking-wide leading-none">Today's Live Bullion Rates</h4>
+                                                    <span class="text-[10px] text-surface-500 font-normal">Real-time Database Rates</span>
                                                 </div>
                                             </div>
-                                            <span class="px-2 py-0.5 bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[10px] font-bold uppercase rounded-none">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-medium uppercase rounded-none">
+                                                <span class="w-1.5 h-1.5 rounded-none bg-emerald-500"></span>
                                                 Live Active
                                             </span>
                                         </div>
-                                        <div class="p-2.5 bg-slate-50 grid grid-cols-3 gap-2 text-center">
-                                            <div class="p-2 bg-white border border-slate-200 rounded-none shadow-2xs">
-                                                <p class="text-[10px] font-bold text-slate-500 uppercase">Gold 24K</p>
+                                        <div class="p-2.5 bg-white grid grid-cols-3 gap-2 text-center">
+                                            <div class="p-2 bg-surface-50 border border-surface-200 rounded-none">
+                                                <p class="text-[10px] font-semibold text-amber-800 uppercase">Gold 24K</p>
                                                 <p class="text-xs font-bold text-[#c08f34] mt-0.5 font-mono">
-                                                    ₹{{ Number(action.result.gold_24k_per_gm || 7450).toLocaleString('en-IN') }}/g
+                                                    ₹{{ Number(action.result.gold_24k_per_gm || 7520).toLocaleString('en-IN') }}/g
                                                 </p>
                                             </div>
-                                            <div class="p-2 bg-white border border-slate-200 rounded-none shadow-2xs">
-                                                <p class="text-[10px] font-bold text-slate-500 uppercase">Gold 22K</p>
-                                                <p class="text-xs font-bold text-slate-800 mt-0.5 font-mono">
-                                                    ₹{{ Number(action.result.gold_22k_per_gm || 6830).toLocaleString('en-IN') }}/g
+                                            <div class="p-2 bg-surface-50 border border-surface-200 rounded-none">
+                                                <p class="text-[10px] font-semibold text-amber-800 uppercase">Gold 22K</p>
+                                                <p class="text-xs font-bold text-surface-900 mt-0.5 font-mono">
+                                                    ₹{{ Number(action.result.gold_22k_per_gm || 6888.32).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}/g
                                                 </p>
                                             </div>
-                                            <div class="p-2 bg-white border border-slate-200 rounded-none shadow-2xs">
-                                                <p class="text-[10px] font-bold text-slate-500 uppercase">Silver (999)</p>
-                                                <p class="text-xs font-bold text-slate-700 mt-0.5 font-mono">
-                                                    ₹{{ Number(action.result.silver_per_gm || 88.50).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}/g
+                                            <div class="p-2 bg-surface-50 border border-surface-200 rounded-none">
+                                                <p class="text-[10px] font-semibold text-slate-700 uppercase">Silver (999)</p>
+                                                <p class="text-xs font-bold text-surface-900 mt-0.5 font-mono">
+                                                    ₹{{ Number(action.result.silver_per_gm || 89.20).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}/g
                                                 </p>
                                             </div>
                                         </div>
