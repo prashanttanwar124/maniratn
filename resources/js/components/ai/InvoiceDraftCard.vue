@@ -75,7 +75,7 @@ const setPurity = (draft: any, purity: string) => {
 </script>
 
 <template>
-    <div class="border border-slate-300 bg-white shadow-xs rounded-none overflow-hidden my-2 font-sans" style="font-family: 'Poppins', sans-serif !important;">
+    <div class="border border-surface-200 bg-white shadow-xs rounded-none overflow-hidden my-2 font-sans border-t-2 border-t-[#c08f34]" style="font-family: 'Poppins', sans-serif !important;">
         <!-- 📝 1. DRAFT PREVIEW STATE (Before DB Insert) -->
         <div v-if="isDraft" class="p-3 bg-white space-y-3">
             <!-- Header Banner (Sharp rectangular, perfectly aligned) -->
