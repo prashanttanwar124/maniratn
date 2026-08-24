@@ -55,6 +55,35 @@ class AiCopilotController extends Controller
             $todayRate = DailyRate::where('gold_sell', '>', 0)->latest('date')->first();
         }
 
+        $matchedProduct = null;
+        if (preg_match('/\b(G\d{5}|S\d{5}|MS-\d{5})\b/i', $message, $matches)) {
+            $b = strtoupper($matches[1]);
+            $prod = Product::with(['category', 'purity'])->where('barcode', $b)->first();
+            if (! $prod && preg_match('/^G(\d{5})$/', $b, $m)) {
+                $prod = Product::with(['category', 'purity'])->find((int) $m[1]);
+            }
+            if (! $prod) {
+                $prod = SilverProduct::with('category')->where('barcode', $b)->first();
+                if (! $prod && preg_match('/^S(\d{5})$/', $b, $m)) {
+                    $prod = SilverProduct::with('category')->find((int) $m[1]);
+                }
+            }
+            if ($prod) {
+                $matchedProduct = [
+                    'barcode' => $prod->barcode,
+                    'name' => $prod->name,
+                    'category' => $prod->category?->name ?? 'Jewellery',
+                    'purity' => $prod->purity?->name ?? '916 Hallmark',
+                    'weight' => floatval($prod->net_weight ?: $prod->gross_weight),
+                    'gross_weight' => floatval($prod->gross_weight),
+                    'net_weight' => floatval($prod->net_weight),
+                    'making_charge' => floatval($prod->making_charge),
+                    'making_charge_type' => $prod->making_charge_type ?? 'percentage',
+                    'metal' => ($prod instanceof SilverProduct) ? 'SILVER' : 'GOLD',
+                ];
+            }
+        }
+
         $erpContext = [
             'today_rates' => $todayRate ? [
                 'gold_24k' => floatval($todayRate->gold_sell),
@@ -66,6 +95,7 @@ class AiCopilotController extends Controller
                 'gold' => number_format(\App\Models\Vault::whereIn('type', ['GOLD', 'gold'])->sum('balance'), 3) . ' g',
                 'silver' => number_format(\App\Models\Vault::whereIn('type', ['SILVER', 'silver'])->sum('balance'), 3) . ' g',
             ],
+            'matched_product' => $matchedProduct,
         ];
 
         try {
@@ -107,6 +137,11 @@ class AiCopilotController extends Controller
                 } catch (\Throwable $e) {
                     Log::warning("AI Tool dispatch failed for [{$tool}]: " . $e->getMessage());
                     $realData = ['error' => $e->getMessage(), 'status' => 'FAILED'];
+                }
+
+                if ($tool === 'calculate_estimate' && ! empty($realData['found']) && ! empty($realData['total_estimate'])) {
+                    $itemDesc = $realData['item_name'] . ($realData['barcode'] ? " ({$realData['barcode']})" : '');
+                    $aiResult['reply'] = "{$itemDesc} ({$realData['weight']} {$realData['purity']}) ka total estimate {$realData['total_estimate']} ban raha hai (jispe 3% GST aur {$realData['making_charges']} making charges shamil hain).";
                 }
 
                 $executedActions[] = [
