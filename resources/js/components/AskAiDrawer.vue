@@ -673,14 +673,19 @@ onMounted(() => {
                                     <!-- 6. Daily Rate Inquire Card -->
                                     <div
                                         v-else-if="action.tool === 'get_daily_rates'"
-                                        class="border border-slate-300 bg-white shadow-xs rounded-none overflow-hidden my-2"
+                                        class="border border-surface-200 bg-white shadow-xs rounded-none overflow-hidden my-2 font-sans"
                                     >
-                                        <div class="px-3 py-2 bg-[#1c3633] text-white flex items-center justify-between border-b-2 border-b-[#c08f34] rounded-none">
-                                            <div class="flex items-center gap-1.5">
-                                                <Coins class="w-3.5 h-3.5 text-[#c08f34]" />
-                                                <span class="font-serif text-xs font-bold tracking-wide uppercase">Today's Live Bullion Rates</span>
+                                        <div class="px-3.5 py-2.5 bg-[#1c3633] text-white flex items-center justify-between border-b border-[#c08f34]/40 rounded-none">
+                                            <div class="flex items-center gap-2">
+                                                <div class="w-6 h-6 bg-white/10 text-[#c08f34] flex items-center justify-center rounded-none">
+                                                    <Coins class="w-3.5 h-3.5" />
+                                                </div>
+                                                <div>
+                                                    <h4 class="font-bold text-xs !text-white tracking-wide uppercase">Today's Live Bullion Rates</h4>
+                                                    <p class="text-[10px] !text-[#c08f34] font-medium">Real-time Database Rates</p>
+                                                </div>
                                             </div>
-                                            <span class="px-1.5 py-0.5 bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[10px] font-bold uppercase rounded-none">
+                                            <span class="px-2 py-0.5 bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[10px] font-bold uppercase rounded-none">
                                                 Live Active
                                             </span>
                                         </div>

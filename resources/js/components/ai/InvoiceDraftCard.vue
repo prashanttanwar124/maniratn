@@ -78,19 +78,17 @@ const setPurity = (draft: any, purity: string) => {
     <div class="border border-slate-300 bg-white shadow-xs rounded-none overflow-hidden my-2 font-sans" style="font-family: 'Poppins', sans-serif !important;">
         <!-- 📝 1. DRAFT PREVIEW STATE (Before DB Insert) -->
         <div v-if="isDraft" class="p-3 bg-white space-y-3">
-            <!-- Header Banner (Sharp rectangular) -->
-            <div class="flex items-center justify-between border-b border-slate-200 pb-2">
-                <div class="flex items-center gap-2">
-                    <div class="w-6 h-6 bg-[#1c3633] text-[#c08f34] flex items-center justify-center rounded-none">
-                        <Receipt class="w-3.5 h-3.5" />
+            <!-- Header Banner (Sharp rectangular, perfectly aligned) -->
+            <div class="flex items-center justify-between border-b border-surface-200 pb-2">
+                <div class="space-y-0.5">
+                    <div class="flex items-center gap-1.5">
+                        <Receipt class="w-4 h-4 text-[#c08f34]" />
+                        <h4 class="font-bold text-xs text-surface-900 tracking-wide uppercase leading-none">Invoice Draft Preview</h4>
                     </div>
-                    <div>
-                        <h4 class="font-bold text-xs text-slate-900 tracking-wide uppercase">Invoice Draft Preview</h4>
-                        <p class="text-[10px] text-slate-500 font-medium">Verify & edit details before creating in database</p>
-                    </div>
+                    <p class="text-[10.5px] text-surface-500 font-medium pl-5.5">Verify & edit details before creating in database</p>
                 </div>
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-bold uppercase rounded-none">
-                    <ShieldCheck class="w-3 h-3" />
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-300 text-amber-900 text-[10px] font-bold uppercase rounded-none">
+                    <ShieldCheck class="w-3 h-3 text-amber-700" />
                     Review Required
                 </span>
             </div>
