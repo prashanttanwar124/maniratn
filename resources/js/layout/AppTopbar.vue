@@ -337,7 +337,7 @@ const submitLogout = () => {
     <!-- ⚡ SPOTLIGHT OMNISEARCH MODAL (⌘K) -->
     <div
         v-if="isSpotlightOpen"
-        class="fixed inset-0 z-[9999] flex items-start justify-center pt-16 sm:pt-24 px-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+        class="fixed inset-0 z-[9999] flex items-start justify-center pt-16 sm:pt-24 px-4 bg-black/40 animate-in fade-in duration-150"
         @click.self="closeSpotlight"
     >
         <div class="w-full max-w-xl bg-white border border-surface-200 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
@@ -500,7 +500,7 @@ const submitLogout = () => {
     <!-- 🪙 QUICK UPDATE BULLION RATES MODAL -->
     <div
         v-if="isRatesModalOpen"
-        class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+        class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 animate-in fade-in duration-150"
         @click.self="isRatesModalOpen = false"
     >
         <div class="w-full max-w-lg bg-white border border-surface-200 shadow-2xl p-6">
