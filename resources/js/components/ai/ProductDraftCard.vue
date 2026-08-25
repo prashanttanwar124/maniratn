@@ -31,40 +31,6 @@ const makingTypeOptions = [
     { label: '₹ Flat (Lump sum)', value: 'flat' },
 ];
 
-const defaultCategoryOptions = [
-    'Ring',
-    'Chain',
-    'Bangle',
-    'Necklace',
-    'Pendant',
-    'Earrings',
-    'Mangalsutra',
-    'Bracelet',
-    'Coin',
-    'Kada',
-    'Nath',
-    'Payal',
-    'Anklet',
-    'Silver Ring',
-    'Silver Chain',
-    'Silver Payal',
-    'Silver Idol',
-    'Silver Coin',
-    'Silver Gift',
-];
-
-const defaultPurityOptions = [
-    '22K (916)',
-    '18K (750)',
-    '24K (999)',
-    '14K (585)',
-    '22K',
-    '18K',
-    '24K',
-    '92.5 Silver',
-    '99.9 Fine Silver',
-];
-
 const categoryOptions = computed(() => {
     const dbCats = (page.props as any).categories;
     const names: string[] = [];
@@ -77,7 +43,7 @@ const categoryOptions = computed(() => {
             }
         });
     }
-    return Array.from(new Set([...names, ...defaultCategoryOptions]));
+    return Array.from(new Set(names));
 });
 
 const purityOptions = computed(() => {
@@ -92,7 +58,7 @@ const purityOptions = computed(() => {
             }
         });
     }
-    return Array.from(new Set([...names, ...defaultPurityOptions]));
+    return Array.from(new Set(names));
 });
 
 if (!props.action.result) {
@@ -247,8 +213,7 @@ const formatMakingCharge = (val: any, type: string = 'per_gram') => {
                     <Select
                         v-model="action.result.purity"
                         :options="purityOptions"
-                        editable
-                        placeholder="Select or type purity"
+                        placeholder="Select purity"
                         size="small"
                         class="mt-1 w-full rounded-none !font-sans text-xs"
                     />
@@ -258,8 +223,7 @@ const formatMakingCharge = (val: any, type: string = 'per_gram') => {
                     <Select
                         v-model="action.result.category"
                         :options="categoryOptions"
-                        editable
-                        placeholder="Select or type category"
+                        placeholder="Select category"
                         size="small"
                         class="mt-1 w-full rounded-none !font-sans text-xs"
                     />
