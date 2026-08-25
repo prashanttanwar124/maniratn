@@ -10,6 +10,7 @@ import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
+import DatePicker from 'primevue/datepicker';
 import Dialog from 'primevue/dialog';
 import Drawer from 'primevue/drawer';
 import IconField from 'primevue/iconfield';
@@ -302,6 +303,8 @@ const openCreateDialog = () => {
     taskForm.category = 'CUSTOMER_FOLLOWUP';
     taskForm.priority = 'MEDIUM';
     taskForm.status = 'TODO';
+    taskForm.due_date = null;
+    taskForm.due_time = null;
     taskForm.assigned_to = currentUserId.value;
     taskForm.checklist = [];
     taskForm.is_pinned = false;
@@ -320,8 +323,15 @@ const openEditDialog = (task) => {
     taskForm.category = task.category;
     taskForm.priority = task.priority;
     taskForm.status = task.status;
-    taskForm.due_date = task.due_date || '';
-    taskForm.due_time = task.due_time || '';
+    taskForm.due_date = task.due_date ? new Date(`${task.due_date}T00:00:00`) : null;
+    if (task.due_time) {
+        const [h = '0', m = '0'] = task.due_time.split(':');
+        const d = new Date();
+        d.setHours(Number(h), Number(m), 0, 0);
+        taskForm.due_time = d;
+    } else {
+        taskForm.due_time = null;
+    }
     taskForm.assigned_to = task.assigned_to?.id ?? null;
     taskForm.checklist = Array.isArray(task.checklist) ? JSON.parse(JSON.stringify(task.checklist)) : [];
     taskForm.is_pinned = Boolean(task.is_pinned);
@@ -357,6 +367,29 @@ const removeChecklistItem = (index) => {
 
 // Save Task
 const saveTask = () => {
+    taskForm.transform((data) => {
+        let formattedDate = data.due_date;
+        if (data.due_date instanceof Date) {
+            const year = data.due_date.getFullYear();
+            const month = String(data.due_date.getMonth() + 1).padStart(2, '0');
+            const day = String(data.due_date.getDate()).padStart(2, '0');
+            formattedDate = `${year}-${month}-${day}`;
+        }
+
+        let formattedTime = data.due_time;
+        if (data.due_time instanceof Date) {
+            const hours = String(data.due_time.getHours()).padStart(2, '0');
+            const minutes = String(data.due_time.getMinutes()).padStart(2, '0');
+            formattedTime = `${hours}:${minutes}`;
+        }
+
+        return {
+            ...data,
+            due_date: formattedDate || null,
+            due_time: formattedTime || null,
+        };
+    });
+
     const options = {
         preserveScroll: true,
         onSuccess: () => {
@@ -1161,13 +1194,31 @@ const deleteTask = () => {
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                         <label for="task-due-date" class="mb-1.5 block text-sm font-medium text-surface-700"> Due date </label>
-                        <InputText id="task-due-date" type="date" v-model="taskForm.due_date" class="w-full text-xs" :invalid="Boolean(taskForm.errors.due_date)" />
+                        <DatePicker
+                            id="task-due-date"
+                            v-model="taskForm.due_date"
+                            dateFormat="yy-mm-dd"
+                            showIcon
+                            iconDisplay="input"
+                            placeholder="Select due date"
+                            class="w-full text-xs"
+                            :invalid="Boolean(taskForm.errors.due_date)"
+                        />
                         <small v-if="taskForm.errors.due_date" class="mt-1 block text-xs text-rose-600">{{ taskForm.errors.due_date }}</small>
                     </div>
 
                     <div>
                         <label for="task-due-time" class="mb-1.5 block text-sm font-medium text-surface-700"> Target time </label>
-                        <InputText id="task-due-time" type="time" v-model="taskForm.due_time" class="w-full text-xs" />
+                        <DatePicker
+                            id="task-due-time"
+                            v-model="taskForm.due_time"
+                            timeOnly
+                            hourFormat="12"
+                            showIcon
+                            iconDisplay="input"
+                            placeholder="Select target time"
+                            class="w-full text-xs"
+                        />
                     </div>
                 </div>
 
