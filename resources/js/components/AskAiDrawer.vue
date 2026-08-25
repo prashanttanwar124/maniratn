@@ -739,30 +739,44 @@ onMounted(() => {
                                                         <p class="!m-0 !p-0 !text-[10px] font-normal text-surface-500 !leading-tight">Real-time database rates</p>
                                                     </div>
                                                 </div>
-                                                <span class="inline-flex items-center gap-1 border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800 uppercase">
-                                                    <span class="h-1.5 w-1.5 bg-emerald-500"></span>
+                                                <span
+                                                    v-if="action.result?.gold_24k_per_gm > 0"
+                                                    class="inline-flex items-center gap-1 border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800 uppercase"
+                                                >
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                                                     Live
+                                                </span>
+                                                <span
+                                                    v-else
+                                                    class="inline-flex items-center gap-1 border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800 uppercase"
+                                                >
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                                                    Not Set Today
                                                 </span>
                                             </div>
                                             <div
+                                                v-if="action.result?.gold_24k_per_gm > 0"
                                                 class="grid grid-cols-1 divide-y divide-surface-200 bg-white text-left min-[400px]:grid-cols-3 min-[400px]:divide-x min-[400px]:divide-y-0 min-[400px]:text-center"
                                             >
                                                 <div class="bg-surface-50 p-2.5">
                                                     <p class="text-[10px] font-semibold text-amber-800 uppercase">Gold 24K</p>
-                                                    <p class="mt-1 font-mono text-sm font-bold text-[#9b6f1e]">₹{{ Number(action.result.gold_24k_per_gm || 7520).toLocaleString('en-IN') }}/g</p>
+                                                    <p class="mt-1 font-mono text-sm font-bold text-[#9b6f1e]">₹{{ Number(action.result.gold_24k_per_gm).toLocaleString('en-IN') }}/g</p>
                                                 </div>
                                                 <div class="bg-surface-50 p-2.5">
                                                     <p class="text-[10px] font-semibold text-amber-800 uppercase">Gold 22K</p>
                                                     <p class="mt-1 font-mono text-sm font-bold text-surface-900">
-                                                        ₹{{ Number(action.result.gold_22k_per_gm || 6888.32).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}/g
+                                                        ₹{{ Number(action.result.gold_22k_per_gm || (action.result.gold_24k_per_gm * 0.916)).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}/g
                                                     </p>
                                                 </div>
                                                 <div class="bg-surface-50 p-2.5">
                                                     <p class="text-[10px] font-semibold text-slate-700 uppercase">Silver (999)</p>
                                                     <p class="mt-1 font-mono text-sm font-bold text-surface-900">
-                                                        ₹{{ Number(action.result.silver_per_gm || 89.2).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}/g
+                                                        ₹{{ Number(action.result.silver_per_gm || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}/g
                                                     </p>
                                                 </div>
+                                            </div>
+                                            <div v-else class="p-3 text-center text-xs text-amber-800 bg-amber-50/70">
+                                                Aaj ke market rates update nahi hain. Kripya rates update karein.
                                             </div>
                                         </div>
 

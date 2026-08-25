@@ -20,12 +20,20 @@ class EnsureDayIsOpen
             ->whereNull('closed_at')
             ->exists();
 
-        if ($isDayOpen) {
-            return $next($request);
+        if (! $isDayOpen) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'DAY_NOT_OPEN',
+                    'message' => 'Open the shop day first by entering opening cash and gold balances.',
+                ], 403);
+            }
+
+            return redirect()
+                ->route('dashboard')
+                ->with('error', 'Open the shop day first by entering opening cash and gold balances.');
         }
 
-        return redirect()
-            ->route('dashboard')
-            ->with('error', 'Open the shop day first by entering opening cash and gold balances.');
+        return $next($request);
     }
 }

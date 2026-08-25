@@ -16,6 +16,17 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'manage_invoices']);
+    \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'manage_products']);
+    \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'manage_daily_rates']);
+    \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'manage_vault']);
+
+    \App\Models\Vault::firstOrCreate(['type' => 'GOLD'], ['name' => 'Main Gold Vault', 'balance' => 1000.0]);
+    \App\Models\Vault::firstOrCreate(['type' => 'SILVER'], ['name' => 'Main Silver Vault', 'balance' => 5000.0]);
+    \App\Models\Vault::firstOrCreate(['type' => 'CASH'], ['name' => 'Main Cash Vault', 'balance' => 100000.0]);
+});
+
 test('get_customer_khata action correctly calculates customer pending balance and recent bills', function () {
     $dispatcher = app(AiActionDispatcher::class);
 
@@ -211,6 +222,14 @@ test('calculate_old_gold action accurately evaluates 12g 17k old gold with no ma
 
 test('confirm-product endpoint adds gold and silver products with safe unique categories', function () {
     $user = \App\Models\User::factory()->create();
+    $user->givePermissionTo('manage_products');
+
+    \App\Models\DailyRegister::create([
+        'date' => Carbon::today()->toDateString(),
+        'opening_cash' => 100000,
+        'opening_gold' => 500,
+        'opened_by' => $user->id,
+    ]);
 
     // 1. Confirm Gold Product
     $goldResponse = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-product', [
@@ -258,6 +277,14 @@ test('confirm-product endpoint adds gold and silver products with safe unique ca
 
 test('confirm-bill endpoint reuses master walk-in customer and avoids fake phone number duplicates', function () {
     $user = \App\Models\User::factory()->create();
+    $user->givePermissionTo('manage_invoices');
+
+    \App\Models\DailyRegister::create([
+        'date' => Carbon::today()->toDateString(),
+        'opening_cash' => 100000,
+        'opening_gold' => 500,
+        'opened_by' => $user->id,
+    ]);
 
     DailyRate::create([
         'date' => Carbon::today()->toDateString(),

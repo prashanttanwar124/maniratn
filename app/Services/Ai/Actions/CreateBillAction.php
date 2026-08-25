@@ -54,14 +54,20 @@ class CreateBillAction implements AiActionInterface
                     ];
                 }
                 $itemName = $matchedProduct->name;
-                $weight = floatval($matchedProduct->net_weight);
+                $weight = floatval($matchedProduct->net_weight ?: $matchedProduct->gross_weight);
                 $metal = 'GOLD';
                 $purityStr = $matchedProduct->purity?->name ?? '22K';
                 if ($matchedProduct->making_charge > 0 && $makingPercent === null && $makingPerGm === null && $makingFlat === null) {
-                    $makingPerGm = floatval($matchedProduct->making_charge);
+                    if (($matchedProduct->making_charge_type ?? 'percentage') === 'percentage') {
+                        $makingPercent = floatval($matchedProduct->making_charge);
+                    } elseif ($matchedProduct->making_charge_type === 'flat') {
+                        $makingFlat = floatval($matchedProduct->making_charge);
+                    } else {
+                        $makingPerGm = floatval($matchedProduct->making_charge);
+                    }
                 }
             } elseif ($matchedSilverProduct) {
-                if ($matchedSilverProduct->is_sold) {
+                if ($matchedSilverProduct->is_sold || ($matchedSilverProduct->pricing_mode === 'PIECE' && $matchedSilverProduct->quantity <= 0)) {
                     return [
                         'found' => false,
                         'message' => "Silver item '{$matchedSilverProduct->name}' (Barcode: {$barcode}) pehle se sold hai!",
@@ -69,9 +75,9 @@ class CreateBillAction implements AiActionInterface
                     ];
                 }
                 $itemName = $matchedSilverProduct->name;
-                $weight = floatval($matchedSilverProduct->net_weight);
+                $weight = floatval($matchedSilverProduct->net_weight ?: $matchedSilverProduct->gross_weight);
                 $metal = 'SILVER';
-                $purityStr = 'Silver';
+                $purityStr = 'Silver (92.5)';
                 if ($matchedSilverProduct->making_charge > 0 && $makingPercent === null && $makingPerGm === null && $makingFlat === null) {
                     $makingPerGm = floatval($matchedSilverProduct->making_charge);
                 }

@@ -62,19 +62,7 @@ Route::get('/api/website/vault/{token}/invoices/{invoice}/print', [WebsiteApiCon
     ->middleware('throttle:60,1')
     ->name('website.vault.invoice-print');
 
-// --- AI COPILOT VOICE & CHAT ENDPOINTS ---
-Route::post('/api/ai/copilot/chat', [AiCopilotController::class, 'chat'])
-    ->name('ai.copilot.chat');
-Route::post('/api/ai/copilot/confirm-bill', [AiCopilotController::class, 'confirmBill'])
-    ->name('ai.copilot.confirm-bill');
-Route::post('/api/ai/copilot/confirm-product', [AiCopilotController::class, 'confirmProduct'])
-    ->name('ai.copilot.confirm-product');
-Route::post('/api/ai/copilot/confirm-rates', [AiCopilotController::class, 'confirmRates'])
-    ->name('ai.copilot.confirm-rates');
-Route::get('/api/ai/copilot/history', [AiCopilotController::class, 'history'])
-    ->name('ai.copilot.history');
-Route::delete('/api/ai/copilot/history', [AiCopilotController::class, 'clearHistory'])
-    ->name('ai.copilot.history.clear');
+
 
 Route::get('/api/inventory/{barcode}', function ($barcode) {
     $normalizedBarcode = strtoupper(trim($barcode));
@@ -374,6 +362,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/metal-transactions', [MetalTransactionController::class, 'store'])
         ->middleware(['permission:manage_ledgers', 'day.open'])
         ->name('metal-transactions.store');
+
+    // --- AI COPILOT SECURED ENDPOINTS ---
+    Route::post('/api/ai/copilot/chat', [AiCopilotController::class, 'chat'])
+        ->middleware('day.open')
+        ->name('ai.copilot.chat');
+    Route::post('/api/ai/copilot/confirm-bill', [AiCopilotController::class, 'confirmBill'])
+        ->middleware(['permission:manage_invoices', 'day.open'])
+        ->name('ai.copilot.confirm-bill');
+    Route::post('/api/ai/copilot/confirm-product', [AiCopilotController::class, 'confirmProduct'])
+        ->middleware(['permission:manage_products', 'day.open'])
+        ->name('ai.copilot.confirm-product');
+    Route::post('/api/ai/copilot/confirm-rates', [AiCopilotController::class, 'confirmRates'])
+        ->middleware(['permission:manage_daily_rates', 'day.open'])
+        ->name('ai.copilot.confirm-rates');
+    Route::get('/api/ai/copilot/history', [AiCopilotController::class, 'history'])
+        ->name('ai.copilot.history');
+    Route::delete('/api/ai/copilot/history', [AiCopilotController::class, 'clearHistory'])
+        ->name('ai.copilot.history.clear');
 });
 
 require __DIR__.'/settings.php';
