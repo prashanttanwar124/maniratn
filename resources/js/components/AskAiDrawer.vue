@@ -822,14 +822,19 @@ onMounted(() => {
                             v-for="msg in messages"
                             :key="msg.id"
                             v-show="!isStarterConversation"
-                            :class="['flex max-w-full my-1.5', msg.role === 'user' ? 'justify-end' : 'justify-start']"
+                            :class="['flex max-w-full my-2', msg.role === 'user' ? 'justify-end' : 'justify-start']"
                         >
-                            <!-- 👤 User Message: Luxury Emerald Curved Speech Bubble -->
-                            <div v-if="msg.role === 'user'" class="flex max-w-[82%] flex-col items-end">
-                                <div class="rounded-2xl rounded-tr-xs border border-[#2b4c47] bg-gradient-to-br from-[#1c3633] to-[#142825] px-4 py-2.5 text-[13px] leading-relaxed text-slate-50 shadow-md">
-                                    <p class="whitespace-pre-wrap select-text font-normal leading-relaxed text-slate-50">{{ msg.content }}</p>
+                            <!-- 👤 User Message: Luxury Emerald Curved Speech Bubble with Right Avatar -->
+                            <div v-if="msg.role === 'user'" class="ml-auto flex max-w-[88%] items-start justify-end gap-2.5">
+                                <div class="flex flex-col items-end min-w-0">
+                                    <div class="rounded-2xl rounded-tr-xs border border-[#2b4c47] bg-gradient-to-br from-[#1c3633] to-[#142825] px-4 py-2.5 text-[13px] leading-relaxed text-slate-50 shadow-md">
+                                        <p class="whitespace-pre-wrap select-text font-normal leading-relaxed text-slate-50">{{ msg.content }}</p>
+                                    </div>
+                                    <span class="mt-1 pr-1 text-[10px] font-mono font-medium text-surface-400">{{ msg.timestamp }}</span>
                                 </div>
-                                <span class="mt-1 pr-1 text-[10px] font-mono font-medium text-surface-400">{{ msg.timestamp }}</span>
+                                <div class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#2b4c47] bg-[#1c3633] text-[#e5c278] shadow-xs">
+                                    <UserRound class="h-4 w-4 text-[#e5c278]" />
+                                </div>
                             </div>
 
                             <!-- ✨ Karat AI Message: Luxury Card with Left Avatar -->
