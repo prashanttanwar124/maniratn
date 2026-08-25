@@ -480,16 +480,16 @@ const deleteTask = () => {
         <div class="space-y-5">
             <section class="border border-surface-200 bg-white p-4 sm:p-6">
                 <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                    <div class="flex min-w-0 items-start gap-3.5">
+                    <div class="flex min-w-0 items-center gap-3.5">
                         <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-primary-100 bg-primary-50 text-primary-700">
                             <i class="pi pi-check-square text-lg"></i>
                         </div>
                         <div class="min-w-0">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <h1 class="text-xl font-bold tracking-tight text-surface-900 sm:text-2xl">Showroom & Workshop Tasks</h1>
-                                <Tag :value="isDayOpen ? 'Day open' : 'Day closed'" :severity="isDayOpen ? 'success' : 'danger'" />
+                            <div class="flex items-center gap-2.5">
+                                <h1 class="text-xl font-bold tracking-tight text-surface-900 sm:text-2xl leading-none">Showroom & Workshop Tasks</h1>
+                                <Tag :value="isDayOpen ? 'Day open' : 'Day closed'" :severity="isDayOpen ? 'success' : 'danger'" class="!text-[11px] !py-0.5 !px-2 leading-none" />
                             </div>
-                            <p class="mt-1 max-w-2xl text-sm leading-6 text-surface-500">Assign work, follow daily progress, and keep showroom handovers in one clear view.</p>
+                            <p class="mt-1.5 max-w-2xl text-xs sm:text-sm text-surface-500">Assign work, follow daily progress, and keep showroom handovers in one clear view.</p>
                         </div>
                     </div>
 
@@ -770,14 +770,14 @@ const deleteTask = () => {
                 class="grid snap-x snap-mandatory auto-cols-[minmax(300px,calc(100vw_-_3rem))] grid-flow-col gap-4 overflow-x-auto pb-3 sm:auto-cols-[minmax(320px,1fr)] xl:grid-flow-row xl:grid-cols-3 xl:overflow-visible"
             >
                 <section v-for="column in kanbanColumns" :key="column.status" class="min-h-[460px] snap-start border border-surface-200 bg-surface-50/70 p-3 sm:p-4">
-                    <header class="mb-3 flex items-start justify-between border-b border-surface-200 pb-3">
-                        <div class="min-w-0">
+                    <header class="mb-3 border-b border-surface-200 pb-3">
+                        <div class="flex items-center justify-between gap-2">
                             <div class="flex items-center gap-2">
-                                <span :class="['h-2.5 w-2.5 shrink-0 rounded-full', column.dotClass]"></span>
-                                <h2 class="text-sm font-bold text-surface-900 leading-none">{{ column.title }}</h2>
+                                <span class="h-2 w-2 shrink-0 rounded-full" :class="column.dotClass"></span>
+                                <h2 class="text-sm font-bold tracking-tight text-surface-900 leading-none">{{ column.title }}</h2>
                                 <span
                                     :class="[
-                                        'inline-flex h-5 min-w-[20px] items-center justify-center rounded px-1.5 text-[10px] font-bold leading-none',
+                                        'inline-flex h-4.5 min-w-[18px] items-center justify-center rounded px-1.5 text-[10px] font-bold leading-none',
                                         column.status === 'TODO'
                                             ? 'bg-amber-50 text-amber-700 border border-amber-200'
                                             : column.status === 'IN_PROGRESS'
@@ -788,19 +788,19 @@ const deleteTask = () => {
                                     {{ tasksForStatus(column.status).length }}
                                 </span>
                             </div>
-                            <p class="mt-1 pl-4.5 text-[11px] text-surface-500 leading-tight">{{ column.description }}</p>
+                            <Button
+                                v-if="column.status === 'TODO'"
+                                icon="pi pi-plus"
+                                text
+                                rounded
+                                size="small"
+                                aria-label="Add task"
+                                v-tooltip.top="'Add task'"
+                                class="!h-6 !w-6 !p-0 text-surface-400 hover:text-surface-900 hover:bg-surface-200"
+                                @click="openCreateDialog"
+                            />
                         </div>
-                        <Button
-                            v-if="column.status === 'TODO'"
-                            icon="pi pi-plus"
-                            text
-                            rounded
-                            size="small"
-                            aria-label="Add task"
-                            v-tooltip.top="'Add task'"
-                            class="!h-7 !w-7 !p-0 -mt-1 text-surface-500 hover:text-surface-900"
-                            @click="openCreateDialog"
-                        />
+                        <p class="mt-1 pl-4 text-[11px] text-surface-400 leading-none">{{ column.description }}</p>
                     </header>
 
                     <div class="flex flex-col gap-3">
@@ -1239,22 +1239,23 @@ const deleteTask = () => {
                         </div>
                     </div>
 
-                    <!-- Add New Item Input with InputGroup -->
-                    <InputGroup class="w-full">
+                    <!-- Add New Item Input -->
+                    <div class="flex items-center gap-2">
                         <InputText
                             v-model="newChecklistText"
                             @keydown.enter.prevent="addChecklistItem"
                             placeholder="Add subtask step (Press Enter)..."
-                            class="!bg-white text-xs"
+                            class="flex-1 !bg-white text-xs !h-9"
                         />
                         <Button
                             type="button"
                             label="Add"
                             icon="pi pi-plus"
                             size="small"
+                            class="!h-9 !px-3.5 !text-xs !font-semibold shrink-0"
                             @click="addChecklistItem"
                         />
-                    </InputGroup>
+                    </div>
                 </div>
 
                 <!-- Pin Option -->
