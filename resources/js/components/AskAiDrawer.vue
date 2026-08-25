@@ -15,6 +15,7 @@ import OldGoldCard from './ai/OldGoldCard.vue';
 import ProductDraftCard from './ai/ProductDraftCard.vue';
 import SalesSummaryCard from './ai/SalesSummaryCard.vue';
 import StockCheckCard from './ai/StockCheckCard.vue';
+import TaskCard from './ai/TaskCard.vue';
 import VaultBalanceCard from './ai/VaultBalanceCard.vue';
 
 interface ActionItem {
@@ -1041,6 +1042,12 @@ onMounted(() => {
                                         <!-- 10. Previous Invoices / Purchase History Card -->
                                         <InvoiceHistoryCard
                                             v-else-if="action.tool === 'search_invoices' || action.tool === 'get_customer_invoices'"
+                                            :action="action"
+                                        />
+
+                                        <!-- 11. Tasks / Showroom Todo Card -->
+                                        <TaskCard
+                                            v-else-if="action.tool === 'get_tasks' || action.tool === 'create_task' || action.tool === 'tasks'"
                                             :action="action"
                                         />
                                     </template>

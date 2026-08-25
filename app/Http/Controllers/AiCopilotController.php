@@ -162,6 +162,8 @@ class AiCopilotController extends Controller
                                 => "Maine {$realData['count']} pichle purchase bills dhoond liye hain. Niche card me details aur print receipt check karein.",
                             $tool === 'get_vault_balance' || $tool === 'vault_balance'
                                 => "Showroom Vault Holdings: Cash: {$realData['cash_in_hand']}, Gold: {$realData['gold_in_vault']}, Silver: {$realData['silver_in_vault']}, Bank: {$realData['bank_balance']}.",
+                            $tool === 'get_tasks' || $tool === 'create_task' || $tool === 'tasks'
+                                => $realData['message'] ?? ("Showroom tasks list me total " . ($realData['count'] ?? 0) . " tasks hain. Niche board par details check karein."),
                             default => $aiResult['reply'] ?? 'Done.',
                         };
                     }

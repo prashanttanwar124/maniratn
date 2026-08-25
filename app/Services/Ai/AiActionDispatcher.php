@@ -11,6 +11,7 @@ use App\Services\Ai\Actions\OldGoldEstimateAction;
 use App\Services\Ai\Actions\SalesSummaryAction;
 use App\Services\Ai\Actions\SearchInvoicesAction;
 use App\Services\Ai\Actions\StockCheckAction;
+use App\Services\Ai\Actions\TaskAction;
 use App\Services\Ai\Actions\UpdateDailyRatesAction;
 use App\Services\Ai\Actions\VaultBalanceAction;
 use App\Services\Ai\Contracts\AiActionInterface;
@@ -40,6 +41,8 @@ class AiActionDispatcher
         'get_customer_invoices' => SearchInvoicesAction::class,
         'get_sales_summary' => SalesSummaryAction::class,
         'daily_sales_report' => SalesSummaryAction::class,
+        'get_tasks' => TaskAction::class,
+        'create_task' => TaskAction::class,
     ];
 
     /**

@@ -52,6 +52,7 @@ const model = [
     {
         label: 'People',
         items: [
+            { label: 'Tasks', icon: 'pi pi-fw pi-check-square', to: '/tasks' },
             { label: 'Customers', icon: 'pi pi-fw pi-users', to: '/customers', visible: Boolean(can.manage_customers) },
             { label: 'Suppliers', icon: 'pi pi-fw pi-truck', to: '/suppliers', visible: Boolean(can.manage_suppliers) },
             { label: 'Staff', icon: 'pi pi-fw pi-id-card', to: '/staff', visible: Boolean(can.manage_users) },

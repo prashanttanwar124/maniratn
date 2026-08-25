@@ -22,6 +22,7 @@ use App\Http\Controllers\PurityController;
 use App\Http\Controllers\SilverProductController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\VerificationTagController;
@@ -327,6 +328,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/staff', [StaffController::class, 'store'])->middleware(['permission:manage_users', 'day.open'])->name('staff.store');
     Route::put('/staff/{staff}', [StaffController::class, 'update'])->middleware(['permission:manage_users', 'day.open'])->name('staff.update');
     Route::delete('/staff/{staff}', [StaffController::class, 'destroy'])->middleware(['permission:manage_users', 'day.open'])->name('staff.destroy');
+
+    // --- SHOWROOM & WORKSHOP TASKS ---
+    Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+    Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+    Route::match(['put', 'patch'], '/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
+    Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.update-status');
+    Route::patch('/tasks/{task}/checklist/{itemId}', [TaskController::class, 'toggleChecklistItem'])->name('tasks.toggle-checklist');
+    Route::patch('/tasks/{task}/pin', [TaskController::class, 'togglePin'])->name('tasks.toggle-pin');
+    Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
 
     Route::get('/{type}/ledger/{id}', [LedgerController::class, 'show'])
         ->middleware('permission:manage_ledgers')
