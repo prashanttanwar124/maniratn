@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
-use App\Models\Order;
 use App\Models\Task;
 use App\Models\User;
 use Carbon\Carbon;
@@ -21,7 +20,7 @@ class TaskController extends Controller
     public function index(Request $request): Response
     {
         $userId = auth()->id();
-        $tab = $request->input('tab', 'all'); // all, my_tasks, urgent, due_today, completed
+        $tab = $request->input('tab', 'all'); // all, my_tasks, urgent, due_today, overdue, completed, completed_today
         $search = $request->input('search');
         $status = $request->input('status', 'all');
         $priority = $request->input('priority', 'all');
@@ -47,6 +46,10 @@ class TaskController extends Controller
             $query->whereIn('priority', ['HIGH', 'URGENT'])->whereIn('status', ['TODO', 'IN_PROGRESS']);
         } elseif ($tab === 'due_today') {
             $query->whereDate('due_date', Carbon::today())->whereIn('status', ['TODO', 'IN_PROGRESS']);
+        } elseif ($tab === 'overdue') {
+            $query->whereDate('due_date', '<', Carbon::today())->whereIn('status', ['TODO', 'IN_PROGRESS']);
+        } elseif ($tab === 'completed_today') {
+            $query->where('status', 'COMPLETED')->whereDate('completed_at', Carbon::today());
         } elseif ($tab === 'completed') {
             $query->where('status', 'COMPLETED');
         }
@@ -183,7 +186,7 @@ class TaskController extends Controller
         if (! empty($validated['checklist'])) {
             $validated['checklist'] = array_values(array_map(function ($item, $idx) {
                 return [
-                    'id' => (string) ($item['id'] ?? (time() . '_' . $idx)),
+                    'id' => (string) ($item['id'] ?? (time().'_'.$idx)),
                     'text' => trim($item['text']),
                     'is_completed' => (bool) ($item['is_completed'] ?? false),
                 ];
@@ -229,7 +232,7 @@ class TaskController extends Controller
         if (isset($validated['checklist'])) {
             $validated['checklist'] = array_values(array_map(function ($item, $idx) {
                 return [
-                    'id' => (string) ($item['id'] ?? (time() . '_' . $idx)),
+                    'id' => (string) ($item['id'] ?? (time().'_'.$idx)),
                     'text' => trim($item['text']),
                     'is_completed' => (bool) ($item['is_completed'] ?? false),
                 ];
@@ -267,7 +270,7 @@ class TaskController extends Controller
             return response()->json([
                 'success' => true,
                 'task' => $task->fresh(['assignedTo', 'creator', 'completedBy']),
-                'message' => 'Status updated to ' . $newStatus,
+                'message' => 'Status updated to '.$newStatus,
             ]);
         }
 
