@@ -28,6 +28,40 @@ const makingTypeOptions = [
     { label: '₹ Flat (Lump sum)', value: 'flat' },
 ];
 
+const categoryOptions = [
+    'Ring',
+    'Chain',
+    'Bangle',
+    'Necklace',
+    'Pendant',
+    'Earrings',
+    'Mangalsutra',
+    'Bracelet',
+    'Coin',
+    'Kada',
+    'Nath',
+    'Payal',
+    'Anklet',
+    'Silver Ring',
+    'Silver Chain',
+    'Silver Payal',
+    'Silver Idol',
+    'Silver Coin',
+    'Silver Gift',
+];
+
+const purityOptions = [
+    '22K',
+    '22K (916)',
+    '18K',
+    '18K (750)',
+    '24K',
+    '24K (999)',
+    '14K',
+    '92.5 Silver',
+    '99.9 Fine Silver',
+];
+
 if (!props.action.result) {
     props.action.result = {};
 }
@@ -177,11 +211,25 @@ const formatMakingCharge = (val: any, type: string = 'per_gram') => {
                 </div>
                 <div>
                     <label class="block text-[11px] font-medium text-surface-700">Purity</label>
-                    <InputText v-model="action.result.purity" placeholder="22K, 18K, 24K" size="small" class="mt-1 w-full rounded-none !font-sans font-semibold text-slate-900" />
+                    <Select
+                        v-model="action.result.purity"
+                        :options="purityOptions"
+                        editable
+                        placeholder="Select or type purity"
+                        size="small"
+                        class="mt-1 w-full rounded-none !font-sans text-xs"
+                    />
                 </div>
                 <div>
                     <label class="block text-[11px] font-medium text-surface-700">Category</label>
-                    <InputText v-model="action.result.category" placeholder="Chain, Ring, Bangle" size="small" class="mt-1 w-full rounded-none !font-sans text-slate-900" />
+                    <Select
+                        v-model="action.result.category"
+                        :options="categoryOptions"
+                        editable
+                        placeholder="Select or type category"
+                        size="small"
+                        class="mt-1 w-full rounded-none !font-sans text-xs"
+                    />
                 </div>
                 <div class="col-span-1 min-[430px]:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-surface-200/70 pt-2.5 mt-1">
                     <div>
