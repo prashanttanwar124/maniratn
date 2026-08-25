@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use App\Models\DailyRegister;
 use App\Models\Vault;
 use Carbon\Carbon;
-use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -39,7 +38,6 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
         $user = $request->user();
         $lastClosedRegister = DailyRegister::query()
             ->whereNotNull('closed_at')
@@ -69,10 +67,6 @@ class HandleInertiaRequests extends Middleware
                 'gold_sell' => (float) ($todayRate?->gold_sell ?? 0),
                 'gold_buy' => (float) ($todayRate?->gold_buy ?? 0),
                 'silver_sell' => (float) ($todayRate?->silver_sell ?? 0),
-            ],
-            'quote' => ['message' => trim($message), 'author' => trim($author)],
-            'auth' => [
-                'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'dayStatus' => [
