@@ -104,7 +104,8 @@ class AiCopilotController extends Controller
         ];
 
         try {
-            $response = Http::timeout(25)
+            $response = Http::timeout(40)
+                ->connectTimeout(10)
                 ->withHeaders([
                     'Accept' => 'application/json',
                     'Authorization' => 'Bearer ' . $apiKey,
@@ -124,7 +125,7 @@ class AiCopilotController extends Controller
                 Log::error('AI Hub Error Response: ' . json_encode($response->json()));
 
                 return response()->json([
-                    'reply' => 'Maaf kijiye, AI Server se response nahi mil paya: ' . $err,
+                    'reply' => 'Maaf kijiye, AI Server se response milne me vilamb ho raha hai. Kripya ek baar dobara try karein.',
                     'actions' => [],
                     'audio' => null,
                 ], 200);
@@ -201,7 +202,7 @@ class AiCopilotController extends Controller
         } catch (\Throwable $e) {
             Log::error('ERP AI Copilot Exception: ' . $e->getMessage());
             return response()->json([
-                'reply' => 'AI Server unreachable: ' . $e->getMessage(),
+                'reply' => 'Maaf kijiye, AI Server se connect hone me samasya aa rahi hai. Kripya check karein ki AI server chalu hai.',
                 'actions' => [],
                 'audio' => null,
             ]);
