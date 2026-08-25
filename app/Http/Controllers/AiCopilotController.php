@@ -280,8 +280,8 @@ class AiCopilotController extends Controller
     public function confirmBill(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'customer_name' => 'nullable|string|max:255',
-            'customer_phone' => 'nullable|string|max:50',
+            'customer_name' => 'required|string|max:255',
+            'customer_phone' => 'required|string|max:50',
             'barcode' => 'required|string|max:50',
             'item_name' => 'nullable|string|max:255',
             'weight' => 'nullable|numeric|gt:0',
@@ -347,8 +347,16 @@ class AiCopilotController extends Controller
                 ], 422);
             }
 
-            $customerName = trim((string) ($validated['customer_name'] ?? 'Walk-in Customer'));
-            $customerPhone = trim((string) ($validated['customer_phone'] ?? ''));
+            $customerName = trim((string) $validated['customer_name']);
+            $customerPhone = trim((string) $validated['customer_phone']);
+
+            if (empty($customerName) || empty($customerPhone)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bill confirm karne ke liye Customer Name aur Mobile Number zaroori hai.',
+                ], 422);
+            }
+
             $effectiveRate = floatval($validated['rate_per_gm']);
             $makingType = (string) ($validated['making_type'] ?? 'percentage');
             $makingValue = floatval($validated['making_value'] ?? 12);
@@ -388,34 +396,18 @@ class AiCopilotController extends Controller
                 }
             }
 
-            $customer = null;
-            $isWalkIn = empty($customerName) || in_array(strtolower($customerName), ['walk-in customer', 'walk in customer', 'walk in', 'walkin', 'customer']);
-            if ($isWalkIn && empty($customerPhone)) {
-                $customer = Customer::where('mobile', '0000000000')->orWhere('name', 'Walk-in Customer')->first();
-                if (! $customer) {
-                    $customer = Customer::create([
-                        'name' => 'Walk-in Customer',
-                        'mobile' => '0000000000',
-                        'address' => 'Store Counter Sale',
-                        'city' => 'Showroom',
-                        'vault_token' => Customer::generateVaultToken(),
-                    ]);
-                }
+            $customer = Customer::where('mobile', $customerPhone)->first();
+            if (! $customer) {
+                $customer = Customer::create([
+                    'name' => $customerName,
+                    'mobile' => $customerPhone,
+                    'address' => 'Store Counter Sale',
+                    'city' => 'Local',
+                    'vault_token' => Customer::generateVaultToken(),
+                ]);
             } else {
-                if (! empty($customerPhone)) {
-                    $customer = Customer::where('mobile', $customerPhone)->first();
-                }
-                if (! $customer && ! empty($customerName)) {
-                    $customer = Customer::where('name', 'like', "%{$customerName}%")->first();
-                }
-                if (! $customer) {
-                    $customer = Customer::create([
-                        'name' => ! empty($customerName) ? $customerName : 'Walk-in Customer',
-                        'mobile' => ! empty($customerPhone) ? $customerPhone : ('98' . rand(10000000, 99999999)),
-                        'address' => 'Store Counter Sale',
-                        'city' => 'Local',
-                        'vault_token' => Customer::generateVaultToken(),
-                    ]);
+                if ($customer->name === 'Walk-in Customer' && ! empty($customerName)) {
+                    $customer->update(['name' => $customerName]);
                 }
             }
 

@@ -12,7 +12,7 @@ class CreateBillAction implements AiActionInterface
 {
     public function handle(array $args): array
     {
-        $customerName = trim((string) ($args['customer_name'] ?? 'Walk-in Customer'));
+        $customerName = trim((string) ($args['customer_name'] ?? ''));
         $customerPhone = trim((string) ($args['customer_phone'] ?? ''));
         $barcode = strtoupper(trim((string) ($args['barcode'] ?? '')));
         $customRate = (isset($args['rate_per_gm']) || isset($args['rate'])) ? floatval($args['rate_per_gm'] ?? $args['rate']) : null;
@@ -23,7 +23,16 @@ class CreateBillAction implements AiActionInterface
         $paymentAmount = isset($args['payment_amount']) ? floatval($args['payment_amount']) : null;
         $discountAmount = floatval($args['discount_amount'] ?? 0);
 
-        // 1. Barcode is strictly mandatory for all showroom sales
+        // 1. Customer Name and Mobile Number are strictly mandatory
+        if (empty($customerName) || empty($customerPhone)) {
+            return [
+                'found' => false,
+                'message' => 'Bill banane ke liye Customer Name aur Mobile Number zaroori hai. Kripya customer ka naam aur mobile number batayein.',
+                'status' => 'CUSTOMER_DETAILS_REQUIRED',
+            ];
+        }
+
+        // 2. Barcode is strictly mandatory for all showroom sales
         if (empty($barcode)) {
             return [
                 'found' => false,

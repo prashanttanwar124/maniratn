@@ -318,9 +318,10 @@ test('confirm-bill endpoint reuses master walk-in customer and avoids fake phone
         'is_sold' => false,
     ]);
 
-    // First walk-in bill
+    // First bill for Ramesh
     $res1 = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
-        'customer_name' => 'Walk-in Customer',
+        'customer_name' => 'Ramesh Kumar',
+        'customer_phone' => '9811223344',
         'barcode' => $prod1->barcode,
         'rate_per_gm' => 7400,
         'making_type' => 'flat',
@@ -330,9 +331,10 @@ test('confirm-bill endpoint reuses master walk-in customer and avoids fake phone
 
     $res1->assertOk()->assertJson(['success' => true]);
 
-    // Second walk-in bill
+    // Second bill for same Ramesh (same mobile number)
     $res2 = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
-        'customer_name' => '',
+        'customer_name' => 'Ramesh Kumar',
+        'customer_phone' => '9811223344',
         'barcode' => $prod2->barcode,
         'rate_per_gm' => 6778.4,
         'payment_mode' => 'UPI',
@@ -340,7 +342,7 @@ test('confirm-bill endpoint reuses master walk-in customer and avoids fake phone
 
     $res2->assertOk()->assertJson(['success' => true]);
 
-    // Verify only ONE master Walk-in Customer exists
-    $walkInCount = \App\Models\Customer::where('mobile', '0000000000')->count();
-    expect($walkInCount)->toBe(1);
+    // Verify only ONE customer account exists for this mobile number
+    $customerCount = \App\Models\Customer::where('mobile', '9811223344')->count();
+    expect($customerCount)->toBe(1);
 });

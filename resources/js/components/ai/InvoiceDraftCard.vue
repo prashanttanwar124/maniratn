@@ -34,6 +34,7 @@ const isUnavailable = computed(() => {
         props.action.result?.status === 'PRODUCT_ALREADY_SOLD' ||
         props.action.result?.status === 'BARCODE_NOT_FOUND' ||
         props.action.result?.status === 'BARCODE_REQUIRED' ||
+        props.action.result?.status === 'CUSTOMER_DETAILS_REQUIRED' ||
         !props.action.result?.barcode
     );
 });
@@ -45,6 +46,10 @@ const isDraft = computed(() => {
 const canConfirm = computed(() => {
     return Boolean(
         props.action.result?.barcode &&
+        props.action.result?.customer_name &&
+        props.action.result?.customer_name.trim() !== '' &&
+        props.action.result?.customer_phone &&
+        props.action.result?.customer_phone.trim() !== '' &&
         props.action.result?.item_name &&
         Number(props.action.result?.weight) > 0 &&
         Number(props.action.result?.rate_per_gm) > 0
@@ -143,17 +148,17 @@ const setPurity = (draft: any, purity: string) => {
             <div v-if="isEditing" class="grid grid-cols-1 gap-3 border-l-2 border-[#c08f34] bg-surface-50/50 p-3 text-xs min-[430px]:grid-cols-2">
                 <!-- Customer Name -->
                 <div>
-                    <label class="block text-[11px] font-medium text-surface-700">Customer name <span class="font-normal text-surface-400">(Walk-in allowed)</span></label>
-                    <InputText v-model="action.result.customer_name" size="small" placeholder="Customer Name (or Walk-in)" class="mt-1 w-full rounded-none !font-sans font-semibold text-slate-900" />
+                    <label class="block text-[11px] font-medium text-surface-700">Customer name <span class="text-red-600">*</span></label>
+                    <InputText v-model="action.result.customer_name" size="small" placeholder="Customer Full Name" class="mt-1 w-full rounded-none !font-sans font-semibold text-slate-900" />
                 </div>
 
                 <!-- Mobile Number -->
                 <div>
-                    <label class="block text-[11px] font-medium text-surface-700">Mobile number <span class="font-normal text-surface-400">(optional)</span></label>
+                    <label class="block text-[11px] font-medium text-surface-700">Mobile number <span class="text-red-600">*</span></label>
                     <InputText
                         v-model="action.result.customer_phone"
                         size="small"
-                        placeholder="10-digit mobile (optional)"
+                        placeholder="10-digit mobile number"
                         class="mt-1 w-full rounded-none !font-sans font-mono font-medium text-slate-900"
                     />
                 </div>
@@ -373,7 +378,7 @@ const setPurity = (draft: any, purity: string) => {
             </div>
 
             <!-- Confirmation & Discard Buttons (Sharp rectangular) -->
-            <p v-if="!canConfirm" class="border-l-2 border-red-500 bg-red-50 px-2.5 py-2 text-[10.5px] text-red-700">Valid Barcode, item, weight aur live rate complete karna zaroori hai.</p>
+            <p v-if="!canConfirm" class="border-l-2 border-red-500 bg-red-50 px-2.5 py-2 text-[10.5px] text-red-700">Customer Name, Mobile Number, Valid Barcode aur live rate complete karna zaroori hai.</p>
 
             <div class="-mx-4 -mb-4 flex flex-col-reverse gap-2 border-t border-surface-200 bg-surface-50 px-4 py-3 min-[430px]:flex-row min-[430px]:items-center">
                 <button

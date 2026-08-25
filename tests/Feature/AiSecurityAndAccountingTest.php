@@ -54,7 +54,7 @@ test('authenticated request is blocked by day.open middleware if shop day is not
         ]);
 });
 
-test('confirm-bill rejects requests missing barcode with 422', function () {
+test('confirm-bill rejects requests missing barcode, customer name or phone with 422', function () {
     $user = User::factory()->create();
     $user->givePermissionTo(['manage_invoices', 'manage_vault']);
 
@@ -66,12 +66,11 @@ test('confirm-bill rejects requests missing barcode with 422', function () {
     ]);
 
     $res = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
-        'customer_name' => 'Aman Verma',
         'rate_per_gm' => 7000,
     ]);
 
     $res->assertStatus(422)
-        ->assertJsonValidationErrors(['barcode']);
+        ->assertJsonValidationErrors(['barcode', 'customer_name', 'customer_phone']);
 });
 
 test('confirm-bill updates stock inventory and credits cash vault when authenticated and day is open', function () {
@@ -135,7 +134,7 @@ test('confirm-bill updates stock inventory and credits cash vault when authentic
 
     // Product marked sold
     $product->refresh();
-    expect($product->is_sold)->toBeTrue();
+    expect((bool) $product->is_sold)->toBeTrue();
 
     // Check Cash Vault: Cash vault should increase by invoice cash payment
     $cashVault->refresh();
@@ -177,6 +176,7 @@ test('confirm-bill is idempotent and prevents duplicate billing on message_id re
     // First Call
     $res1 = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
         'customer_name' => 'Pooja Jain',
+        'customer_phone' => '9811122233',
         'barcode' => $product->barcode,
         'rate_per_gm' => 7000,
         'message_id' => 'idempotency_token_999',
@@ -187,6 +187,7 @@ test('confirm-bill is idempotent and prevents duplicate billing on message_id re
     // Second Duplicate Call with same message_id
     $res2 = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
         'customer_name' => 'Pooja Jain',
+        'customer_phone' => '9811122233',
         'barcode' => $product->barcode,
         'rate_per_gm' => 7000,
         'message_id' => 'idempotency_token_999',
@@ -244,6 +245,8 @@ test('confirm-bill with barcode overrides client payload with authoritative stoc
 
     // Client maliciously/erroneously submits 1.0g instead of 15.5g
     $res = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
+        'customer_name' => 'Ramesh Agarwal',
+        'customer_phone' => '9822334455',
         'barcode' => $stockProduct->barcode,
         'item_name' => 'Hacked 1g Chain',
         'weight' => 1.0, // Should be overridden by 15.5g from DB
@@ -296,6 +299,8 @@ test('confirm-bill with silver piece inventory decrements quantity instead of se
     ]);
 
     $res = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
+        'customer_name' => 'Suman Sharma',
+        'customer_phone' => '9833445566',
         'barcode' => $silverCoin->barcode,
         'metal' => 'SILVER',
         'weight' => 10.0,
