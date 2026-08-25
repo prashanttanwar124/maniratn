@@ -88,13 +88,32 @@ class EstimateQuotationAction implements AiActionInterface
             ];
         }
 
-        // Purity resolution & multiplier
-        // 916 / 916 Hallmark / 22K => 91.6% (0.916)
-        // 750 / 750 Hallmark / 18K => 75.0% (0.750)
-        // 585 / 585 Hallmark / 14K => 58.5% (0.585)
-        // 24K / 999 => 100% (1.000)
+        // Detect if this is an old gold / buyback inquiry
+        $isOldGold = ! empty($args['is_old_gold'])
+            || str_contains(strtolower($name), 'old gold')
+            || str_contains(strtolower($name), 'purana sona')
+            || str_contains(strtolower($name), 'old');
+
+        if ($isOldGold) {
+            $makingCharge = 0;
+        }
+
+        // Purity resolution & dynamic multiplier (handles 17K, 20K, 22K, 916, 750, 85%, etc.)
         $purityStr = strtoupper(trim((string) $purity));
-        if (str_contains($purityStr, '24K') || str_contains($purityStr, '999') || str_contains($purityStr, '24')) {
+        $purityMultiplier = 0.916;
+        $resolvedPurity = '22K (916 Hallmark)';
+
+        if (preg_match('/(\d+(?:\.\d+)?)\s*K/i', $purityStr, $m)) {
+            $karat = floatval($m[1]);
+            $purityMultiplier = round($karat / 24, 4);
+            $pct = round(($karat / 24) * 100, 2);
+            $resolvedPurity = "{$karat}K ({$pct}%)";
+        } elseif (preg_match('/(\d+(?:\.\d+)?)\s*%/i', $purityStr, $m)) {
+            $pct = floatval($m[1]);
+            $purityMultiplier = round($pct / 100, 4);
+            $karat = round(($pct / 100) * 24, 1);
+            $resolvedPurity = "{$pct}% ({$karat}K)";
+        } elseif (str_contains($purityStr, '24K') || str_contains($purityStr, '999') || str_contains($purityStr, '24')) {
             $purityMultiplier = 1.0;
             $resolvedPurity = '24K (99.9%)';
         } elseif (str_contains($purityStr, '18K') || str_contains($purityStr, '750') || str_contains($purityStr, '18')) {
@@ -103,46 +122,62 @@ class EstimateQuotationAction implements AiActionInterface
         } elseif (str_contains($purityStr, '14K') || str_contains($purityStr, '585') || str_contains($purityStr, '14')) {
             $purityMultiplier = 0.585;
             $resolvedPurity = '14K (585 Hallmark)';
-        } else {
-            // Default 22K / 916 Hallmark
+        } elseif (str_contains($purityStr, '916') || str_contains($purityStr, '22K') || str_contains($purityStr, '22')) {
             $purityMultiplier = 0.916;
             $resolvedPurity = '22K (916 Hallmark)';
         }
+
+        // Live Rate
+        $baseGoldRate = $isOldGold && ($rateRecord?->gold_buy > 0)
+            ? floatval($rateRecord->gold_buy)
+            : floatval($rateRecord?->gold_sell ?? 0);
 
         if ($customRate !== null && $customRate > 0) {
             $ratePerGm = $customRate;
         } else {
             $ratePerGm = ($metal === 'SILVER')
                 ? floatval($rateRecord->silver_sell)
-                : round(floatval($rateRecord->gold_sell) * $purityMultiplier, 2);
+                : round($baseGoldRate * $purityMultiplier, 2);
         }
 
-        $base24kRate = floatval($rateRecord?->gold_sell ?? 0);
+        $base24kRate = $baseGoldRate;
         $metalValue = round($weight * $ratePerGm, 2);
 
-        // Making Charges calculation
-        if ($makingChargeType === 'flat') {
-            $makingTotal = round($makingCharge, 2);
-            $makingLabel = '(₹' . number_format($makingCharge) . ' Flat)';
-        } elseif ($makingChargeType === 'per_gram') {
-            $makingTotal = round($weight * $makingCharge, 2);
-            $makingLabel = '(@ ₹' . number_format($makingCharge) . '/g)';
+        // Making Charges & GST calculation (Old Gold = 0% making, 0% GST)
+        if ($isOldGold) {
+            $makingTotal = 0;
+            $makingLabel = '(No Making / Old Gold)';
+            $subtotal = $metalValue;
+            $gst = 0;
+            $grandTotal = $metalValue;
         } else {
-            $makingTotal = round($metalValue * ($makingCharge / 100), 2);
-            $makingLabel = "({$makingCharge}%)";
+            if ($makingChargeType === 'flat') {
+                $makingTotal = round($makingCharge, 2);
+                $makingLabel = '(₹' . number_format($makingCharge) . ' Flat)';
+            } elseif ($makingChargeType === 'per_gram') {
+                $makingTotal = round($weight * $makingCharge, 2);
+                $makingLabel = '(@ ₹' . number_format($makingCharge) . '/g)';
+            } else {
+                $makingTotal = round($metalValue * ($makingCharge / 100), 2);
+                $makingLabel = "({$makingCharge}%)";
+            }
+
+            $subtotal = round($metalValue + $makingTotal, 2);
+            $gst = round($subtotal * 0.03, 2);
+            $grandTotal = round($subtotal + $gst, 2);
         }
 
-        $subtotal = round($metalValue + $makingTotal, 2);
-        $gst = round($subtotal * 0.03, 2);
-        $grandTotal = round($subtotal + $gst, 2);
+        $fineGoldWeight = round($weight * $purityMultiplier, 3);
 
         return [
             'found' => true,
+            'is_old_gold' => $isOldGold,
             'barcode' => $itemBarcode,
             'item_name' => $name,
             'category' => $categoryName,
             'weight' => $weight . ' g',
             'weight_numeric' => $weight,
+            'fine_gold_weight' => number_format($fineGoldWeight, 3) . ' g',
             'metal' => $metal,
             'purity' => $resolvedPurity,
             'base_24k_rate' => $base24kRate > 0 ? '₹' . number_format($base24kRate) . '/g' : null,

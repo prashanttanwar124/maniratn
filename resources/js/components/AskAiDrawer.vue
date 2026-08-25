@@ -11,6 +11,7 @@ import CustomerKhataCard from './ai/CustomerKhataCard.vue';
 import DailyRatesCard from './ai/DailyRatesCard.vue';
 import InvoiceDraftCard from './ai/InvoiceDraftCard.vue';
 import InvoiceHistoryCard from './ai/InvoiceHistoryCard.vue';
+import OldGoldCard from './ai/OldGoldCard.vue';
 import ProductDraftCard from './ai/ProductDraftCard.vue';
 import SalesSummaryCard from './ai/SalesSummaryCard.vue';
 import StockCheckCard from './ai/StockCheckCard.vue';
@@ -765,7 +766,13 @@ onMounted(() => {
                                             </div>
                                         </div>
 
-                                        <!-- 7. Estimate Quotation Card (Sleek Compact Light Luxury) -->
+                                        <!-- 7a. Old Gold Valuation / Buyback Card -->
+                                        <OldGoldCard
+                                            v-else-if="action.tool === 'calculate_old_gold' || action.tool === 'old_gold_estimate' || action.result?.is_old_gold"
+                                            :action="action"
+                                        />
+
+                                        <!-- 7b. Estimate Quotation Card (New Finished Jewellery) -->
                                         <div
                                             v-else-if="action.tool === 'calculate_estimate'"
                                             class="my-3 overflow-hidden border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"

@@ -182,3 +182,29 @@ test('calculate_estimate action works with product barcode and 916 purity', func
         ->and($result['item_name'])->toBe('Royal Gold Chain')
         ->and($result['rate_per_gm_numeric'])->toBe(6412.0); // 7000 * 0.916 = 6412
 });
+
+test('calculate_old_gold action accurately evaluates 12g 17k old gold with no making and no gst', function () {
+    $dispatcher = app(AiActionDispatcher::class);
+
+    DailyRate::create([
+        'date' => Carbon::today()->toDateString(),
+        'gold_buy' => 7200,
+        'gold_sell' => 7400,
+        'silver_sell' => 90,
+    ]);
+
+    $result = $dispatcher->dispatch('calculate_old_gold', [
+        'weight' => 12,
+        'purity' => '17k',
+    ]);
+
+    // 17/24 = 0.7083
+    // Rate per gm = 7200 * 0.7083 = 5099.76
+    // Valuation = 12 * 5099.76 = 61197.12
+    expect($result['found'])->toBeTrue()
+        ->and($result['is_old_gold'])->toBeTrue()
+        ->and($result['purity'])->toBe('17K (70.83%)')
+        ->and($result['fine_gold_weight'])->toContain('8.500 g')
+        ->and($result['rate_per_gm_numeric'])->toBe(5099.76)
+        ->and($result['total_estimate_numeric'])->toBe(61197.12);
+});

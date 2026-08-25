@@ -139,7 +139,9 @@ class AiCopilotController extends Controller
                     $realData = ['error' => $e->getMessage(), 'status' => 'FAILED'];
                 }
 
-                if ($tool === 'calculate_estimate' && ! empty($realData['found']) && ! empty($realData['total_estimate'])) {
+                if (($tool === 'calculate_old_gold' || $tool === 'old_gold_estimate' || ! empty($realData['is_old_gold'])) && ! empty($realData['found']) && ! empty($realData['total_estimate'])) {
+                    $aiResult['reply'] = "{$realData['weight']} Purana Sona ({$realData['purity']}) ka buyback valuation {$realData['total_estimate']} ban raha hai (Fine Gold: {$realData['fine_gold_weight']}). Old Gold par koi making charge ya GST nahi lagta.";
+                } elseif ($tool === 'calculate_estimate' && ! empty($realData['found']) && ! empty($realData['total_estimate'])) {
                     $itemDesc = $realData['item_name'] . ($realData['barcode'] ? " ({$realData['barcode']})" : '');
                     $aiResult['reply'] = "{$itemDesc} ({$realData['weight']} {$realData['purity']}) ka total estimate {$realData['total_estimate']} ban raha hai (jispe 3% GST aur {$realData['making_charges']} making charges shamil hain).";
                 } elseif (($tool === 'get_customer_khata' || $tool === 'customer_khata') && ! empty($realData['found'])) {

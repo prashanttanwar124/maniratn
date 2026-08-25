@@ -7,6 +7,7 @@ use App\Services\Ai\Actions\CreateBillAction;
 use App\Services\Ai\Actions\CustomerKhataAction;
 use App\Services\Ai\Actions\DailyRatesAction;
 use App\Services\Ai\Actions\EstimateQuotationAction;
+use App\Services\Ai\Actions\OldGoldEstimateAction;
 use App\Services\Ai\Actions\SalesSummaryAction;
 use App\Services\Ai\Actions\SearchInvoicesAction;
 use App\Services\Ai\Actions\StockCheckAction;
@@ -28,6 +29,8 @@ class AiActionDispatcher
         'add_product' => AddProductAction::class,
         'get_vault_balance' => VaultBalanceAction::class,
         'calculate_estimate' => EstimateQuotationAction::class,
+        'calculate_old_gold' => OldGoldEstimateAction::class,
+        'old_gold_estimate' => OldGoldEstimateAction::class,
         'create_bill' => CreateBillAction::class,
         'create_invoice' => CreateBillAction::class,
         'check_stock' => StockCheckAction::class,
