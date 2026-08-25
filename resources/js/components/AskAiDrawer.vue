@@ -809,52 +809,46 @@ onMounted(() => {
                             v-for="msg in messages"
                             :key="msg.id"
                             v-show="!isStarterConversation"
-                            :class="['flex max-w-full', msg.role === 'user' ? 'ml-auto max-w-[92%]' : 'mr-auto max-w-[98%]']"
+                            :class="['flex max-w-full', msg.role === 'user' ? 'justify-end' : 'justify-start']"
                         >
-                            <div class="min-w-0 flex-1 space-y-2">
-                                <div
-                                    :class="[
-                                        'border px-3.5 py-2.5 text-[12.5px] leading-5 shadow-xs transition-colors',
-                                        msg.role === 'user'
-                                            ? 'border-emerald-200/80 bg-[#f4f8f6] text-surface-900'
-                                            : 'border-surface-200 bg-white text-surface-800',
-                                    ]"
-                                >
-                                    <div class="mb-2 flex items-center justify-between gap-2 border-b pb-1.5" :class="msg.role === 'user' ? 'border-emerald-200/60' : 'border-surface-100'">
-                                        <div class="flex items-center gap-2">
-                                            <span
-                                                :class="[
-                                                    'flex h-5 w-5 items-center justify-center text-[10px] shrink-0',
-                                                    msg.role === 'user' ? 'bg-[#1c3633] text-[#e1b65f]' : 'bg-amber-100 text-[#b07b24]',
-                                                ]"
-                                            >
-                                                <Sparkles v-if="msg.role === 'assistant'" class="h-3 w-3" />
-                                                <UserRound v-else class="h-3 w-3" />
-                                            </span>
-                                            <span :class="['text-[11px] font-bold tracking-wide', msg.role === 'user' ? 'text-[#1c3633]' : 'text-surface-800']">
-                                                {{ msg.role === 'user' ? 'Aap' : 'Karat AI' }}
-                                            </span>
-                                        </div>
-                                        <span class="text-[9.5px] font-mono text-surface-400">{{ msg.timestamp }}</span>
-                                    </div>
+                            <!-- 👤 User Message: Sleek Right-Aligned Emerald Bubble -->
+                            <div v-if="msg.role === 'user'" class="flex max-w-[85%] flex-col items-end">
+                                <div class="border border-[#1c3633] bg-[#1c3633] px-3.5 py-2 text-[12.5px] leading-5 text-white shadow-xs">
+                                    <p class="whitespace-pre-wrap select-text leading-relaxed text-white">{{ msg.content }}</p>
+                                </div>
+                                <span class="mt-1 text-[9.5px] font-mono text-surface-400">{{ msg.timestamp }}</span>
+                            </div>
 
-                                    <p class="whitespace-pre-wrap select-text leading-relaxed font-normal" v-html="formatMarkdown(msg.content, msg.role === 'user')"></p>
-
-                                    <div v-if="msg.role === 'assistant' && msg.audio && isVoiceGloballyEnabled" class="mt-2.5 border-t border-surface-100 pt-2">
-                                        <button
-                                            type="button"
-                                            class="inline-flex items-center gap-1.5 border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10.5px] font-medium text-amber-800 transition-colors hover:bg-amber-100"
-                                            @click="playAudio(msg.audio)"
-                                        >
-                                            <Volume2 class="h-3 w-3" />
-                                            <span>{{ isSpeaking ? 'Voice chal rahi hai' : 'Voice mein sunein' }}</span>
-                                        </button>
-                                    </div>
+                            <!-- ✨ Karat AI Message: Luxury Card with Left Avatar -->
+                            <div v-else class="flex max-w-[96%] items-start gap-2.5">
+                                <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center border border-amber-200 bg-amber-50 text-[#b07b24] shadow-2xs">
+                                    <Sparkles class="h-3.5 w-3.5" />
                                 </div>
 
-                                <!-- ⚡ Dedicated Sub-Component Action Cards -->
-                                <div v-if="msg.actions && msg.actions.length > 0" class="space-y-2">
-                                    <template v-for="(action, idx) in msg.actions" :key="idx">
+                                <div class="min-w-0 flex-1 space-y-2">
+                                    <div class="border border-surface-200 bg-white px-3.5 py-2.5 text-[12.5px] leading-5 text-surface-800 shadow-xs">
+                                        <div class="mb-1.5 flex items-center justify-between gap-2 border-b border-surface-100 pb-1.5">
+                                            <span class="text-[11px] font-bold tracking-wide text-surface-900">Karat AI</span>
+                                            <span class="text-[9.5px] font-mono text-surface-400">{{ msg.timestamp }}</span>
+                                        </div>
+
+                                        <p class="whitespace-pre-wrap select-text leading-relaxed font-normal text-surface-800" v-html="formatMarkdown(msg.content)"></p>
+
+                                        <div v-if="msg.audio && isVoiceGloballyEnabled" class="mt-2.5 border-t border-surface-100 pt-2">
+                                            <button
+                                                type="button"
+                                                class="inline-flex items-center gap-1.5 border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10.5px] font-medium text-amber-800 transition-colors hover:bg-amber-100"
+                                                @click="playAudio(msg.audio)"
+                                            >
+                                                <Volume2 class="h-3 w-3" />
+                                                <span>{{ isSpeaking ? 'Voice chal rahi hai' : 'Voice mein sunein' }}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- ⚡ Dedicated Sub-Component Action Cards -->
+                                    <div v-if="msg.actions && msg.actions.length > 0" class="space-y-2">
+                                        <template v-for="(action, idx) in msg.actions" :key="idx">
                                         <!-- 1. Invoice / Bill Draft Card -->
                                         <InvoiceDraftCard
                                             v-if="action.tool === 'create_bill' || action.tool === 'create_invoice'"
@@ -1023,6 +1017,7 @@ onMounted(() => {
                                             :action="action"
                                         />
                                     </template>
+                                    </div>
                                 </div>
                             </div>
                         </div>
