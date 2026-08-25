@@ -817,8 +817,8 @@ onMounted(() => {
                                         <InvoiceDraftCard
                                             v-if="action.tool === 'create_bill' || action.tool === 'create_invoice'"
                                             :action="action"
-                                            :msg-id="msg.id"
-                                            :is-confirming="Boolean(isConfirming[`bill_${msg.id}`])"
+                                            :msg-id="msg.id + (msg.actions.length > 1 ? ('_' + idx) : '')"
+                                            :is-confirming="Boolean(isConfirming[`bill_${msg.id}_${idx}`] || isConfirming[`bill_${msg.id}`])"
                                             :is-superseded="latestActionableMsgId !== msg.id"
                                             @confirm="confirmBillAction"
                                             @discard="discardAction"
@@ -829,8 +829,8 @@ onMounted(() => {
                                         <ProductDraftCard
                                             v-else-if="action.tool === 'add_product'"
                                             :action="action"
-                                            :msg-id="msg.id"
-                                            :is-confirming="Boolean(isConfirming[`prod_${msg.id}`])"
+                                            :msg-id="msg.id + (msg.actions.length > 1 ? ('_' + idx) : '')"
+                                            :is-confirming="Boolean(isConfirming[`prod_${msg.id}_${idx}`] || isConfirming[`prod_${msg.id}`])"
                                             :is-superseded="latestActionableMsgId !== msg.id"
                                             @confirm="confirmProductAction"
                                             @discard="discardAction"
@@ -840,8 +840,8 @@ onMounted(() => {
                                         <DailyRatesCard
                                             v-else-if="action.tool === 'update_daily_rates'"
                                             :action="action"
-                                            :msg-id="msg.id"
-                                            :is-confirming="Boolean(isConfirming[`rates_${msg.id}`])"
+                                            :msg-id="msg.id + (msg.actions.length > 1 ? ('_' + idx) : '')"
+                                            :is-confirming="Boolean(isConfirming[`rates_${msg.id}_${idx}`] || isConfirming[`rates_${msg.id}`])"
                                             :is-superseded="latestActionableMsgId !== msg.id"
                                             @confirm="confirmRatesAction"
                                             @discard="discardAction"
