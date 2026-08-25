@@ -67,7 +67,7 @@ class SearchInvoicesAction implements AiActionInterface
                 'total_amount' => '₹' . number_format((float) $inv->total_amount, 2),
                 'paid_amount' => '₹' . number_format($paid, 2),
                 'pending_amount' => '₹' . number_format($pending, 2),
-                'status' => $pending <= 0 ? 'COMPLETED' : $inv->status,
+                'status' => $inv->status === 'CANCELLED' ? 'CANCELLED' : ($pending <= 0 ? 'COMPLETED' : 'DUE'),
                 'payment_method' => $inv->payment_method ?? 'CASH',
                 'items_summary' => $itemsList ?: 'Jewellery Items',
                 'print_url' => "/invoices/{$inv->id}/print",

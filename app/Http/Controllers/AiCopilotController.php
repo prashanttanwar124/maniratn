@@ -142,17 +142,19 @@ class AiCopilotController extends Controller
                 if (! empty($realData)) {
                     $aiResult['reply'] = match (true) {
                         $tool === 'calculate_estimate' || $tool === 'calculate_estimation'
-                            => "15g 22K chain ka total estimate ₹" . number_format($realData['grand_total'] ?? 0) . " banega. (Gold Value: ₹" . number_format($realData['metal_value'] ?? 0) . " + Making: ₹" . number_format($realData['making_charges'] ?? 0) . " + GST: ₹" . number_format($realData['gst_3_percent'] ?? 0) . ").",
+                            => "{$realData['weight']} {$realData['purity']} " . ($realData['item_name'] ?? 'item') . " ka total estimate {$realData['total_estimate']} banega. (Metal Value: {$realData['metal_value']} + Making: {$realData['making_charges']} + GST: {$realData['gst_3_percent']}).",
                         $tool === 'calculate_old_gold'
-                            => "Old Gold Valuation: Total ₹" . number_format($realData['final_payout'] ?? 0) . " banega ({$realData['net_weight']}g @ ₹{$realData['effective_rate_per_gm']}/g).",
+                            => "Old Gold Valuation: Total {$realData['total_estimate']} banega ({$realData['weight']} {$realData['purity']} @ {$realData['rate_per_gm']}).",
                         $tool === 'get_stock_info' || $tool === 'stock_check'
-                            => "Showroom me total {$realData['total_count']} items uplabdh hain. Gold: {$realData['gold_items_count']} items ({$realData['gold_total_weight']}g), Silver: {$realData['silver_items_count']} items ({$realData['silver_total_weight']}g).",
+                            => "Showroom me total {$realData['total_items']} items uplabdh hain. Gold: {$realData['gold_count']} items ({$realData['gold_weight']}), Silver: {$realData['silver_count']} items ({$realData['silver_weight']}).",
                         $tool === 'get_customer_khata' || $tool === 'customer_balance_check'
                             => "{$realData['customer_name']} ji ka khata balance: {$realData['status_text']}. Total Purchases: {$realData['total_purchases']}, Total Paid: {$realData['total_paid']}.",
                         $tool === 'get_sales_summary' || $tool === 'daily_sales_report'
                             => "{$realData['period_label']} Showroom Report: Total Revenue {$realData['total_sales']} ({$realData['total_bills']} Bills). Gold: {$realData['gold_weight_sold']}, Silver: {$realData['silver_weight_sold']}.",
                         $tool === 'search_invoices' || $tool === 'get_customer_invoices'
                             => "Maine {$realData['count']} pichle purchase bills dhoond liye hain. Niche card me details aur print receipt check karein.",
+                        $tool === 'get_vault_balance' || $tool === 'vault_balance'
+                            => "Showroom Vault Holdings: Cash: {$realData['cash_in_hand']}, Gold: {$realData['gold_in_vault']}, Silver: {$realData['silver_in_vault']}, Bank: {$realData['bank_balance']}.",
                         default => $aiResult['reply'] ?? 'Done.',
                     };
                 }

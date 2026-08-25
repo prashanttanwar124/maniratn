@@ -22,9 +22,11 @@ class CustomerKhataAction implements AiActionInterface
         $customer = Customer::with(['invoices' => function ($q) {
             $q->where('status', '!=', 'CANCELLED')->with('transactions')->latest('date')->limit(5);
         }])
-        ->where('mobile', $search)
-        ->orWhere('mobile', 'LIKE', "%{$search}%")
-        ->orWhere('name', 'LIKE', "%{$search}%")
+        ->where(function ($q) use ($search) {
+            $q->where('mobile', $search)
+              ->orWhere('mobile', 'LIKE', "%{$search}%")
+              ->orWhere('name', 'LIKE', "%{$search}%");
+        })
         ->first();
 
         if (! $customer) {
