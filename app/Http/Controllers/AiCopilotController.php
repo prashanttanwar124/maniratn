@@ -200,6 +200,7 @@ class AiCopilotController extends Controller
                 'audio' => $aiResult['audio'] ?? null,
                 'cached' => $aiResult['cached'] ?? false,
                 'message_id' => $msgId,
+                'duration' => $aiResult['duration'] ?? null,
             ]);
         } catch (\Throwable $e) {
             Log::error('ERP AI Copilot Exception: ' . $e->getMessage());
