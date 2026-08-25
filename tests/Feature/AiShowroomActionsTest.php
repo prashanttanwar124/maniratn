@@ -273,6 +273,29 @@ test('confirm-product endpoint adds gold and silver products with safe unique ca
         'name' => 'Designer Silver Payal',
         'gross_weight' => 45.0,
     ]);
+
+    // 3. Confirm 2 Gold Chains (multi-quantity stock addition)
+    $multiResponse = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-product', [
+        'name' => 'Gold Chain',
+        'weight' => 4.0,
+        'quantity' => 2,
+        'metal' => 'GOLD',
+        'category' => 'Chains',
+        'making_charge_per_gm' => 450,
+    ]);
+
+    $multiResponse->assertOk()
+        ->assertJson([
+            'success' => true,
+            'quantity' => 2,
+            'name' => 'Gold Chain',
+            'weight' => 4.0,
+            'total_weight' => 8.0,
+        ]);
+
+    expect($multiResponse->json('barcodes'))->toHaveCount(2);
+    $createdCount = Product::where('name', 'Gold Chain')->where('gross_weight', 4.0)->count();
+    expect($createdCount)->toBe(2);
 });
 
 test('confirm-bill endpoint reuses master walk-in customer and avoids fake phone number duplicates', function () {

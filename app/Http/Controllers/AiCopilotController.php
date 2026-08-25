@@ -540,6 +540,7 @@ class AiCopilotController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'weight' => 'required|numeric|gt:0',
+            'quantity' => 'nullable|integer|min:1|max:100',
             'metal' => 'nullable|string|in:GOLD,SILVER,Gold,Silver,gold,silver',
             'purity' => 'nullable|string|max:50',
             'category' => 'nullable|string|max:100',
@@ -552,6 +553,7 @@ class AiCopilotController extends Controller
         return DB::transaction(function () use ($validated) {
             $name = trim($validated['name']);
             $weight = floatval($validated['weight']);
+            $quantity = max(1, intval($validated['quantity'] ?? 1));
             $metal = strtoupper((string) ($validated['metal'] ?? 'GOLD'));
             $purityName = (string) ($validated['purity'] ?? ($metal === 'GOLD' ? '22K (916 Hallmark)' : '92.5 Silver'));
             $catName = trim((string) ($validated['category'] ?? 'General'));
@@ -584,57 +586,82 @@ class AiCopilotController extends Controller
             }
 
             if ($metal === 'SILVER') {
-                $silverProduct = SilverProduct::create([
-                    'name' => $name,
-                    'category_id' => $category->id,
-                    'supplier_id' => $supplier->id,
-                    'pricing_mode' => 'WEIGHT',
-                    'quantity' => 1,
-                    'gross_weight' => $weight,
-                    'net_weight' => $weight,
-                    'making_charge' => $makingCharge,
-                    'is_sold' => false,
-                ]);
+                $createdSilverProducts = [];
+                $barcodes = [];
+                for ($i = 0; $i < $quantity; $i++) {
+                    $silverProduct = SilverProduct::create([
+                        'name' => $name,
+                        'category_id' => $category->id,
+                        'supplier_id' => $supplier->id,
+                        'pricing_mode' => 'WEIGHT',
+                        'quantity' => 1,
+                        'gross_weight' => $weight,
+                        'net_weight' => $weight,
+                        'making_charge' => $makingCharge,
+                        'is_sold' => false,
+                    ]);
+                    $createdSilverProducts[] = $silverProduct;
+                    $barcodes[] = $silverProduct->barcode;
+                }
+
                 return response()->json([
                     'success' => true,
-                    'product_id' => $silverProduct->id,
-                    'barcode' => $silverProduct->barcode,
-                    'name' => $silverProduct->name,
+                    'quantity' => $quantity,
+                    'product_id' => $createdSilverProducts[0]->id,
+                    'product_ids' => array_column($createdSilverProducts, 'id'),
+                    'barcode' => implode(', ', $barcodes),
+                    'barcodes' => $barcodes,
+                    'name' => $name,
                     'metal' => 'SILVER',
                     'purity' => 'Silver (92.5)',
-                    'weight' => floatval($silverProduct->gross_weight),
+                    'weight' => $weight,
+                    'total_weight' => round($weight * $quantity, 3),
                     'category' => $category->name,
                     'making_charge_per_gm' => floatval($makingCharge),
-                    'message' => "Done! Silver item '{$silverProduct->name}' (Barcode: {$silverProduct->barcode}) silver stock me add ho gaya hai.",
+                    'message' => ($quantity > 1)
+                        ? "Done! {$quantity} items '{$name}' (Barcodes: " . implode(', ', $barcodes) . ") silver stock me add ho gaye hain."
+                        : "Done! Silver item '{$name}' (Barcode: {$barcodes[0]}) silver stock me add ho gaya hai.",
                 ]);
             }
 
             $purity = Purity::where('name', 'like', "%{$purityName}%")->first()
                 ?? Purity::firstOrCreate(['name' => $purityName]);
 
-            $product = Product::create([
-                'name' => $name,
-                'category_id' => $category->id,
-                'purity_id' => $purity->id,
-                'supplier_id' => $supplier->id,
-                'gross_weight' => $weight,
-                'net_weight' => $weight,
-                'making_charge' => $makingCharge,
-                'making_charge_type' => $makingType,
-                'is_sold' => false,
-            ]);
+            $createdProducts = [];
+            $barcodes = [];
+            for ($i = 0; $i < $quantity; $i++) {
+                $product = Product::create([
+                    'name' => $name,
+                    'category_id' => $category->id,
+                    'purity_id' => $purity->id,
+                    'supplier_id' => $supplier->id,
+                    'gross_weight' => $weight,
+                    'net_weight' => $weight,
+                    'making_charge' => $makingCharge,
+                    'making_charge_type' => $makingType,
+                    'is_sold' => false,
+                ]);
+                $createdProducts[] = $product;
+                $barcodes[] = $product->barcode;
+            }
 
             return response()->json([
                 'success' => true,
-                'product_id' => $product->id,
-                'barcode' => $product->barcode,
-                'name' => $product->name,
+                'quantity' => $quantity,
+                'product_id' => $createdProducts[0]->id,
+                'product_ids' => array_column($createdProducts, 'id'),
+                'barcode' => implode(', ', $barcodes),
+                'barcodes' => $barcodes,
+                'name' => $name,
                 'metal' => 'GOLD',
                 'purity' => $purity->name,
-                'weight' => floatval($product->gross_weight),
+                'weight' => $weight,
+                'total_weight' => round($weight * $quantity, 3),
                 'category' => $category->name,
                 'making_charge_per_gm' => floatval($makingCharge),
-                'message' => "Done! Product '{$product->name}' (Barcode: {$product->barcode}) showroom stock me add ho gaya hai.",
+                'message' => ($quantity > 1)
+                    ? "Done! {$quantity} items '{$name}' (Barcodes: " . implode(', ', $barcodes) . ") showroom stock me add ho gaye hain."
+                    : "Done! Product '{$name}' (Barcode: {$barcodes[0]}) showroom stock me add ho gaya hai.",
             ]);
         });
     }

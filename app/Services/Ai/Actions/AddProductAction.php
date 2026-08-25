@@ -10,6 +10,7 @@ class AddProductAction implements AiActionInterface
     {
         $name = $args['name'] ?? 'Gold Ornament';
         $weight = floatval($args['weight'] ?? 0);
+        $quantity = max(1, intval($args['quantity'] ?? ($args['qty'] ?? 1)));
         $metal = strtoupper($args['metal'] ?? 'GOLD');
         $purityName = $args['purity'] ?? ($metal === 'GOLD' ? '22K' : '92.5');
         $catName = $args['category'] ?? 'General';
@@ -24,6 +25,8 @@ class AddProductAction implements AiActionInterface
             'metal' => $metal,
             'purity' => $purityName,
             'weight' => $weight,
+            'quantity' => $quantity,
+            'total_weight' => round($weight * $quantity, 3),
             'category' => $catName,
             'making_charge_per_gm' => $makingCharge,
             'status' => 'CONFIRMATION_REQUIRED',

@@ -31,7 +31,11 @@ const isDraft = computed(() => {
 });
 
 const canConfirm = computed(() => {
-    return Boolean(props.action.result?.name && Number(props.action.result?.weight) > 0);
+    return Boolean(
+        props.action.result?.name &&
+        Number(props.action.result?.weight) > 0 &&
+        Number(props.action.result?.quantity || 1) >= 1
+    );
 });
 
 const formatMoney = (val: any) => {
@@ -67,8 +71,12 @@ const formatWeight = (val: any) => {
                         <PackagePlus class="h-3.5 w-3.5" />
                     </span>
                     <div class="flex flex-col justify-center">
-                        <p class="!m-0 !p-0 !text-xs font-semibold tracking-wide text-surface-900 !leading-tight">Add ornament to stock</p>
-                        <p class="!m-0 !p-0 !text-[10px] font-normal text-surface-500 !leading-tight">Details verify karein, phir stock mein save karein</p>
+                        <p class="!m-0 !p-0 !text-xs font-semibold tracking-wide text-surface-900 !leading-tight">
+                            {{ Number(action.result.quantity) > 1 ? `Add ${action.result.quantity} items to stock` : 'Add ornament to stock' }}
+                        </p>
+                        <p class="!m-0 !p-0 !text-[10px] font-normal text-surface-500 !leading-tight">
+                            {{ Number(action.result.quantity) > 1 ? `${action.result.quantity} unique barcodes generate honge` : 'Details verify karein, phir stock mein save karein' }}
+                        </p>
                     </div>
                 </div>
                 <span class="inline-flex w-fit items-center gap-1 border border-amber-300 bg-amber-50 px-2 py-0.5 text-[9.5px] font-semibold tracking-wide text-amber-900 uppercase">
@@ -80,7 +88,10 @@ const formatWeight = (val: any) => {
             <div class="border border-surface-200 bg-[#fafbfa]">
                 <div class="flex items-center justify-between gap-3 border-b border-surface-200 px-3 py-2">
                     <div class="min-w-0">
-                        <p class="truncate text-xs font-semibold text-surface-900">{{ action.result.name || 'Product details required' }}</p>
+                        <p class="truncate text-xs font-semibold text-surface-900">
+                            {{ action.result.name || 'Product details required' }}
+                            <span v-if="Number(action.result.quantity) > 1" class="ml-1 text-[#b07b24] font-bold">({{ action.result.quantity }} Pieces)</span>
+                        </p>
                         <p class="mt-0.5 text-[10px] text-surface-400">AI se nikali hui stock details</p>
                     </div>
                     <button
@@ -93,16 +104,24 @@ const formatWeight = (val: any) => {
                         {{ isEditing ? 'Hide details' : 'Edit details' }}
                     </button>
                 </div>
-                <dl class="grid grid-cols-3 divide-x divide-surface-200 text-center text-[10.5px]">
+                <dl :class="['grid divide-x divide-surface-200 text-center text-[10.5px]', Number(action.result.quantity) > 1 ? 'grid-cols-4' : 'grid-cols-3']">
+                    <div v-if="Number(action.result.quantity) > 1" class="p-2.5 bg-amber-50/50">
+                        <dt class="text-amber-800 font-medium">Quantity</dt>
+                        <dd class="mt-0.5 font-bold text-[#1c3633]">{{ action.result.quantity }} Pcs</dd>
+                    </div>
                     <div class="p-2.5">
-                        <dt class="text-surface-400">Weight</dt>
+                        <dt class="text-surface-400">{{ Number(action.result.quantity) > 1 ? 'Weight (pc)' : 'Weight' }}</dt>
                         <dd class="mt-0.5 font-mono font-semibold text-surface-800">{{ formatWeight(action.result.weight) }}</dd>
+                    </div>
+                    <div v-if="Number(action.result.quantity) > 1" class="p-2.5">
+                        <dt class="text-surface-400">Total weight</dt>
+                        <dd class="mt-0.5 font-mono font-bold text-surface-900">{{ formatWeight(Number(action.result.weight) * Number(action.result.quantity)) }}</dd>
                     </div>
                     <div class="p-2.5">
                         <dt class="text-surface-400">Purity</dt>
                         <dd class="mt-0.5 font-semibold text-surface-800">{{ action.result.purity || '—' }}</dd>
                     </div>
-                    <div class="p-2.5">
+                    <div v-if="Number(action.result.quantity) <= 1" class="p-2.5">
                         <dt class="text-surface-400">Category</dt>
                         <dd class="mt-0.5 truncate font-semibold text-surface-800">{{ action.result.category || '—' }}</dd>
                     </div>
@@ -110,12 +129,16 @@ const formatWeight = (val: any) => {
             </div>
 
             <div v-if="isEditing" class="grid grid-cols-1 gap-3 border-l-2 border-[#c08f34] bg-surface-50/50 p-3 text-xs min-[430px]:grid-cols-2">
-                <div class="min-[430px]:col-span-2">
+                <div>
                     <label class="block text-[11px] font-medium text-surface-700">Ornament name <span class="text-red-600">*</span></label>
                     <InputText v-model="action.result.name" size="small" placeholder="e.g. 22K Gold Chain" class="mt-1 w-full rounded-none !font-sans font-semibold text-slate-900" />
                 </div>
                 <div>
-                    <label class="block text-[11px] font-medium text-surface-700">Net weight (g) <span class="text-red-600">*</span></label>
+                    <label class="block text-[11px] font-medium text-surface-700">Quantity (Pieces) <span class="text-red-600">*</span></label>
+                    <InputText v-model.number="action.result.quantity" type="number" :min="1" size="small" placeholder="1" class="mt-1 w-full rounded-none !font-sans font-bold text-slate-900" />
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-surface-700">Net weight per piece (g) <span class="text-red-600">*</span></label>
                     <div class="relative mt-1">
                         <InputText v-model.number="action.result.weight" type="number" step="0.001" size="small" class="w-full rounded-none pr-7 pl-2.5 !font-sans font-bold text-slate-900" />
                         <span class="absolute top-2 right-2.5 text-[10.5px] font-bold text-slate-400">g</span>
@@ -155,7 +178,7 @@ const formatWeight = (val: any) => {
             </div>
 
             <!-- Action Buttons (Sharp rectangular) -->
-            <p v-if="!canConfirm" class="border-l-2 border-red-500 bg-red-50 px-2.5 py-2 text-[10.5px] text-red-700">Ornament name aur net weight complete karna zaroori hai.</p>
+            <p v-if="!canConfirm" class="border-l-2 border-red-500 bg-red-50 px-2.5 py-2 text-[10.5px] text-red-700">Ornament name, net weight aur valid quantity complete karna zaroori hai.</p>
 
             <div class="-mx-4 -mb-4 flex flex-col-reverse gap-2 border-t border-surface-200 bg-surface-50 px-4 py-3 min-[430px]:flex-row min-[430px]:items-center">
                 <button
@@ -165,7 +188,7 @@ const formatWeight = (val: any) => {
                     class="flex flex-1 items-center justify-center gap-1.5 rounded-none border border-[#1c3633] bg-[#1c3633] py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#254642] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <Check class="h-4 w-4 text-[#c08f34]" />
-                    <span>{{ isConfirming ? 'Stock mein save ho raha hai...' : canConfirm ? 'Confirm and save' : 'Complete required details' }}</span>
+                    <span>{{ isConfirming ? 'Stock mein save ho raha hai...' : canConfirm ? (Number(action.result.quantity) > 1 ? `Confirm & Save ${action.result.quantity} Items` : 'Confirm and save') : 'Complete required details' }}</span>
                 </button>
                 <button
                     type="button"
@@ -185,7 +208,9 @@ const formatWeight = (val: any) => {
                         <PackagePlus class="h-3.5 w-3.5" />
                     </div>
                     <div>
-                        <span class="block text-[10px] font-medium tracking-wide text-emerald-100 uppercase">Saved to stock</span>
+                        <span class="block text-[10px] font-medium tracking-wide text-emerald-100 uppercase">
+                            {{ Number(action.result.quantity) > 1 ? `${action.result.quantity} Items Saved to stock` : 'Saved to stock' }}
+                        </span>
                         <span class="text-xs font-semibold text-white">{{ action.result.name }}</span>
                     </div>
                 </div>
@@ -193,14 +218,20 @@ const formatWeight = (val: any) => {
                     {{ action.result.barcode }}
                 </span>
             </div>
-            <div class="grid grid-cols-1 border border-surface-200 bg-surface-50 text-[11px] text-slate-600 min-[380px]:grid-cols-3 min-[380px]:divide-x min-[380px]:divide-surface-200">
+            <div class="grid grid-cols-1 border border-surface-200 bg-surface-50 text-[11px] text-slate-600 min-[380px]:grid-cols-4 min-[380px]:divide-x min-[380px]:divide-surface-200">
+                <div v-if="Number(action.result.quantity) > 1" class="p-2">
+                    Quantity<br /><strong class="text-slate-900">{{ action.result.quantity }} Pieces</strong>
+                </div>
                 <div class="p-2">
-                    Weight<br /><strong class="font-mono text-slate-900">{{ formatWeight(action.result.weight) }}</strong>
+                    {{ Number(action.result.quantity) > 1 ? 'Weight (pc)' : 'Weight' }}<br /><strong class="font-mono text-slate-900">{{ formatWeight(action.result.weight) }}</strong>
+                </div>
+                <div v-if="Number(action.result.quantity) > 1" class="p-2">
+                    Total weight<br /><strong class="font-mono text-slate-900">{{ formatWeight(action.result.total_weight || Number(action.result.weight) * Number(action.result.quantity)) }}</strong>
                 </div>
                 <div class="border-t border-surface-200 p-2 min-[380px]:border-t-0">
                     Purity<br /><strong class="text-slate-900">{{ action.result.purity }}</strong>
                 </div>
-                <div class="border-t border-surface-200 p-2 min-[380px]:border-t-0">
+                <div v-if="Number(action.result.quantity) <= 1" class="border-t border-surface-200 p-2 min-[380px]:border-t-0">
                     Making<br /><strong class="font-mono text-slate-900">₹{{ formatMoney(action.result.making_charge_per_gm) }}/g</strong>
                 </div>
             </div>
