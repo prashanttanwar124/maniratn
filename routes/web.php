@@ -376,6 +376,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/api/ai/copilot/confirm-rates', [AiCopilotController::class, 'confirmRates'])
         ->middleware(['permission:manage_daily_rates', 'day.open'])
         ->name('ai.copilot.confirm-rates');
+    Route::post('/api/ai/copilot/discard-action', [AiCopilotController::class, 'discardAction'])
+        ->name('ai.copilot.discard-action');
     Route::get('/api/ai/copilot/history', [AiCopilotController::class, 'history'])
         ->name('ai.copilot.history');
     Route::delete('/api/ai/copilot/history', [AiCopilotController::class, 'clearHistory'])

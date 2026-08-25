@@ -225,7 +225,7 @@ const sendMessage = async (customText?: string) => {
         const audioUri = response.data.audio || null;
 
         const assistantMessage: Message = {
-            id: (Date.now() + 1).toString(),
+            id: response.data.message_id ? String(response.data.message_id) : (Date.now() + 1).toString(),
             role: 'assistant',
             content: replyText,
             actions: actions,
@@ -415,13 +415,21 @@ const confirmRatesAction = async (action: ActionItem, msgId: string) => {
     }
 };
 
-const discardAction = (action: ActionItem, msgId?: string) => {
+const discardAction = async (action: ActionItem, msgId?: string) => {
     action.result.is_preview = false;
     action.result.is_discarded = true;
     if (msgId) {
         const targetMsg = messages.value.find((m) => m.id === msgId);
         if (targetMsg) {
             targetMsg.content = 'Action draft discard kar diya gaya.';
+        }
+        try {
+            await axios.post('/api/ai/copilot/discard-action', {
+                message_id: msgId,
+                action_tool: action.tool,
+            });
+        } catch (e) {
+            console.warn('Failed to sync discard to AI Hub:', e);
         }
     }
 };

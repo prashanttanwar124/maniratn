@@ -507,7 +507,7 @@ class AiCopilotController extends Controller
                 LedgerImpactService::applyCashTransaction($paymentTx);
             }
 
-            return response()->json([
+            $billResponseData = [
                 'success' => true,
                 'invoice_id' => $invoice->id,
                 'invoice_number' => $invoiceNumber,
@@ -527,8 +527,22 @@ class AiCopilotController extends Controller
                 'payment_mode' => $paymentMode,
                 'view_url' => "/invoices?view={$invoice->id}",
                 'print_url' => "/invoices/{$invoice->id}/print",
+                'is_preview' => false,
+                'status' => 'INVOICE_GENERATED_REAL_DB',
                 'message' => "Done! Bill #{$invoiceNumber} database me successfully save ho gaya hai.",
-            ]);
+            ];
+
+            if (! empty($validated['message_id'])) {
+                $this->syncActionToAiHub($validated['message_id'], [
+                    [
+                        'tool' => 'create_bill',
+                        'args' => $validated,
+                        'result' => array_merge($validated, $billResponseData),
+                    ],
+                ], "Done! Customer {$customer->name} ke liye Bill #{$invoiceNumber} successfully create ho gaya hai.");
+            }
+
+            return response()->json($billResponseData);
         });
     }
 
@@ -604,7 +618,7 @@ class AiCopilotController extends Controller
                     $barcodes[] = $silverProduct->barcode;
                 }
 
-                return response()->json([
+                $silverResponseData = [
                     'success' => true,
                     'quantity' => $quantity,
                     'product_id' => $createdSilverProducts[0]->id,
@@ -618,10 +632,24 @@ class AiCopilotController extends Controller
                     'total_weight' => round($weight * $quantity, 3),
                     'category' => $category->name,
                     'making_charge_per_gm' => floatval($makingCharge),
+                    'is_preview' => false,
+                    'status' => 'IN_STOCK_REAL_DB',
                     'message' => ($quantity > 1)
                         ? "Done! {$quantity} items '{$name}' (Barcodes: " . implode(', ', $barcodes) . ") silver stock me add ho gaye hain."
                         : "Done! Silver item '{$name}' (Barcode: {$barcodes[0]}) silver stock me add ho gaya hai.",
-                ]);
+                ];
+
+                if (! empty($validated['message_id'])) {
+                    $this->syncActionToAiHub($validated['message_id'], [
+                        [
+                            'tool' => 'add_product',
+                            'args' => $validated,
+                            'result' => array_merge($validated, $silverResponseData),
+                        ],
+                    ], $silverResponseData['message']);
+                }
+
+                return response()->json($silverResponseData);
             }
 
             $purity = Purity::where('name', 'like', "%{$purityName}%")->first()
@@ -645,7 +673,7 @@ class AiCopilotController extends Controller
                 $barcodes[] = $product->barcode;
             }
 
-            return response()->json([
+            $goldResponseData = [
                 'success' => true,
                 'quantity' => $quantity,
                 'product_id' => $createdProducts[0]->id,
@@ -659,10 +687,24 @@ class AiCopilotController extends Controller
                 'total_weight' => round($weight * $quantity, 3),
                 'category' => $category->name,
                 'making_charge_per_gm' => floatval($makingCharge),
+                'is_preview' => false,
+                'status' => 'IN_STOCK_REAL_DB',
                 'message' => ($quantity > 1)
                     ? "Done! {$quantity} items '{$name}' (Barcodes: " . implode(', ', $barcodes) . ") showroom stock me add ho gaye hain."
                     : "Done! Product '{$name}' (Barcode: {$barcodes[0]}) showroom stock me add ho gaya hai.",
-            ]);
+            ];
+
+            if (! empty($validated['message_id'])) {
+                $this->syncActionToAiHub($validated['message_id'], [
+                    [
+                        'tool' => 'add_product',
+                        'args' => $validated,
+                        'result' => array_merge($validated, $goldResponseData),
+                    ],
+                ], $goldResponseData['message']);
+            }
+
+            return response()->json($goldResponseData);
         });
     }
 
@@ -675,6 +717,7 @@ class AiCopilotController extends Controller
             'gold_24k_sell' => 'required|numeric|gt:0',
             'gold_24k_buy' => 'nullable|numeric|gt:0',
             'silver_sell' => 'required|numeric|gt:0',
+            'message_id' => 'nullable|string|max:100',
         ]);
 
         $today = date('Y-m-d');
@@ -691,13 +734,81 @@ class AiCopilotController extends Controller
             ]
         );
 
-        return response()->json([
+        $ratesResponseData = [
             'success' => true,
             'date' => $today,
             'gold_24k_sell' => $goldSell,
             'gold_22k_sell' => round($goldSell * 0.916, 2),
             'silver_sell' => $silverSell,
+            'is_preview' => false,
+            'status' => 'UPDATED_IN_DATABASE',
             'message' => "Done! Aaj ka 24K rate ₹" . number_format($goldSell) . " aur Silver ₹" . number_format($silverSell, 2) . " database me update ho gaya.",
+        ];
+
+        if (! empty($validated['message_id'])) {
+            $this->syncActionToAiHub($validated['message_id'], [
+                [
+                    'tool' => 'update_daily_rates',
+                    'args' => $validated,
+                    'result' => array_merge($validated, $ratesResponseData),
+                ],
+            ], $ratesResponseData['message']);
+        }
+
+        return response()->json($ratesResponseData);
+    }
+
+    /**
+     * Human-in-the-loop: Discard AI Action and sync state to AI Hub
+     */
+    public function discardAction(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'message_id' => 'required|string|max:100',
+            'action_tool' => 'nullable|string|max:100',
         ]);
+
+        $this->syncActionToAiHub($validated['message_id'], [
+            [
+                'tool' => $validated['action_tool'] ?? 'action',
+                'args' => [],
+                'result' => [
+                    'is_preview' => false,
+                    'is_discarded' => true,
+                    'status' => 'DISCARDED',
+                ],
+            ],
+        ], 'Action draft discard kar diya gaya.');
+
+        return response()->json(['success' => true, 'message' => 'Action discarded.']);
+    }
+
+    /**
+     * Sync updated/confirmed/discarded action state to Central AI Hub so history persists across reloads
+     */
+    private function syncActionToAiHub(?string $messageId, array $actions, ?string $reply = null): void
+    {
+        if (empty($messageId)) {
+            return;
+        }
+
+        try {
+            $setting = BusinessSetting::first();
+            $aiHubUrl = rtrim($setting?->ai_hub_url ?: config('services.maniratn_ai.url', 'http://127.0.0.1:8001'), '/');
+            $apiKey = $setting?->ai_api_key ?: config('services.maniratn_ai.key', env('MANIRATN_AI_KEY'));
+
+            Http::timeout(5)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $apiKey,
+                ])
+                ->post("{$aiHubUrl}/api/ai/history/update-action", [
+                    'message_id' => $messageId,
+                    'actions' => $actions,
+                    'reply' => $reply,
+                ]);
+        } catch (\Throwable $syncErr) {
+            Log::warning('Failed to sync updated action state to AI Hub: ' . $syncErr->getMessage());
+        }
     }
 }
