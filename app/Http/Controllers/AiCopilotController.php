@@ -84,6 +84,7 @@ class AiCopilotController extends Controller
                     'making_charge' => floatval($prod->making_charge),
                     'making_charge_type' => $prod->making_charge_type ?? 'percentage',
                     'metal' => ($prod instanceof SilverProduct) ? 'SILVER' : 'GOLD',
+                    'is_sold' => (bool) $prod->is_sold,
                 ];
             }
         }
@@ -140,23 +141,29 @@ class AiCopilotController extends Controller
                 $realData = $this->dispatcher->dispatch($tool, $args);
 
                 if (! empty($realData)) {
-                    $aiResult['reply'] = match (true) {
-                        $tool === 'calculate_estimate' || $tool === 'calculate_estimation'
-                            => "{$realData['weight']} {$realData['purity']} " . ($realData['item_name'] ?? 'item') . " ka total estimate {$realData['total_estimate']} banega. (Metal Value: {$realData['metal_value']} + Making: {$realData['making_charges']} + GST: {$realData['gst_3_percent']}).",
-                        $tool === 'calculate_old_gold'
-                            => "Old Gold Valuation: Total {$realData['total_estimate']} banega ({$realData['weight']} {$realData['purity']} @ {$realData['rate_per_gm']}).",
-                        $tool === 'get_stock_info' || $tool === 'stock_check'
-                            => "Showroom me total {$realData['total_items']} items uplabdh hain. Gold: {$realData['gold_count']} items ({$realData['gold_weight']}), Silver: {$realData['silver_count']} items ({$realData['silver_weight']}).",
-                        $tool === 'get_customer_khata' || $tool === 'customer_balance_check'
-                            => "{$realData['customer_name']} ji ka khata balance: {$realData['status_text']}. Total Purchases: {$realData['total_purchases']}, Total Paid: {$realData['total_paid']}.",
-                        $tool === 'get_sales_summary' || $tool === 'daily_sales_report'
-                            => "{$realData['period_label']} Showroom Report: Total Revenue {$realData['total_sales']} ({$realData['total_bills']} Bills). Gold: {$realData['gold_weight_sold']}, Silver: {$realData['silver_weight_sold']}.",
-                        $tool === 'search_invoices' || $tool === 'get_customer_invoices'
-                            => "Maine {$realData['count']} pichle purchase bills dhoond liye hain. Niche card me details aur print receipt check karein.",
-                        $tool === 'get_vault_balance' || $tool === 'vault_balance'
-                            => "Showroom Vault Holdings: Cash: {$realData['cash_in_hand']}, Gold: {$realData['gold_in_vault']}, Silver: {$realData['silver_in_vault']}, Bank: {$realData['bank_balance']}.",
-                        default => $aiResult['reply'] ?? 'Done.',
-                    };
+                    if (isset($realData['found']) && $realData['found'] === false) {
+                        $aiResult['reply'] = "⚠️ " . ($realData['message'] ?? 'Product inventory me uplabdh nahi hai.');
+                    } else {
+                        $aiResult['reply'] = match (true) {
+                            $tool === 'create_bill' || $tool === 'create_invoice' || $tool === 'create_bill_draft'
+                                => ($realData['customer_name'] ?? 'Customer') . " ji ke liye " . ($realData['item_name'] ?? 'item') . " ka bill draft taiyar hai. Kripya niche details verify karke confirm karein.",
+                            $tool === 'calculate_estimate' || $tool === 'calculate_estimation'
+                                => "{$realData['weight']} {$realData['purity']} " . ($realData['item_name'] ?? 'item') . " ka total estimate {$realData['total_estimate']} banega. (Metal Value: {$realData['metal_value']} + Making: {$realData['making_charges']} + GST: {$realData['gst_3_percent']}).",
+                            $tool === 'calculate_old_gold'
+                                => "Old Gold Valuation: Total {$realData['total_estimate']} banega ({$realData['weight']} {$realData['purity']} @ {$realData['rate_per_gm']}).",
+                            $tool === 'get_stock_info' || $tool === 'stock_check'
+                                => "Showroom me total {$realData['total_items']} items uplabdh hain. Gold: {$realData['gold_count']} items ({$realData['gold_weight']}), Silver: {$realData['silver_count']} items ({$realData['silver_weight']}).",
+                            $tool === 'get_customer_khata' || $tool === 'customer_balance_check'
+                                => "{$realData['customer_name']} ji ka khata balance: {$realData['status_text']}. Total Purchases: {$realData['total_purchases']}, Total Paid: {$realData['total_paid']}.",
+                            $tool === 'get_sales_summary' || $tool === 'daily_sales_report'
+                                => "{$realData['period_label']} Showroom Report: Total Revenue {$realData['total_sales']} ({$realData['total_bills']} Bills). Gold: {$realData['gold_weight_sold']}, Silver: {$realData['silver_weight_sold']}.",
+                            $tool === 'search_invoices' || $tool === 'get_customer_invoices'
+                                => "Maine {$realData['count']} pichle purchase bills dhoond liye hain. Niche card me details aur print receipt check karein.",
+                            $tool === 'get_vault_balance' || $tool === 'vault_balance'
+                                => "Showroom Vault Holdings: Cash: {$realData['cash_in_hand']}, Gold: {$realData['gold_in_vault']}, Silver: {$realData['silver_in_vault']}, Bank: {$realData['bank_balance']}.",
+                            default => $aiResult['reply'] ?? 'Done.',
+                        };
+                    }
                 }
 
                 $executedActions[] = [

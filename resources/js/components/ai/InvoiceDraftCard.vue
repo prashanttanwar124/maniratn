@@ -28,8 +28,12 @@ const isConfirmed = computed(() => {
     return Boolean(props.action.result?.invoice_number && (props.action.result?.status === 'INVOICE_GENERATED_REAL_DB' || props.action.result?.is_preview === false));
 });
 
+const isUnavailable = computed(() => {
+    return Boolean(props.action.result?.found === false || props.action.result?.status === 'PRODUCT_ALREADY_SOLD' || props.action.result?.status === 'BARCODE_NOT_FOUND');
+});
+
 const isDraft = computed(() => {
-    return !isConfirmed.value && !props.action.result?.is_discarded;
+    return !isConfirmed.value && !isUnavailable.value && !props.action.result?.is_discarded;
 });
 
 const canConfirm = computed(() => {
@@ -452,7 +456,33 @@ const setPurity = (draft: any, purity: string) => {
             </div>
         </div>
 
-        <!-- 🚫 3. DISCARDED STATE -->
+        <!-- ⚠️ 3. PRODUCT UNAVAILABLE / ALREADY SOLD -->
+        <div v-else-if="isUnavailable" class="space-y-3 bg-white p-4">
+            <div class="-mx-4 -mt-4 flex items-center justify-between border-b border-rose-800 bg-rose-900 px-4 py-3 text-white">
+                <div class="flex items-center gap-2">
+                    <div class="flex h-7 w-7 items-center justify-center bg-rose-700 font-bold text-white">
+                        <AlertCircle class="h-4 w-4" />
+                    </div>
+                    <div>
+                        <span class="block font-mono text-[10px] font-bold tracking-wide text-rose-200 uppercase">
+                            {{ action.result.status === 'PRODUCT_ALREADY_SOLD' ? 'Item Already Sold' : 'Barcode Not Found' }}
+                        </span>
+                        <span class="text-xs font-semibold text-white">
+                            {{ action.result.barcode ? 'Barcode: ' + action.result.barcode : 'Inventory Item' }}
+                        </span>
+                    </div>
+                </div>
+                <span class="bg-rose-950 px-2 py-0.5 text-[10px] font-bold text-rose-300 uppercase">
+                    Unavailable
+                </span>
+            </div>
+
+            <div class="border-l-4 border-l-rose-600 bg-rose-50 p-3 text-xs text-rose-900 leading-relaxed font-medium">
+                {{ action.result.message || 'Yeh product showroom me available nahi hai ya pehle se bik chuka hai.' }}
+            </div>
+        </div>
+
+        <!-- 🚫 4. DISCARDED STATE -->
         <div v-else class="rounded-none bg-slate-100 p-2 text-center text-xs text-slate-500 italic">Invoice draft was discarded.</div>
     </section>
 </template>
