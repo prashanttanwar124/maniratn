@@ -208,3 +208,92 @@ test('calculate_old_gold action accurately evaluates 12g 17k old gold with no ma
         ->and($result['rate_per_gm_numeric'])->toBe(5099.76)
         ->and($result['total_estimate_numeric'])->toBe(61197.12);
 });
+
+test('confirm-product endpoint adds gold and silver products with safe unique categories', function () {
+    $user = \App\Models\User::factory()->create();
+
+    // 1. Confirm Gold Product
+    $goldResponse = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-product', [
+        'name' => 'Royal Emerald Ring',
+        'weight' => 6.5,
+        'metal' => 'GOLD',
+        'purity' => '22K (916 Hallmark)',
+        'category' => 'Emerald Rings',
+        'making_charge_per_gm' => 500,
+    ]);
+
+    $goldResponse->assertOk()
+        ->assertJson([
+            'success' => true,
+            'name' => 'Royal Emerald Ring',
+            'metal' => 'GOLD',
+        ]);
+
+    $this->assertDatabaseHas('products', [
+        'name' => 'Royal Emerald Ring',
+        'gross_weight' => 6.5,
+    ]);
+
+    // 2. Confirm Silver Product (verifying routing to silver_products table)
+    $silverResponse = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-product', [
+        'name' => 'Designer Silver Payal',
+        'weight' => 45.0,
+        'metal' => 'SILVER',
+        'category' => 'Anklets / Payal',
+        'making_charge_per_gm' => 15,
+    ]);
+
+    $silverResponse->assertOk()
+        ->assertJson([
+            'success' => true,
+            'name' => 'Designer Silver Payal',
+            'metal' => 'SILVER',
+        ]);
+
+    $this->assertDatabaseHas('silver_products', [
+        'name' => 'Designer Silver Payal',
+        'gross_weight' => 45.0,
+    ]);
+});
+
+test('confirm-bill endpoint reuses master walk-in customer and avoids fake phone number duplicates', function () {
+    $user = \App\Models\User::factory()->create();
+
+    DailyRate::create([
+        'date' => Carbon::today()->toDateString(),
+        'gold_sell' => 7400,
+        'silver_sell' => 90,
+    ]);
+
+    // First walk-in bill
+    $res1 = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
+        'customer_name' => 'Walk-in Customer',
+        'item_name' => 'Gold Coin 5g',
+        'weight' => 5.0,
+        'metal' => 'GOLD',
+        'purity' => '24K (99.9%)',
+        'rate_per_gm' => 7400,
+        'making_type' => 'flat',
+        'making_value' => 200,
+        'payment_mode' => 'CASH',
+    ]);
+
+    $res1->assertOk()->assertJson(['success' => true]);
+
+    // Second walk-in bill
+    $res2 = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
+        'customer_name' => '',
+        'item_name' => 'Gold Chain 10g',
+        'weight' => 10.0,
+        'metal' => 'GOLD',
+        'purity' => '22K',
+        'rate_per_gm' => 6778.4,
+        'payment_mode' => 'UPI',
+    ]);
+
+    $res2->assertOk()->assertJson(['success' => true]);
+
+    // Verify only ONE master Walk-in Customer exists
+    $walkInCount = \App\Models\Customer::where('mobile', '0000000000')->count();
+    expect($walkInCount)->toBe(1);
+});

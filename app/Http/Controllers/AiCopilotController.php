@@ -18,6 +18,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -250,174 +251,190 @@ class AiCopilotController extends Controller
      */
     public function confirmBill(Request $request): JsonResponse
     {
-        $customerName = trim((string) $request->input('customer_name', 'Walk-in Customer'));
-        $customerPhone = trim((string) $request->input('customer_phone', ''));
-        $barcode = trim((string) $request->input('barcode', ''));
-        $itemName = trim((string) $request->input('item_name', 'Jewellery Ornament'));
-        $weight = floatval($request->input('weight', 1));
-        $metal = strtoupper((string) $request->input('metal', 'GOLD'));
-        $purityStr = strtoupper((string) $request->input('purity', '22K'));
-        $effectiveRate = floatval($request->input('rate_per_gm', 7000));
-        $makingType = (string) $request->input('making_type', 'percentage');
-        $makingValue = floatval($request->input('making_value', 12));
-        $discountAmount = floatval($request->input('discount_amount', 0));
-        $paymentMode = strtoupper((string) $request->input('payment_mode', 'CASH'));
-        $paymentAmount = $request->has('payment_amount') ? floatval($request->input('payment_amount')) : null;
+        return DB::transaction(function () use ($request) {
+            $customerName = trim((string) $request->input('customer_name', 'Walk-in Customer'));
+            $customerPhone = trim((string) $request->input('customer_phone', ''));
+            $barcode = trim((string) $request->input('barcode', ''));
+            $itemName = trim((string) $request->input('item_name', 'Jewellery Ornament'));
+            $weight = floatval($request->input('weight', 1));
+            $metal = strtoupper((string) $request->input('metal', 'GOLD'));
+            $purityStr = strtoupper((string) $request->input('purity', '22K'));
+            $effectiveRate = floatval($request->input('rate_per_gm', 7000));
+            $makingType = (string) $request->input('making_type', 'percentage');
+            $makingValue = floatval($request->input('making_value', 12));
+            $discountAmount = floatval($request->input('discount_amount', 0));
+            $paymentMode = strtoupper((string) $request->input('payment_mode', 'CASH'));
+            $paymentAmount = $request->has('payment_amount') ? floatval($request->input('payment_amount')) : null;
 
-        $matchedProduct = null;
-        $matchedSilverProduct = null;
+            $matchedProduct = null;
+            $matchedSilverProduct = null;
 
-        if (! empty($barcode)) {
-            $matchedProduct = Product::where('barcode', $barcode)->first();
-            if (! $matchedProduct) {
-                $matchedSilverProduct = SilverProduct::where('barcode', $barcode)->first();
+            if (! empty($barcode)) {
+                $matchedProduct = Product::where('barcode', $barcode)->first();
+                if (! $matchedProduct) {
+                    $matchedSilverProduct = SilverProduct::where('barcode', $barcode)->first();
+                }
+
+                if ($matchedProduct && $matchedProduct->is_sold) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Product '{$matchedProduct->name}' (Barcode: {$barcode}) pehle se hi bik chuka hai!",
+                    ], 422);
+                }
+                if ($matchedSilverProduct && $matchedSilverProduct->is_sold) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Silver item '{$matchedSilverProduct->name}' (Barcode: {$barcode}) pehle se sold hai!",
+                    ], 422);
+                }
             }
 
-            if ($matchedProduct && $matchedProduct->is_sold) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Product '{$matchedProduct->name}' (Barcode: {$barcode}) pehle se hi bik chuka hai!",
-                ], 422);
+            // 1. Resolve Customer (Reuse master Walk-in Customer for counter sales with no custom details)
+            $customer = null;
+            $isWalkIn = empty($customerName) || in_array(strtolower($customerName), ['walk-in customer', 'walk in customer', 'walk in', 'walkin', 'customer']);
+            if ($isWalkIn && empty($customerPhone)) {
+                $customer = Customer::where('mobile', '0000000000')->orWhere('name', 'Walk-in Customer')->first();
+                if (! $customer) {
+                    $customer = Customer::create([
+                        'name' => 'Walk-in Customer',
+                        'mobile' => '0000000000',
+                        'address' => 'Store Counter Sale',
+                        'city' => 'Showroom',
+                        'vault_token' => Customer::generateVaultToken(),
+                    ]);
+                }
+            } else {
+                if (! empty($customerPhone)) {
+                    $customer = Customer::where('mobile', $customerPhone)->first();
+                }
+                if (! $customer && ! empty($customerName)) {
+                    $customer = Customer::where('name', 'like', "%{$customerName}%")->first();
+                }
+                if (! $customer) {
+                    $customer = Customer::create([
+                        'name' => ! empty($customerName) ? $customerName : 'Walk-in Customer',
+                        'mobile' => ! empty($customerPhone) ? $customerPhone : ('98' . rand(10000000, 99999999)),
+                        'address' => 'Store Counter Sale',
+                        'city' => 'Local',
+                        'vault_token' => Customer::generateVaultToken(),
+                    ]);
+                }
             }
-            if ($matchedSilverProduct && $matchedSilverProduct->is_sold) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Silver item '{$matchedSilverProduct->name}' (Barcode: {$barcode}) pehle se sold hai!",
-                ], 422);
-            }
-        }
 
-        // 1. Customer
-        $customer = null;
-        if (! empty($customerPhone)) {
-            $customer = Customer::where('mobile', $customerPhone)->first();
-        }
-        if (! $customer && ! empty($customerName) && strtolower($customerName) !== 'walk-in customer') {
-            $customer = Customer::where('name', 'like', "%{$customerName}%")->first();
-        }
-        if (! $customer) {
-            $customer = Customer::create([
-                'name' => ! empty($customerName) ? $customerName : 'Walk-in Customer',
-                'mobile' => ! empty($customerPhone) ? $customerPhone : ('98' . rand(10000000, 99999999)),
-                'address' => 'Store Counter Sale',
-                'city' => 'Local',
-                'vault_token' => Customer::generateVaultToken(),
+            // 2. Compute financial totals
+            $metalValue = round($weight * $effectiveRate, 2);
+
+            if ($makingType === 'flat') {
+                $makingTotal = round($makingValue, 2);
+                $makingLabel = "(₹{$makingValue} Flat)";
+            } elseif ($makingType === 'per_gram') {
+                $makingTotal = round($weight * $makingValue, 2);
+                $makingLabel = "(@ ₹{$makingValue}/g)";
+            } else {
+                $makingType = 'percentage';
+                $makingTotal = round($metalValue * ($makingValue / 100), 2);
+                $makingLabel = "({$makingValue}%)";
+            }
+
+            $subtotal = max(0, $metalValue + $makingTotal - $discountAmount);
+            $gstAmount = round($subtotal * 0.03, 2);
+            $grandTotal = round($subtotal + $gstAmount, 2);
+
+            $actingUserId = Auth::id() ?: \App\Models\User::first()?->id;
+
+            // 3. Create Invoice
+            $invoice = Invoice::create([
+                'invoice_number' => 'TMP-' . Str::uuid(),
+                'customer_id' => $customer->id,
+                'gold_rate_applied' => $effectiveRate,
+                'silver_rate_applied' => 89.0,
+                'tax_amount' => $gstAmount,
+                'discount_type' => $discountAmount > 0 ? 'fixed' : null,
+                'discount_value' => $discountAmount,
+                'discount_amount' => $discountAmount,
+                'date' => Carbon::today()->format('Y-m-d'),
+                'total_amount' => $grandTotal,
+                'user_id' => $actingUserId,
             ]);
-        }
 
-        // 2. Calculations
-        $metalValue = round($weight * $effectiveRate, 2);
+            $invoiceNumber = sprintf('INV-%s-%06d', now()->format('Ymd'), $invoice->id);
+            $invoice->update(['invoice_number' => $invoiceNumber]);
 
-        if ($makingType === 'flat') {
-            $makingTotal = round($makingValue, 2);
-            $makingLabel = "(₹{$makingValue} Flat)";
-        } elseif ($makingType === 'per_gram') {
-            $makingTotal = round($weight * $makingValue, 2);
-            $makingLabel = "(@ ₹{$makingValue}/g)";
-        } else {
-            $makingType = 'percentage';
-            $makingTotal = round($metalValue * ($makingValue / 100), 2);
-            $makingLabel = "({$makingValue}%)";
-        }
+            // 4. Create InvoiceItem & Mark Stock Sold
+            InvoiceItem::create([
+                'invoice_id' => $invoice->id,
+                'product_id' => $matchedProduct?->id,
+                'silver_product_id' => $matchedSilverProduct?->id,
+                'description' => ! empty($itemName) ? $itemName : "{$purityStr} {$metal} Item ({$weight}g)",
+                'quantity' => 1,
+                'weight' => $weight,
+                'purity' => $purityStr,
+                'rate' => $effectiveRate,
+                'making_charges' => $makingValue,
+                'making_charge_type' => $makingType,
+                'final_price' => $subtotal,
+            ]);
 
-        $subtotal = max(0, $metalValue + $makingTotal - $discountAmount);
-        $gstAmount = round($subtotal * 0.03, 2);
-        $grandTotal = round($subtotal + $gstAmount, 2);
+            if ($matchedProduct) {
+                $matchedProduct->update(['is_sold' => true]);
+            }
+            if ($matchedSilverProduct) {
+                $matchedSilverProduct->update(['is_sold' => true]);
+            }
 
-        $actingUserId = Auth::id() ?: \App\Models\User::first()?->id;
-
-        // 3. Create Invoice
-        $invoice = Invoice::create([
-            'invoice_number' => 'TMP-' . Str::uuid(),
-            'customer_id' => $customer->id,
-            'gold_rate_applied' => $effectiveRate,
-            'silver_rate_applied' => 89.0,
-            'tax_amount' => $gstAmount,
-            'discount_type' => $discountAmount > 0 ? 'fixed' : null,
-            'discount_value' => $discountAmount,
-            'discount_amount' => $discountAmount,
-            'date' => Carbon::today()->format('Y-m-d'),
-            'total_amount' => $grandTotal,
-            'user_id' => $actingUserId,
-        ]);
-
-        $invoiceNumber = sprintf('INV-%s-%06d', now()->format('Ymd'), $invoice->id);
-        $invoice->update(['invoice_number' => $invoiceNumber]);
-
-        // 4. Create InvoiceItem & Mark Stock Sold
-        InvoiceItem::create([
-            'invoice_id' => $invoice->id,
-            'product_id' => $matchedProduct?->id,
-            'silver_product_id' => $matchedSilverProduct?->id,
-            'description' => ! empty($itemName) ? $itemName : "{$purityStr} {$metal} Item ({$weight}g)",
-            'quantity' => 1,
-            'weight' => $weight,
-            'purity' => $purityStr,
-            'rate' => $effectiveRate,
-            'making_charges' => $makingValue,
-            'making_charge_type' => $makingType,
-            'final_price' => $subtotal,
-        ]);
-
-        if ($matchedProduct) {
-            $matchedProduct->update(['is_sold' => true]);
-        }
-        if ($matchedSilverProduct) {
-            $matchedSilverProduct->update(['is_sold' => true]);
-        }
-
-        // 5. Transactions (SALE Debit & PAYMENT Credit)
-        Transaction::create([
-            'transactable_type' => Customer::class,
-            'transactable_id' => $customer->id,
-            'invoice_id' => $invoice->id,
-            'type' => 'SALE',
-            'amount' => $grandTotal,
-            'description' => "Bill #" . $invoiceNumber . ($barcode ? " (Barcode: {$barcode})" : "") . " (Confirmed via Karat AI)",
-            'date' => Carbon::today()->format('Y-m-d'),
-            'user_id' => $actingUserId,
-            'entry_type_code' => 'INVOICE_SALE',
-        ]);
-
-        $actualPaid = ($paymentAmount !== null && $paymentAmount >= 0) ? min($grandTotal, $paymentAmount) : $grandTotal;
-
-        if (in_array($paymentMode, ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'ONLINE', 'BANK']) && $actualPaid > 0) {
+            // 5. Transactions (SALE Debit & PAYMENT Credit)
             Transaction::create([
                 'transactable_type' => Customer::class,
                 'transactable_id' => $customer->id,
                 'invoice_id' => $invoice->id,
-                'type' => 'PAYMENT',
-                'amount' => $actualPaid,
-                'description' => "{$paymentMode} Payment received (Bill #{$invoiceNumber})",
+                'type' => 'SALE',
+                'amount' => $grandTotal,
+                'description' => "Bill #" . $invoiceNumber . ($barcode ? " (Barcode: {$barcode})" : "") . " (Confirmed via Karat AI)",
                 'date' => Carbon::today()->format('Y-m-d'),
                 'user_id' => $actingUserId,
-                'payment_method' => $paymentMode,
-                'entry_type_code' => 'INVOICE_PAYMENT',
+                'entry_type_code' => 'INVOICE_SALE',
             ]);
-        }
 
-        return response()->json([
-            'success' => true,
-            'invoice_id' => $invoice->id,
-            'invoice_number' => $invoiceNumber,
-            'customer_name' => $customer->name,
-            'customer_phone' => $customer->mobile,
-            'item_name' => $itemName,
-            'weight' => round($weight, 3),
-            'metal' => $metal,
-            'purity' => $purityStr,
-            'rate_per_gm' => round($effectiveRate, 2),
-            'metal_value' => round($metalValue, 2),
-            'making_charges' => round($makingTotal, 2),
-            'making_label' => $makingLabel,
-            'subtotal' => round($subtotal, 2),
-            'gst_3_percent' => round($gstAmount, 2),
-            'grand_total' => round($grandTotal, 2),
-            'payment_mode' => $paymentMode,
-            'view_url' => "/invoices/{$invoice->id}",
-            'print_url' => "/invoices/{$invoice->id}/print",
-            'message' => "Done! Bill #{$invoiceNumber} database me successfully save ho gaya hai.",
-        ]);
+            $actualPaid = ($paymentAmount !== null && $paymentAmount >= 0) ? min($grandTotal, $paymentAmount) : $grandTotal;
+
+            if (in_array($paymentMode, ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'ONLINE', 'BANK']) && $actualPaid > 0) {
+                Transaction::create([
+                    'transactable_type' => Customer::class,
+                    'transactable_id' => $customer->id,
+                    'invoice_id' => $invoice->id,
+                    'type' => 'PAYMENT',
+                    'amount' => $actualPaid,
+                    'description' => "{$paymentMode} Payment received (Bill #{$invoiceNumber})",
+                    'date' => Carbon::today()->format('Y-m-d'),
+                    'user_id' => $actingUserId,
+                    'payment_method' => $paymentMode,
+                    'entry_type_code' => 'INVOICE_PAYMENT',
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'invoice_id' => $invoice->id,
+                'invoice_number' => $invoiceNumber,
+                'customer_name' => $customer->name,
+                'customer_phone' => $customer->mobile,
+                'item_name' => $itemName,
+                'weight' => round($weight, 3),
+                'metal' => $metal,
+                'purity' => $purityStr,
+                'rate_per_gm' => round($effectiveRate, 2),
+                'metal_value' => round($metalValue, 2),
+                'making_charges' => round($makingTotal, 2),
+                'making_label' => $makingLabel,
+                'subtotal' => round($subtotal, 2),
+                'gst_3_percent' => round($gstAmount, 2),
+                'grand_total' => round($grandTotal, 2),
+                'payment_mode' => $paymentMode,
+                'view_url' => "/invoices/{$invoice->id}",
+                'print_url' => "/invoices/{$invoice->id}/print",
+                'message' => "Done! Bill #{$invoiceNumber} database me successfully save ho gaya hai.",
+            ]);
+        });
     }
 
     /**
@@ -425,52 +442,99 @@ class AiCopilotController extends Controller
      */
     public function confirmProduct(Request $request): JsonResponse
     {
-        $name = trim((string) $request->input('name', 'Gold Ornament'));
-        $weight = floatval($request->input('weight', 0));
-        $metal = strtoupper((string) $request->input('metal', 'GOLD'));
-        $purityName = (string) $request->input('purity', ($metal === 'GOLD' ? '22K' : '92.5'));
-        $catName = (string) $request->input('category', 'General');
-        $makingCharge = floatval($request->input('making_charge_per_gm', 450));
+        return DB::transaction(function () use ($request) {
+            $name = trim((string) $request->input('name', 'Gold Ornament'));
+            $weight = floatval($request->input('weight', 0));
+            $metal = strtoupper((string) $request->input('metal', 'GOLD'));
+            $purityName = (string) $request->input('purity', ($metal === 'GOLD' ? '22K (916 Hallmark)' : '92.5 Silver'));
+            $catName = trim((string) $request->input('category', 'General'));
+            $makingCharge = floatval($request->input('making_charge_per_gm', 450));
+            $makingType = $request->input('making_charge_type', 'per_gram');
 
-        $category = Category::firstOrCreate(['name' => $catName], [
-            'metal_type' => strtolower($metal),
-        ]);
+            // 1. Resolve Category with safe unique code
+            $category = Category::where('name', 'like', $catName)->first();
+            if (! $category) {
+                $baseCode = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $catName), 0, 4)) ?: 'CAT';
+                $code = $baseCode;
+                $suffix = 1;
+                while (Category::where('code', $code)->exists()) {
+                    $code = substr($baseCode, 0, 3) . $suffix;
+                    $suffix++;
+                }
+                $category = Category::create([
+                    'name' => $catName,
+                    'code' => $code,
+                ]);
+            }
 
-        $purity = Purity::where('name', 'like', "%{$purityName}%")->first()
-            ?? Purity::firstOrCreate(['name' => $purityName], ['purity_percent' => 91.6]);
+            // 2. Resolve Supplier safely with correct schema columns
+            $supplier = Supplier::first();
+            if (! $supplier) {
+                $supplier = Supplier::create([
+                    'company_name' => 'Store Internal Stock',
+                    'contact_person' => 'Store Owner',
+                    'mobile' => '9999999999',
+                    'type' => $metal,
+                ]);
+            }
 
-        $supplier = Supplier::first() ?? Supplier::create([
-            'name' => 'Self Stock',
-            'contact_person' => 'Store Owner',
-            'phone' => '0000000000',
-        ]);
+            // 3. Create Product in appropriate inventory (Gold vs Silver)
+            if ($metal === 'SILVER') {
+                $silverProduct = SilverProduct::create([
+                    'name' => $name,
+                    'category_id' => $category->id,
+                    'supplier_id' => $supplier->id,
+                    'pricing_mode' => 'WEIGHT',
+                    'quantity' => 1,
+                    'gross_weight' => $weight,
+                    'net_weight' => $weight,
+                    'making_charge' => $makingCharge,
+                    'is_sold' => false,
+                ]);
 
-        $makingType = $request->input('making_charge_type', 'per_gram');
+                return response()->json([
+                    'success' => true,
+                    'product_id' => $silverProduct->id,
+                    'barcode' => $silverProduct->barcode,
+                    'name' => $silverProduct->name,
+                    'metal' => 'SILVER',
+                    'purity' => 'Silver (92.5)',
+                    'weight' => floatval($silverProduct->gross_weight),
+                    'category' => $category->name,
+                    'making_charge_per_gm' => floatval($makingCharge),
+                    'message' => "Done! Silver item '{$silverProduct->name}' (Barcode: {$silverProduct->barcode}) silver stock me add ho gaya hai.",
+                ]);
+            }
 
-        $product = Product::create([
-            'name' => $name,
-            'category_id' => $category->id,
-            'purity_id' => $purity->id,
-            'supplier_id' => $supplier->id,
-            'gross_weight' => $weight,
-            'net_weight' => $weight,
-            'making_charge' => $makingCharge,
-            'making_charge_type' => $makingType,
-            'is_sold' => false,
-        ]);
+            // Gold Product
+            $purity = Purity::where('name', 'like', "%{$purityName}%")->first()
+                ?? Purity::firstOrCreate(['name' => $purityName]);
 
-        return response()->json([
-            'success' => true,
-            'product_id' => $product->id,
-            'barcode' => $product->barcode,
-            'name' => $product->name,
-            'metal' => $metal,
-            'purity' => $purity->name,
-            'weight' => floatval($product->gross_weight),
-            'category' => $category->name,
-            'making_charge_per_gm' => floatval($makingCharge),
-            'message' => "Done! Product '{$product->name}' (Barcode: {$product->barcode}) showroom stock me add ho gaya hai.",
-        ]);
+            $product = Product::create([
+                'name' => $name,
+                'category_id' => $category->id,
+                'purity_id' => $purity->id,
+                'supplier_id' => $supplier->id,
+                'gross_weight' => $weight,
+                'net_weight' => $weight,
+                'making_charge' => $makingCharge,
+                'making_charge_type' => $makingType,
+                'is_sold' => false,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'product_id' => $product->id,
+                'barcode' => $product->barcode,
+                'name' => $product->name,
+                'metal' => 'GOLD',
+                'purity' => $purity->name,
+                'weight' => floatval($product->gross_weight),
+                'category' => $category->name,
+                'making_charge_per_gm' => floatval($makingCharge),
+                'message' => "Done! Product '{$product->name}' (Barcode: {$product->barcode}) showroom stock me add ho gaya hai.",
+            ]);
+        });
     }
 
     /**
