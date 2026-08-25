@@ -1081,7 +1081,7 @@ onMounted(() => {
                                 :rows="1"
                                 :disabled="isLoading"
                                 placeholder="Jaise: 12g 22K ring ka estimate banao..."
-                                class="karat-composer !max-h-28 !min-h-10 !w-full !resize-none !border-0 !bg-transparent !px-2 !py-2 text-xs !shadow-none focus:!ring-0"
+                                class="karat-composer !max-h-28 !min-h-10 !w-full !resize-none !border-0 !bg-transparent !px-2 !py-2 text-xs !shadow-none focus:!ring-0 placeholder:!text-slate-400/80 placeholder:!font-light"
                                 aria-label="Ask Karat AI"
                                 @keydown.enter.exact.prevent="sendMessage()"
                             />
@@ -1092,23 +1092,26 @@ onMounted(() => {
                                         type="button"
                                         :disabled="!recognitionSupported || isLoading"
                                         :class="[
-                                            'flex h-8 items-center gap-1.5 border px-2.5 text-[10.5px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40',
-                                            isListening ? 'border-red-600 bg-red-600 text-white' : 'border-surface-200 bg-surface-50 text-surface-600 hover:border-[#c08f34] hover:text-[#1c3633]',
+                                            'flex h-7 items-center gap-1.5 border px-2 text-[10.5px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+                                            isListening
+                                                ? 'border-red-600 bg-red-600 text-white shadow-xs animate-pulse'
+                                                : 'border-surface-200 bg-surface-50 text-surface-700 hover:border-[#c08f34] hover:bg-amber-50',
                                         ]"
-                                        :aria-label="isListening ? 'Stop listening' : 'Start voice input'"
+                                        :title="recognitionSupported ? 'Voice typing shuru karein' : 'Voice is browser me supported nahi hai'"
                                         @click="toggleListening"
                                     >
-                                        <MicOff v-if="isListening" class="h-3.5 w-3.5" />
-                                        <Mic v-else class="h-3.5 w-3.5" />
-                                        <span>{{ isListening ? 'Stop' : 'Boliye' }}</span>
+                                        <Mic v-if="!isListening" class="h-3 w-3 text-[#b07b24]" />
+                                        <MicOff v-else class="h-3 w-3 text-white" />
+                                        <span>{{ isListening ? 'Listening...' : 'Voice Input' }}</span>
                                     </button>
-                                    <span class="hidden text-[9.5px] text-surface-400 sm:inline">Enter send · Shift+Enter new line</span>
+                                    
+                                    <span v-if="isVoiceGloballyEnabled" class="text-[10px] text-surface-400">Aoede Studio</span>
                                 </div>
 
                                 <button
                                     type="button"
                                     :disabled="!inputPrompt.trim() || isLoading"
-                                    class="flex h-8 items-center gap-1.5 border border-[#1c3633] bg-[#1c3633] px-3 text-[10.5px] font-semibold text-white transition-colors hover:bg-[#254642] disabled:cursor-not-allowed disabled:opacity-35"
+                                    class="flex h-7 items-center gap-1 border border-[#1c3633] bg-[#1c3633] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#254642] disabled:cursor-not-allowed disabled:opacity-40"
                                     aria-label="Send message"
                                     @click="sendMessage()"
                                 >
@@ -1140,5 +1143,12 @@ onMounted(() => {
 :deep(.karat-composer:focus-visible) {
     box-shadow: none !important;
     outline: none !important;
+}
+:deep(.karat-composer::placeholder),
+:deep(textarea.karat-composer::placeholder),
+:deep(.karat-composer textarea::placeholder) {
+    color: #94a3b8 !important;
+    opacity: 0.75 !important;
+    font-weight: 300 !important;
 }
 </style>
