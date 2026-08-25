@@ -1114,10 +1114,12 @@ const deleteTask = () => {
         <Dialog v-model:visible="taskDialog" modal :style="dialogStyle">
             <template #header>
                 <div class="flex items-center gap-3">
-                    <span class="flex h-9 w-9 items-center justify-center rounded-md bg-primary-50 text-primary-700"><i :class="isEditing ? 'pi pi-pencil' : 'pi pi-plus'"></i></span>
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary-100 bg-primary-50 text-primary-700">
+                        <i :class="isEditing ? 'pi pi-pencil' : 'pi pi-plus'" class="text-sm"></i>
+                    </div>
                     <div>
-                        <p class="text-base font-semibold text-surface-900">{{ isEditing ? 'Edit task' : 'Create new task' }}</p>
-                        <p class="mt-0.5 text-xs font-normal text-surface-500">{{ isEditing ? 'Update ownership, timing or instructions.' : 'Add clear ownership and a realistic due time.' }}</p>
+                        <h3 class="text-base font-semibold text-surface-900 leading-tight">{{ isEditing ? 'Edit Task' : 'Create New Task' }}</h3>
+                        <p class="mt-0.5 text-xs text-surface-500 leading-tight">{{ isEditing ? 'Update ownership, timing or instructions.' : 'Add clear ownership and a realistic due time.' }}</p>
                     </div>
                 </div>
             </template>
