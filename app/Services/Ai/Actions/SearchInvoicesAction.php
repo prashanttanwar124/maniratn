@@ -88,6 +88,12 @@ class SearchInvoicesAction implements AiActionInterface
                 ->latest('date')->latest('id')->limit(5)->get();
         }
 
+        // Strategy F: If general bill inquiry (e.g. "recent bills", "pichle bills dikhao", "aaj ke bills"), return latest invoices
+        if ($invoices->isEmpty() && empty($cleanPhone) && empty($cleanName) && empty($invoiceNo)) {
+            $invoices = Invoice::with(['customer', 'items', 'transactions'])
+                ->latest('date')->latest('id')->limit(5)->get();
+        }
+
         if ($invoices->isEmpty()) {
             return [
                 'found' => false,
