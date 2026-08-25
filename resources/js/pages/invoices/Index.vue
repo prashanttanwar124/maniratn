@@ -89,7 +89,8 @@ const formatCurrency = (value) =>
     new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'INR',
-        maximumFractionDigits: 0,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
     }).format(value || 0);
 
 const formatDate = (dateString) =>
@@ -737,19 +738,19 @@ const draftFormatCurrency = (val) =>
                                         {{ item.weight > 0 ? Number(item.weight).toFixed(3) + ' g' : (item.quantity ? item.quantity + ' pcs' : '—') }}
                                     </td>
                                     <td class="px-3 py-2 text-surface-600">{{ item.purity || '—' }}</td>
-                                    <td class="px-3 py-2 text-right font-mono text-surface-700">₹{{ Number(item.rate || 0).toLocaleString('en-IN') }}</td>
+                                    <td class="px-3 py-2 text-right font-mono text-surface-700">{{ formatCurrency(item.rate) }}</td>
                                     <td class="px-3 py-2 text-right font-mono text-surface-700">
                                         <span v-if="item.making_charge_type === 'flat' || item.making_charge_type === 'lump_sum'">
-                                            ₹{{ Number(item.making_charges || 0).toLocaleString('en-IN') }}
+                                            {{ formatCurrency(item.making_charges) }}
                                         </span>
                                         <span v-else-if="item.making_charge_type === 'per_gram'">
-                                            ₹{{ Number(item.making_charges || 0).toLocaleString('en-IN') }}/g
+                                            {{ formatCurrency(item.making_charges) }}/g
                                         </span>
                                         <span v-else>
                                             {{ Number(item.making_charges || 0).toFixed(2) }}%
                                         </span>
                                     </td>
-                                    <td class="px-3 py-2 text-right font-mono font-bold text-surface-900">₹{{ Number(item.total_price || 0).toLocaleString('en-IN') }}</td>
+                                    <td class="px-3 py-2 text-right font-mono font-bold text-surface-900">{{ formatCurrency(item.final_price || item.total_price) }}</td>
                                 </tr>
                                 <tr v-if="!viewInvoice.items?.length">
                                     <td colspan="7" class="px-4 py-6 text-center text-xs text-surface-400">No item details recorded for this invoice.</td>
@@ -781,7 +782,7 @@ const draftFormatCurrency = (val) =>
                                     </div>
                                     <p v-if="pmt.description" class="mt-0.5 max-w-[13rem] truncate text-[11px] text-surface-500">{{ pmt.description }}</p>
                                 </div>
-                                <span class="font-mono font-bold text-emerald-700">₹{{ Number(pmt.amount || 0).toLocaleString('en-IN') }}</span>
+                                <span class="font-mono font-bold text-emerald-700">{{ formatCurrency(pmt.amount) }}</span>
                             </div>
                         </div>
                         <div v-else class="py-5 text-center text-xs text-surface-400">

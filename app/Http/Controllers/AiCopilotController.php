@@ -163,11 +163,31 @@ class AiCopilotController extends Controller
                 ];
             }
 
+            // Sync rich executed action results to AI Hub so page reload keeps full card details
+            $msgId = $aiResult['message_id'] ?? ($aiResult['log_id'] ?? null);
+            if (! empty($executedActions) && ! empty($msgId)) {
+                try {
+                    Http::timeout(5)
+                        ->withHeaders([
+                            'Accept' => 'application/json',
+                            'Authorization' => 'Bearer ' . $apiKey,
+                        ])
+                        ->post("{$aiHubUrl}/api/ai/history/update-action", [
+                            'message_id' => $msgId,
+                            'actions' => $executedActions,
+                            'reply' => $aiResult['reply'] ?? null,
+                        ]);
+                } catch (\Throwable $syncErr) {
+                    Log::warning('Failed to sync executed AI actions to AI Hub: ' . $syncErr->getMessage());
+                }
+            }
+
             return response()->json([
                 'reply' => $aiResult['reply'] ?? 'Done.',
                 'actions' => ! empty($executedActions) ? $executedActions : $actions,
                 'audio' => $aiResult['audio'] ?? null,
                 'cached' => $aiResult['cached'] ?? false,
+                'message_id' => $msgId,
             ]);
         } catch (\Throwable $e) {
             Log::error('ERP AI Copilot Exception: ' . $e->getMessage());
