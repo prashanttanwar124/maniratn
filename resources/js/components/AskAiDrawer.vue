@@ -822,7 +822,7 @@ onMounted(() => {
                             v-for="msg in messages"
                             :key="msg.id"
                             v-show="!isStarterConversation"
-                            :class="['flex max-w-full my-2', msg.role === 'user' ? 'justify-end' : 'justify-start']"
+                            :class="['w-full my-2 flex', msg.role === 'user' ? 'justify-end' : 'justify-start']"
                         >
                             <!-- 👤 User Message: Luxury Emerald Curved Speech Bubble with Right Avatar -->
                             <div v-if="msg.role === 'user'" class="ml-auto flex max-w-[88%] items-start justify-end gap-2.5">
@@ -837,14 +837,14 @@ onMounted(() => {
                                 </div>
                             </div>
 
-                            <!-- ✨ Karat AI Message: Luxury Card with Left Avatar -->
-                            <div v-else class="flex max-w-[96%] items-start gap-2.5">
+                            <!-- ✨ Karat AI Message: Luxury Full-Width Card with Left Avatar -->
+                            <div v-else class="w-full flex items-start gap-2.5">
                                 <div class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-amber-300/80 bg-gradient-to-br from-amber-50 to-amber-100/60 text-[#b07b24] shadow-xs">
                                     <Sparkles class="h-4 w-4 text-[#b07b24]" />
                                 </div>
 
-                                <div class="min-w-0 flex-1 space-y-2">
-                                    <div class="rounded-2xl rounded-tl-xs border border-surface-200/90 bg-white px-4 py-3 text-[13px] leading-relaxed text-surface-800 shadow-[0_2px_12px_rgba(15,23,42,0.05)]">
+                                <div class="min-w-0 flex-1 w-full space-y-2">
+                                    <div class="w-full rounded-2xl rounded-tl-xs border border-surface-200/90 bg-white px-4 py-3 text-[13px] leading-relaxed text-surface-800 shadow-[0_2px_12px_rgba(15,23,42,0.05)]">
                                         <div class="mb-2 flex items-center justify-between gap-2 border-b border-surface-100 pb-1.5">
                                             <div class="flex items-center gap-1.5">
                                                 <span class="text-[11.5px] font-bold tracking-wide text-[#1c3633]">Karat AI</span>
@@ -867,8 +867,8 @@ onMounted(() => {
                                         </div>
                                     </div>
 
-                                    <!-- ⚡ Dedicated Sub-Component Action Cards -->
-                                    <div v-if="msg.actions && msg.actions.length > 0" class="space-y-2">
+                                    <!-- ⚡ Dedicated Sub-Component Action Cards (Full 100% Width) -->
+                                    <div v-if="msg.actions && msg.actions.length > 0" class="w-full space-y-2">
                                         <template v-for="(action, idx) in msg.actions" :key="idx">
                                         <!-- 1. Invoice / Bill Draft Card -->
                                         <InvoiceDraftCard
