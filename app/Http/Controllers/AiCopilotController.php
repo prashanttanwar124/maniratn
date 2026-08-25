@@ -515,9 +515,7 @@ class AiCopilotController extends Controller
                     'payment_method' => $paymentMode,
                     'entry_type_code' => 'INVOICE_PAYMENT',
                 ]);
-                if ($paymentMode === 'CASH') {
-                    LedgerImpactService::applyCashTransaction($paymentTx);
-                }
+                LedgerImpactService::applyCashTransaction($paymentTx);
             }
 
             return response()->json([

@@ -111,6 +111,52 @@ test('confirm-bill debits gold vault and applies cash ledger impact when authent
     expect((float) $cashVault->balance)->toBeGreaterThan(100000.0);
 });
 
+test('selling 20g gold item with 16k cash payment debits 20g gold vault and credits 16k cash vault', function () {
+    $user = User::factory()->create();
+    $user->givePermissionTo(['manage_invoices', 'manage_vault']);
+
+    DailyRegister::create([
+        'date' => Carbon::today()->toDateString(),
+        'opening_cash' => 100000,
+        'opening_gold' => 500,
+        'opened_by' => $user->id,
+    ]);
+
+    DailyRate::create([
+        'date' => Carbon::today()->toDateString(),
+        'gold_sell' => 7500,
+        'silver_sell' => 90,
+    ]);
+
+    $goldVault = Vault::where('type', 'GOLD')->first();
+    $cashVault = Vault::where('type', 'CASH')->first();
+
+    // Initial balances: Gold = 1000g, Cash = 100,000 INR
+    $res = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
+        'customer_name' => 'Ramesh Kumar',
+        'customer_phone' => '9811122233',
+        'item_name' => '20g Gold Chain',
+        'weight' => 20.0,
+        'metal' => 'GOLD',
+        'rate_per_gm' => 7000,
+        'making_type' => 'flat',
+        'making_value' => 5000,
+        'payment_mode' => 'CASH',
+        'payment_amount' => 16000, // ₹16,000 paid in cash (partial payment)
+    ]);
+
+    $res->assertOk()->assertJson(['success' => true]);
+
+    $goldVault->refresh();
+    $cashVault->refresh();
+
+    // 1. Gold Vault: 1000.0g - 20.0g = 980.0g
+    expect((float) $goldVault->balance)->toBe(980.0);
+
+    // 2. Cash Vault: 100,000 + 16,000 = 116,000.0
+    expect((float) $cashVault->balance)->toBe(116000.0);
+});
+
 test('confirm-bill is idempotent and prevents duplicate billing on message_id re-submission', function () {
     $user = User::factory()->create();
     $user->givePermissionTo('manage_invoices');
