@@ -11,41 +11,33 @@ class OldGoldEstimateAction implements AiActionInterface
     public function handle(array $args): array
     {
         $weight = floatval($args['weight'] ?? 10);
-        $purityInput = trim((string) ($args['purity'] ?? '22K'));
         $itemName = trim((string) ($args['item_name'] ?? ($args['name'] ?? 'Old Gold / Purana Sona')));
         $deductionPercent = floatval($args['deduction_percent'] ?? ($args['wastage_percent'] ?? 0));
         $customRate = (isset($args['custom_rate']) || isset($args['rate'])) ? floatval($args['custom_rate'] ?? $args['rate']) : null;
 
-        // Dynamic Purity Multiplier
-        $purityStr = strtoupper($purityInput);
-        $purityMultiplier = 0.916;
-        $resolvedPurity = '22K (916 Hallmark)';
+        // Purity multiplier resolved directly from AI or standard math formula
+        $purityMultiplier = floatval($args['purity_multiplier'] ?? ($args['purity_fraction'] ?? 0));
+        $resolvedPurity = trim((string) ($args['purity_label'] ?? ($args['purity'] ?? '22K')));
 
-        if (preg_match('/(\d+(?:\.\d+)?)\s*K/i', $purityStr, $m)) {
-            $karat = floatval($m[1]);
-            $purityMultiplier = round($karat / 24, 4);
-            $pct = round(($karat / 24) * 100, 2);
-            $resolvedPurity = "{$karat}K ({$pct}%)";
-        } elseif (preg_match('/(\d+(?:\.\d+)?)\s*%/i', $purityStr, $m)) {
-            $pct = floatval($m[1]);
-            $purityMultiplier = round($pct / 100, 4);
-            $karat = round(($pct / 100) * 24, 1);
-            $resolvedPurity = "{$pct}% ({$karat}K)";
-        } elseif (str_contains($purityStr, '999') || str_contains($purityStr, '24K') || str_contains($purityStr, '24')) {
-            $purityMultiplier = 1.0;
-            $resolvedPurity = '24K (99.9%)';
-        } elseif (str_contains($purityStr, '916') || str_contains($purityStr, '22K') || str_contains($purityStr, '22')) {
-            $purityMultiplier = 0.916;
-            $resolvedPurity = '22K (916 Hallmark)';
-        } elseif (str_contains($purityStr, '750') || str_contains($purityStr, '18K') || str_contains($purityStr, '18')) {
-            $purityMultiplier = 0.750;
-            $resolvedPurity = '18K (750 Hallmark)';
-        } elseif (str_contains($purityStr, '585') || str_contains($purityStr, '14K') || str_contains($purityStr, '14')) {
-            $purityMultiplier = 0.585;
-            $resolvedPurity = '14K (585 Hallmark)';
+        if ($purityMultiplier <= 0) {
+            if (preg_match('/(\d+(?:\.\d+)?)\s*K/i', $resolvedPurity, $m)) {
+                $karat = floatval($m[1]);
+                $purityMultiplier = round($karat / 24, 4);
+                $resolvedPurity = "{$karat}K (" . round(($karat / 24) * 100, 2) . '%)';
+            } elseif (preg_match('/(\d+(?:\.\d+)?)\s*%/i', $resolvedPurity, $m)) {
+                $pct = floatval($m[1]);
+                $purityMultiplier = round($pct / 100, 4);
+                $resolvedPurity = "{$pct}% (" . round(($pct / 100) * 24, 1) . 'K)';
+            } elseif (preg_match('/\b(999|916|750|585)\b/', $resolvedPurity, $m)) {
+                $purityMultiplier = round(floatval($m[1]) / 1000, 4);
+                $resolvedPurity = "{$m[1]} Hallmark";
+            } else {
+                $purityMultiplier = 0.916;
+                $resolvedPurity = '22K (916 Hallmark)';
+            }
         }
 
-        // Fetch Live Rate
+        // Live Rate
         $rateRecord = DailyRate::whereDate('date', Carbon::today())
             ->where(function ($q) {
                 $q->where('gold_buy', '>', 0)->orWhere('gold_sell', '>', 0);
@@ -67,14 +59,9 @@ class OldGoldEstimateAction implements AiActionInterface
         }
 
         $base24kBuyRate = floatval(($rateRecord?->gold_buy > 0) ? $rateRecord->gold_buy : ($rateRecord?->gold_sell ?? 0));
+        $ratePerGm = ($customRate !== null && $customRate > 0) ? $customRate : round($base24kBuyRate * $purityMultiplier, 2);
 
-        if ($customRate !== null && $customRate > 0) {
-            $ratePerGm = $customRate;
-        } else {
-            $ratePerGm = round($base24kBuyRate * $purityMultiplier, 2);
-        }
-
-        // Calculations
+        // Mathematical Valuation
         $fineGoldWeight = round($weight * $purityMultiplier, 3);
         $grossValuation = round($weight * $ratePerGm, 2);
         $deductionAmount = round($grossValuation * ($deductionPercent / 100), 2);

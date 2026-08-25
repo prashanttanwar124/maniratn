@@ -98,33 +98,26 @@ class EstimateQuotationAction implements AiActionInterface
             $makingCharge = 0;
         }
 
-        // Purity resolution & dynamic multiplier (handles 17K, 20K, 22K, 916, 750, 85%, etc.)
-        $purityStr = strtoupper(trim((string) $purity));
-        $purityMultiplier = 0.916;
-        $resolvedPurity = '22K (916 Hallmark)';
+        // Purity multiplier resolved directly from AI or math formula
+        $purityMultiplier = floatval($args['purity_multiplier'] ?? ($args['purity_fraction'] ?? 0));
+        $resolvedPurity = trim((string) ($args['purity_label'] ?? ($purity ?? '22K (916 Hallmark)')));
 
-        if (preg_match('/(\d+(?:\.\d+)?)\s*K/i', $purityStr, $m)) {
-            $karat = floatval($m[1]);
-            $purityMultiplier = round($karat / 24, 4);
-            $pct = round(($karat / 24) * 100, 2);
-            $resolvedPurity = "{$karat}K ({$pct}%)";
-        } elseif (preg_match('/(\d+(?:\.\d+)?)\s*%/i', $purityStr, $m)) {
-            $pct = floatval($m[1]);
-            $purityMultiplier = round($pct / 100, 4);
-            $karat = round(($pct / 100) * 24, 1);
-            $resolvedPurity = "{$pct}% ({$karat}K)";
-        } elseif (str_contains($purityStr, '24K') || str_contains($purityStr, '999') || str_contains($purityStr, '24')) {
-            $purityMultiplier = 1.0;
-            $resolvedPurity = '24K (99.9%)';
-        } elseif (str_contains($purityStr, '18K') || str_contains($purityStr, '750') || str_contains($purityStr, '18')) {
-            $purityMultiplier = 0.750;
-            $resolvedPurity = '18K (750 Hallmark)';
-        } elseif (str_contains($purityStr, '14K') || str_contains($purityStr, '585') || str_contains($purityStr, '14')) {
-            $purityMultiplier = 0.585;
-            $resolvedPurity = '14K (585 Hallmark)';
-        } elseif (str_contains($purityStr, '916') || str_contains($purityStr, '22K') || str_contains($purityStr, '22')) {
-            $purityMultiplier = 0.916;
-            $resolvedPurity = '22K (916 Hallmark)';
+        if ($purityMultiplier <= 0) {
+            if (preg_match('/(\d+(?:\.\d+)?)\s*K/i', $resolvedPurity, $m)) {
+                $karat = floatval($m[1]);
+                $purityMultiplier = round($karat / 24, 4);
+                $resolvedPurity = "{$karat}K (" . round(($karat / 24) * 100, 2) . '%)';
+            } elseif (preg_match('/(\d+(?:\.\d+)?)\s*%/i', $resolvedPurity, $m)) {
+                $pct = floatval($m[1]);
+                $purityMultiplier = round($pct / 100, 4);
+                $resolvedPurity = "{$pct}% (" . round(($pct / 100) * 24, 1) . 'K)';
+            } elseif (preg_match('/\b(999|916|750|585)\b/', $resolvedPurity, $m)) {
+                $purityMultiplier = round(floatval($m[1]) / 1000, 4);
+                $resolvedPurity = "{$m[1]} Hallmark";
+            } else {
+                $purityMultiplier = 0.916;
+                $resolvedPurity = '22K (916 Hallmark)';
+            }
         }
 
         // Live Rate
