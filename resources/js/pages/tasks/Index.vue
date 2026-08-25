@@ -14,7 +14,6 @@ import DatePicker from 'primevue/datepicker';
 import Dialog from 'primevue/dialog';
 import Drawer from 'primevue/drawer';
 import IconField from 'primevue/iconfield';
-import InputGroup from 'primevue/inputgroup';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
 import ProgressBar from 'primevue/progressbar';
@@ -93,6 +92,51 @@ const taskForm = useForm({
     handover_notes: '',
     related_type: '',
     related_id: null,
+});
+
+const dueDatePickerValue = computed({
+    get: () => {
+        if (!taskForm.due_date) return null;
+
+        const [year, month, day] = taskForm.due_date.split('-').map(Number);
+        if (!year || !month || !day) return null;
+
+        return new Date(year, month - 1, day);
+    },
+    set: (value) => {
+        if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+            taskForm.due_date = '';
+            return;
+        }
+
+        const year = value.getFullYear();
+        const month = String(value.getMonth() + 1).padStart(2, '0');
+        const day = String(value.getDate()).padStart(2, '0');
+        taskForm.due_date = `${year}-${month}-${day}`;
+    },
+});
+
+const dueTimePickerValue = computed({
+    get: () => {
+        if (!taskForm.due_time) return null;
+
+        const [hours, minutes] = taskForm.due_time.split(':').map(Number);
+        if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+
+        const value = new Date();
+        value.setHours(hours, minutes, 0, 0);
+        return value;
+    },
+    set: (value) => {
+        if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+            taskForm.due_time = '';
+            return;
+        }
+
+        const hours = String(value.getHours()).padStart(2, '0');
+        const minutes = String(value.getMinutes()).padStart(2, '0');
+        taskForm.due_time = `${hours}:${minutes}:00`;
+    },
 });
 
 const newChecklistText = ref('');
@@ -543,7 +587,7 @@ const deleteTask = () => {
                             <p class="text-xs font-semibold tracking-wide text-surface-500 uppercase">All tasks</p>
                             <p class="mt-1 text-2xl font-bold text-surface-900">{{ metrics.total || 0 }}</p>
                         </div>
-                        <span class="flex h-9 w-9 items-center justify-center rounded-md bg-surface-100 text-surface-600"><i class="pi pi-layers"></i></span>
+                        <span class="flex h-9 w-9 items-center justify-center rounded-md bg-surface-100 text-surface-600"><i class="pi pi-list-check text-sm"></i></span>
                     </div>
                     <div class="mt-2.5 flex items-center gap-2">
                         <ProgressBar :value="completionRate" :showValue="false" class="!h-1.5 flex-1" />
@@ -1087,15 +1131,17 @@ const deleteTask = () => {
         <!-- ========================================== -->
         <!-- 6. MODAL: CREATE / EDIT TASK               -->
         <!-- ========================================== -->
-        <Dialog v-model:visible="taskDialog" modal :style="dialogStyle">
+        <Dialog v-model:visible="taskDialog" modal :style="dialogStyle" class="task-dialog">
             <template #header>
-                <div class="flex items-center gap-3">
-                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary-100 bg-primary-50 text-primary-700">
-                        <i :class="isEditing ? 'pi pi-pencil' : 'pi pi-plus'" class="text-sm"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-base font-semibold text-surface-900 leading-tight">{{ isEditing ? 'Edit Task' : 'Create New Task' }}</h3>
-                        <p class="mt-0.5 text-xs text-surface-500 leading-tight">{{ isEditing ? 'Update ownership, timing or instructions.' : 'Add clear ownership and a realistic due time.' }}</p>
+                <div class="flex min-w-0 flex-1 items-center gap-3 pr-3">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary-100 bg-primary-50 text-primary-700" aria-hidden="true">
+                        <i :class="isEditing ? 'pi pi-pencil' : 'pi pi-plus'" class="block text-sm leading-none"></i>
+                    </span>
+                    <div class="flex min-w-0 flex-col justify-center gap-0.5">
+                        <span class="block text-base leading-5 font-semibold text-surface-900">{{ isEditing ? 'Edit task' : 'Create new task' }}</span>
+                        <span class="block text-xs leading-4 font-normal text-surface-500">{{
+                            isEditing ? 'Update ownership, timing or instructions.' : 'Add clear ownership and a realistic due time.'
+                        }}</span>
                     </div>
                 </div>
             </template>
@@ -1172,11 +1218,18 @@ const deleteTask = () => {
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                         <label for="task-due-date" class="mb-1.5 block text-sm font-medium text-surface-700"> Due date </label>
-                        <InputText
-                            id="task-due-date"
-                            type="date"
-                            v-model="taskForm.due_date"
-                            class="w-full text-xs"
+                        <DatePicker
+                            v-model="dueDatePickerValue"
+                            inputId="task-due-date"
+                            dateFormat="dd M yy"
+                            placeholder="Select date"
+                            showIcon
+                            iconDisplay="input"
+                            showButtonBar
+                            :manualInput="false"
+                            fluid
+                            class="w-full"
+                            inputClass="!h-10 !w-full !text-sm"
                             :invalid="Boolean(taskForm.errors.due_date)"
                         />
                         <small v-if="taskForm.errors.due_date" class="mt-1 block text-xs text-rose-600">{{ taskForm.errors.due_date }}</small>
@@ -1184,12 +1237,22 @@ const deleteTask = () => {
 
                     <div>
                         <label for="task-due-time" class="mb-1.5 block text-sm font-medium text-surface-700"> Target time </label>
-                        <InputText
-                            id="task-due-time"
-                            type="time"
-                            v-model="taskForm.due_time"
-                            class="w-full text-xs"
+                        <DatePicker
+                            v-model="dueTimePickerValue"
+                            inputId="task-due-time"
+                            timeOnly
+                            hourFormat="12"
+                            placeholder="Select time"
+                            showIcon
+                            icon="pi pi-clock"
+                            iconDisplay="input"
+                            :manualInput="false"
+                            fluid
+                            class="w-full"
+                            inputClass="!h-10 !w-full !text-sm"
+                            :invalid="Boolean(taskForm.errors.due_time)"
                         />
+                        <small v-if="taskForm.errors.due_time" class="mt-1 block text-xs text-rose-600">{{ taskForm.errors.due_time }}</small>
                     </div>
                 </div>
 
@@ -1244,20 +1307,8 @@ const deleteTask = () => {
 
                     <!-- Add New Item Input -->
                     <div class="flex items-center gap-2">
-                        <InputText
-                            v-model="newChecklistText"
-                            @keydown.enter.prevent="addChecklistItem"
-                            placeholder="Add subtask step (Press Enter)..."
-                            class="flex-1 !bg-white text-xs !h-9"
-                        />
-                        <Button
-                            type="button"
-                            label="Add"
-                            icon="pi pi-plus"
-                            size="small"
-                            class="!h-9 !px-3.5 !text-xs !font-semibold shrink-0"
-                            @click="addChecklistItem"
-                        />
+                        <InputText v-model="newChecklistText" @keydown.enter.prevent="addChecklistItem" placeholder="Add subtask step (Press Enter)..." class="!h-9 flex-1 !bg-white text-xs" />
+                        <Button type="button" label="Add" icon="pi pi-plus" size="small" class="!h-9 shrink-0 !px-3.5 !text-xs !font-semibold" @click="addChecklistItem" />
                     </div>
                 </div>
 
