@@ -67,18 +67,32 @@ const defaultPurityOptions = [
 
 const categoryOptions = computed(() => {
     const dbCats = (page.props as any).categories;
-    if (Array.isArray(dbCats) && dbCats.length > 0) {
-        return Array.from(new Set([...dbCats, ...defaultCategoryOptions]));
+    const names: string[] = [];
+    if (Array.isArray(dbCats)) {
+        dbCats.forEach((c: any) => {
+            if (typeof c === 'string' && c.trim()) {
+                names.push(c.trim());
+            } else if (c && typeof c === 'object' && c.name) {
+                names.push(String(c.name).trim());
+            }
+        });
     }
-    return defaultCategoryOptions;
+    return Array.from(new Set([...names, ...defaultCategoryOptions]));
 });
 
 const purityOptions = computed(() => {
     const dbPurities = (page.props as any).purities;
-    if (Array.isArray(dbPurities) && dbPurities.length > 0) {
-        return Array.from(new Set([...dbPurities, ...defaultPurityOptions]));
+    const names: string[] = [];
+    if (Array.isArray(dbPurities)) {
+        dbPurities.forEach((p: any) => {
+            if (typeof p === 'string' && p.trim()) {
+                names.push(p.trim());
+            } else if (p && typeof p === 'object' && p.name) {
+                names.push(String(p.name).trim());
+            }
+        });
     }
-    return defaultPurityOptions;
+    return Array.from(new Set([...names, ...defaultPurityOptions]));
 });
 
 if (!props.action.result) {
