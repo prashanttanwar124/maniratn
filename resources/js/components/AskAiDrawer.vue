@@ -204,6 +204,17 @@ const sendMessage = async (customText?: string) => {
     isLoading.value = true;
     scrollToBottom();
 
+    // Automatically mark all previous unconfirmed drafts as superseded
+    messages.value.forEach((m) => {
+        if (m.role === 'assistant' && m.actions) {
+            m.actions.forEach((a) => {
+                if (a.result && a.result.is_preview === true && !a.result.is_discarded && a.result.status !== 'INVOICE_GENERATED_REAL_DB' && a.result.status !== 'IN_STOCK_REAL_DB' && a.result.status !== 'UPDATED_IN_DATABASE') {
+                    a.result.is_superseded = true;
+                }
+            });
+        }
+    });
+
     const historyPayload = messages.value
         .slice(-8, -1)
         .filter((m) => m.content && m.content.trim() !== '')
@@ -253,6 +264,29 @@ const sendMessage = async (customText?: string) => {
 };
 
 const isConfirming = ref<Record<string, boolean>>({});
+
+const latestActionableMsgId = computed(() => {
+    for (let i = messages.value.length - 1; i >= 0; i--) {
+        const m = messages.value[i];
+        if (m.role === 'assistant' && m.actions && m.actions.length > 0) {
+            const hasPendingDraft = m.actions.some(
+                (a) =>
+                    a.result &&
+                    a.result.is_preview === true &&
+                    !a.result.is_discarded &&
+                    !a.result.is_superseded &&
+                    a.result.status !== 'INVOICE_GENERATED_REAL_DB' &&
+                    a.result.status !== 'IN_STOCK_REAL_DB' &&
+                    a.result.status !== 'UPDATED_IN_DATABASE' &&
+                    a.result.status !== 'SUPERSEDED'
+            );
+            if (hasPendingDraft) {
+                return m.id;
+            }
+        }
+    }
+    return null;
+});
 
 interface ToastNotice {
     id: string;
@@ -785,6 +819,7 @@ onMounted(() => {
                                             :action="action"
                                             :msg-id="msg.id"
                                             :is-confirming="Boolean(isConfirming[`bill_${msg.id}`])"
+                                            :is-superseded="latestActionableMsgId !== msg.id"
                                             @confirm="confirmBillAction"
                                             @discard="discardAction"
                                             @recalculate="calculateLiveBill"
@@ -796,6 +831,7 @@ onMounted(() => {
                                             :action="action"
                                             :msg-id="msg.id"
                                             :is-confirming="Boolean(isConfirming[`prod_${msg.id}`])"
+                                            :is-superseded="latestActionableMsgId !== msg.id"
                                             @confirm="confirmProductAction"
                                             @discard="discardAction"
                                         />
@@ -806,6 +842,7 @@ onMounted(() => {
                                             :action="action"
                                             :msg-id="msg.id"
                                             :is-confirming="Boolean(isConfirming[`rates_${msg.id}`])"
+                                            :is-superseded="latestActionableMsgId !== msg.id"
                                             @confirm="confirmRatesAction"
                                             @discard="discardAction"
                                         />
