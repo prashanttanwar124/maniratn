@@ -478,49 +478,44 @@ const deleteTask = () => {
         <Toast />
 
         <div class="space-y-5">
-            <section class="border border-surface-200 bg-white p-4 sm:p-6">
-                <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                    <div class="flex min-w-0 items-center gap-3.5">
-                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-primary-100 bg-primary-50 text-primary-700">
-                            <i class="pi pi-check-square text-lg"></i>
+            <section class="border-b border-surface-200 bg-white px-5 py-5">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <h1 class="text-2xl font-semibold tracking-tight text-surface-900">Showroom & Workshop Tasks</h1>
+                            <Tag value="Tasks" severity="secondary" />
+                            <Tag :value="isDayOpen ? 'Day Open' : 'Day Closed'" :severity="isDayOpen ? 'success' : 'danger'" />
                         </div>
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2.5">
-                                <h1 class="text-xl font-bold tracking-tight text-surface-900 sm:text-2xl leading-none">Showroom & Workshop Tasks</h1>
-                                <Tag :value="isDayOpen ? 'Day open' : 'Day closed'" :severity="isDayOpen ? 'success' : 'danger'" class="!text-[11px] !py-0.5 !px-2 leading-none" />
-                            </div>
-                            <p class="mt-1.5 max-w-2xl text-xs sm:text-sm text-surface-500">Assign work, follow daily progress, and keep showroom handovers in one clear view.</p>
-                        </div>
+                        <p class="mt-1 text-sm text-surface-500">Track customer follow-ups, karigar orders, stock count audits and counter duties.</p>
                     </div>
 
-                    <div class="flex w-full shrink-0 items-center gap-2 sm:w-auto">
-                        <div class="inline-flex flex-1 rounded-md border border-surface-200 bg-surface-50 p-1 sm:flex-none" role="group" aria-label="Task view">
+                    <div class="flex shrink-0 flex-wrap items-center gap-2">
+                        <div class="inline-flex rounded border border-surface-200 bg-surface-50 p-0.5" role="group" aria-label="Task view">
                             <button
                                 type="button"
                                 @click="viewMode = 'kanban'"
-                                :aria-pressed="viewMode === 'kanban'"
                                 :class="[
-                                    'inline-flex flex-1 items-center justify-center gap-2 rounded px-3 py-2 text-xs font-semibold transition-colors sm:flex-none',
-                                    viewMode === 'kanban' ? 'bg-white text-surface-900 shadow-sm' : 'text-surface-600 hover:text-surface-900',
+                                    'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors',
+                                    viewMode === 'kanban' ? 'bg-white text-surface-900 shadow-xs' : 'text-surface-600 hover:text-surface-900',
                                 ]"
                             >
                                 <i class="pi pi-th-large text-xs"></i>
-                                Board
+                                <span>Board</span>
                             </button>
                             <button
                                 type="button"
                                 @click="viewMode = 'table'"
-                                :aria-pressed="viewMode === 'table'"
                                 :class="[
-                                    'inline-flex flex-1 items-center justify-center gap-2 rounded px-3 py-2 text-xs font-semibold transition-colors sm:flex-none',
-                                    viewMode === 'table' ? 'bg-white text-surface-900 shadow-sm' : 'text-surface-600 hover:text-surface-900',
+                                    'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors',
+                                    viewMode === 'table' ? 'bg-white text-surface-900 shadow-xs' : 'text-surface-600 hover:text-surface-900',
                                 ]"
                             >
                                 <i class="pi pi-list text-xs"></i>
-                                List
+                                <span>List</span>
                             </button>
                         </div>
-                        <Button label="New task" icon="pi pi-plus" class="shrink-0" @click="openCreateDialog" />
+
+                        <Button label="New Task" icon="pi pi-plus" @click="openCreateDialog" />
                     </div>
                 </div>
             </section>
@@ -770,37 +765,23 @@ const deleteTask = () => {
                 class="grid snap-x snap-mandatory auto-cols-[minmax(300px,calc(100vw_-_3rem))] grid-flow-col gap-4 overflow-x-auto pb-3 sm:auto-cols-[minmax(320px,1fr)] xl:grid-flow-row xl:grid-cols-3 xl:overflow-visible"
             >
                 <section v-for="column in kanbanColumns" :key="column.status" class="min-h-[460px] snap-start border border-surface-200 bg-surface-50/70 p-3 sm:p-4">
-                    <header class="mb-3 border-b border-surface-200 pb-3">
-                        <div class="flex items-center justify-between gap-2">
-                            <div class="flex items-center gap-2">
-                                <span class="h-2 w-2 shrink-0 rounded-full" :class="column.dotClass"></span>
-                                <h2 class="text-sm font-bold tracking-tight text-surface-900 leading-none">{{ column.title }}</h2>
-                                <span
-                                    :class="[
-                                        'inline-flex h-4.5 min-w-[18px] items-center justify-center rounded px-1.5 text-[10px] font-bold leading-none',
-                                        column.status === 'TODO'
-                                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                            : column.status === 'IN_PROGRESS'
-                                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-                                    ]"
-                                >
-                                    {{ tasksForStatus(column.status).length }}
-                                </span>
-                            </div>
-                            <Button
-                                v-if="column.status === 'TODO'"
-                                icon="pi pi-plus"
-                                text
-                                rounded
-                                size="small"
-                                aria-label="Add task"
-                                v-tooltip.top="'Add task'"
-                                class="!h-6 !w-6 !p-0 text-surface-400 hover:text-surface-900 hover:bg-surface-200"
-                                @click="openCreateDialog"
-                            />
+                    <header class="mb-3 flex items-center justify-between border-b border-surface-200 pb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 shrink-0 rounded-full" :class="column.dotClass"></span>
+                            <h2 class="text-sm font-semibold text-surface-900">{{ column.title }}</h2>
+                            <Tag :value="tasksForStatus(column.status).length" :severity="column.badgeSeverity" class="!text-[10px]" />
                         </div>
-                        <p class="mt-1 pl-4 text-[11px] text-surface-400 leading-none">{{ column.description }}</p>
+                        <Button
+                            v-if="column.status === 'TODO'"
+                            icon="pi pi-plus"
+                            text
+                            rounded
+                            size="small"
+                            aria-label="Add task"
+                            v-tooltip.top="'Add task'"
+                            class="!h-7 !w-7 !p-0 text-surface-500 hover:text-surface-900"
+                            @click="openCreateDialog"
+                        />
                     </header>
 
                     <div class="flex flex-col gap-3">
