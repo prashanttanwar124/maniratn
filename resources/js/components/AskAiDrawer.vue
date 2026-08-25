@@ -87,6 +87,34 @@ const applyQuickPrompt = (prompt: string) => {
     });
 };
 
+const formatMarkdown = (text: string | null | undefined, isUser = false): string => {
+    if (!text) return '';
+    // 1. Escape HTML special characters to prevent XSS
+    let escaped = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    const boldClass = isUser ? 'font-bold text-amber-200' : 'font-bold text-surface-900';
+    const codeClass = isUser
+        ? 'bg-emerald-950/60 border border-emerald-600/50 font-mono text-[11.5px] px-1.5 py-0.5 text-amber-200 font-semibold'
+        : 'bg-amber-50 border border-amber-200/70 font-mono text-[11.5px] px-1.5 py-0.5 text-[#1c3633] font-semibold';
+
+    // 2. Bold: **text** or __text__
+    escaped = escaped.replace(/\*\*(.*?)\*\*/g, `<strong class="${boldClass}">$1</strong>`);
+    escaped = escaped.replace(/__(.*?)__/g, `<strong class="${boldClass}">$1</strong>`);
+
+    // 3. Italic: *text* or _text_
+    escaped = escaped.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em class="italic opacity-90">$1</em>');
+
+    // 4. Inline code: `code`
+    escaped = escaped.replace(/`([^`]+)`/g, `<code class="${codeClass}">$1</code>`);
+
+    return escaped;
+};
+
 let recognition: any = null;
 let currentAudio: HTMLAudioElement | null = null;
 
@@ -808,7 +836,7 @@ onMounted(() => {
                                         </span>
                                         <span :class="['text-[9.5px]', msg.role === 'user' ? 'text-white/50' : 'text-surface-400']">{{ msg.timestamp }}</span>
                                     </div>
-                                    <p class="whitespace-pre-wrap select-text">{{ msg.content }}</p>
+                                    <p class="whitespace-pre-wrap select-text leading-relaxed" v-html="formatMarkdown(msg.content, msg.role === 'user')"></p>
 
                                     <div v-if="msg.role === 'assistant' && msg.audio && isVoiceGloballyEnabled" class="mt-2.5 border-t border-surface-100 pt-2">
                                         <button
