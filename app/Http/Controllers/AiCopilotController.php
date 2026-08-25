@@ -471,22 +471,25 @@ class AiCopilotController extends Controller
                 }
             }
 
-            if ($metal === 'GOLD' && $weight > 0) {
-                VaultService::debit(VaultType::GOLD, $weight, [
-                    'source_type' => Invoice::class,
-                    'source_id' => $invoice->id,
-                    'reference' => $invoiceNumber,
-                    'user_id' => $actingUserId,
-                    'note' => "Gold sold in {$invoiceNumber} via Karat AI",
-                ]);
-            } elseif ($metal === 'SILVER' && $weight > 0) {
-                VaultService::debit(VaultType::SILVER, $weight, [
-                    'source_type' => Invoice::class,
-                    'source_id' => $invoice->id,
-                    'reference' => $invoiceNumber,
-                    'user_id' => $actingUserId,
-                    'note' => "Silver sold in {$invoiceNumber} via Karat AI",
-                ]);
+            // If selling loose/non-barcoded metal, debit physical raw metal vault
+            if (! $matchedProduct && ! $matchedSilverProduct) {
+                if ($metal === 'GOLD' && $weight > 0) {
+                    VaultService::debit(VaultType::GOLD, $weight, [
+                        'source_type' => Invoice::class,
+                        'source_id' => $invoice->id,
+                        'reference' => $invoiceNumber,
+                        'user_id' => $actingUserId,
+                        'note' => "Gold sold in {$invoiceNumber} via Karat AI",
+                    ]);
+                } elseif ($metal === 'SILVER' && $weight > 0) {
+                    VaultService::debit(VaultType::SILVER, $weight, [
+                        'source_type' => Invoice::class,
+                        'source_id' => $invoice->id,
+                        'reference' => $invoiceNumber,
+                        'user_id' => $actingUserId,
+                        'note' => "Silver sold in {$invoiceNumber} via Karat AI",
+                    ]);
+                }
             }
 
             Transaction::create([
