@@ -30,19 +30,19 @@ const statusClass = (status: string) => {
         class="my-3 overflow-hidden border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_5px_18px_rgba(15,23,42,0.07)]"
         aria-label="Previous purchase invoices"
     >
-        <header class="border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-3">
-            <div class="flex items-start justify-between gap-3">
+        <header class="border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
+            <div class="flex items-center justify-between gap-3">
                 <div class="flex min-w-0 items-center gap-2.5">
-                    <span class="flex h-8 w-8 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
-                        <ReceiptText class="h-4 w-4" />
+                    <span class="flex h-7 w-7 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                        <ReceiptText class="h-3.5 w-3.5" />
                     </span>
-                    <div class="min-w-0">
-                        <h3 class="!m-0 !p-0 text-xs font-bold tracking-wide text-surface-900">Previous Purchase Invoices</h3>
-                        <p class="!m-0 mt-0.5 !p-0 text-[10.5px] leading-4 text-surface-500">Latest purchase records matching your search</p>
+                    <div class="flex flex-col justify-center">
+                        <p class="!m-0 !p-0 !text-xs font-semibold tracking-wide text-surface-900 !leading-tight">Previous Purchase Invoices</p>
+                        <p class="!m-0 !p-0 !text-[10px] font-normal text-surface-500 !leading-tight">Latest purchase records matching your search</p>
                     </div>
                 </div>
 
-                <span class="inline-flex shrink-0 items-center border border-amber-300 bg-amber-50 px-2 py-1 text-[9.5px] font-bold tracking-wide text-amber-900 uppercase">
+                <span class="inline-flex shrink-0 items-center border border-amber-300 bg-amber-50 px-2 py-0.5 text-[9.5px] font-semibold tracking-wide text-amber-900 uppercase">
                     {{ action.result.count ?? action.result.invoices.length }} found
                 </span>
             </div>
@@ -126,14 +126,4 @@ const statusClass = (status: string) => {
             </div>
         </div>
     </section>
-
-    <div v-else class="my-3 border border-l-[3px] border-surface-200 border-l-surface-400 bg-surface-50 px-3.5 py-4 text-center font-sans">
-        <span class="mx-auto flex h-9 w-9 items-center justify-center border border-surface-200 bg-white text-surface-400">
-            <FileSearch class="h-4 w-4" />
-        </span>
-        <p class="!m-0 mt-2 !p-0 text-xs font-semibold text-surface-800">No previous invoice found</p>
-        <p class="!m-0 mt-1 !p-0 text-[10.5px] leading-4 text-surface-500">
-            {{ action.result?.message || 'Customer name, mobile number, or invoice number check karke dobara search karein.' }}
-        </p>
-    </div>
 </template>

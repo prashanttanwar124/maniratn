@@ -9,37 +9,84 @@ class SearchInvoicesAction implements AiActionInterface
 {
     public function handle(array $args): array
     {
-        $query = trim($args['query'] ?? ($args['phone'] ?? ($args['customer_name'] ?? ($args['invoice_number'] ?? ''))));
+        $rawQuery = trim($args['query'] ?? ($args['phone'] ?? ($args['customer_name'] ?? ($args['invoice_number'] ?? ''))));
         $phone = trim($args['phone'] ?? ($args['mobile'] ?? ''));
         $customerName = trim($args['customer_name'] ?? ($args['name'] ?? ''));
         $invoiceNo = trim($args['invoice_number'] ?? '');
         $date = trim($args['date'] ?? '');
 
-        $builder = Invoice::with(['customer', 'items', 'transactions']);
-
+        // Extract clean 10-digit phone if present
+        $cleanPhone = '';
         if (! empty($phone)) {
-            $builder->whereHas('customer', function ($q) use ($phone) {
-                $q->where('mobile', 'LIKE', "%{$phone}%");
-            });
-        } elseif (! empty($invoiceNo)) {
-            $builder->where('invoice_number', 'LIKE', "%{$invoiceNo}%");
-        } elseif (! empty($customerName)) {
-            $builder->whereHas('customer', function ($q) use ($customerName) {
-                $q->where('name', 'LIKE', "%{$customerName}%");
-            });
-        } elseif (! empty($date)) {
-            $builder->whereDate('date', $date);
-        } elseif (! empty($query)) {
-            $builder->where(function ($q) use ($query) {
-                $q->where('invoice_number', 'LIKE', "%{$query}%")
-                  ->orWhereHas('customer', function ($cq) use ($query) {
-                      $cq->where('mobile', 'LIKE', "%{$query}%")
-                         ->orWhere('name', 'LIKE', "%{$query}%");
-                  });
-            });
+            $digits = preg_replace('/[^0-9]/', '', $phone);
+            if (strlen($digits) >= 10) {
+                $cleanPhone = substr($digits, -10);
+            }
+        } elseif (! empty($rawQuery)) {
+            $digits = preg_replace('/[^0-9]/', '', $rawQuery);
+            if (strlen($digits) >= 10) {
+                $cleanPhone = substr($digits, -10);
+            }
         }
 
-        $invoices = $builder->latest('date')->latest('id')->limit(5)->get();
+        // Clean customer name by removing common conversational noise words
+        $noiseWords = ['customer', 'grahak', 'party', 'bill', 'invoice', 'pichla', 'last', 'ka', 'ki', 'ke', 'ji', 'sahab', 'madam', 'sir', 'shree', 'mr', 'mrs', 'batao', 'dikhao', 'search', 'check', 'nikalo'];
+        $cleanName = $customerName ?: $rawQuery;
+        foreach ($noiseWords as $noise) {
+            $cleanName = preg_replace('/\b' . preg_quote($noise, '/') . '\b/iu', '', $cleanName);
+        }
+        $cleanName = trim(preg_replace('/\s+/', ' ', $cleanName));
+
+        $invoices = collect();
+
+        // Strategy A: Search by Clean 10-digit Phone
+        if (! empty($cleanPhone)) {
+            $invoices = Invoice::with(['customer', 'items', 'transactions'])
+                ->whereHas('customer', function ($q) use ($cleanPhone) {
+                    $q->where('mobile', 'LIKE', "%{$cleanPhone}%");
+                })
+                ->latest('date')->latest('id')->limit(5)->get();
+        }
+
+        // Strategy B: Search by Invoice Number
+        if ($invoices->isEmpty() && ! empty($invoiceNo)) {
+            $invoices = Invoice::with(['customer', 'items', 'transactions'])
+                ->where('invoice_number', 'LIKE', "%{$invoiceNo}%")
+                ->latest('date')->latest('id')->limit(5)->get();
+        }
+
+        // Strategy C: Search by Cleaned Customer Name & Name Tokens
+        if ($invoices->isEmpty() && ! empty($cleanName)) {
+            $nameTokens = array_filter(explode(' ', $cleanName), fn($t) => strlen($t) >= 2);
+            $invoices = Invoice::with(['customer', 'items', 'transactions'])
+                ->whereHas('customer', function ($q) use ($cleanName, $nameTokens) {
+                    $q->where('name', 'LIKE', "%{$cleanName}%");
+                    foreach ($nameTokens as $token) {
+                        $q->orWhere('name', 'LIKE', "%{$token}%");
+                    }
+                })
+                ->latest('date')->latest('id')->limit(5)->get();
+        }
+
+        // Strategy D: Search by Date
+        if ($invoices->isEmpty() && ! empty($date)) {
+            $invoices = Invoice::with(['customer', 'items', 'transactions'])
+                ->whereDate('date', $date)
+                ->latest('date')->latest('id')->limit(5)->get();
+        }
+
+        // Strategy E: Fallback to Raw Query across Invoice No, Customer Mobile, Customer Name
+        if ($invoices->isEmpty() && ! empty($rawQuery)) {
+            $invoices = Invoice::with(['customer', 'items', 'transactions'])
+                ->where(function ($q) use ($rawQuery) {
+                    $q->where('invoice_number', 'LIKE', "%{$rawQuery}%")
+                      ->orWhereHas('customer', function ($cq) use ($rawQuery) {
+                          $cq->where('mobile', 'LIKE', "%{$rawQuery}%")
+                             ->orWhere('name', 'LIKE', "%{$rawQuery}%");
+                      });
+                })
+                ->latest('date')->latest('id')->limit(5)->get();
+        }
 
         if ($invoices->isEmpty()) {
             return [

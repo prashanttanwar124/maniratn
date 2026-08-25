@@ -9,30 +9,73 @@ class CustomerKhataAction implements AiActionInterface
 {
     public function handle(array $args): array
     {
-        $search = trim($args['query'] ?? ($args['phone'] ?? ($args['mobile'] ?? ($args['customer_name'] ?? ($args['name'] ?? '')))));
+        $rawSearch = trim($args['query'] ?? ($args['phone'] ?? ($args['mobile'] ?? ($args['customer_name'] ?? ($args['name'] ?? '')))));
 
-        if (empty($search)) {
+        if (empty($rawSearch)) {
             return [
                 'found' => false,
                 'message' => 'Kripya customer ka naam ya mobile number batayein.',
             ];
         }
 
-        // Search customer by exact mobile or name
-        $customer = Customer::with(['invoices' => function ($q) {
-            $q->where('status', '!=', 'CANCELLED')->with('transactions')->latest('date')->limit(5);
-        }])
-        ->where(function ($q) use ($search) {
-            $q->where('mobile', $search)
-              ->orWhere('mobile', 'LIKE', "%{$search}%")
-              ->orWhere('name', 'LIKE', "%{$search}%");
-        })
-        ->first();
+        // Clean 10-digit phone
+        $cleanPhone = '';
+        $digits = preg_replace('/[^0-9]/', '', $rawSearch);
+        if (strlen($digits) >= 10) {
+            $cleanPhone = substr($digits, -10);
+        }
+
+        // Clean customer name by removing noise words
+        $noiseWords = ['customer', 'grahak', 'party', 'khata', 'udhar', 'balance', 'ka', 'ki', 'ke', 'ji', 'sahab', 'madam', 'sir', 'shree', 'mr', 'mrs', 'batao', 'dikhao', 'search', 'check'];
+        $cleanName = $rawSearch;
+        foreach ($noiseWords as $noise) {
+            $cleanName = preg_replace('/\b' . preg_quote($noise, '/') . '\b/iu', '', $cleanName);
+        }
+        $cleanName = trim(preg_replace('/\s+/', ' ', $cleanName));
+
+        // Search customer
+        $customer = null;
+
+        // 1. Phone Match
+        if (! empty($cleanPhone)) {
+            $customer = Customer::with(['invoices' => function ($q) {
+                $q->where('status', '!=', 'CANCELLED')->with('transactions')->latest('date')->limit(5);
+            }])
+            ->where('mobile', 'LIKE', "%{$cleanPhone}%")
+            ->first();
+        }
+
+        // 2. Cleaned Name & Token Match
+        if (! $customer && ! empty($cleanName)) {
+            $nameTokens = array_filter(explode(' ', $cleanName), fn($t) => strlen($t) >= 2);
+            $customer = Customer::with(['invoices' => function ($q) {
+                $q->where('status', '!=', 'CANCELLED')->with('transactions')->latest('date')->limit(5);
+            }])
+            ->where(function ($q) use ($cleanName, $nameTokens) {
+                $q->where('name', 'LIKE', "%{$cleanName}%");
+                foreach ($nameTokens as $token) {
+                    $q->orWhere('name', 'LIKE', "%{$token}%");
+                }
+            })
+            ->first();
+        }
+
+        // 3. Raw Search Fallback
+        if (! $customer) {
+            $customer = Customer::with(['invoices' => function ($q) {
+                $q->where('status', '!=', 'CANCELLED')->with('transactions')->latest('date')->limit(5);
+            }])
+            ->where(function ($q) use ($rawSearch) {
+                $q->where('mobile', 'LIKE', "%{$rawSearch}%")
+                  ->orWhere('name', 'LIKE', "%{$rawSearch}%");
+            })
+            ->first();
+        }
 
         if (! $customer) {
             return [
                 'found' => false,
-                'message' => "Customer '{$search}' showroom database me nahi mila.",
+                'message' => "Customer '{$rawSearch}' showroom database me nahi mila.",
             ];
         }
 
