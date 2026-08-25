@@ -87,6 +87,19 @@ const applyQuickPrompt = (prompt: string) => {
     });
 };
 
+const getIndianTime = (): string => {
+    try {
+        return new Intl.DateTimeFormat('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+        }).format(new Date()).toUpperCase();
+    } catch {
+        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+};
+
 const formatMarkdown = (text: string | null | undefined, isUser = false): string => {
     if (!text) return '';
     // 1. Escape HTML special characters to prevent XSS
@@ -231,7 +244,7 @@ const sendMessage = async (customText?: string) => {
         id: Date.now().toString(),
         role: 'user',
         content: textToSend,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: getIndianTime(),
     };
 
     messages.value.push(userMessage);
@@ -276,7 +289,7 @@ const sendMessage = async (customText?: string) => {
             content: replyText,
             actions: actions,
             audio: audioUri,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: getIndianTime(),
         };
 
         messages.value.push(assistantMessage);
@@ -290,7 +303,7 @@ const sendMessage = async (customText?: string) => {
             id: (Date.now() + 1).toString(),
             role: 'assistant',
             content: 'Error: AI Hub se connect nahi ho paya. Kripya check karein ki AI server chalu hai.',
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: getIndianTime(),
         });
     } finally {
         isLoading.value = false;
@@ -561,7 +574,7 @@ const resetChat = async () => {
             id: 'welcome_reset',
             role: 'assistant',
             content: 'Chat session reset kar diya gaya hai. Main aapki kya sahayata karoon?',
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: getIndianTime(),
         },
     ];
     hasMoreHistory.value = false;
@@ -809,38 +822,41 @@ onMounted(() => {
                             v-for="msg in messages"
                             :key="msg.id"
                             v-show="!isStarterConversation"
-                            :class="['flex max-w-full', msg.role === 'user' ? 'justify-end' : 'justify-start']"
+                            :class="['flex max-w-full my-1.5', msg.role === 'user' ? 'justify-end' : 'justify-start']"
                         >
-                            <!-- 👤 User Message: Sleek Right-Aligned Emerald Bubble -->
-                            <div v-if="msg.role === 'user'" class="flex max-w-[85%] flex-col items-end">
-                                <div class="border border-[#1c3633] bg-[#1c3633] px-3.5 py-2 text-[12.5px] leading-5 text-white shadow-xs">
-                                    <p class="whitespace-pre-wrap select-text leading-relaxed text-white">{{ msg.content }}</p>
+                            <!-- 👤 User Message: Luxury Emerald Curved Speech Bubble -->
+                            <div v-if="msg.role === 'user'" class="flex max-w-[82%] flex-col items-end">
+                                <div class="rounded-2xl rounded-tr-xs border border-[#2b4c47] bg-gradient-to-br from-[#1c3633] to-[#142825] px-4 py-2.5 text-[13px] leading-relaxed text-slate-50 shadow-md">
+                                    <p class="whitespace-pre-wrap select-text font-normal leading-relaxed text-slate-50">{{ msg.content }}</p>
                                 </div>
-                                <span class="mt-1 text-[9.5px] font-mono text-surface-400">{{ msg.timestamp }}</span>
+                                <span class="mt-1 pr-1 text-[10px] font-mono font-medium text-surface-400">{{ msg.timestamp }}</span>
                             </div>
 
                             <!-- ✨ Karat AI Message: Luxury Card with Left Avatar -->
                             <div v-else class="flex max-w-[96%] items-start gap-2.5">
-                                <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center border border-amber-200 bg-amber-50 text-[#b07b24] shadow-2xs">
-                                    <Sparkles class="h-3.5 w-3.5" />
+                                <div class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-amber-300/80 bg-gradient-to-br from-amber-50 to-amber-100/60 text-[#b07b24] shadow-xs">
+                                    <Sparkles class="h-4 w-4 text-[#b07b24]" />
                                 </div>
 
                                 <div class="min-w-0 flex-1 space-y-2">
-                                    <div class="border border-surface-200 bg-white px-3.5 py-2.5 text-[12.5px] leading-5 text-surface-800 shadow-xs">
-                                        <div class="mb-1.5 flex items-center justify-between gap-2 border-b border-surface-100 pb-1.5">
-                                            <span class="text-[11px] font-bold tracking-wide text-surface-900">Karat AI</span>
-                                            <span class="text-[9.5px] font-mono text-surface-400">{{ msg.timestamp }}</span>
+                                    <div class="rounded-2xl rounded-tl-xs border border-surface-200/90 bg-white px-4 py-3 text-[13px] leading-relaxed text-surface-800 shadow-[0_2px_12px_rgba(15,23,42,0.05)]">
+                                        <div class="mb-2 flex items-center justify-between gap-2 border-b border-surface-100 pb-1.5">
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-[11.5px] font-bold tracking-wide text-[#1c3633]">Karat AI</span>
+                                                <span class="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.2 text-[9px] font-semibold text-amber-800 border border-amber-200/70">Showroom Copilot</span>
+                                            </div>
+                                            <span class="text-[10px] font-mono text-surface-400">{{ msg.timestamp }}</span>
                                         </div>
 
                                         <p class="whitespace-pre-wrap select-text leading-relaxed font-normal text-surface-800" v-html="formatMarkdown(msg.content)"></p>
 
-                                        <div v-if="msg.audio && isVoiceGloballyEnabled" class="mt-2.5 border-t border-surface-100 pt-2">
+                                        <div v-if="msg.audio && isVoiceGloballyEnabled" class="mt-3 border-t border-surface-100 pt-2">
                                             <button
                                                 type="button"
-                                                class="inline-flex items-center gap-1.5 border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10.5px] font-medium text-amber-800 transition-colors hover:bg-amber-100"
+                                                class="inline-flex items-center gap-1.5 rounded-full border border-amber-300/80 bg-amber-50 px-3 py-1 text-[11px] font-medium text-amber-900 shadow-2xs transition-colors hover:bg-amber-100"
                                                 @click="playAudio(msg.audio)"
                                             >
-                                                <Volume2 class="h-3 w-3" />
+                                                <Volume2 class="h-3.5 w-3.5 text-[#b07b24]" />
                                                 <span>{{ isSpeaking ? 'Voice chal rahi hai' : 'Voice mein sunein' }}</span>
                                             </button>
                                         </div>
