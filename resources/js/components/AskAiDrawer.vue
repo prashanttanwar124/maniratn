@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { AlertCircle, AlertTriangle, Bot, Calculator, CheckCircle2, Clock, Coins, Info, Mic, MicOff, PackagePlus, Receipt, RefreshCw, Send, Sparkles, TrendingUp, Volume2, VolumeX, Wallet, X } from 'lucide-vue-next';
+import { AlertCircle, AlertTriangle, BarChart3, Bot, Calculator, CheckCircle2, Clock, Coins, Info, Mic, MicOff, PackagePlus, Receipt, RefreshCw, Send, Sparkles, TrendingUp, UserRound, Volume2, VolumeX, Wallet, X } from 'lucide-vue-next';
 import Drawer from 'primevue/drawer';
 import Textarea from 'primevue/textarea';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
@@ -38,30 +38,23 @@ const props = defineProps<{
 
 const emit = defineEmits(['update:visible']);
 const page = usePage();
-const isVoiceGloballyEnabled = computed(() => Boolean((page.props.aiSettings as any)?.voice_enabled ?? true));
 
-const messages = ref<Message[]>([
-    {
-        id: 'welcome',
-        role: 'assistant',
-        content:
-            'Namaste! Main Karat AI Voice Copilot hoon. Aap live market bhav pooch sakte hain, naya stock add karwa sakte hain, ya quotation / bill bana sakte hain. Mic button daba kar boliye ya type kijiye.',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    },
-]);
-
-const hasMoreHistory = ref(false);
-const isLoadingHistory = ref(false);
-const oldestMessageId = ref<string | null>(null);
-const historyLoaded = ref(false);
+const isVoiceGloballyEnabled = computed(() => {
+    return Boolean((page.props as any).business?.ai_voice_enabled);
+});
 
 const inputPrompt = ref('');
+const messages = ref<Message[]>([]);
 const isLoading = ref(false);
+const isLoadingHistory = ref(false);
+const historyLoaded = ref(false);
+const hasMoreHistory = ref(false);
 const isListening = ref(false);
 const isSpeaking = ref(false);
 const recognitionSupported = ref(true);
 const speechError = ref('');
 const chatError = ref('');
+
 const showResetConfirm = ref(false);
 const autoVoiceOutput = ref(true);
 const selectedVoice = ref('Aoede');
@@ -72,11 +65,27 @@ const isStarterConversation = computed(() => messages.value.length === 1 && mess
 
 const quickSuggestions = [
     { label: 'Aaj ka 22K & Silver bhav?', icon: TrendingUp, prompt: 'Aaj 22K gold aur silver ka bhav kya hai?' },
-    { label: '15g Chain Bill banao', icon: Receipt, prompt: '15g 22K Gold Chain ka bill bana do' },
-    { label: '14.5g 22K Gold Chain add karo', icon: PackagePlus, prompt: '14.5 gram ki 22K gold chain add kar do' },
-    { label: '15g 22K Chain quotation estimate', icon: Sparkles, prompt: '15 gram 22K chain ka total estimate kitna banega?' },
+    { label: 'Barcode se bill banao', icon: Receipt, prompt: 'G00001 ka bill Ramesh Sharma 9876543210 ke naam se cash me bana do' },
+    { label: '5.5g 22K Gold Ring add karo', icon: PackagePlus, prompt: '5.5g 22K Gold Ring stock mein add kar do' },
+    { label: 'Old Gold 12g 18K estimate', icon: Coins, prompt: '12 gram old gold 18k purity ka estimate nikalo' },
+    { label: 'Customer khata balance', icon: UserRound, prompt: 'Ramesh ka khata balance aur pending udhar batao' },
+    { label: 'Aaj ki counter sale summary', icon: BarChart3, prompt: 'Aaj ki total counter sale report dikhao' },
     { label: 'Vault cash & gold balance', icon: Wallet, prompt: 'Vault me abhi kitna cash aur sona hai?' },
 ];
+
+const applyQuickPrompt = (prompt: string) => {
+    inputPrompt.value = prompt;
+    nextTick(() => {
+        if (composerRef.value) {
+            const el = (composerRef.value.$el as HTMLElement | HTMLTextAreaElement) || composerRef.value;
+            const textarea = el instanceof HTMLTextAreaElement ? el : (el.querySelector ? el.querySelector('textarea') : null);
+            if (textarea) {
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            }
+        }
+    });
+};
 
 let recognition: any = null;
 let currentAudio: HTMLAudioElement | null = null;
@@ -742,13 +751,16 @@ onMounted(() => {
                                     :key="idx"
                                     type="button"
                                     :disabled="isLoading"
-                                    class="group flex min-h-14 items-center gap-3 border border-surface-200 bg-white px-3 py-2.5 text-left shadow-xs transition-colors hover:border-[#c08f34] hover:bg-amber-50/40 disabled:opacity-50"
-                                    @click="sendMessage(item.prompt)"
+                                    class="group flex min-h-14 items-center justify-between gap-3 border border-surface-200 bg-white px-3 py-2.5 text-left shadow-xs transition-colors hover:border-[#c08f34] hover:bg-amber-50/40 disabled:opacity-50"
+                                    @click="applyQuickPrompt(item.prompt)"
                                 >
-                                    <span class="flex h-8 w-8 shrink-0 items-center justify-center bg-[#1c3633] text-[#e1b65f]">
-                                        <component :is="item.icon" class="h-4 w-4" />
-                                    </span>
-                                    <span class="text-[11.5px] leading-4 font-medium text-surface-700 group-hover:text-[#1c3633]">{{ item.label }}</span>
+                                    <div class="flex items-center gap-2.5 min-w-0">
+                                        <span class="flex h-8 w-8 shrink-0 items-center justify-center bg-[#1c3633] text-[#e1b65f]">
+                                            <component :is="item.icon" class="h-4 w-4" />
+                                        </span>
+                                        <span class="text-[11.5px] leading-4 font-medium text-surface-700 group-hover:text-[#1c3633] truncate">{{ item.label }}</span>
+                                    </div>
+                                    <span class="text-[9.5px] font-medium text-surface-400 group-hover:text-[#c08f34] shrink-0">Click to edit →</span>
                                 </button>
                             </div>
                         </div>
@@ -1002,15 +1014,16 @@ onMounted(() => {
 
                     <!-- 🎙️ 3. Bottom Command Area: Enterprise Sharp Pinned Footer -->
                     <div class="z-10 shrink-0 space-y-2.5 border-t border-surface-200 bg-white px-3 py-3 sm:px-5">
-                        <!-- Quick Suggestion Chips (Sharp Rectangular Buttons) -->
+                        <!-- Quick Suggestion Chips (Sharp Rectangular Buttons - Click to edit before submit) -->
                         <div v-if="!isStarterConversation" class="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-0.5">
                             <button
-                                v-for="(item, idx) in quickSuggestions.slice(0, 3)"
+                                v-for="(item, idx) in quickSuggestions"
                                 :key="idx"
                                 type="button"
                                 :disabled="isLoading"
+                                title="Click karke prompt edit karein"
                                 class="flex shrink-0 items-center gap-1.5 border border-surface-200 bg-surface-50 px-2.5 py-1.5 text-[10.5px] font-medium text-surface-600 transition-colors hover:border-[#c08f34] hover:bg-amber-50 hover:text-[#1c3633] disabled:opacity-50"
-                                @click="sendMessage(item.prompt)"
+                                @click="applyQuickPrompt(item.prompt)"
                             >
                                 <component :is="item.icon" class="h-3 w-3 text-[#b07b24]" />
                                 <span>{{ item.label }}</span>
