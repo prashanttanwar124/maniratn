@@ -91,15 +91,19 @@ class CreateBillAction implements AiActionInterface
                 $effectiveRate = floatval($rateRecord->silver_sell ?: 89.0);
             } else {
                 $gold24k = floatval($rateRecord->gold_sell ?: 7450.0);
-                if (str_contains($purityStr, '18') || str_contains($purityStr, '750')) {
-                    $effectiveRate = $gold24k * 0.750;
-                } elseif (str_contains($purityStr, '24') || str_contains($purityStr, '999')) {
-                    $effectiveRate = $gold24k;
-                } elseif (str_contains($purityStr, '14') || str_contains($purityStr, '585')) {
-                    $effectiveRate = $gold24k * 0.585;
-                } else {
-                    $effectiveRate = round($gold24k * 0.916, 2); // Default 22K (916)
+                $purityMultiplier = floatval($args['purity_multiplier'] ?? ($args['purity_fraction'] ?? 0));
+                if ($purityMultiplier <= 0) {
+                    if (preg_match('/(\d+(?:\.\d+)?)\s*K/i', $purityStr, $m)) {
+                        $purityMultiplier = round(floatval($m[1]) / 24, 4);
+                    } elseif (preg_match('/(\d+(?:\.\d+)?)\s*%/i', $purityStr, $m)) {
+                        $purityMultiplier = round(floatval($m[1]) / 100, 4);
+                    } elseif (preg_match('/\b(999|916|750|585)\b/', $purityStr, $m)) {
+                        $purityMultiplier = round(floatval($m[1]) / 1000, 4);
+                    } else {
+                        $purityMultiplier = 0.916;
+                    }
                 }
+                $effectiveRate = round($gold24k * $purityMultiplier, 2);
             }
         } else {
             $effectiveRate = ($metal === 'SILVER') ? 89.0 : 6830.0;

@@ -18,35 +18,9 @@ class StockCheckAction implements AiActionInterface
         $minWeight = isset($args['min_weight']) && is_numeric($args['min_weight']) ? (float) $args['min_weight'] : null;
         $maxWeight = isset($args['max_weight']) && is_numeric($args['max_weight']) ? (float) $args['max_weight'] : null;
 
-        // Smart extraction from query if category or weight wasn't explicitly structured
-        if (empty($catFilter) && ! empty($q)) {
-            $knownCategories = ['chain', 'ring', 'bangle', 'necklace', 'pendant', 'earrings', 'coin', 'payal', 'anklet', 'idol', 'gift'];
-            foreach ($knownCategories as $kc) {
-                if (stripos($q, $kc) !== false) {
-                    $catFilter = ucfirst($kc);
-                    break;
-                }
-            }
-        }
-        if ($targetWeight === null && ! empty($q)) {
-            if (preg_match('/(\d+(?:\.\d+)?)\s*(?:g|gm|gram)/i', $q, $m)) {
-                $targetWeight = (float) $m[1];
-            }
-        }
-
-        // Determine whether to search Gold, Silver, or Both
-        $searchSilver = false;
-        $searchGold = true;
-        if ($metalFilter === 'SILVER' || stripos($catFilter, 'silver') !== false || stripos($q, 'silver') !== false || stripos($catFilter, 'payal') !== false) {
-            $searchSilver = true;
-            $searchGold = false;
-        } elseif ($metalFilter === 'GOLD') {
-            $searchGold = true;
-            $searchSilver = false;
-        } elseif (empty($catFilter) && empty($q) && empty($targetWeight)) {
-            $searchGold = true;
-            $searchSilver = true;
-        }
+        // Metal filter directly from AI
+        $searchSilver = ($metalFilter === 'SILVER' || empty($metalFilter));
+        $searchGold = ($metalFilter === 'GOLD' || empty($metalFilter));
 
         $items = [];
         $exactWeightFound = null;

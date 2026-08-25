@@ -139,17 +139,20 @@ class AiCopilotController extends Controller
                     $realData = ['error' => $e->getMessage(), 'status' => 'FAILED'];
                 }
 
-                if (($tool === 'calculate_old_gold' || $tool === 'old_gold_estimate' || ! empty($realData['is_old_gold'])) && ! empty($realData['found']) && ! empty($realData['total_estimate'])) {
-                    $aiResult['reply'] = "{$realData['weight']} Purana Sona ({$realData['purity']}) ka buyback valuation {$realData['total_estimate']} ban raha hai (Fine Gold: {$realData['fine_gold_weight']}). Old Gold par koi making charge ya GST nahi lagta.";
-                } elseif ($tool === 'calculate_estimate' && ! empty($realData['found']) && ! empty($realData['total_estimate'])) {
-                    $itemDesc = $realData['item_name'] . ($realData['barcode'] ? " ({$realData['barcode']})" : '');
-                    $aiResult['reply'] = "{$itemDesc} ({$realData['weight']} {$realData['purity']}) ka total estimate {$realData['total_estimate']} ban raha hai (jispe 3% GST aur {$realData['making_charges']} making charges shamil hain).";
-                } elseif (($tool === 'get_customer_khata' || $tool === 'customer_khata') && ! empty($realData['found'])) {
-                    $aiResult['reply'] = "{$realData['customer_name']} ji ka khata balance: {$realData['status_text']}. Total Purchases: {$realData['total_purchases']}, Total Paid: {$realData['total_paid']}.";
-                } elseif (($tool === 'get_sales_summary' || $tool === 'daily_sales_report') && ! empty($realData['found'])) {
-                    $aiResult['reply'] = "{$realData['period_label']} Showroom Report: Total Revenue {$realData['total_sales']} ({$realData['total_bills']} Bills). Gold: {$realData['gold_weight_sold']}, Silver: {$realData['silver_weight_sold']}.";
-                } elseif (($tool === 'search_invoices' || $tool === 'get_customer_invoices') && ! empty($realData['found'])) {
-                    $aiResult['reply'] = "Maine {$realData['count']} pichle purchase bills dhoond liye hain. Niche card me details aur print receipt check karein.";
+                if (! empty($realData['found']) || ! empty($realData['total_estimate'])) {
+                    $aiResult['reply'] = match (true) {
+                        ($tool === 'calculate_old_gold' || $tool === 'old_gold_estimate' || ! empty($realData['is_old_gold'])) && ! empty($realData['total_estimate'])
+                            => "{$realData['weight']} Purana Sona ({$realData['purity']}) ka buyback valuation {$realData['total_estimate']} ban raha hai (Fine Gold: {$realData['fine_gold_weight']}). Old Gold par koi making charge ya GST nahi lagta.",
+                        $tool === 'calculate_estimate' && ! empty($realData['total_estimate'])
+                            => ($realData['item_name'] . ($realData['barcode'] ? " ({$realData['barcode']})" : '')) . " ({$realData['weight']} {$realData['purity']}) ka total estimate {$realData['total_estimate']} ban raha hai (jispe 3% GST aur {$realData['making_charges']} making charges shamil hain).",
+                        $tool === 'get_customer_khata' || $tool === 'customer_khata'
+                            => "{$realData['customer_name']} ji ka khata balance: {$realData['status_text']}. Total Purchases: {$realData['total_purchases']}, Total Paid: {$realData['total_paid']}.",
+                        $tool === 'get_sales_summary' || $tool === 'daily_sales_report'
+                            => "{$realData['period_label']} Showroom Report: Total Revenue {$realData['total_sales']} ({$realData['total_bills']} Bills). Gold: {$realData['gold_weight_sold']}, Silver: {$realData['silver_weight_sold']}.",
+                        $tool === 'search_invoices' || $tool === 'get_customer_invoices'
+                            => "Maine {$realData['count']} pichle purchase bills dhoond liye hain. Niche card me details aur print receipt check karein.",
+                        default => $aiResult['reply'] ?? 'Done.',
+                    };
                 }
 
                 $executedActions[] = [
