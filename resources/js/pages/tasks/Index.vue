@@ -12,6 +12,8 @@ import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
 import IconField from 'primevue/iconfield';
+import InputGroup from 'primevue/inputgroup';
+import InputGroupAddon from 'primevue/inputgroupaddon';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
 import ProgressBar from 'primevue/progressbar';
@@ -400,9 +402,9 @@ const deleteTask = () => {
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <span class="text-xs font-medium text-surface-500 uppercase tracking-wide">Total Tasks</span>
-                            <div class="mt-2 text-2xl font-bold text-surface-900">{{ metrics.total || 0 }}</div>
+                            <div class="mt-2 text-2xl font-bold text-surface-900 leading-none">{{ metrics.total || 0 }}</div>
                         </div>
-                        <div class="flex h-9 w-9 items-center justify-center rounded bg-surface-100 text-surface-700">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-surface-100 text-surface-700">
                             <i class="pi pi-layers text-sm"></i>
                         </div>
                     </div>
@@ -414,9 +416,9 @@ const deleteTask = () => {
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <span class="text-xs font-medium text-amber-700 uppercase tracking-wide">To Do</span>
-                            <div class="mt-2 text-2xl font-bold text-surface-900">{{ metrics.todo || 0 }}</div>
+                            <div class="mt-2 text-2xl font-bold text-surface-900 leading-none">{{ metrics.todo || 0 }}</div>
                         </div>
-                        <div class="flex h-9 w-9 items-center justify-center rounded bg-amber-50 text-amber-600 border border-amber-200">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-amber-50 text-amber-600 border border-amber-200">
                             <i class="pi pi-clock text-sm"></i>
                         </div>
                     </div>
@@ -428,9 +430,9 @@ const deleteTask = () => {
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <span class="text-xs font-medium text-blue-700 uppercase tracking-wide">In Progress</span>
-                            <div class="mt-2 text-2xl font-bold text-surface-900">{{ metrics.in_progress || 0 }}</div>
+                            <div class="mt-2 text-2xl font-bold text-surface-900 leading-none">{{ metrics.in_progress || 0 }}</div>
                         </div>
-                        <div class="flex h-9 w-9 items-center justify-center rounded bg-blue-50 text-blue-600 border border-blue-200">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-blue-50 text-blue-600 border border-blue-200">
                             <i class="pi pi-bolt text-sm"></i>
                         </div>
                     </div>
@@ -442,11 +444,11 @@ const deleteTask = () => {
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <span :class="['text-xs font-medium uppercase tracking-wide', metrics.overdue > 0 ? 'text-rose-700' : 'text-surface-500']">Overdue</span>
-                            <div :class="['mt-2 text-2xl font-bold', metrics.overdue > 0 ? 'text-rose-600' : 'text-surface-900']">
+                            <div :class="['mt-2 text-2xl font-bold leading-none', metrics.overdue > 0 ? 'text-rose-600' : 'text-surface-900']">
                                 {{ metrics.overdue || 0 }}
                             </div>
                         </div>
-                        <div :class="['flex h-9 w-9 items-center justify-center rounded border', metrics.overdue > 0 ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-surface-100 text-surface-600 border-surface-200']">
+                        <div :class="['flex h-9 w-9 shrink-0 items-center justify-center rounded border', metrics.overdue > 0 ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-surface-100 text-surface-600 border-surface-200']">
                             <i class="pi pi-exclamation-circle text-sm"></i>
                         </div>
                     </div>
@@ -458,9 +460,9 @@ const deleteTask = () => {
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <span class="text-xs font-medium text-emerald-700 uppercase tracking-wide">Completed</span>
-                            <div class="mt-2 text-2xl font-bold text-surface-900">{{ metrics.completed_today || 0 }} <span class="text-xs font-normal text-surface-500">today</span></div>
+                            <div class="mt-2 text-2xl font-bold text-surface-900 leading-none">{{ metrics.completed_today || 0 }} <span class="text-xs font-normal text-surface-500">today</span></div>
                         </div>
-                        <div class="flex h-9 w-9 items-center justify-center rounded bg-emerald-50 text-emerald-600 border border-emerald-200">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-emerald-50 text-emerald-600 border border-emerald-200">
                             <i class="pi pi-check-circle text-sm"></i>
                         </div>
                     </div>
@@ -578,20 +580,26 @@ const deleteTask = () => {
             <div v-if="viewMode === 'kanban'" class="grid grid-cols-1 gap-5 lg:grid-cols-3">
                 <!-- Column 1: TO DO -->
                 <div class="border border-surface-200 bg-surface-50 p-4">
-                    <div class="mb-4 flex items-center justify-between border-b border-surface-200 pb-3">
-                        <div class="flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
-                            <h2 class="text-sm font-bold text-surface-900">To Do</h2>
-                            <Tag :value="todoTasks.length" severity="warn" class="!text-[11px]" />
+                    <div class="mb-3.5 border-b border-surface-200 pb-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500"></span>
+                                <span class="text-sm font-bold text-surface-900 leading-none">To do</span>
+                                <span class="inline-flex h-5 min-w-[20px] items-center justify-center rounded px-1.5 text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 leading-none">
+                                    {{ todoTasks.length }}
+                                </span>
+                            </div>
+                            <Button
+                                icon="pi pi-plus"
+                                text
+                                rounded
+                                size="small"
+                                @click="openCreateDialog"
+                                v-tooltip.top="'Add Task'"
+                                class="!h-7 !w-7 !p-0 text-surface-500 hover:text-surface-900"
+                            />
                         </div>
-                        <Button
-                            icon="pi pi-plus"
-                            text
-                            size="small"
-                            @click="openCreateDialog"
-                            v-tooltip.top="'Add Task'"
-                            class="!h-7 !w-7 !p-0"
-                        />
+                        <p class="mt-1 pl-4.5 text-xs text-surface-400">Waiting to be started</p>
                     </div>
 
                     <div class="flex flex-col gap-3 min-h-[420px]">
@@ -708,12 +716,17 @@ const deleteTask = () => {
 
                 <!-- Column 2: IN PROGRESS -->
                 <div class="border border-surface-200 bg-surface-50 p-4">
-                    <div class="mb-4 flex items-center justify-between border-b border-surface-200 pb-3">
-                        <div class="flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-blue-500"></span>
-                            <h2 class="text-sm font-bold text-surface-900">In Progress</h2>
-                            <Tag :value="inProgressTasks.length" severity="info" class="!text-[11px]" />
+                    <div class="mb-3.5 border-b border-surface-200 pb-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500"></span>
+                                <span class="text-sm font-bold text-surface-900 leading-none">In progress</span>
+                                <span class="inline-flex h-5 min-w-[20px] items-center justify-center rounded px-1.5 text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 leading-none">
+                                    {{ inProgressTasks.length }}
+                                </span>
+                            </div>
                         </div>
+                        <p class="mt-1 pl-4.5 text-xs text-surface-400">Currently being worked on</p>
                     </div>
 
                     <div class="flex flex-col gap-3 min-h-[420px]">
@@ -828,12 +841,17 @@ const deleteTask = () => {
 
                 <!-- Column 3: COMPLETED -->
                 <div class="border border-surface-200 bg-surface-50 p-4">
-                    <div class="mb-4 flex items-center justify-between border-b border-surface-200 pb-3">
-                        <div class="flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-                            <h2 class="text-sm font-bold text-surface-900">Completed</h2>
-                            <Tag :value="completedTasks.length" severity="success" class="!text-[11px]" />
+                    <div class="mb-3.5 border-b border-surface-200 pb-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500"></span>
+                                <span class="text-sm font-bold text-surface-900 leading-none">Completed</span>
+                                <span class="inline-flex h-5 min-w-[20px] items-center justify-center rounded px-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 leading-none">
+                                    {{ completedTasks.length }}
+                                </span>
+                            </div>
                         </div>
+                        <p class="mt-1 pl-4.5 text-xs text-surface-400">Finished work</p>
                     </div>
 
                     <div class="flex flex-col gap-3 min-h-[420px]">
@@ -1179,42 +1197,45 @@ const deleteTask = () => {
                 </div>
 
                 <!-- Checklist Builder -->
-                <div class="border border-surface-200 bg-surface-50 p-3">
-                    <div class="mb-2 flex items-center justify-between">
-                        <span class="text-xs font-semibold text-surface-800">Subtask Checklist (Steps)</span>
-                        <span class="text-[11px] text-surface-500">{{ taskForm.checklist.length }} items</span>
+                <div class="border border-surface-200 bg-surface-50 p-3.5 rounded">
+                    <div class="mb-2.5 flex items-center justify-between">
+                        <span class="text-xs font-bold text-surface-800">Checklist steps</span>
+                        <span class="text-xs font-medium text-surface-500">{{ taskForm.checklist.length }} items</span>
                     </div>
 
                     <!-- Existing Checklist Items -->
-                    <div v-if="taskForm.checklist.length > 0" class="space-y-1.5 mb-2.5">
+                    <div v-if="taskForm.checklist.length > 0" class="space-y-1.5 mb-3">
                         <div
                             v-for="(item, idx) in taskForm.checklist"
                             :key="idx"
-                            class="flex items-center justify-between gap-2 border border-surface-200 bg-white p-2 text-xs"
+                            class="flex items-center justify-between gap-2 border border-surface-200 bg-white px-3 py-2 text-xs rounded shadow-2xs"
                         >
-                            <div class="flex items-center gap-2 flex-1">
+                            <div class="flex items-center gap-2.5 flex-1">
                                 <Checkbox v-model="item.is_completed" :binary="true" />
-                                <span :class="[item.is_completed ? 'line-through text-surface-400' : 'text-surface-800']">
+                                <span :class="[item.is_completed ? 'line-through text-surface-400' : 'text-surface-800 font-medium']">
                                     {{ item.text }}
                                 </span>
                             </div>
-                            <button type="button" @click="removeChecklistItem(idx)" class="text-surface-400 hover:text-rose-500 p-1">
-                                <i class="pi pi-trash text-xs"></i>
-                            </button>
+                            <Button
+                                icon="pi pi-trash"
+                                text
+                                rounded
+                                size="small"
+                                severity="danger"
+                                @click="removeChecklistItem(idx)"
+                                class="!h-6 !w-6 !p-0 text-surface-400 hover:text-rose-600"
+                            />
                         </div>
                     </div>
 
-                    <!-- Add New Item Input with Sakai IconField -->
-                    <div class="flex items-center gap-2">
-                        <IconField class="flex-1">
-                            <InputIcon class="pi pi-plus text-xs" />
-                            <InputText
-                                v-model="newChecklistText"
-                                @keydown.enter.prevent="addChecklistItem"
-                                placeholder="Add subtask step (Press Enter)..."
-                                class="w-full text-xs bg-white"
-                            />
-                        </IconField>
+                    <!-- Seamless InputGroup with Add Button -->
+                    <InputGroup class="w-full">
+                        <InputText
+                            v-model="newChecklistText"
+                            @keydown.enter.prevent="addChecklistItem"
+                            placeholder="Add subtask step (Press Enter)..."
+                            class="text-xs !bg-white"
+                        />
                         <Button
                             type="button"
                             label="Add"
@@ -1222,7 +1243,7 @@ const deleteTask = () => {
                             size="small"
                             @click="addChecklistItem"
                         />
-                    </div>
+                    </InputGroup>
                 </div>
 
                 <!-- Pin Option -->
