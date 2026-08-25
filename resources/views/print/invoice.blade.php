@@ -453,7 +453,7 @@
         <div class="invoice-body">
             <!-- Header Status -->
             <div class="invoice-heading-row">
-                <div class="invoice-heading-label">Retail Tax Invoice</div>
+                <div class="invoice-heading-label">Retail Invoice</div>
                 <div>
                     @if ($invoice->status === 'CANCELLED')
                         <span class="badge badge-void">VOIDED / CANCELLED</span>
@@ -501,16 +501,6 @@
                         <span class="meta-key">Date:</span>
                         <span class="meta-val">{{ \Carbon\Carbon::parse($invoice->date)->format('d M Y') }}</span>
                     </div>
-                    <div class="meta-row">
-                        <span class="meta-key">24K Gold Rate:</span>
-                        <span class="meta-val mono">Rs {{ number_format((float) $invoice->gold_rate_applied, 2) }}/g</span>
-                    </div>
-                    @if ((float) ($invoice->silver_rate_applied ?? 0) > 0)
-                        <div class="meta-row">
-                            <span class="meta-key">Silver Rate:</span>
-                            <span class="meta-val mono">Rs {{ number_format((float) $invoice->silver_rate_applied, 2) }}/g</span>
-                        </div>
-                    @endif
                     @if ($settings?->gst_number)
                         <div class="meta-row">
                             <span class="meta-key">GSTIN:</span>
@@ -529,18 +519,23 @@
                 <table class="items">
                     <thead>
                         <tr>
-                            <th style="width: 32px;" class="align-center">#</th>
+                            <th style="width: 28px;" class="align-center">#</th>
                             <th>Description & Tag</th>
-                            <th style="width: 85px;" class="align-right">Weight</th>
+                            <th style="width: 80px;" class="align-right">Weight</th>
                             <th style="width: 65px;" class="align-center">Purity</th>
-                            <th style="width: 90px;" class="align-right">Making</th>
-                            <th style="width: 115px;" class="align-right">Total</th>
+                            <th style="width: 85px;" class="align-right">Rate</th>
+                            <th style="width: 85px;" class="align-right">Making</th>
+                            <th style="width: 105px;" class="align-right">Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($invoice->items as $index => $item)
                             @php
                                 $barcode = $item->product?->barcode ?? $item->silverProduct?->barcode ?? $item->barcode ?? $item->tag_number ?? null;
+                                $itemRate = (float) ($item->rate ?? 0);
+                                if ($itemRate <= 0) {
+                                    $itemRate = (float) ($invoice->gold_rate_applied ?? 0);
+                                }
                             @endphp
                             <tr>
                                 <td class="align-center mono" style="color: var(--surface-500);">{{ $index + 1 }}</td>
@@ -559,6 +554,9 @@
                                 </td>
                                 <td class="align-center font-bold">
                                     {{ $item->purity }}
+                                </td>
+                                <td class="align-right mono font-semibold">
+                                    Rs {{ number_format($itemRate, 2) }}
                                 </td>
                                 <td class="align-right mono">
                                     @if ($item->making_charge_type === 'flat' || $item->making_charge_type === 'lump_sum')

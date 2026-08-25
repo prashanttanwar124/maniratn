@@ -678,17 +678,12 @@ const draftFormatCurrency = (val) =>
                     </div>
 
                     <!-- Customer Snapshot -->
-                    <div class="grid grid-cols-1 gap-3 pt-3 text-xs md:grid-cols-2">
+                    <div class="pt-3 text-xs">
                         <div>
                             <p class="font-semibold tracking-wider text-surface-500 uppercase">Customer Details</p>
                             <p class="mt-1 text-sm font-semibold text-surface-900">{{ viewInvoice.customer?.name || 'Walk-in Customer' }}</p>
                             <p v-if="viewInvoice.customer?.mobile" class="text-surface-600">Mobile: {{ viewInvoice.customer.mobile }}</p>
                             <p v-if="viewInvoice.customer?.city" class="text-surface-600">City: {{ viewInvoice.customer.city }}</p>
-                        </div>
-                        <div class="space-y-1 md:text-right">
-                            <p class="font-semibold tracking-wider text-surface-500 uppercase">Rates Applied</p>
-                            <p v-if="viewInvoice.gold_rate_applied > 0" class="text-surface-700">Gold Rate: <strong class="font-mono">₹{{ Number(viewInvoice.gold_rate_applied).toLocaleString('en-IN') }}/g</strong></p>
-                            <p v-if="viewInvoice.silver_rate_applied > 0" class="text-surface-700">Silver Rate: <strong class="font-mono">₹{{ Number(viewInvoice.silver_rate_applied).toLocaleString('en-IN') }}/g</strong></p>
                         </div>
                     </div>
                 </div>
