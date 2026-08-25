@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
 import { AlertCircle, Check, Clock, PackagePlus, Pencil, ShieldCheck, X } from 'lucide-vue-next';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
@@ -22,13 +23,15 @@ const emit = defineEmits<{
     (e: 'discard', action: ActionItem, msgId: string): void;
 }>();
 
+const page = usePage();
+
 const makingTypeOptions = [
     { label: '₹/g (Per gram)', value: 'per_gram' },
     { label: '% (Percentage)', value: 'percentage' },
     { label: '₹ Flat (Lump sum)', value: 'flat' },
 ];
 
-const categoryOptions = [
+const defaultCategoryOptions = [
     'Ring',
     'Chain',
     'Bangle',
@@ -50,17 +53,33 @@ const categoryOptions = [
     'Silver Gift',
 ];
 
-const purityOptions = [
-    '22K',
+const defaultPurityOptions = [
     '22K (916)',
-    '18K',
     '18K (750)',
-    '24K',
     '24K (999)',
-    '14K',
+    '14K (585)',
+    '22K',
+    '18K',
+    '24K',
     '92.5 Silver',
     '99.9 Fine Silver',
 ];
+
+const categoryOptions = computed(() => {
+    const dbCats = (page.props as any).categories;
+    if (Array.isArray(dbCats) && dbCats.length > 0) {
+        return Array.from(new Set([...dbCats, ...defaultCategoryOptions]));
+    }
+    return defaultCategoryOptions;
+});
+
+const purityOptions = computed(() => {
+    const dbPurities = (page.props as any).purities;
+    if (Array.isArray(dbPurities) && dbPurities.length > 0) {
+        return Array.from(new Set([...dbPurities, ...defaultPurityOptions]));
+    }
+    return defaultPurityOptions;
+});
 
 if (!props.action.result) {
     props.action.result = {};

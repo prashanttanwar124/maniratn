@@ -96,6 +96,8 @@ class HandleInertiaRequests extends Middleware
                     ? $user->getAllPermissions()->mapWithKeys(fn ($permission) => [$permission->name => true])
                     : [],
             ],
+            'categories' => fn () => \App\Models\Category::query()->orderBy('name')->pluck('name')->all(),
+            'purities' => fn () => \App\Models\Purity::query()->orderBy('name')->pluck('name')->all(),
         ];
     }
 }
