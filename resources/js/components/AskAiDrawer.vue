@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { AlertCircle, AlertTriangle, BarChart3, Bot, Calculator, CheckCircle2, Clock, Coins, Info, Mic, MicOff, PackagePlus, Receipt, RefreshCw, Send, Sparkles, TrendingUp, UserRound, Volume2, VolumeX, Wallet, X } from 'lucide-vue-next';
+import { AlertCircle, AlertTriangle, BarChart3, Bot, Calculator, CheckCircle2, Clock, Coins, Info, Mic, MicOff, PackagePlus, Receipt, RefreshCw, Send, Sparkles, TrendingUp, UserRound, Volume2, VolumeX, Wallet, X, Zap } from 'lucide-vue-next';
 import Drawer from 'primevue/drawer';
 import Textarea from 'primevue/textarea';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
@@ -31,6 +31,7 @@ interface Message {
     actions?: ActionItem[];
     audio?: string | null;
     timestamp: string;
+    duration?: string;
 }
 
 const props = defineProps<{
@@ -272,6 +273,7 @@ const sendMessage = async (customText?: string) => {
             content: m.content.trim(),
         }));
 
+    const startTime = performance.now();
     try {
         const response = await axios.post('/api/ai/copilot/chat', {
             message: textToSend,
@@ -279,6 +281,9 @@ const sendMessage = async (customText?: string) => {
             voice: selectedVoice.value,
             include_audio: isVoiceGloballyEnabled.value && autoVoiceOutput.value,
         });
+
+        const elapsedSeconds = ((performance.now() - startTime) / 1000).toFixed(1);
+        const durationText = `${elapsedSeconds}s`;
 
         const replyText = response.data.reply || 'Action executed successfully.';
         const actions = response.data.actions || [];
@@ -291,6 +296,7 @@ const sendMessage = async (customText?: string) => {
             actions: actions,
             audio: audioUri,
             timestamp: getIndianTime(),
+            duration: durationText,
         };
 
         messages.value.push(assistantMessage);
@@ -300,11 +306,13 @@ const sendMessage = async (customText?: string) => {
             playAudio(audioUri);
         }
     } catch {
+        const elapsedSeconds = ((performance.now() - startTime) / 1000).toFixed(1);
         messages.value.push({
             id: (Date.now() + 1).toString(),
             role: 'assistant',
             content: 'Error: AI Hub se connect nahi ho paya. Kripya check karein ki AI server chalu hai.',
             timestamp: getIndianTime(),
+            duration: `${elapsedSeconds}s`,
         });
     } finally {
         isLoading.value = false;
@@ -857,7 +865,17 @@ onMounted(() => {
                                                 <span class="text-[11.5px] font-bold tracking-wide text-[#1c3633]">Karat AI</span>
                                                 <span class="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.2 text-[9px] font-semibold text-amber-800 border border-amber-200/70">Showroom Copilot</span>
                                             </div>
-                                            <span class="text-[10px] font-mono text-surface-400">{{ msg.timestamp }}</span>
+                                            <div class="flex items-center gap-2">
+                                                <span
+                                                    v-if="msg.duration"
+                                                    class="inline-flex items-center gap-1 rounded-full bg-amber-50/80 px-2 py-0.5 text-[9.5px] font-medium text-amber-800 border border-amber-200/80"
+                                                    title="Search & AI response time"
+                                                >
+                                                    <Zap class="h-2.5 w-2.5 text-amber-600 fill-amber-500" />
+                                                    <span>{{ msg.duration }}</span>
+                                                </span>
+                                                <span class="text-[10px] font-mono text-surface-400">{{ msg.timestamp }}</span>
+                                            </div>
                                         </div>
 
                                         <p class="whitespace-pre-wrap select-text leading-relaxed font-normal text-surface-800" v-html="formatMarkdown(msg.content)"></p>
