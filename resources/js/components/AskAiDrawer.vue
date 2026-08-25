@@ -531,13 +531,16 @@ const fetchChatHistory = async (isLoadMore = false) => {
             const fetched = res.data.messages;
 
             if (isLoadMore) {
-                const prevScrollHeight = messageContainer.value?.scrollHeight || 0;
-                messages.value = [...fetched, ...messages.value];
-                nextTick(() => {
-                    if (messageContainer.value) {
-                        messageContainer.value.scrollTop = messageContainer.value.scrollHeight - prevScrollHeight;
-                    }
-                });
+                const existingIds = new Set(messages.value.map((m) => m.id));
+                const newMessages = fetched.filter((m: any) => !existingIds.has(m.id));
+                if (newMessages.length > 0) {
+                    messages.value = [...newMessages, ...messages.value];
+                    nextTick(() => {
+                        if (messageContainer.value) {
+                            messageContainer.value.scrollTo({ top: 0, behavior: 'smooth' });
+                        }
+                    });
+                }
             } else {
                 if (fetched.length > 0) {
                     messages.value = fetched;
@@ -545,13 +548,16 @@ const fetchChatHistory = async (isLoadMore = false) => {
                 }
             }
 
-            hasMoreHistory.value = Boolean(res.data.has_more);
+            hasMoreHistory.value = Boolean(res.data.has_more && fetched.length > 0);
             if (res.data.oldest_id) {
                 oldestMessageId.value = String(res.data.oldest_id);
             }
+        } else {
+            hasMoreHistory.value = false;
         }
     } catch (e) {
         console.warn('Could not load chat history:', e);
+        hasMoreHistory.value = false;
     } finally {
         isLoadingHistory.value = false;
         historyLoaded.value = true;
@@ -808,12 +814,12 @@ onMounted(() => {
                             <button
                                 type="button"
                                 :disabled="isLoadingHistory"
-                                class="flex items-center gap-2 border border-surface-200 bg-white px-3 py-1.5 text-[10.5px] font-medium text-surface-600 shadow-xs transition-colors hover:border-[#c08f34] hover:text-[#1c3633] disabled:opacity-50"
+                                class="flex items-center gap-2 rounded-full border border-surface-200 bg-white px-4 py-1.5 text-[11px] font-medium text-surface-700 shadow-xs transition-colors hover:border-[#c08f34] hover:bg-amber-50/60 hover:text-[#1c3633] disabled:opacity-50"
                                 @click="fetchChatHistory(true)"
                             >
-                                <RefreshCw v-if="isLoadingHistory" class="h-3 w-3 animate-spin text-[#c08f34]" />
-                                <Clock v-else class="h-3 w-3 text-[#c08f34]" />
-                                <span>{{ isLoadingHistory ? 'Loading...' : 'Earlier chats' }}</span>
+                                <RefreshCw v-if="isLoadingHistory" class="h-3.5 w-3.5 animate-spin text-[#c08f34]" />
+                                <Clock v-else class="h-3.5 w-3.5 text-[#c08f34]" />
+                                <span>{{ isLoadingHistory ? 'Pichli chats load ho rahi hain...' : 'Pichli chats dekhein' }}</span>
                             </button>
                         </div>
 
