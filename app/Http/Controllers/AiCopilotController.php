@@ -282,9 +282,9 @@ class AiCopilotController extends Controller
         $validated = $request->validate([
             'customer_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:50',
-            'barcode' => 'nullable|string|max:50',
+            'barcode' => 'required|string|max:50',
             'item_name' => 'nullable|string|max:255',
-            'weight' => 'required|numeric|gt:0',
+            'weight' => 'nullable|numeric|gt:0',
             'metal' => 'nullable|string|in:GOLD,SILVER,Gold,Silver,gold,silver',
             'purity' => 'nullable|string|max:50',
             'rate_per_gm' => 'required|numeric|gt:0',
@@ -320,13 +320,35 @@ class AiCopilotController extends Controller
                 }
             }
 
+            $barcode = strtoupper(trim((string) ($validated['barcode'] ?? $request->input('barcode'))));
+            if (empty($barcode)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Barcode ke bina bill generate nahi kiya ja sakta. Kripya product ka barcode scan ya enter karein.',
+                ], 422);
+            }
+
+            $matchedProduct = Product::where('barcode', $barcode)->first();
+            if (! $matchedProduct && preg_match('/^G(\d{5})$/', $barcode, $m)) {
+                $matchedProduct = Product::find((int) $m[1]);
+            }
+            $matchedSilverProduct = null;
+            if (! $matchedProduct) {
+                $matchedSilverProduct = SilverProduct::where('barcode', $barcode)->first();
+                if (! $matchedSilverProduct && preg_match('/^S(\d{5})$/', $barcode, $m)) {
+                    $matchedSilverProduct = SilverProduct::find((int) $m[1]);
+                }
+            }
+
+            if (! $matchedProduct && ! $matchedSilverProduct) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Barcode '{$barcode}' showroom inventory me nahi mila.",
+                ], 422);
+            }
+
             $customerName = trim((string) ($validated['customer_name'] ?? 'Walk-in Customer'));
             $customerPhone = trim((string) ($validated['customer_phone'] ?? ''));
-            $barcode = trim((string) ($validated['barcode'] ?? ''));
-            $itemName = trim((string) ($validated['item_name'] ?? 'Jewellery Ornament'));
-            $weight = floatval($validated['weight']);
-            $metal = strtoupper((string) ($validated['metal'] ?? 'GOLD'));
-            $purityStr = strtoupper((string) ($validated['purity'] ?? '22K'));
             $effectiveRate = floatval($validated['rate_per_gm']);
             $makingType = (string) ($validated['making_type'] ?? 'percentage');
             $makingValue = floatval($validated['making_value'] ?? 12);
@@ -334,51 +356,35 @@ class AiCopilotController extends Controller
             $paymentMode = strtoupper((string) ($validated['payment_mode'] ?? 'CASH'));
             $paymentAmount = isset($validated['payment_amount']) ? floatval($validated['payment_amount']) : null;
 
-            $matchedProduct = null;
-            $matchedSilverProduct = null;
-
-            if (! empty($barcode)) {
-                $matchedProduct = Product::where('barcode', $barcode)->first();
-                if (! $matchedProduct && preg_match('/^G(\d{5})$/', $barcode, $m)) {
-                    $matchedProduct = Product::find((int) $m[1]);
+            if ($matchedProduct) {
+                if ($matchedProduct->is_sold) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Product '{$matchedProduct->name}' (Barcode: {$barcode}) pehle se hi bik chuka hai!",
+                    ], 422);
                 }
-                if (! $matchedProduct) {
-                    $matchedSilverProduct = SilverProduct::where('barcode', $barcode)->first();
-                    if (! $matchedSilverProduct && preg_match('/^S(\d{5})$/', $barcode, $m)) {
-                        $matchedSilverProduct = SilverProduct::find((int) $m[1]);
-                    }
+                $itemName = $matchedProduct->name;
+                $weight = floatval($matchedProduct->net_weight ?: $matchedProduct->gross_weight);
+                $metal = 'GOLD';
+                $purityStr = $matchedProduct->purity?->name ?? '22K';
+                if (! $request->filled('making_value')) {
+                    $makingValue = floatval($matchedProduct->making_charge);
+                    $makingType = $matchedProduct->making_charge_type ?? 'percentage';
                 }
-
-                if ($matchedProduct) {
-                    if ($matchedProduct->is_sold) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => "Product '{$matchedProduct->name}' (Barcode: {$barcode}) pehle se hi bik chuka hai!",
-                        ], 422);
-                    }
-                    $itemName = $matchedProduct->name;
-                    $weight = floatval($matchedProduct->net_weight ?: $matchedProduct->gross_weight);
-                    $metal = 'GOLD';
-                    $purityStr = $matchedProduct->purity?->name ?? $purityStr;
-                    if (! $request->filled('making_value')) {
-                        $makingValue = floatval($matchedProduct->making_charge);
-                        $makingType = $matchedProduct->making_charge_type ?? 'percentage';
-                    }
-                } elseif ($matchedSilverProduct) {
-                    if ($matchedSilverProduct->is_sold || ($matchedSilverProduct->pricing_mode === 'PIECE' && $matchedSilverProduct->quantity <= 0)) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => "Silver item '{$matchedSilverProduct->name}' (Barcode: {$barcode}) pehle se sold hai!",
-                        ], 422);
-                    }
-                    $itemName = $matchedSilverProduct->name;
-                    $weight = floatval($matchedSilverProduct->net_weight ?: $matchedSilverProduct->gross_weight);
-                    $metal = 'SILVER';
-                    $purityStr = 'Silver (92.5)';
-                    if (! $request->filled('making_value')) {
-                        $makingValue = floatval($matchedSilverProduct->making_charge);
-                        $makingType = 'per_gram';
-                    }
+            } else {
+                if ($matchedSilverProduct->is_sold || ($matchedSilverProduct->pricing_mode === 'PIECE' && $matchedSilverProduct->quantity <= 0)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Silver item '{$matchedSilverProduct->name}' (Barcode: {$barcode}) pehle se sold out hai!",
+                    ], 422);
+                }
+                $itemName = $matchedSilverProduct->name;
+                $weight = floatval($matchedSilverProduct->net_weight ?: $matchedSilverProduct->gross_weight);
+                $metal = 'SILVER';
+                $purityStr = 'Silver (92.5)';
+                if (! $request->filled('making_value')) {
+                    $makingValue = floatval($matchedSilverProduct->making_charge);
+                    $makingType = 'per_gram';
                 }
             }
 
@@ -476,27 +482,6 @@ class AiCopilotController extends Controller
                     $matchedSilverProduct->update([
                         'quantity' => 0,
                         'is_sold' => true,
-                    ]);
-                }
-            }
-
-            // If selling loose/non-barcoded metal, debit physical raw metal vault
-            if (! $matchedProduct && ! $matchedSilverProduct) {
-                if ($metal === 'GOLD' && $weight > 0) {
-                    VaultService::debit(VaultType::GOLD, $weight, [
-                        'source_type' => Invoice::class,
-                        'source_id' => $invoice->id,
-                        'reference' => $invoiceNumber,
-                        'user_id' => $actingUserId,
-                        'note' => "Gold sold in {$invoiceNumber} via Karat AI",
-                    ]);
-                } elseif ($metal === 'SILVER' && $weight > 0) {
-                    VaultService::debit(VaultType::SILVER, $weight, [
-                        'source_type' => Invoice::class,
-                        'source_id' => $invoice->id,
-                        'reference' => $invoiceNumber,
-                        'user_id' => $actingUserId,
-                        'note' => "Silver sold in {$invoiceNumber} via Karat AI",
                     ]);
                 }
             }

@@ -29,7 +29,13 @@ const isConfirmed = computed(() => {
 });
 
 const isUnavailable = computed(() => {
-    return Boolean(props.action.result?.found === false || props.action.result?.status === 'PRODUCT_ALREADY_SOLD' || props.action.result?.status === 'BARCODE_NOT_FOUND');
+    return Boolean(
+        props.action.result?.found === false ||
+        props.action.result?.status === 'PRODUCT_ALREADY_SOLD' ||
+        props.action.result?.status === 'BARCODE_NOT_FOUND' ||
+        props.action.result?.status === 'BARCODE_REQUIRED' ||
+        !props.action.result?.barcode
+    );
 });
 
 const isDraft = computed(() => {
@@ -37,7 +43,12 @@ const isDraft = computed(() => {
 });
 
 const canConfirm = computed(() => {
-    return Boolean(props.action.result?.item_name && Number(props.action.result?.weight) > 0 && Number(props.action.result?.rate_per_gm) > 0);
+    return Boolean(
+        props.action.result?.barcode &&
+        props.action.result?.item_name &&
+        Number(props.action.result?.weight) > 0 &&
+        Number(props.action.result?.rate_per_gm) > 0
+    );
 });
 
 const formatMoney = (val: any) => {
@@ -362,7 +373,7 @@ const setPurity = (draft: any, purity: string) => {
             </div>
 
             <!-- Confirmation & Discard Buttons (Sharp rectangular) -->
-            <p v-if="!canConfirm" class="border-l-2 border-red-500 bg-red-50 px-2.5 py-2 text-[10.5px] text-red-700">Item, weight aur live rate complete karna zaroori hai.</p>
+            <p v-if="!canConfirm" class="border-l-2 border-red-500 bg-red-50 px-2.5 py-2 text-[10.5px] text-red-700">Valid Barcode, item, weight aur live rate complete karna zaroori hai.</p>
 
             <div class="-mx-4 -mb-4 flex flex-col-reverse gap-2 border-t border-surface-200 bg-surface-50 px-4 py-3 min-[430px]:flex-row min-[430px]:items-center">
                 <button

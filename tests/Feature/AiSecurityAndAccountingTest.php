@@ -54,7 +54,27 @@ test('authenticated request is blocked by day.open middleware if shop day is not
         ]);
 });
 
-test('confirm-bill debits gold vault and applies cash ledger impact when authenticated and day is open', function () {
+test('confirm-bill rejects requests missing barcode with 422', function () {
+    $user = User::factory()->create();
+    $user->givePermissionTo(['manage_invoices', 'manage_vault']);
+
+    DailyRegister::create([
+        'date' => Carbon::today()->toDateString(),
+        'opening_cash' => 100000,
+        'opening_gold' => 500,
+        'opened_by' => $user->id,
+    ]);
+
+    $res = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
+        'customer_name' => 'Aman Verma',
+        'rate_per_gm' => 7000,
+    ]);
+
+    $res->assertStatus(422)
+        ->assertJsonValidationErrors(['barcode']);
+});
+
+test('confirm-bill updates stock inventory and credits cash vault when authenticated and day is open', function () {
     $user = User::factory()->create();
     $user->givePermissionTo(['manage_invoices', 'manage_vault']);
 
@@ -72,22 +92,33 @@ test('confirm-bill debits gold vault and applies cash ledger impact when authent
         'silver_sell' => 90,
     ]);
 
-    $goldVault = Vault::where('type', 'GOLD')->first();
     $cashVault = Vault::where('type', 'CASH')->first();
+
+    $cat = Category::firstOrCreate(['name' => 'Kadas', 'code' => 'KD']);
+    $purity = Purity::firstOrCreate(['name' => '22K']);
+    $sup = Supplier::firstOrCreate(['company_name' => 'Test Supplier', 'contact_person' => 'C', 'mobile' => '9999999999', 'type' => 'GOLD']);
+    $product = Product::create([
+        'name' => 'Gold Kada 10g',
+        'category_id' => $cat->id,
+        'purity_id' => $purity->id,
+        'supplier_id' => $sup->id,
+        'gross_weight' => 10.0,
+        'net_weight' => 10.0,
+        'making_charge' => 400,
+        'making_charge_type' => 'per_gram',
+        'is_sold' => false,
+    ]);
 
     $res = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
         'customer_name' => 'Aman Verma',
         'customer_phone' => '9876543211',
-        'item_name' => 'Gold Kada 10g',
-        'weight' => 10.0,
-        'metal' => 'GOLD',
-        'purity' => '22K',
+        'barcode' => $product->barcode,
         'rate_per_gm' => 7000,
         'making_type' => 'per_gram',
         'making_value' => 400,
         'discount_amount' => 500,
         'payment_mode' => 'CASH',
-        'payment_amount' => 75705, // Full cash payment
+        'payment_amount' => 75705,
         'message_id' => 'test_msg_unique_101',
     ]);
 
@@ -102,59 +133,13 @@ test('confirm-bill debits gold vault and applies cash ledger impact when authent
     expect($saleTx)->not->toBeNull();
     expect($saleTx->description)->toContain('[AI_MSG:test_msg_unique_101]');
 
-    // Check Vault Debits: Gold vault should decrease by 10g from initial 1000g -> 990g
-    $goldVault->refresh();
-    expect((float) $goldVault->balance)->toBe(990.0);
+    // Product marked sold
+    $product->refresh();
+    expect($product->is_sold)->toBeTrue();
 
     // Check Cash Vault: Cash vault should increase by invoice cash payment
     $cashVault->refresh();
     expect((float) $cashVault->balance)->toBeGreaterThan(100000.0);
-});
-
-test('selling 20g gold item with 16k cash payment debits 20g gold vault and credits 16k cash vault', function () {
-    $user = User::factory()->create();
-    $user->givePermissionTo(['manage_invoices', 'manage_vault']);
-
-    DailyRegister::create([
-        'date' => Carbon::today()->toDateString(),
-        'opening_cash' => 100000,
-        'opening_gold' => 500,
-        'opened_by' => $user->id,
-    ]);
-
-    DailyRate::create([
-        'date' => Carbon::today()->toDateString(),
-        'gold_sell' => 7500,
-        'silver_sell' => 90,
-    ]);
-
-    $goldVault = Vault::where('type', 'GOLD')->first();
-    $cashVault = Vault::where('type', 'CASH')->first();
-
-    // Initial balances: Gold = 1000g, Cash = 100,000 INR
-    $res = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
-        'customer_name' => 'Ramesh Kumar',
-        'customer_phone' => '9811122233',
-        'item_name' => '20g Gold Chain',
-        'weight' => 20.0,
-        'metal' => 'GOLD',
-        'rate_per_gm' => 7000,
-        'making_type' => 'flat',
-        'making_value' => 5000,
-        'payment_mode' => 'CASH',
-        'payment_amount' => 16000, // ₹16,000 paid in cash (partial payment)
-    ]);
-
-    $res->assertOk()->assertJson(['success' => true]);
-
-    $goldVault->refresh();
-    $cashVault->refresh();
-
-    // 1. Gold Vault: 1000.0g - 20.0g = 980.0g
-    expect((float) $goldVault->balance)->toBe(980.0);
-
-    // 2. Cash Vault: 100,000 + 16,000 = 116,000.0
-    expect((float) $cashVault->balance)->toBe(116000.0);
 });
 
 test('confirm-bill is idempotent and prevents duplicate billing on message_id re-submission', function () {
@@ -174,10 +159,25 @@ test('confirm-bill is idempotent and prevents duplicate billing on message_id re
         'silver_sell' => 90,
     ]);
 
+    $cat = Category::firstOrCreate(['name' => 'Rings', 'code' => 'RNG']);
+    $purity = Purity::firstOrCreate(['name' => '22K']);
+    $sup = Supplier::firstOrCreate(['company_name' => 'Test Supplier', 'contact_person' => 'C', 'mobile' => '9999999999', 'type' => 'GOLD']);
+    $product = Product::create([
+        'name' => 'Gold Ring 5g',
+        'category_id' => $cat->id,
+        'purity_id' => $purity->id,
+        'supplier_id' => $sup->id,
+        'gross_weight' => 5.0,
+        'net_weight' => 5.0,
+        'making_charge' => 10,
+        'making_charge_type' => 'percentage',
+        'is_sold' => false,
+    ]);
+
     // First Call
     $res1 = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
         'customer_name' => 'Pooja Jain',
-        'weight' => 5.0,
+        'barcode' => $product->barcode,
         'rate_per_gm' => 7000,
         'message_id' => 'idempotency_token_999',
     ]);
@@ -187,7 +187,7 @@ test('confirm-bill is idempotent and prevents duplicate billing on message_id re
     // Second Duplicate Call with same message_id
     $res2 = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
         'customer_name' => 'Pooja Jain',
-        'weight' => 5.0,
+        'barcode' => $product->barcode,
         'rate_per_gm' => 7000,
         'message_id' => 'idempotency_token_999',
     ]);

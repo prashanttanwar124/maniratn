@@ -8,6 +8,10 @@ class SilverProduct extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'is_sold' => 'boolean',
+    ];
+
     public function category()
     {
         return $this->belongsTo(Category::class);

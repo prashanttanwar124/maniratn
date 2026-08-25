@@ -14,11 +14,7 @@ class CreateBillAction implements AiActionInterface
     {
         $customerName = trim((string) ($args['customer_name'] ?? 'Walk-in Customer'));
         $customerPhone = trim((string) ($args['customer_phone'] ?? ''));
-        $barcode = trim((string) ($args['barcode'] ?? ''));
-        $itemName = trim((string) ($args['item_name'] ?? 'Gold Ornament'));
-        $weight = floatval($args['weight'] ?? 10);
-        $metal = strtoupper($args['metal'] ?? 'GOLD');
-        $purityStr = strtoupper($args['purity'] ?? '22K');
+        $barcode = strtoupper(trim((string) ($args['barcode'] ?? '')));
         $customRate = (isset($args['rate_per_gm']) || isset($args['rate'])) ? floatval($args['rate_per_gm'] ?? $args['rate']) : null;
         $makingPercent = isset($args['making_percent']) ? floatval($args['making_percent']) : null;
         $makingPerGm = isset($args['making_charge_per_gram']) ? floatval($args['making_charge_per_gram']) : (isset($args['making_per_gram']) ? floatval($args['making_per_gram']) : null);
@@ -27,60 +23,71 @@ class CreateBillAction implements AiActionInterface
         $paymentAmount = isset($args['payment_amount']) ? floatval($args['payment_amount']) : null;
         $discountAmount = floatval($args['discount_amount'] ?? 0);
 
-        $matchedProduct = null;
+        // 1. Barcode is strictly mandatory for all showroom sales
+        if (empty($barcode)) {
+            return [
+                'found' => false,
+                'message' => 'Showroom billing ke liye Product Barcode zaroori hai. Kripya item ka barcode scan karein ya batayein (e.g. G00021 ya S00005).',
+                'status' => 'BARCODE_REQUIRED',
+            ];
+        }
+
+        $matchedProduct = Product::where('barcode', $barcode)->first();
+        if (! $matchedProduct && preg_match('/^G(\d{5})$/', $barcode, $m)) {
+            $matchedProduct = Product::find((int) $m[1]);
+        }
+
         $matchedSilverProduct = null;
-
-        // 1. If Barcode provided, fetch exact stock item from database
-        if (! empty($barcode)) {
-            $matchedProduct = Product::where('barcode', $barcode)->first();
-            if (! $matchedProduct) {
-                $matchedSilverProduct = SilverProduct::where('barcode', $barcode)->first();
+        if (! $matchedProduct) {
+            $matchedSilverProduct = SilverProduct::where('barcode', $barcode)->first();
+            if (! $matchedSilverProduct && preg_match('/^S(\d{5})$/', $barcode, $m)) {
+                $matchedSilverProduct = SilverProduct::find((int) $m[1]);
             }
+        }
 
-            if (! $matchedProduct && ! $matchedSilverProduct) {
+        if (! $matchedProduct && ! $matchedSilverProduct) {
+            return [
+                'found' => false,
+                'message' => "Barcode '{$barcode}' showroom inventory me nahi mila. Kripya valid product barcode check karein.",
+                'status' => 'BARCODE_NOT_FOUND',
+            ];
+        }
+
+        if ($matchedProduct) {
+            if ($matchedProduct->is_sold) {
                 return [
                     'found' => false,
-                    'message' => "Barcode '{$barcode}' database me nahi mila. Kripya barcode check karein.",
-                    'status' => 'BARCODE_NOT_FOUND',
+                    'message' => "Product '{$matchedProduct->name}' (Barcode: {$barcode}) pehle se hi sold hai!",
+                    'status' => 'PRODUCT_ALREADY_SOLD',
                 ];
             }
-
-            if ($matchedProduct) {
-                if ($matchedProduct->is_sold) {
-                    return [
-                        'found' => false,
-                        'message' => "Product '{$matchedProduct->name}' (Barcode: {$barcode}) pehle se hi sold hai!",
-                        'status' => 'PRODUCT_ALREADY_SOLD',
-                    ];
+            $itemName = $matchedProduct->name;
+            $weight = floatval($matchedProduct->net_weight ?: $matchedProduct->gross_weight);
+            $metal = 'GOLD';
+            $purityStr = $matchedProduct->purity?->name ?? '22K';
+            if ($matchedProduct->making_charge > 0 && $makingPercent === null && $makingPerGm === null && $makingFlat === null) {
+                if (($matchedProduct->making_charge_type ?? 'percentage') === 'percentage') {
+                    $makingPercent = floatval($matchedProduct->making_charge);
+                } elseif ($matchedProduct->making_charge_type === 'flat') {
+                    $makingFlat = floatval($matchedProduct->making_charge);
+                } else {
+                    $makingPerGm = floatval($matchedProduct->making_charge);
                 }
-                $itemName = $matchedProduct->name;
-                $weight = floatval($matchedProduct->net_weight ?: $matchedProduct->gross_weight);
-                $metal = 'GOLD';
-                $purityStr = $matchedProduct->purity?->name ?? '22K';
-                if ($matchedProduct->making_charge > 0 && $makingPercent === null && $makingPerGm === null && $makingFlat === null) {
-                    if (($matchedProduct->making_charge_type ?? 'percentage') === 'percentage') {
-                        $makingPercent = floatval($matchedProduct->making_charge);
-                    } elseif ($matchedProduct->making_charge_type === 'flat') {
-                        $makingFlat = floatval($matchedProduct->making_charge);
-                    } else {
-                        $makingPerGm = floatval($matchedProduct->making_charge);
-                    }
-                }
-            } elseif ($matchedSilverProduct) {
-                if ($matchedSilverProduct->is_sold || ($matchedSilverProduct->pricing_mode === 'PIECE' && $matchedSilverProduct->quantity <= 0)) {
-                    return [
-                        'found' => false,
-                        'message' => "Silver item '{$matchedSilverProduct->name}' (Barcode: {$barcode}) pehle se sold hai!",
-                        'status' => 'PRODUCT_ALREADY_SOLD',
-                    ];
-                }
-                $itemName = $matchedSilverProduct->name;
-                $weight = floatval($matchedSilverProduct->net_weight ?: $matchedSilverProduct->gross_weight);
-                $metal = 'SILVER';
-                $purityStr = 'Silver (92.5)';
-                if ($matchedSilverProduct->making_charge > 0 && $makingPercent === null && $makingPerGm === null && $makingFlat === null) {
-                    $makingPerGm = floatval($matchedSilverProduct->making_charge);
-                }
+            }
+        } else {
+            if ($matchedSilverProduct->is_sold || ($matchedSilverProduct->pricing_mode === 'PIECE' && $matchedSilverProduct->quantity <= 0)) {
+                return [
+                    'found' => false,
+                    'message' => "Silver item '{$matchedSilverProduct->name}' (Barcode: {$barcode}) pehle se sold out hai!",
+                    'status' => 'PRODUCT_ALREADY_SOLD',
+                ];
+            }
+            $itemName = $matchedSilverProduct->name;
+            $weight = floatval($matchedSilverProduct->net_weight ?: $matchedSilverProduct->gross_weight);
+            $metal = 'SILVER';
+            $purityStr = 'Silver (92.5)';
+            if ($matchedSilverProduct->making_charge > 0 && $makingPercent === null && $makingPerGm === null && $makingFlat === null) {
+                $makingPerGm = floatval($matchedSilverProduct->making_charge);
             }
         }
 

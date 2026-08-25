@@ -8,6 +8,10 @@ class Product extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'is_sold' => 'boolean',
+    ];
+
     // RELATIONSHIPS
     public function category()
     {

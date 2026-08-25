@@ -292,13 +292,36 @@ test('confirm-bill endpoint reuses master walk-in customer and avoids fake phone
         'silver_sell' => 90,
     ]);
 
+    $cat = Category::firstOrCreate(['name' => 'Coins', 'code' => 'CN']);
+    $purity = Purity::firstOrCreate(['name' => '24K']);
+    $sup = Supplier::firstOrCreate(['company_name' => 'Test Supplier', 'contact_person' => 'C', 'mobile' => '9999999999', 'type' => 'GOLD']);
+    $prod1 = Product::create([
+        'name' => 'Gold Coin 5g',
+        'category_id' => $cat->id,
+        'purity_id' => $purity->id,
+        'supplier_id' => $sup->id,
+        'gross_weight' => 5.0,
+        'net_weight' => 5.0,
+        'making_charge' => 12,
+        'making_charge_type' => 'percentage',
+        'is_sold' => false,
+    ]);
+    $prod2 = Product::create([
+        'name' => 'Gold Chain 10g',
+        'category_id' => $cat->id,
+        'purity_id' => $purity->id,
+        'supplier_id' => $sup->id,
+        'gross_weight' => 10.0,
+        'net_weight' => 10.0,
+        'making_charge' => 12,
+        'making_charge_type' => 'percentage',
+        'is_sold' => false,
+    ]);
+
     // First walk-in bill
     $res1 = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
         'customer_name' => 'Walk-in Customer',
-        'item_name' => 'Gold Coin 5g',
-        'weight' => 5.0,
-        'metal' => 'GOLD',
-        'purity' => '24K (99.9%)',
+        'barcode' => $prod1->barcode,
         'rate_per_gm' => 7400,
         'making_type' => 'flat',
         'making_value' => 200,
@@ -310,10 +333,7 @@ test('confirm-bill endpoint reuses master walk-in customer and avoids fake phone
     // Second walk-in bill
     $res2 = $this->actingAs($user)->postJson('/api/ai/copilot/confirm-bill', [
         'customer_name' => '',
-        'item_name' => 'Gold Chain 10g',
-        'weight' => 10.0,
-        'metal' => 'GOLD',
-        'purity' => '22K',
+        'barcode' => $prod2->barcode,
         'rate_per_gm' => 6778.4,
         'payment_mode' => 'UPI',
     ]);
