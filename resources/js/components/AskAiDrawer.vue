@@ -97,10 +97,8 @@ const formatMarkdown = (text: string | null | undefined, isUser = false): string
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 
-    const boldClass = isUser ? 'font-bold text-amber-200' : 'font-bold text-surface-900';
-    const codeClass = isUser
-        ? 'bg-emerald-950/60 border border-emerald-600/50 font-mono text-[11.5px] px-1.5 py-0.5 text-amber-200 font-semibold'
-        : 'bg-amber-50 border border-amber-200/70 font-mono text-[11.5px] px-1.5 py-0.5 text-[#1c3633] font-semibold';
+    const boldClass = isUser ? 'font-bold text-[#1c3633]' : 'font-bold text-surface-900';
+    const codeClass = 'bg-amber-50 border border-amber-200/70 font-mono text-[11.5px] px-1.5 py-0.5 text-[#1c3633] font-semibold';
 
     // 2. Bold: **text** or __text__
     escaped = escaped.replace(/\*\*(.*?)\*\*/g, `<strong class="${boldClass}">$1</strong>`);
@@ -811,32 +809,36 @@ onMounted(() => {
                             v-for="msg in messages"
                             :key="msg.id"
                             v-show="!isStarterConversation"
-                            :class="['flex max-w-full gap-2.5', msg.role === 'user' ? 'ml-auto max-w-[88%] flex-row-reverse' : 'mr-auto max-w-[96%]']"
+                            :class="['flex max-w-full', msg.role === 'user' ? 'ml-auto max-w-[92%]' : 'mr-auto max-w-[98%]']"
                         >
-                            <div
-                                :class="[
-                                    'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center border text-[9px] font-semibold',
-                                    msg.role === 'user' ? 'border-[#1c3633] bg-[#1c3633] text-white' : 'border-amber-200 bg-amber-50 text-[#b07b24]',
-                                ]"
-                            >
-                                <Sparkles v-if="msg.role === 'assistant'" class="h-3.5 w-3.5" />
-                                <span v-else>Aap</span>
-                            </div>
-
-                            <div class="min-w-0 flex-1 space-y-2.5">
+                            <div class="min-w-0 flex-1 space-y-2">
                                 <div
                                     :class="[
-                                        'border px-3.5 py-3 text-[12.5px] leading-5 shadow-xs',
-                                        msg.role === 'user' ? 'border-[#1c3633] bg-[#1c3633] text-white' : 'border-surface-200 bg-white text-surface-800',
+                                        'border px-3.5 py-2.5 text-[12.5px] leading-5 shadow-xs transition-colors',
+                                        msg.role === 'user'
+                                            ? 'border-emerald-200/80 bg-[#f4f8f6] text-surface-900'
+                                            : 'border-surface-200 bg-white text-surface-800',
                                     ]"
                                 >
-                                    <div class="mb-2 flex items-center gap-2" :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
-                                        <span :class="['text-[10px] font-semibold', msg.role === 'user' ? 'text-white/75' : 'text-surface-500']">
-                                            {{ msg.role === 'user' ? 'Aap' : 'Karat AI' }}
-                                        </span>
-                                        <span :class="['text-[9.5px]', msg.role === 'user' ? 'text-white/50' : 'text-surface-400']">{{ msg.timestamp }}</span>
+                                    <div class="mb-2 flex items-center justify-between gap-2 border-b pb-1.5" :class="msg.role === 'user' ? 'border-emerald-200/60' : 'border-surface-100'">
+                                        <div class="flex items-center gap-2">
+                                            <span
+                                                :class="[
+                                                    'flex h-5 w-5 items-center justify-center text-[10px] shrink-0',
+                                                    msg.role === 'user' ? 'bg-[#1c3633] text-[#e1b65f]' : 'bg-amber-100 text-[#b07b24]',
+                                                ]"
+                                            >
+                                                <Sparkles v-if="msg.role === 'assistant'" class="h-3 w-3" />
+                                                <UserRound v-else class="h-3 w-3" />
+                                            </span>
+                                            <span :class="['text-[11px] font-bold tracking-wide', msg.role === 'user' ? 'text-[#1c3633]' : 'text-surface-800']">
+                                                {{ msg.role === 'user' ? 'Aap' : 'Karat AI' }}
+                                            </span>
+                                        </div>
+                                        <span class="text-[9.5px] font-mono text-surface-400">{{ msg.timestamp }}</span>
                                     </div>
-                                    <p class="whitespace-pre-wrap select-text leading-relaxed" v-html="formatMarkdown(msg.content, msg.role === 'user')"></p>
+
+                                    <p class="whitespace-pre-wrap select-text leading-relaxed font-normal" v-html="formatMarkdown(msg.content, msg.role === 'user')"></p>
 
                                     <div v-if="msg.role === 'assistant' && msg.audio && isVoiceGloballyEnabled" class="mt-2.5 border-t border-surface-100 pt-2">
                                         <button
