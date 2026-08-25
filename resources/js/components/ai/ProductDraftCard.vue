@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, PackagePlus, Pencil, ShieldCheck } from 'lucide-vue-next';
+import { AlertCircle, Check, PackagePlus, Pencil, ShieldCheck, X } from 'lucide-vue-next';
 import InputText from 'primevue/inputtext';
 import { computed, ref } from 'vue';
 
@@ -133,6 +133,25 @@ const formatWeight = (val: any) => {
                     <label class="block text-[11px] font-medium text-surface-700">Making charge (₹/g)</label>
                     <InputText v-model.number="action.result.making_charge_per_gm" type="number" size="small" class="mt-1 w-full rounded-none !font-sans font-semibold text-slate-900" />
                 </div>
+            </div>
+
+            <!-- Error Alert Banner -->
+            <div
+                v-if="action.result.error_message"
+                class="mt-3 flex items-start gap-2.5 border-l-4 border-l-rose-600 border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900 shadow-xs"
+            >
+                <AlertCircle class="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+                <div class="flex-1 min-w-0">
+                    <p class="font-bold text-rose-950">Action Blocked / Error:</p>
+                    <p class="mt-0.5 leading-snug text-rose-800">{{ action.result.error_message }}</p>
+                </div>
+                <button
+                    type="button"
+                    @click="action.result.error_message = null"
+                    class="text-rose-500 hover:text-rose-800 transition-colors p-0.5 -mr-1 -mt-1"
+                >
+                    <X class="h-3.5 w-3.5" />
+                </button>
             </div>
 
             <!-- Action Buttons (Sharp rectangular) -->

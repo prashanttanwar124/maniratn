@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, ExternalLink, FileText, Pencil, Printer, Receipt, ShieldCheck, Tag, X } from 'lucide-vue-next';
+import { AlertCircle, Check, ExternalLink, FileText, Pencil, Printer, Receipt, ShieldCheck, Tag, X } from 'lucide-vue-next';
 import InputText from 'primevue/inputtext';
 import { computed, ref } from 'vue';
 
@@ -336,6 +336,25 @@ const setPurity = (draft: any, purity: string) => {
                     <span class="text-xs font-semibold tracking-wide text-slate-900 uppercase">Grand total</span>
                     <span class="font-mono text-base font-bold text-emerald-800"> ₹{{ formatMoney(action.result.grand_total) }} </span>
                 </div>
+            </div>
+
+            <!-- Error Alert Banner (Sharp luxury rectangular) -->
+            <div
+                v-if="action.result.error_message"
+                class="flex items-start gap-2.5 border-l-4 border-l-rose-600 border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900 shadow-xs"
+            >
+                <AlertCircle class="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+                <div class="flex-1 min-w-0">
+                    <p class="font-bold text-rose-950">Action Blocked / Error:</p>
+                    <p class="mt-0.5 leading-snug text-rose-800">{{ action.result.error_message }}</p>
+                </div>
+                <button
+                    type="button"
+                    @click="action.result.error_message = null"
+                    class="text-rose-500 hover:text-rose-800 transition-colors p-0.5 -mr-1 -mt-1"
+                >
+                    <X class="h-3.5 w-3.5" />
+                </button>
             </div>
 
             <!-- Confirmation & Discard Buttons (Sharp rectangular) -->

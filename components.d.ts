@@ -13,7 +13,6 @@ declare module 'vue' {
   export interface GlobalComponents {
     IconField: typeof import('primevue/iconfield')['default']
     InputOTP: typeof import('primevue/inputotp')['default']
-    InputText: typeof import('primevue/inputtext')['default']
   }
   export interface GlobalDirectives {
     Tooltip: typeof import('primevue/tooltip')['default']

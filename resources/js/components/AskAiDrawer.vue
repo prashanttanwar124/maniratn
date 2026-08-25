@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { Bot, Calculator, Clock, Coins, Mic, MicOff, PackagePlus, Receipt, RefreshCw, Send, Sparkles, TrendingUp, Volume2, VolumeX, Wallet, X } from 'lucide-vue-next';
+import { AlertCircle, AlertTriangle, Bot, Calculator, CheckCircle2, Clock, Coins, Info, Mic, MicOff, PackagePlus, Receipt, RefreshCw, Send, Sparkles, TrendingUp, Volume2, VolumeX, Wallet, X } from 'lucide-vue-next';
 import Drawer from 'primevue/drawer';
 import Textarea from 'primevue/textarea';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
@@ -254,6 +254,26 @@ const sendMessage = async (customText?: string) => {
 
 const isConfirming = ref<Record<string, boolean>>({});
 
+interface ToastNotice {
+    id: string;
+    type: 'error' | 'warning' | 'success' | 'info';
+    title: string;
+    message: string;
+}
+const activeToasts = ref<ToastNotice[]>([]);
+
+const showToast = (message: string, title = 'Notification', type: 'error' | 'warning' | 'success' | 'info' = 'error') => {
+    const id = 'toast_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    activeToasts.value.push({ id, type, title, message });
+    setTimeout(() => {
+        dismissToast(id);
+    }, 5500);
+};
+
+const dismissToast = (id: string) => {
+    activeToasts.value = activeToasts.value.filter((t) => t.id !== id);
+};
+
 const calculateLiveBill = (draft: any) => {
     const weight = Math.round(parseFloat(draft.weight || 0) * 1000) / 1000;
     const rate = Math.round(parseFloat(draft.rate_per_gm || 0) * 100) / 100;
@@ -289,6 +309,7 @@ const calculateLiveBill = (draft: any) => {
 const confirmBillAction = async (action: ActionItem, msgId: string) => {
     const key = `bill_${msgId}`;
     isConfirming.value[key] = true;
+    if (action.result) action.result.error_message = null;
     try {
         const payload = { ...action.result, message_id: msgId };
         const res = await axios.post('/api/ai/copilot/confirm-bill', payload);
@@ -298,18 +319,25 @@ const confirmBillAction = async (action: ActionItem, msgId: string) => {
                 ...res.data,
                 is_preview: false,
                 found: true,
+                error_message: null,
                 status: 'INVOICE_GENERATED_REAL_DB',
             };
             const targetMsg = messages.value.find((m) => m.id === msgId);
             if (targetMsg) {
                 targetMsg.content = `Done! Customer ${res.data.customer_name} ke liye Bill #${res.data.invoice_number} successfully create ho gaya hai.`;
             }
+            showToast(`Bill #${res.data.invoice_number} successfully create ho gaya hai!`, 'Bill Generated', 'success');
             if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
                 speakText(`Done! Bill number ${res.data.invoice_number} successfully create ho gaya hai.`);
             }
         }
     } catch (err: any) {
-        alert(err.response?.data?.message || 'Error creating invoice in database.');
+        const errorMsg = err.response?.data?.message || (err.response?.data?.error === 'DAY_NOT_OPEN' ? 'Showroom day open nahi hai. Pehle open day karein.' : 'Error creating invoice in database.');
+        if (action.result) action.result.error_message = errorMsg;
+        showToast(errorMsg, 'Bill Creation Failed', 'error');
+        if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
+            speakText(errorMsg);
+        }
     } finally {
         isConfirming.value[key] = false;
     }
@@ -318,6 +346,7 @@ const confirmBillAction = async (action: ActionItem, msgId: string) => {
 const confirmProductAction = async (action: ActionItem, msgId: string) => {
     const key = `prod_${msgId}`;
     isConfirming.value[key] = true;
+    if (action.result) action.result.error_message = null;
     try {
         const payload = { ...action.result, message_id: msgId };
         const res = await axios.post('/api/ai/copilot/confirm-product', payload);
@@ -326,18 +355,25 @@ const confirmProductAction = async (action: ActionItem, msgId: string) => {
                 ...action.result,
                 ...res.data,
                 is_preview: false,
+                error_message: null,
                 status: 'IN_STOCK_REAL_DB',
             };
             const targetMsg = messages.value.find((m) => m.id === msgId);
             if (targetMsg) {
                 targetMsg.content = `Done! Product stock me save ho gayi, Barcode ${res.data.barcode}.`;
             }
+            showToast(`Product stock me save ho gaya! Barcode: ${res.data.barcode}`, 'Stock Added', 'success');
             if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
                 speakText(`Done! Product stock me save ho gayi, Barcode ${res.data.barcode}.`);
             }
         }
     } catch (err: any) {
-        alert(err.response?.data?.message || 'Error adding product.');
+        const errorMsg = err.response?.data?.message || 'Error adding product.';
+        if (action.result) action.result.error_message = errorMsg;
+        showToast(errorMsg, 'Product Save Failed', 'error');
+        if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
+            speakText(errorMsg);
+        }
     } finally {
         isConfirming.value[key] = false;
     }
@@ -346,6 +382,7 @@ const confirmProductAction = async (action: ActionItem, msgId: string) => {
 const confirmRatesAction = async (action: ActionItem, msgId: string) => {
     const key = `rates_${msgId}`;
     isConfirming.value[key] = true;
+    if (action.result) action.result.error_message = null;
     try {
         const payload = { ...action.result, message_id: msgId };
         const res = await axios.post('/api/ai/copilot/confirm-rates', payload);
@@ -354,18 +391,25 @@ const confirmRatesAction = async (action: ActionItem, msgId: string) => {
                 ...action.result,
                 ...res.data,
                 is_preview: false,
+                error_message: null,
                 status: 'UPDATED_IN_DATABASE',
             };
             const targetMsg = messages.value.find((m) => m.id === msgId);
             if (targetMsg) {
                 targetMsg.content = `Done! Aaj ke live rates database me update ho gaye.`;
             }
+            showToast('Live bullion rates database me update ho gaye.', 'Rates Updated', 'success');
             if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
                 speakText(`Done! Aaj ke live rates update ho gaye.`);
             }
         }
     } catch (err: any) {
-        alert(err.response?.data?.message || 'Error updating rates.');
+        const errorMsg = err.response?.data?.message || 'Error updating rates.';
+        if (action.result) action.result.error_message = errorMsg;
+        showToast(errorMsg, 'Rates Update Failed', 'error');
+        if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
+            speakText(errorMsg);
+        }
     } finally {
         isConfirming.value[key] = false;
     }
@@ -568,6 +612,48 @@ onMounted(() => {
                         </button>
                     </div>
                 </div>
+
+                <!-- 🔔 Luxury Floating Toast Notifications -->
+                <TransitionGroup
+                    enter-active-class="transform transition ease-out duration-300"
+                    enter-from-class="-translate-y-2 opacity-0"
+                    enter-to-class="translate-y-0 opacity-100"
+                    leave-active-class="transition ease-in duration-200"
+                    leave-from-class="opacity-100 scale-100"
+                    leave-to-class="opacity-0 scale-95"
+                    tag="div"
+                    class="absolute top-18 left-3 right-3 z-50 flex flex-col gap-2 pointer-events-none sm:left-5 sm:right-5"
+                >
+                    <div
+                        v-for="toast in activeToasts"
+                        :key="toast.id"
+                        :class="[
+                            'pointer-events-auto flex items-start gap-3 p-3.5 shadow-2xl border border-l-4 font-sans backdrop-blur-md transition-all',
+                            toast.type === 'error' ? 'bg-slate-900/95 border-rose-700/80 border-l-rose-500 text-rose-100 shadow-rose-950/40' :
+                            toast.type === 'warning' ? 'bg-slate-900/95 border-amber-700/80 border-l-amber-500 text-amber-100 shadow-amber-950/40' :
+                            toast.type === 'success' ? 'bg-slate-900/95 border-emerald-700/80 border-l-emerald-500 text-emerald-100 shadow-emerald-950/40' :
+                            'bg-slate-900/95 border-slate-700 border-l-cyan-500 text-slate-100'
+                        ]"
+                    >
+                        <div class="shrink-0 mt-0.5">
+                            <AlertCircle v-if="toast.type === 'error'" class="w-4 h-4 text-rose-400" />
+                            <AlertTriangle v-else-if="toast.type === 'warning'" class="w-4 h-4 text-amber-400" />
+                            <CheckCircle2 v-else-if="toast.type === 'success'" class="w-4 h-4 text-emerald-400" />
+                            <Info v-else class="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p v-if="toast.title" class="text-xs font-bold tracking-wide text-white">{{ toast.title }}</p>
+                            <p class="text-xs leading-relaxed text-slate-200 mt-0.5 break-words font-medium">{{ toast.message }}</p>
+                        </div>
+                        <button
+                            type="button"
+                            @click="dismissToast(toast.id)"
+                            class="shrink-0 text-slate-400 hover:text-white transition-colors p-1 -mr-1 -mt-1"
+                        >
+                            <X class="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                </TransitionGroup>
 
                 <div v-if="showResetConfirm" class="flex shrink-0 items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2.5 sm:px-5" role="alert">
                     <p class="text-[10.5px] leading-4 font-medium text-amber-900">Poori chat history clear karni hai?</p>
