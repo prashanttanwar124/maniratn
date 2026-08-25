@@ -1200,8 +1200,9 @@ const deleteTask = () => {
                             dateFormat="yy-mm-dd"
                             showIcon
                             iconDisplay="input"
+                            fluid
                             placeholder="Select due date"
-                            class="w-full text-xs"
+                            inputClass="!text-xs"
                             :invalid="Boolean(taskForm.errors.due_date)"
                         />
                         <small v-if="taskForm.errors.due_date" class="mt-1 block text-xs text-rose-600">{{ taskForm.errors.due_date }}</small>
@@ -1216,9 +1217,14 @@ const deleteTask = () => {
                             hourFormat="12"
                             showIcon
                             iconDisplay="input"
+                            fluid
                             placeholder="Select target time"
-                            class="w-full text-xs"
-                        />
+                            inputClass="!text-xs"
+                        >
+                            <template #inputicon>
+                                <i class="pi pi-clock text-xs text-surface-400" />
+                            </template>
+                        </DatePicker>
                     </div>
                 </div>
 
