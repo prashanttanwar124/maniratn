@@ -13,7 +13,6 @@ import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
 import IconField from 'primevue/iconfield';
 import InputGroup from 'primevue/inputgroup';
-import InputGroupAddon from 'primevue/inputgroupaddon';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
 import ProgressBar from 'primevue/progressbar';
@@ -66,7 +65,7 @@ const statusFilter = ref(props.filters?.status || 'all');
 const priorityFilter = ref(props.filters?.priority || 'all');
 const categoryFilter = ref(props.filters?.category || 'all');
 const assigneeFilter = ref(props.filters?.assigned_to || 'all');
-const viewMode = ref(props.filters?.view || 'kanban'); // 'kanban' or 'table'
+const viewMode = ref(props.filters?.view || 'kanban');
 
 // Modals State
 const taskDialog = ref(false);
@@ -96,40 +95,26 @@ const taskForm = useForm({
 
 const newChecklistText = ref('');
 
-// Computed filtered tasks by status for Kanban columns
+// Computed filtered tasks
 const todoTasks = computed(() => props.tasks.filter((t) => t.status === 'TODO'));
 const inProgressTasks = computed(() => props.tasks.filter((t) => t.status === 'IN_PROGRESS'));
 const completedTasks = computed(() => props.tasks.filter((t) => t.status === 'COMPLETED'));
 
-// Category helpers
 const getCategoryMeta = (catKey) => {
     const found = props.categories.find((c) => c.value === catKey);
-    return found || { label: catKey, icon: 'pi-tag', color: 'slate' };
+    return found || { label: catKey, icon: 'pi-tag' };
 };
 
-const getPrioritySeverity = (priority) => {
+const getPriorityClass = (priority) => {
     switch (priority) {
         case 'URGENT':
-            return 'danger';
+            return 'bg-rose-600 text-white font-bold';
         case 'HIGH':
-            return 'warn';
+            return 'bg-amber-600 text-white font-bold';
         case 'MEDIUM':
-            return 'info';
+            return 'bg-sky-600 text-white font-semibold';
         default:
-            return 'secondary';
-    }
-};
-
-const getStatusSeverity = (status) => {
-    switch (status) {
-        case 'COMPLETED':
-            return 'success';
-        case 'IN_PROGRESS':
-            return 'info';
-        case 'TODO':
-            return 'warn';
-        default:
-            return 'secondary';
+            return 'bg-slate-600 text-white';
     }
 };
 
@@ -203,7 +188,7 @@ const openDetailDrawer = (task) => {
     detailDrawer.value = true;
 };
 
-// Checklist Management in Modal
+// Checklist Management
 const addChecklistItem = () => {
     const text = newChecklistText.value.trim();
     if (!text) return;
@@ -228,7 +213,7 @@ const saveTask = () => {
             toast.add({
                 severity: 'success',
                 summary: 'Saved',
-                detail: isEditing.value ? 'Task details updated.' : 'New task created successfully.',
+                detail: isEditing.value ? 'Task details updated.' : 'Naya task ban gaya hai!',
                 life: 3000,
             });
         },
@@ -236,7 +221,7 @@ const saveTask = () => {
             toast.add({
                 severity: 'error',
                 summary: 'Error',
-                detail: 'Please check the task form.',
+                detail: 'Kripya form details check karein.',
                 life: 3500,
             });
         },
@@ -264,7 +249,7 @@ const updateTaskStatus = (task, newStatus) => {
                 toast.add({
                     severity: 'success',
                     summary: 'Status Updated',
-                    detail: `Task status changed to ${newStatus}.`,
+                    detail: `Task status "${newStatus}" me update ho gaya.`,
                     life: 2500,
                 });
             },
@@ -302,7 +287,7 @@ const togglePin = (task) => {
                 toast.add({
                     severity: 'info',
                     summary: 'Pin Updated',
-                    detail: task.is_pinned ? 'Task unpinned.' : 'Task pinned to top.',
+                    detail: task.is_pinned ? 'Task unpin ho gaya.' : 'Task pin ho gaya!',
                     life: 2000,
                 });
             },
@@ -329,7 +314,7 @@ const deleteTask = () => {
             toast.add({
                 severity: 'success',
                 summary: 'Deleted',
-                detail: 'Task removed.',
+                detail: 'Task delete kar diya gaya.',
                 life: 3000,
             });
         },
@@ -341,193 +326,209 @@ const deleteTask = () => {
     <AppLayout>
         <Toast />
 
-        <div class="space-y-6">
+        <div class="space-y-5">
             <!-- ========================================== -->
-            <!-- 1. HEADER                                  -->
+            <!-- 1. HERO HEADER                             -->
             <!-- ========================================== -->
-            <div class="border border-surface-200 bg-white px-5 py-4">
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div class="min-w-0 flex-1">
-                        <div class="flex flex-wrap items-center gap-3">
-                            <h1 class="text-xl font-bold tracking-tight text-surface-900">Showroom & Workshop Tasks</h1>
-                            <Tag value="Task Board" severity="secondary" />
-                            <Tag :value="isDayOpen ? 'Day Open' : 'Day Closed'" :severity="isDayOpen ? 'success' : 'danger'" />
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#1c3633] to-[#142825] text-amber-400 shadow-md border border-amber-500/20">
+                            <i class="pi pi-check-square text-xl"></i>
                         </div>
-                        <p class="mt-1 text-sm text-surface-500">Track customer follow-ups, karigar orders, daily stock audits, and counter duties.</p>
+                        <div>
+                            <h1 class="text-2xl font-bold tracking-tight text-surface-900">Showroom & Workshop Tasks</h1>
+                            <p class="text-xs text-surface-500 mt-0.5">Customer follow-ups, karigar orders, stock count audits aur counter activities manage karein.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex shrink-0 flex-wrap items-center gap-3">
+                    <!-- View Switcher -->
+                    <div class="inline-flex rounded-xl border border-surface-200 bg-surface-100 p-1 shadow-2xs">
+                        <button
+                            type="button"
+                            @click="viewMode = 'kanban'"
+                            :class="[
+                                'inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all',
+                                viewMode === 'kanban' ? 'bg-[#1c3633] text-amber-300 shadow-sm' : 'text-surface-600 hover:text-surface-900',
+                            ]"
+                        >
+                            <i class="pi pi-th-large text-xs"></i>
+                            <span>Kanban</span>
+                        </button>
+                        <button
+                            type="button"
+                            @click="viewMode = 'table'"
+                            :class="[
+                                'inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all',
+                                viewMode === 'table' ? 'bg-[#1c3633] text-amber-300 shadow-sm' : 'text-surface-600 hover:text-surface-900',
+                            ]"
+                        >
+                            <i class="pi pi-list text-xs"></i>
+                            <span>List View</span>
+                        </button>
                     </div>
 
-                    <div class="flex shrink-0 flex-wrap items-center gap-3">
-                        <!-- Sakai Style View Switcher -->
-                        <div class="inline-flex rounded-border border border-surface-200 bg-surface-50 p-1">
-                            <button
-                                type="button"
-                                @click="viewMode = 'kanban'"
-                                :class="[
-                                    'inline-flex items-center gap-2 rounded px-3 py-1.5 text-xs font-semibold transition-colors',
-                                    viewMode === 'kanban' ? 'bg-white text-surface-900 shadow-xs' : 'text-surface-600 hover:text-surface-900',
-                                ]"
-                            >
-                                <i class="pi pi-th-large text-xs"></i>
-                                <span>Kanban</span>
-                            </button>
-                            <button
-                                type="button"
-                                @click="viewMode = 'table'"
-                                :class="[
-                                    'inline-flex items-center gap-2 rounded px-3 py-1.5 text-xs font-semibold transition-colors',
-                                    viewMode === 'table' ? 'bg-white text-surface-900 shadow-xs' : 'text-surface-600 hover:text-surface-900',
-                                ]"
-                            >
-                                <i class="pi pi-list text-xs"></i>
-                                <span>List View</span>
-                            </button>
-                        </div>
-
-                        <!-- PrimeVue Standard Action Button -->
-                        <Button
-                            label="New Task"
-                            icon="pi pi-plus"
-                            @click="openCreateDialog"
-                        />
-                    </div>
+                    <!-- Luxury Naya Task Button -->
+                    <button
+                        type="button"
+                        @click="openCreateDialog"
+                        class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2 text-xs font-bold text-slate-950 shadow-md transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                        <i class="pi pi-plus text-xs font-bold"></i>
+                        <span>+ Naya Task Banayein</span>
+                    </button>
                 </div>
             </div>
 
             <!-- ========================================== -->
-            <!-- 2. STATS KPI STRIP                         -->
+            <!-- 2. LUXURY STATS KPI STRIP                  -->
             <!-- ========================================== -->
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-5">
                 <!-- Total Tasks -->
-                <div class="border border-surface-200 bg-white p-4">
-                    <div class="flex items-start justify-between gap-4">
+                <div class="rounded-2xl border border-[#2a4d49] bg-[#1c3633] p-4 text-white shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
                         <div>
-                            <span class="text-xs font-medium text-surface-500 uppercase tracking-wide">Total Tasks</span>
-                            <div class="mt-2 text-2xl font-bold text-surface-900 leading-none">{{ metrics.total || 0 }}</div>
+                            <span class="text-xs font-medium text-emerald-200/80">Total Tasks</span>
+                            <div class="mt-1.5 text-2xl font-black text-white leading-none">{{ metrics.total || 0 }}</div>
                         </div>
-                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-surface-100 text-surface-700">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-amber-300">
                             <i class="pi pi-layers text-sm"></i>
                         </div>
                     </div>
-                    <p class="mt-2 text-xs text-surface-400">All showroom tasks</p>
+                    <p class="mt-2.5 text-[11px] text-emerald-200/60">Active showroom tasks</p>
                 </div>
 
                 <!-- To Do -->
-                <div class="border border-surface-200 bg-white p-4">
-                    <div class="flex items-start justify-between gap-4">
+                <div class="rounded-2xl border border-amber-800/40 bg-amber-950/20 p-4 shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
                         <div>
-                            <span class="text-xs font-medium text-amber-700 uppercase tracking-wide">To Do</span>
-                            <div class="mt-2 text-2xl font-bold text-surface-900 leading-none">{{ metrics.todo || 0 }}</div>
+                            <span class="text-xs font-semibold text-amber-700">To Do (Pending)</span>
+                            <div class="mt-1.5 text-2xl font-black text-amber-600 leading-none">{{ metrics.todo || 0 }}</div>
                         </div>
-                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-amber-50 text-amber-600 border border-amber-200">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-700">
                             <i class="pi pi-clock text-sm"></i>
                         </div>
                     </div>
-                    <p class="mt-2 text-xs text-surface-400">Pending to start</p>
+                    <p class="mt-2.5 text-[11px] text-amber-700/80">Abhi shuru hona hai</p>
                 </div>
 
                 <!-- In Progress -->
-                <div class="border border-surface-200 bg-white p-4">
-                    <div class="flex items-start justify-between gap-4">
+                <div class="rounded-2xl border border-sky-800/40 bg-sky-950/20 p-4 shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
                         <div>
-                            <span class="text-xs font-medium text-blue-700 uppercase tracking-wide">In Progress</span>
-                            <div class="mt-2 text-2xl font-bold text-surface-900 leading-none">{{ metrics.in_progress || 0 }}</div>
+                            <span class="text-xs font-semibold text-sky-700">In Progress</span>
+                            <div class="mt-1.5 text-2xl font-black text-sky-600 leading-none">{{ metrics.in_progress || 0 }}</div>
                         </div>
-                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-blue-50 text-blue-600 border border-blue-200">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/20 text-sky-700">
                             <i class="pi pi-bolt text-sm"></i>
                         </div>
                     </div>
-                    <p class="mt-2 text-xs text-surface-400">Staff working on it</p>
+                    <p class="mt-2.5 text-[11px] text-sky-700/80">Staff kaam kar raha hai</p>
                 </div>
 
                 <!-- Overdue -->
-                <div class="border border-surface-200 bg-white p-4">
-                    <div class="flex items-start justify-between gap-4">
+                <div class="rounded-2xl border border-rose-800/40 bg-rose-950/20 p-4 shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
                         <div>
-                            <span :class="['text-xs font-medium uppercase tracking-wide', metrics.overdue > 0 ? 'text-rose-700' : 'text-surface-500']">Overdue</span>
-                            <div :class="['mt-2 text-2xl font-bold leading-none', metrics.overdue > 0 ? 'text-rose-600' : 'text-surface-900']">
-                                {{ metrics.overdue || 0 }}
-                            </div>
+                            <span class="text-xs font-semibold text-rose-700">Overdue Tasks</span>
+                            <div class="mt-1.5 text-2xl font-black text-rose-600 leading-none">{{ metrics.overdue || 0 }}</div>
                         </div>
-                        <div :class="['flex h-9 w-9 shrink-0 items-center justify-center rounded border', metrics.overdue > 0 ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-surface-100 text-surface-600 border-surface-200']">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/20 text-rose-700">
                             <i class="pi pi-exclamation-circle text-sm"></i>
                         </div>
                     </div>
-                    <p class="mt-2 text-xs text-surface-400">{{ metrics.overdue > 0 ? 'Deadline passed' : 'No overdue items' }}</p>
+                    <p class="mt-2.5 text-[11px] text-rose-700/80">Deadline nikal chuki hai</p>
                 </div>
 
                 <!-- Completed Today -->
-                <div class="border border-surface-200 bg-white p-4">
-                    <div class="flex items-start justify-between gap-4">
+                <div class="rounded-2xl border border-emerald-800/40 bg-emerald-950/20 p-4 shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
                         <div>
-                            <span class="text-xs font-medium text-emerald-700 uppercase tracking-wide">Completed</span>
-                            <div class="mt-2 text-2xl font-bold text-surface-900 leading-none">{{ metrics.completed_today || 0 }} <span class="text-xs font-normal text-surface-500">today</span></div>
+                            <span class="text-xs font-semibold text-emerald-700">Completed Today</span>
+                            <div class="mt-1.5 text-2xl font-black text-emerald-600 leading-none">{{ metrics.completed_today || 0 }}</div>
                         </div>
-                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-emerald-50 text-emerald-600 border border-emerald-200">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-700">
                             <i class="pi pi-check-circle text-sm"></i>
                         </div>
                     </div>
-                    <p class="mt-2 text-xs text-surface-400">{{ metrics.completed || 0 }} total finished</p>
+                    <p class="mt-2.5 text-[11px] text-emerald-700/80">Total {{ metrics.completed || 0 }} tasks done</p>
                 </div>
             </div>
 
             <!-- ========================================== -->
-            <!-- 3. SAKAI INPUT & FILTER CONTROL BAR        -->
+            <!-- 3. SINGLE-ROW LUXURY FILTER & SEARCH BAR   -->
             <!-- ========================================== -->
-            <div class="border border-surface-200 bg-white p-4">
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <!-- Sakai Tabs Group -->
-                    <div class="flex flex-wrap items-center gap-1.5">
+            <div class="rounded-2xl border border-[#2a4d49] bg-[#1c3633] p-3 shadow-md">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <!-- Left: Horizontal Non-Wrapping Tabs -->
+                    <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                         <button
                             type="button"
                             @click="setTab('all')"
                             :class="[
-                                'inline-flex items-center gap-1.5 rounded px-3 py-2 text-xs font-semibold transition-colors',
-                                activeTab === 'all' ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-700 hover:bg-surface-200',
+                                'inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap',
+                                activeTab === 'all'
+                                    ? 'bg-amber-400 text-slate-950 shadow-sm'
+                                    : 'text-emerald-100/70 hover:bg-white/10 hover:text-white',
                             ]"
                         >
-                            <i class="pi pi-list text-xs"></i>
-                            <span>All Tasks ({{ metrics.total || 0 }})</span>
+                            <span>Sabhi Tasks ({{ metrics.total || 0 }})</span>
                         </button>
+
                         <button
                             type="button"
                             @click="setTab('my_tasks')"
                             :class="[
-                                'inline-flex items-center gap-1.5 rounded px-3 py-2 text-xs font-semibold transition-colors',
-                                activeTab === 'my_tasks' ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-700 hover:bg-surface-200',
+                                'inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap',
+                                activeTab === 'my_tasks'
+                                    ? 'bg-amber-400 text-slate-950 shadow-sm'
+                                    : 'text-emerald-100/70 hover:bg-white/10 hover:text-white',
                             ]"
                         >
                             <i class="pi pi-user text-xs"></i>
-                            <span>My Tasks</span>
-                            <span v-if="metrics.my_pending > 0" class="rounded bg-amber-400 text-surface-900 px-1 text-[10px] font-bold">{{ metrics.my_pending }}</span>
+                            <span>Mere Tasks</span>
+                            <span v-if="metrics.my_pending > 0" class="rounded-full bg-amber-500 text-slate-950 px-1.5 py-0.2 text-[10px] font-black">
+                                {{ metrics.my_pending }}
+                            </span>
                         </button>
+
                         <button
                             type="button"
                             @click="setTab('due_today')"
                             :class="[
-                                'inline-flex items-center gap-1.5 rounded px-3 py-2 text-xs font-semibold transition-colors',
-                                activeTab === 'due_today' ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-700 hover:bg-surface-200',
+                                'inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap',
+                                activeTab === 'due_today'
+                                    ? 'bg-amber-400 text-slate-950 shadow-sm'
+                                    : 'text-emerald-100/70 hover:bg-white/10 hover:text-white',
                             ]"
                         >
                             <i class="pi pi-calendar text-xs"></i>
-                            <span>Due Today ({{ metrics.due_today || 0 }})</span>
+                            <span>Aaj Ke ({{ metrics.due_today || 0 }})</span>
                         </button>
+
                         <button
                             type="button"
                             @click="setTab('urgent')"
                             :class="[
-                                'inline-flex items-center gap-1.5 rounded px-3 py-2 text-xs font-semibold transition-colors',
-                                activeTab === 'urgent' ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-700 hover:bg-surface-200',
+                                'inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap',
+                                activeTab === 'urgent'
+                                    ? 'bg-amber-400 text-slate-950 shadow-sm'
+                                    : 'text-emerald-100/70 hover:bg-white/10 hover:text-white',
                             ]"
                         >
-                            <i class="pi pi-bolt text-xs"></i>
-                            <span>High / Urgent</span>
+                            <span>High / Urgent 🔥</span>
                         </button>
+
                         <button
                             type="button"
                             @click="setTab('completed')"
                             :class="[
-                                'inline-flex items-center gap-1.5 rounded px-3 py-2 text-xs font-semibold transition-colors',
-                                activeTab === 'completed' ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-700 hover:bg-surface-200',
+                                'inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap',
+                                activeTab === 'completed'
+                                    ? 'bg-amber-400 text-slate-950 shadow-sm'
+                                    : 'text-emerald-100/70 hover:bg-white/10 hover:text-white',
                             ]"
                         >
                             <i class="pi pi-check text-xs"></i>
@@ -535,17 +536,18 @@ const deleteTask = () => {
                         </button>
                     </div>
 
-                    <!-- Sakai IconField Search & Select Dropdowns -->
-                    <div class="flex flex-wrap items-center gap-3">
-                        <!-- Sakai Standard IconField Input -->
-                        <IconField class="w-full sm:w-64">
-                            <InputIcon class="pi pi-search text-xs" />
-                            <InputText
+                    <!-- Right: Search Input + Category + Staff Select in 1 Row -->
+                    <div class="flex shrink-0 flex-wrap items-center gap-2 lg:flex-nowrap">
+                        <!-- Search Box -->
+                        <div class="relative min-w-[200px] flex-1 lg:w-56">
+                            <i class="pi pi-search absolute top-1/2 left-3 -translate-y-1/2 text-xs text-emerald-200/50"></i>
+                            <input
+                                type="text"
                                 v-model="search"
-                                placeholder="Search tasks by title..."
-                                class="w-full text-xs"
+                                placeholder="Search tasks..."
+                                class="w-full rounded-xl border border-[#2e5752] bg-[#142825] py-1.5 pr-3 pl-8 text-xs text-white placeholder:text-emerald-200/40 focus:border-amber-400 focus:outline-none"
                             />
-                        </IconField>
+                        </div>
 
                         <!-- Category Select -->
                         <Select
@@ -554,7 +556,7 @@ const deleteTask = () => {
                             optionLabel="label"
                             optionValue="value"
                             placeholder="Category"
-                            class="text-xs w-40"
+                            class="!rounded-xl !bg-[#142825] !border-[#2e5752] !text-white text-xs w-36"
                         />
 
                         <!-- Staff Select -->
@@ -568,24 +570,25 @@ const deleteTask = () => {
                             optionLabel="label"
                             optionValue="value"
                             placeholder="Assignee"
-                            class="text-xs w-36"
+                            class="!rounded-xl !bg-[#142825] !border-[#2e5752] !text-white text-xs w-32"
                         />
                     </div>
                 </div>
             </div>
 
             <!-- ========================================== -->
-            <!-- 4. KANBAN BOARD VIEW                       -->
+            <!-- 4. LUXURY KANBAN BOARD VIEW                -->
             <!-- ========================================== -->
-            <div v-if="viewMode === 'kanban'" class="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            <div v-if="viewMode === 'kanban'" class="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <!-- Column 1: TO DO -->
-                <div class="border border-surface-200 bg-surface-50 p-4">
-                    <div class="mb-3.5 border-b border-surface-200 pb-3">
+                <div class="rounded-2xl border border-surface-200 bg-[#e8ecea] p-4 shadow-sm">
+                    <!-- Column Header -->
+                    <div class="mb-3.5 border-b border-surface-300/80 pb-3">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
-                                <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500"></span>
-                                <span class="text-sm font-bold text-surface-900 leading-none">To do</span>
-                                <span class="inline-flex h-5 min-w-[20px] items-center justify-center rounded px-1.5 text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 leading-none">
+                                <span class="h-3 w-3 shrink-0 rounded-full bg-amber-500 shadow-sm"></span>
+                                <h2 class="text-base font-bold text-surface-900 leading-none tracking-tight">To Do</h2>
+                                <span class="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-black text-slate-950 leading-none">
                                     {{ todoTasks.length }}
                                 </span>
                             </div>
@@ -596,62 +599,57 @@ const deleteTask = () => {
                                 size="small"
                                 @click="openCreateDialog"
                                 v-tooltip.top="'Add Task'"
-                                class="!h-7 !w-7 !p-0 text-surface-500 hover:text-surface-900"
+                                class="!h-7 !w-7 !p-0 text-surface-600 hover:text-surface-900"
                             />
                         </div>
-                        <p class="mt-1 pl-4.5 text-xs text-surface-400">Waiting to be started</p>
                     </div>
 
+                    <!-- Column Cards List -->
                     <div class="flex flex-col gap-3 min-h-[420px]">
-                        <div v-if="todoTasks.length === 0" class="flex flex-col items-center justify-center border border-dashed border-surface-200 py-12 text-center">
+                        <div v-if="todoTasks.length === 0" class="flex flex-col items-center justify-center border-2 border-dashed border-surface-300 rounded-2xl py-12 text-center">
                             <i class="pi pi-check-square text-2xl text-surface-400 mb-1"></i>
-                            <p class="text-xs text-surface-500 font-medium">No tasks in To Do</p>
+                            <p class="text-xs text-surface-600 font-medium">No tasks in To Do</p>
                         </div>
 
-                        <!-- Crisp White Card -->
+                        <!-- Card -->
                         <div
                             v-for="task in todoTasks"
                             :key="task.id"
-                            class="group relative border border-surface-200 bg-white p-4 shadow-2xs transition-all hover:border-surface-400 hover:shadow-xs"
+                            class="group relative rounded-xl border border-[#2a4d49] bg-[#1c3633] p-4 shadow-md transition-all hover:border-amber-400/60 hover:shadow-lg"
                         >
-                            <!-- Header: Category & Priority & Pin -->
+                            <!-- Card Header -->
                             <div class="flex items-center justify-between gap-1.5">
                                 <div class="flex items-center gap-1.5 flex-wrap">
-                                    <Tag
-                                        :value="getCategoryMeta(task.category).label"
-                                        severity="secondary"
-                                        class="!text-[10px]"
-                                    />
-                                    <Tag
-                                        :value="task.priority"
-                                        :severity="getPrioritySeverity(task.priority)"
-                                        class="!text-[10px] !font-bold"
-                                    />
+                                    <span class="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-medium text-emerald-100">
+                                        {{ getCategoryMeta(task.category).label }}
+                                    </span>
+                                    <span :class="['rounded-md px-2 py-0.5 text-[10px]', getPriorityClass(task.priority)]">
+                                        {{ task.priority }}
+                                    </span>
                                 </div>
                                 <button
                                     type="button"
                                     @click="togglePin(task)"
-                                    :class="['text-xs transition-colors p-1', task.is_pinned ? 'text-amber-600' : 'text-surface-300 hover:text-surface-600']"
-                                    v-tooltip.top="task.is_pinned ? 'Unpin' : 'Pin'"
+                                    :class="['text-xs p-1 transition-colors', task.is_pinned ? 'text-amber-400' : 'text-emerald-100/30 hover:text-emerald-100']"
                                 >
-                                    <i :class="task.is_pinned ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"></i>
+                                    <i :class="task.is_pinned ? 'pi pi-bookmark-fill text-amber-400' : 'pi pi-bookmark'"></i>
                                 </button>
                             </div>
 
-                            <!-- Title & Description -->
+                            <!-- Card Title & Description with Crisp Legible Font -->
                             <h3
                                 @click="openDetailDrawer(task)"
-                                class="mt-2.5 cursor-pointer text-sm font-semibold text-surface-900 hover:text-blue-600 line-clamp-2 leading-snug"
+                                class="mt-2.5 cursor-pointer text-sm font-bold text-white leading-snug tracking-tight hover:text-amber-300 line-clamp-2"
                             >
                                 {{ task.title }}
                             </h3>
-                            <p v-if="task.description" class="mt-1 text-xs text-surface-500 line-clamp-2 leading-relaxed">
+                            <p v-if="task.description" class="mt-1 text-xs text-emerald-100/70 line-clamp-2 leading-relaxed">
                                 {{ task.description }}
                             </p>
 
-                            <!-- Subtasks checklist progress bar -->
+                            <!-- Subtasks Checklist Progress Bar -->
                             <div v-if="task.total_subtasks > 0" class="mt-3">
-                                <div class="flex items-center justify-between text-[11px] text-surface-500 mb-1">
+                                <div class="flex items-center justify-between text-[11px] text-emerald-200/70 mb-1">
                                     <span class="inline-flex items-center gap-1">
                                         <i class="pi pi-check-square text-[10px]"></i>
                                         Checklist
@@ -661,19 +659,19 @@ const deleteTask = () => {
                                 <ProgressBar
                                     :value="task.checklist_progress"
                                     :showValue="false"
-                                    class="!h-1.5"
+                                    class="!h-1.5 !bg-black/30"
                                 />
                             </div>
 
                             <!-- Due Date & Assignee -->
-                            <div class="mt-3.5 flex items-center justify-between border-t border-surface-100 pt-2.5 text-xs">
+                            <div class="mt-3.5 flex items-center justify-between border-t border-white/10 pt-2.5 text-xs">
                                 <div class="flex items-center gap-1.5">
                                     <span
                                         :class="[
-                                            'inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium border',
+                                            'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium border',
                                             task.is_overdue
-                                                ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                                : 'bg-surface-50 text-surface-600 border-surface-200',
+                                                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                                                : 'bg-black/30 text-emerald-200 border-white/10',
                                         ]"
                                     >
                                         <i class="pi pi-calendar text-[10px]"></i>
@@ -686,28 +684,28 @@ const deleteTask = () => {
                                         :label="task.assigned_to?.name ? task.assigned_to.name.charAt(0) : '?'"
                                         shape="circle"
                                         size="small"
-                                        class="!h-6 !w-6 !text-[11px] !bg-surface-100 !text-surface-700 font-bold border border-surface-200"
+                                        class="!h-6 !w-6 !text-[11px] !bg-amber-400 !text-slate-950 font-bold"
                                         v-tooltip.top="task.assigned_to?.name || 'Unassigned'"
                                     />
-                                    <span class="text-xs text-surface-600 max-w-[90px] truncate font-medium">
+                                    <span class="text-xs text-emerald-100/90 max-w-[90px] truncate font-medium">
                                         {{ task.assigned_to?.name || 'Unassigned' }}
                                     </span>
                                 </div>
                             </div>
 
-                            <!-- Action Footer -->
-                            <div class="mt-3 flex items-center justify-between gap-1 border-t border-surface-100 pt-2">
-                                <Button
-                                    label="Start Work ⚡"
-                                    size="small"
-                                    text
-                                    class="!p-0 !text-xs !font-semibold !text-blue-600 hover:!underline"
+                            <!-- Card Action Footer -->
+                            <div class="mt-3 flex items-center justify-between gap-1 border-t border-white/10 pt-2">
+                                <button
+                                    type="button"
                                     @click="updateTaskStatus(task, 'IN_PROGRESS')"
-                                />
+                                    class="text-xs font-bold text-sky-400 hover:text-sky-300 hover:underline"
+                                >
+                                    Kaam Shuru Karein ⚡
+                                </button>
                                 <div class="flex items-center gap-1">
-                                    <Button icon="pi pi-eye" text rounded size="small" @click="openDetailDrawer(task)" v-tooltip.top="'View Details'" class="!h-7 !w-7 !p-0" />
-                                    <Button icon="pi pi-pencil" text rounded size="small" @click="openEditDialog(task)" v-tooltip.top="'Edit'" class="!h-7 !w-7 !p-0" />
-                                    <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(task)" v-tooltip.top="'Delete'" class="!h-7 !w-7 !p-0" />
+                                    <Button icon="pi pi-eye" text rounded size="small" @click="openDetailDrawer(task)" class="!h-7 !w-7 !p-0 text-emerald-200/70 hover:text-white" />
+                                    <Button icon="pi pi-pencil" text rounded size="small" @click="openEditDialog(task)" class="!h-7 !w-7 !p-0 text-emerald-200/70 hover:text-white" />
+                                    <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(task)" class="!h-7 !w-7 !p-0 text-rose-400 hover:text-rose-300" />
                                 </div>
                             </div>
                         </div>
@@ -715,68 +713,62 @@ const deleteTask = () => {
                 </div>
 
                 <!-- Column 2: IN PROGRESS -->
-                <div class="border border-surface-200 bg-surface-50 p-4">
-                    <div class="mb-3.5 border-b border-surface-200 pb-3">
+                <div class="rounded-2xl border border-surface-200 bg-[#e8ecea] p-4 shadow-sm">
+                    <div class="mb-3.5 border-b border-surface-300/80 pb-3">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
-                                <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500"></span>
-                                <span class="text-sm font-bold text-surface-900 leading-none">In progress</span>
-                                <span class="inline-flex h-5 min-w-[20px] items-center justify-center rounded px-1.5 text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 leading-none">
+                                <span class="h-3 w-3 shrink-0 rounded-full bg-blue-500 shadow-sm"></span>
+                                <h2 class="text-base font-bold text-surface-900 leading-none tracking-tight">In Progress</h2>
+                                <span class="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-500 px-1.5 text-[11px] font-black text-white leading-none">
                                     {{ inProgressTasks.length }}
                                 </span>
                             </div>
                         </div>
-                        <p class="mt-1 pl-4.5 text-xs text-surface-400">Currently being worked on</p>
                     </div>
 
                     <div class="flex flex-col gap-3 min-h-[420px]">
-                        <div v-if="inProgressTasks.length === 0" class="flex flex-col items-center justify-center border border-dashed border-surface-200 py-12 text-center">
+                        <div v-if="inProgressTasks.length === 0" class="flex flex-col items-center justify-center border-2 border-dashed border-surface-300 rounded-2xl py-12 text-center">
                             <i class="pi pi-bolt text-2xl text-surface-400 mb-1"></i>
-                            <p class="text-xs text-surface-500 font-medium">No tasks in progress</p>
+                            <p class="text-xs text-surface-600 font-medium">No tasks in progress</p>
                         </div>
 
-                        <!-- Crisp White Card -->
+                        <!-- Card -->
                         <div
                             v-for="task in inProgressTasks"
                             :key="task.id"
-                            class="group relative border border-surface-200 bg-white p-4 shadow-2xs transition-all hover:border-surface-400 hover:shadow-xs"
+                            class="group relative rounded-xl border border-[#2a4d49] bg-[#1c3633] p-4 shadow-md transition-all hover:border-amber-400/60 hover:shadow-lg"
                         >
                             <div class="flex items-center justify-between gap-1.5">
                                 <div class="flex items-center gap-1.5 flex-wrap">
-                                    <Tag
-                                        :value="getCategoryMeta(task.category).label"
-                                        severity="secondary"
-                                        class="!text-[10px]"
-                                    />
-                                    <Tag
-                                        :value="task.priority"
-                                        :severity="getPrioritySeverity(task.priority)"
-                                        class="!text-[10px] !font-bold"
-                                    />
+                                    <span class="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-medium text-emerald-100">
+                                        {{ getCategoryMeta(task.category).label }}
+                                    </span>
+                                    <span :class="['rounded-md px-2 py-0.5 text-[10px]', getPriorityClass(task.priority)]">
+                                        {{ task.priority }}
+                                    </span>
                                 </div>
                                 <button
                                     type="button"
                                     @click="togglePin(task)"
-                                    :class="['text-xs transition-colors p-1', task.is_pinned ? 'text-amber-600' : 'text-surface-300 hover:text-surface-600']"
-                                    v-tooltip.top="task.is_pinned ? 'Unpin' : 'Pin'"
+                                    :class="['text-xs p-1 transition-colors', task.is_pinned ? 'text-amber-400' : 'text-emerald-100/30 hover:text-emerald-100']"
                                 >
-                                    <i :class="task.is_pinned ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"></i>
+                                    <i :class="task.is_pinned ? 'pi pi-bookmark-fill text-amber-400' : 'pi pi-bookmark'"></i>
                                 </button>
                             </div>
 
                             <h3
                                 @click="openDetailDrawer(task)"
-                                class="mt-2.5 cursor-pointer text-sm font-semibold text-surface-900 hover:text-blue-600 line-clamp-2 leading-snug"
+                                class="mt-2.5 cursor-pointer text-sm font-bold text-white leading-snug tracking-tight hover:text-amber-300 line-clamp-2"
                             >
                                 {{ task.title }}
                             </h3>
-                            <p v-if="task.description" class="mt-1 text-xs text-surface-500 line-clamp-2 leading-relaxed">
+                            <p v-if="task.description" class="mt-1 text-xs text-emerald-100/70 line-clamp-2 leading-relaxed">
                                 {{ task.description }}
                             </p>
 
-                            <!-- Subtasks checklist progress bar -->
+                            <!-- Subtasks Checklist Progress Bar -->
                             <div v-if="task.total_subtasks > 0" class="mt-3">
-                                <div class="flex items-center justify-between text-[11px] text-surface-500 mb-1">
+                                <div class="flex items-center justify-between text-[11px] text-emerald-200/70 mb-1">
                                     <span class="inline-flex items-center gap-1">
                                         <i class="pi pi-check-square text-[10px]"></i>
                                         Checklist
@@ -786,19 +778,19 @@ const deleteTask = () => {
                                 <ProgressBar
                                     :value="task.checklist_progress"
                                     :showValue="false"
-                                    class="!h-1.5"
+                                    class="!h-1.5 !bg-black/30"
                                 />
                             </div>
 
                             <!-- Due Date & Assignee -->
-                            <div class="mt-3.5 flex items-center justify-between border-t border-surface-100 pt-2.5 text-xs">
+                            <div class="mt-3.5 flex items-center justify-between border-t border-white/10 pt-2.5 text-xs">
                                 <div class="flex items-center gap-1.5">
                                     <span
                                         :class="[
-                                            'inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium border',
+                                            'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium border',
                                             task.is_overdue
-                                                ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                                : 'bg-surface-50 text-surface-600 border-surface-200',
+                                                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                                                : 'bg-black/30 text-emerald-200 border-white/10',
                                         ]"
                                     >
                                         <i class="pi pi-calendar text-[10px]"></i>
@@ -811,28 +803,28 @@ const deleteTask = () => {
                                         :label="task.assigned_to?.name ? task.assigned_to.name.charAt(0) : '?'"
                                         shape="circle"
                                         size="small"
-                                        class="!h-6 !w-6 !text-[11px] !bg-blue-50 !text-blue-700 font-bold border border-blue-200"
+                                        class="!h-6 !w-6 !text-[11px] !bg-blue-400 !text-slate-950 font-bold"
                                         v-tooltip.top="task.assigned_to?.name || 'Unassigned'"
                                     />
-                                    <span class="text-xs text-surface-600 max-w-[90px] truncate font-medium">
+                                    <span class="text-xs text-emerald-100/90 max-w-[90px] truncate font-medium">
                                         {{ task.assigned_to?.name || 'Unassigned' }}
                                     </span>
                                 </div>
                             </div>
 
-                            <!-- Action Footer -->
-                            <div class="mt-3 flex items-center justify-between gap-1 border-t border-surface-100 pt-2">
-                                <Button
-                                    label="Mark Done ✅"
-                                    size="small"
-                                    text
-                                    class="!p-0 !text-xs !font-semibold !text-emerald-600 hover:!underline"
+                            <!-- Card Action Footer -->
+                            <div class="mt-3 flex items-center justify-between gap-1 border-t border-white/10 pt-2">
+                                <button
+                                    type="button"
                                     @click="updateTaskStatus(task, 'COMPLETED')"
-                                />
+                                    class="text-xs font-bold text-emerald-400 hover:text-emerald-300 hover:underline"
+                                >
+                                    Mark Done ✅
+                                </button>
                                 <div class="flex items-center gap-1">
-                                    <Button icon="pi pi-eye" text rounded size="small" @click="openDetailDrawer(task)" v-tooltip.top="'View Details'" class="!h-7 !w-7 !p-0" />
-                                    <Button icon="pi pi-pencil" text rounded size="small" @click="openEditDialog(task)" v-tooltip.top="'Edit'" class="!h-7 !w-7 !p-0" />
-                                    <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(task)" v-tooltip.top="'Delete'" class="!h-7 !w-7 !p-0" />
+                                    <Button icon="pi pi-eye" text rounded size="small" @click="openDetailDrawer(task)" class="!h-7 !w-7 !p-0 text-emerald-200/70 hover:text-white" />
+                                    <Button icon="pi pi-pencil" text rounded size="small" @click="openEditDialog(task)" class="!h-7 !w-7 !p-0 text-emerald-200/70 hover:text-white" />
+                                    <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(task)" class="!h-7 !w-7 !p-0 text-rose-400 hover:text-rose-300" />
                                 </div>
                             </div>
                         </div>
@@ -840,79 +832,74 @@ const deleteTask = () => {
                 </div>
 
                 <!-- Column 3: COMPLETED -->
-                <div class="border border-surface-200 bg-surface-50 p-4">
-                    <div class="mb-3.5 border-b border-surface-200 pb-3">
+                <div class="rounded-2xl border border-surface-200 bg-[#e8ecea] p-4 shadow-sm">
+                    <div class="mb-3.5 border-b border-surface-300/80 pb-3">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
-                                <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500"></span>
-                                <span class="text-sm font-bold text-surface-900 leading-none">Completed</span>
-                                <span class="inline-flex h-5 min-w-[20px] items-center justify-center rounded px-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 leading-none">
+                                <span class="h-3 w-3 shrink-0 rounded-full bg-emerald-500 shadow-sm"></span>
+                                <h2 class="text-base font-bold text-surface-900 leading-none tracking-tight">Completed</h2>
+                                <span class="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-500 px-1.5 text-[11px] font-black text-white leading-none">
                                     {{ completedTasks.length }}
                                 </span>
                             </div>
                         </div>
-                        <p class="mt-1 pl-4.5 text-xs text-surface-400">Finished work</p>
                     </div>
 
                     <div class="flex flex-col gap-3 min-h-[420px]">
-                        <div v-if="completedTasks.length === 0" class="flex flex-col items-center justify-center border border-dashed border-surface-200 py-12 text-center">
+                        <div v-if="completedTasks.length === 0" class="flex flex-col items-center justify-center border-2 border-dashed border-surface-300 rounded-2xl py-12 text-center">
                             <i class="pi pi-check-circle text-2xl text-surface-400 mb-1"></i>
-                            <p class="text-xs text-surface-500 font-medium">Completed tasks will appear here</p>
+                            <p class="text-xs text-surface-600 font-medium">Completed tasks will appear here</p>
                         </div>
 
-                        <!-- Crisp White Card -->
+                        <!-- Card -->
                         <div
                             v-for="task in completedTasks"
                             :key="task.id"
-                            class="group relative border border-surface-200 bg-white p-4 shadow-2xs opacity-90 transition-all hover:opacity-100 hover:border-surface-400"
+                            class="group relative rounded-xl border border-[#2a4d49] bg-[#1c3633]/80 p-4 shadow-md opacity-90 transition-all hover:opacity-100 hover:border-emerald-400/60"
                         >
                             <div class="flex items-center justify-between gap-1.5">
                                 <div class="flex items-center gap-1.5 flex-wrap">
-                                    <Tag
-                                        :value="getCategoryMeta(task.category).label"
-                                        severity="secondary"
-                                        class="!text-[10px]"
-                                    />
-                                    <Tag
-                                        value="DONE"
-                                        severity="success"
-                                        class="!text-[10px] !font-bold"
-                                    />
+                                    <span class="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-medium text-emerald-100">
+                                        {{ getCategoryMeta(task.category).label }}
+                                    </span>
+                                    <span class="rounded-md bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                                        DONE
+                                    </span>
                                 </div>
-                                <i class="pi pi-check-circle text-emerald-600 text-sm"></i>
+                                <i class="pi pi-check-circle text-emerald-400 text-sm"></i>
                             </div>
 
                             <h3
                                 @click="openDetailDrawer(task)"
-                                class="mt-2.5 cursor-pointer text-sm font-medium text-surface-500 line-through hover:text-surface-900 line-clamp-2 leading-snug"
+                                class="mt-2.5 cursor-pointer text-sm font-medium text-emerald-200/80 line-through leading-snug tracking-tight hover:text-white line-clamp-2"
                             >
                                 {{ task.title }}
                             </h3>
 
                             <!-- Due Date & Assignee -->
-                            <div class="mt-3 flex items-center justify-between border-t border-surface-100 pt-2.5 text-xs">
-                                <span class="text-[11px] text-surface-500">Completed</span>
+                            <div class="mt-3 flex items-center justify-between border-t border-white/10 pt-2.5 text-xs">
+                                <span class="text-[11px] text-emerald-200/60">Completed</span>
                                 <Avatar
                                     :label="task.assigned_to?.name ? task.assigned_to.name.charAt(0) : '?'"
                                     shape="circle"
                                     size="small"
-                                    class="!h-6 !w-6 !text-[11px] !bg-emerald-50 !text-emerald-700 font-bold border border-emerald-200"
+                                    class="!h-6 !w-6 !text-[11px] !bg-emerald-500 !text-slate-950 font-bold"
                                     v-tooltip.top="task.assigned_to?.name || 'Unassigned'"
                                 />
                             </div>
 
-                            <!-- Action Footer -->
-                            <div class="mt-3 flex items-center justify-between gap-1 border-t border-surface-100 pt-2">
-                                <Button
-                                    label="Reopen ↺"
-                                    size="small"
-                                    text
-                                    class="!p-0 !text-xs !text-surface-500 hover:!text-surface-900"
+                            <!-- Card Action Footer -->
+                            <div class="mt-3 flex items-center justify-between gap-1 border-t border-white/10 pt-2">
+                                <button
+                                    type="button"
                                     @click="updateTaskStatus(task, 'TODO')"
-                                />
+                                    class="text-xs font-medium text-emerald-200/70 hover:text-white hover:underline"
+                                >
+                                    Reopen ↺
+                                </button>
                                 <div class="flex items-center gap-1">
-                                    <Button icon="pi pi-eye" text rounded size="small" @click="openDetailDrawer(task)" v-tooltip.top="'View Details'" class="!h-7 !w-7 !p-0" />
-                                    <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(task)" v-tooltip.top="'Delete'" class="!h-7 !w-7 !p-0" />
+                                    <Button icon="pi pi-eye" text rounded size="small" @click="openDetailDrawer(task)" class="!h-7 !w-7 !p-0 text-emerald-200/70 hover:text-white" />
+                                    <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(task)" class="!h-7 !w-7 !p-0 text-rose-400 hover:text-rose-300" />
                                 </div>
                             </div>
                         </div>
@@ -923,7 +910,7 @@ const deleteTask = () => {
             <!-- ========================================== -->
             <!-- 5. LIST / TABLE VIEW                       -->
             <!-- ========================================== -->
-            <div v-else class="border border-surface-200 bg-white">
+            <div v-else class="rounded-2xl border border-surface-200 bg-white overflow-hidden shadow-sm">
                 <DataTable
                     :value="tasks"
                     stripedRows
@@ -935,7 +922,7 @@ const deleteTask = () => {
                     class="p-datatable-sm"
                 >
                     <template #empty>
-                        <div class="py-8 text-center text-surface-500">
+                        <div class="py-12 text-center text-surface-500">
                             <i class="pi pi-search text-3xl text-surface-400 mb-2"></i>
                             <p class="text-xs">No matching tasks found.</p>
                         </div>
@@ -949,7 +936,7 @@ const deleteTask = () => {
                                 @click="togglePin(data)"
                                 :class="['text-xs transition-colors p-1', data.is_pinned ? 'text-amber-600' : 'text-surface-300 hover:text-surface-600']"
                             >
-                                <i :class="data.is_pinned ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"></i>
+                                <i :class="data.is_pinned ? 'pi pi-bookmark-fill text-amber-500' : 'pi pi-bookmark'"></i>
                             </button>
                         </template>
                     </Column>
@@ -958,7 +945,7 @@ const deleteTask = () => {
                     <Column header="Task Title" sortable field="title">
                         <template #body="{ data }">
                             <div class="cursor-pointer py-1" @click="openDetailDrawer(data)">
-                                <span :class="['font-semibold text-surface-900 hover:text-blue-600 text-sm', data.status === 'COMPLETED' ? 'line-through text-surface-400' : '']">
+                                <span :class="['font-bold text-surface-900 hover:text-amber-600 text-sm', data.status === 'COMPLETED' ? 'line-through text-surface-400' : '']">
                                     {{ data.title }}
                                 </span>
                                 <p v-if="data.description" class="text-xs text-surface-500 line-clamp-1 mt-0.5">
@@ -982,11 +969,9 @@ const deleteTask = () => {
                     <!-- Priority -->
                     <Column header="Priority" sortable field="priority">
                         <template #body="{ data }">
-                            <Tag
-                                :value="data.priority"
-                                :severity="getPrioritySeverity(data.priority)"
-                                class="!text-[11px] !font-bold"
-                            />
+                            <span :class="['rounded-md px-2 py-0.5 text-[11px]', getPriorityClass(data.priority)]">
+                                {{ data.priority }}
+                            </span>
                         </template>
                     </Column>
 
@@ -1009,7 +994,7 @@ const deleteTask = () => {
                         <template #body="{ data }">
                             <span
                                 :class="[
-                                    'inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium border',
+                                    'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium border',
                                     data.is_overdue
                                         ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
                                         : 'bg-surface-50 text-surface-700 border-surface-200',
@@ -1029,9 +1014,9 @@ const deleteTask = () => {
                                     :label="data.assigned_to?.name ? data.assigned_to.name.charAt(0) : '?'"
                                     shape="circle"
                                     size="small"
-                                    class="!h-6 !w-6 !text-[11px] !bg-surface-100 !text-surface-700 font-bold border border-surface-200"
+                                    class="!h-6 !w-6 !text-[11px] !bg-amber-400 !text-slate-950 font-bold"
                                 />
-                                <span class="text-xs text-surface-700 font-medium">
+                                <span class="text-xs text-surface-800 font-medium">
                                     {{ data.assigned_to?.name || 'Unassigned' }}
                                 </span>
                             </div>
@@ -1051,7 +1036,7 @@ const deleteTask = () => {
                                 ]"
                                 optionLabel="label"
                                 optionValue="value"
-                                class="text-xs w-32"
+                                class="!rounded-xl text-xs w-32"
                             />
                         </template>
                     </Column>
@@ -1060,9 +1045,9 @@ const deleteTask = () => {
                     <Column header="Actions" style="width: 7rem">
                         <template #body="{ data }">
                             <div class="flex items-center gap-1">
-                                <Button icon="pi pi-eye" text rounded size="small" @click="openDetailDrawer(data)" v-tooltip.top="'View'" class="!h-7 !w-7 !p-0" />
-                                <Button icon="pi pi-pencil" text rounded size="small" @click="openEditDialog(data)" v-tooltip.top="'Edit'" class="!h-7 !w-7 !p-0" />
-                                <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(data)" v-tooltip.top="'Delete'" class="!h-7 !w-7 !p-0" />
+                                <Button icon="pi pi-eye" text rounded size="small" @click="openDetailDrawer(data)" class="!h-7 !w-7 !p-0" />
+                                <Button icon="pi pi-pencil" text rounded size="small" @click="openEditDialog(data)" class="!h-7 !w-7 !p-0" />
+                                <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(data)" class="!h-7 !w-7 !p-0" />
                             </div>
                         </template>
                     </Column>
@@ -1076,8 +1061,9 @@ const deleteTask = () => {
         <Dialog
             v-model:visible="taskDialog"
             modal
-            :header="isEditing ? 'Edit Task' : 'Create New Task'"
+            :header="isEditing ? 'Edit Task' : 'Naya Task Banayein'"
             :style="{ width: '560px' }"
+            class="!rounded-2xl"
         >
             <form @submit.prevent="saveTask" class="space-y-4 pt-2">
                 <!-- Title -->
@@ -1087,8 +1073,8 @@ const deleteTask = () => {
                     </label>
                     <InputText
                         v-model="taskForm.title"
-                        placeholder="e.g. Call Ramesh ji for custom bridal necklace delivery"
-                        class="w-full text-sm"
+                        placeholder="e.g. Ramesh Sharma ji ko bridal necklace delivery follow-up karein"
+                        class="w-full text-sm !rounded-xl"
                         required
                     />
                 </div>
@@ -1104,7 +1090,7 @@ const deleteTask = () => {
                             :options="categories"
                             optionLabel="label"
                             optionValue="value"
-                            class="w-full text-xs"
+                            class="w-full text-xs !rounded-xl"
                             required
                         />
                     </div>
@@ -1118,7 +1104,7 @@ const deleteTask = () => {
                             :options="priorities"
                             optionLabel="label"
                             optionValue="value"
-                            class="w-full text-xs"
+                            class="w-full text-xs !rounded-xl"
                             required
                         />
                     </div>
@@ -1136,7 +1122,7 @@ const deleteTask = () => {
                             optionLabel="name"
                             optionValue="id"
                             placeholder="Select Staff"
-                            class="w-full text-xs"
+                            class="w-full text-xs !rounded-xl"
                         />
                     </div>
 
@@ -1153,7 +1139,7 @@ const deleteTask = () => {
                             ]"
                             optionLabel="label"
                             optionValue="value"
-                            class="w-full text-xs"
+                            class="w-full text-xs !rounded-xl"
                         />
                     </div>
                 </div>
@@ -1167,7 +1153,7 @@ const deleteTask = () => {
                         <InputText
                             type="date"
                             v-model="taskForm.due_date"
-                            class="w-full text-xs"
+                            class="w-full text-xs !rounded-xl"
                         />
                     </div>
 
@@ -1178,7 +1164,7 @@ const deleteTask = () => {
                         <InputText
                             type="time"
                             v-model="taskForm.due_time"
-                            class="w-full text-xs"
+                            class="w-full text-xs !rounded-xl"
                         />
                     </div>
                 </div>
@@ -1191,13 +1177,13 @@ const deleteTask = () => {
                     <Textarea
                         v-model="taskForm.description"
                         rows="2"
-                        placeholder="Add task notes or instructions..."
-                        class="w-full text-xs"
+                        placeholder="Task ki details ya instructions likhein..."
+                        class="w-full text-xs !rounded-xl"
                     />
                 </div>
 
-                <!-- Checklist Builder -->
-                <div class="border border-surface-200 bg-surface-50 p-3.5 rounded">
+                <!-- Seamless Checklist Builder -->
+                <div class="rounded-xl border border-surface-200 bg-surface-50 p-3.5">
                     <div class="mb-2.5 flex items-center justify-between">
                         <span class="text-xs font-bold text-surface-800">Checklist steps</span>
                         <span class="text-xs font-medium text-surface-500">{{ taskForm.checklist.length }} items</span>
@@ -1208,7 +1194,7 @@ const deleteTask = () => {
                         <div
                             v-for="(item, idx) in taskForm.checklist"
                             :key="idx"
-                            class="flex items-center justify-between gap-2 border border-surface-200 bg-white px-3 py-2 text-xs rounded shadow-2xs"
+                            class="flex items-center justify-between gap-2 rounded-lg border border-surface-200 bg-white px-3 py-2 text-xs shadow-2xs"
                         >
                             <div class="flex items-center gap-2.5 flex-1">
                                 <Checkbox v-model="item.is_completed" :binary="true" />
@@ -1228,7 +1214,7 @@ const deleteTask = () => {
                         </div>
                     </div>
 
-                    <!-- Seamless InputGroup with Add Button -->
+                    <!-- InputGroup -->
                     <InputGroup class="w-full">
                         <InputText
                             v-model="newChecklistText"
@@ -1256,12 +1242,13 @@ const deleteTask = () => {
 
                 <!-- Form Actions -->
                 <div class="flex justify-end gap-2 border-t border-surface-100 pt-3">
-                    <Button label="Cancel" text @click="taskDialog = false" class="!text-xs" />
+                    <Button label="Cancel" text @click="taskDialog = false" class="!rounded-xl !text-xs" />
                     <Button
                         type="submit"
                         :label="isEditing ? 'Update Task' : 'Create Task'"
                         icon="pi pi-check"
                         :loading="taskForm.processing"
+                        class="!rounded-xl"
                     />
                 </div>
             </form>
@@ -1275,19 +1262,22 @@ const deleteTask = () => {
             modal
             header="Task Details"
             :style="{ width: '540px' }"
+            class="!rounded-2xl"
         >
             <div v-if="selectedTask" class="space-y-4 pt-1">
                 <!-- Header Card -->
-                <div class="border border-surface-200 bg-surface-50 p-4">
+                <div class="rounded-xl border border-surface-200 bg-surface-50 p-4">
                     <div class="flex items-center justify-between gap-2">
                         <div class="flex items-center gap-2">
                             <Tag :value="getCategoryMeta(selectedTask.category).label" severity="secondary" />
-                            <Tag :value="selectedTask.priority" :severity="getPrioritySeverity(selectedTask.priority)" />
+                            <span :class="['rounded-md px-2 py-0.5 text-xs', getPriorityClass(selectedTask.priority)]">
+                                {{ selectedTask.priority }}
+                            </span>
                         </div>
-                        <Tag :value="selectedTask.status" :severity="getStatusSeverity(selectedTask.status)" />
+                        <Tag :value="selectedTask.status" :severity="selectedTask.status === 'COMPLETED' ? 'success' : selectedTask.status === 'IN_PROGRESS' ? 'info' : 'warn'" />
                     </div>
 
-                    <h2 class="mt-2.5 text-base font-semibold text-surface-900 leading-snug">
+                    <h2 class="mt-2.5 text-base font-bold text-surface-900 leading-snug">
                         {{ selectedTask.title }}
                     </h2>
                     <p v-if="selectedTask.description" class="mt-1 text-xs text-surface-600 leading-relaxed">
@@ -1297,20 +1287,20 @@ const deleteTask = () => {
 
                 <!-- Metadata Grid -->
                 <div class="grid grid-cols-2 gap-3 text-xs">
-                    <div class="border border-surface-200 bg-white p-3">
+                    <div class="rounded-xl border border-surface-200 bg-white p-3">
                         <span class="text-[11px] text-surface-400 block mb-1 uppercase tracking-wide">Assigned Staff</span>
                         <div class="flex items-center gap-2 font-semibold text-surface-800">
                             <Avatar
                                 :label="selectedTask.assigned_to?.name ? selectedTask.assigned_to.name.charAt(0) : '?'"
                                 shape="circle"
                                 size="small"
-                                class="!h-5 !w-5 !text-[10px] !bg-surface-100 !text-surface-700 font-bold border border-surface-200"
+                                class="!h-5 !w-5 !text-[10px] !bg-amber-400 !text-slate-950 font-bold"
                             />
                             <span>{{ selectedTask.assigned_to?.name || 'Unassigned' }}</span>
                         </div>
                     </div>
 
-                    <div class="border border-surface-200 bg-white p-3">
+                    <div class="rounded-xl border border-surface-200 bg-white p-3">
                         <span class="text-[11px] text-surface-400 block mb-1 uppercase tracking-wide">Due Date</span>
                         <span :class="['font-semibold', selectedTask.is_overdue ? 'text-rose-600 font-bold' : 'text-surface-800']">
                             {{ selectedTask.due_date || 'No Date' }} {{ selectedTask.due_time ? '(' + selectedTask.due_time + ')' : '' }}
@@ -1319,7 +1309,7 @@ const deleteTask = () => {
                 </div>
 
                 <!-- Live Interactive Checklist -->
-                <div v-if="selectedTask.checklist && selectedTask.checklist.length > 0" class="border border-surface-200 bg-white p-4">
+                <div v-if="selectedTask.checklist && selectedTask.checklist.length > 0" class="rounded-xl border border-surface-200 bg-white p-4">
                     <div class="mb-2 flex items-center justify-between text-xs font-semibold text-surface-900">
                         <span class="inline-flex items-center gap-1.5">
                             <i class="pi pi-check-square text-xs text-surface-600"></i>
@@ -1333,7 +1323,7 @@ const deleteTask = () => {
                             v-for="item in selectedTask.checklist"
                             :key="item.id"
                             @click="toggleChecklist(selectedTask, item.id)"
-                            class="flex cursor-pointer items-center gap-2.5 border border-surface-100 p-2 transition-colors hover:bg-surface-50"
+                            class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-surface-100 p-2 transition-colors hover:bg-surface-50"
                         >
                             <Checkbox :modelValue="Boolean(item.is_completed)" :binary="true" />
                             <span :class="['text-xs', item.is_completed ? 'line-through text-surface-400' : 'text-surface-800 font-medium']">
@@ -1344,7 +1334,7 @@ const deleteTask = () => {
                 </div>
 
                 <!-- Handover Notes -->
-                <div v-if="selectedTask.handover_notes" class="border border-amber-200 bg-amber-50/60 p-3 text-xs">
+                <div v-if="selectedTask.handover_notes" class="rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs">
                     <span class="font-semibold text-amber-900 block mb-1">Handover Notes:</span>
                     <p class="text-amber-800">{{ selectedTask.handover_notes }}</p>
                 </div>
@@ -1357,6 +1347,7 @@ const deleteTask = () => {
                             label="Start Work ⚡"
                             size="small"
                             @click="updateTaskStatus(selectedTask, 'IN_PROGRESS')"
+                            class="!rounded-xl"
                         />
                         <Button
                             v-if="selectedTask.status === 'IN_PROGRESS'"
@@ -1364,6 +1355,7 @@ const deleteTask = () => {
                             size="small"
                             severity="success"
                             @click="updateTaskStatus(selectedTask, 'COMPLETED')"
+                            class="!rounded-xl"
                         />
                         <Button
                             v-if="selectedTask.status === 'COMPLETED'"
@@ -1371,6 +1363,7 @@ const deleteTask = () => {
                             size="small"
                             text
                             @click="updateTaskStatus(selectedTask, 'TODO')"
+                            class="!rounded-xl"
                         />
                     </div>
 
@@ -1381,6 +1374,7 @@ const deleteTask = () => {
                             size="small"
                             text
                             @click="detailDrawer = false; openEditDialog(selectedTask)"
+                            class="!rounded-xl"
                         />
                         <Button
                             label="Delete"
@@ -1389,6 +1383,7 @@ const deleteTask = () => {
                             text
                             severity="danger"
                             @click="confirmDelete(selectedTask)"
+                            class="!rounded-xl"
                         />
                     </div>
                 </div>
@@ -1398,16 +1393,16 @@ const deleteTask = () => {
         <!-- ========================================== -->
         <!-- 8. DELETE CONFIRMATION DIALOG              -->
         <!-- ========================================== -->
-        <Dialog v-model:visible="deleteDialog" modal header="Delete Task" :style="{ width: '400px' }">
+        <Dialog v-model:visible="deleteDialog" modal header="Delete Task" :style="{ width: '400px' }" class="!rounded-2xl">
             <div class="flex items-center gap-3 py-2">
                 <i class="pi pi-exclamation-triangle text-2xl text-rose-500"></i>
                 <span class="text-sm text-surface-700">
-                    Are you sure you want to delete <strong>"{{ taskToDelete?.title }}"</strong>?
+                    Kya aap <strong>"{{ taskToDelete?.title }}"</strong> task ko delete karna chahte hain?
                 </span>
             </div>
             <template #footer>
-                <Button label="Cancel" text @click="deleteDialog = false" class="!text-xs" />
-                <Button label="Delete" severity="danger" @click="deleteTask" class="!text-xs font-semibold" />
+                <Button label="Cancel" text @click="deleteDialog = false" class="!rounded-xl !text-xs" />
+                <Button label="Delete" severity="danger" @click="deleteTask" class="!rounded-xl !text-xs font-semibold" />
             </template>
         </Dialog>
     </AppLayout>
