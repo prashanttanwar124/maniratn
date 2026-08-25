@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { AlertCircle, Check, Clock, PackagePlus, Pencil, ShieldCheck, X } from 'lucide-vue-next';
 import InputText from 'primevue/inputtext';
+import Select from 'primevue/select';
 import { computed, ref } from 'vue';
 
 interface ActionItem {
@@ -20,6 +21,19 @@ const emit = defineEmits<{
     (e: 'confirm', action: ActionItem, msgId: string): void;
     (e: 'discard', action: ActionItem, msgId: string): void;
 }>();
+
+const makingTypeOptions = [
+    { label: '₹/g (Per gram)', value: 'per_gram' },
+    { label: '% (Percentage)', value: 'percentage' },
+    { label: '₹ Flat (Lump sum)', value: 'flat' },
+];
+
+if (!props.action.result) {
+    props.action.result = {};
+}
+if (!props.action.result.making_charge_type) {
+    props.action.result.making_charge_type = 'per_gram';
+}
 
 const isEditing = ref(!props.action.result?.name || !props.action.result?.weight);
 
@@ -59,6 +73,13 @@ const formatWeight = (val: any) => {
     const clean = String(val).replace(/[^0-9.]/g, '');
     const num = parseFloat(clean);
     return isNaN(num) ? '0 g' : `${num} g`;
+};
+
+const formatMakingCharge = (val: any, type: string = 'per_gram') => {
+    const num = Number(val) || 0;
+    if (type === 'percentage') return `${num}%`;
+    if (type === 'flat') return `₹${formatMoney(num)} Flat`;
+    return `₹${formatMoney(num)}/g`;
 };
 </script>
 
@@ -162,9 +183,36 @@ const formatWeight = (val: any) => {
                     <label class="block text-[11px] font-medium text-surface-700">Category</label>
                     <InputText v-model="action.result.category" placeholder="Chain, Ring, Bangle" size="small" class="mt-1 w-full rounded-none !font-sans text-slate-900" />
                 </div>
-                <div>
-                    <label class="block text-[11px] font-medium text-surface-700">Making charge (₹/g)</label>
-                    <InputText v-model.number="action.result.making_charge_per_gm" type="number" size="small" class="mt-1 w-full rounded-none !font-sans font-semibold text-slate-900" />
+                <div class="col-span-1 min-[430px]:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-surface-200/70 pt-2.5 mt-1">
+                    <div>
+                        <label class="block text-[11px] font-medium text-surface-700">Making charge type</label>
+                        <Select
+                            v-model="action.result.making_charge_type"
+                            :options="makingTypeOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            size="small"
+                            class="mt-1 w-full rounded-none !font-sans text-xs"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-surface-700">
+                            {{ action.result.making_charge_type === 'percentage' ? 'Making charge (%)' : (action.result.making_charge_type === 'flat' ? 'Making charge (₹ Flat)' : 'Making charge (₹/g)') }}
+                        </label>
+                        <div class="relative mt-1">
+                            <InputText
+                                v-model.number="action.result.making_charge_per_gm"
+                                type="number"
+                                step="any"
+                                size="small"
+                                :placeholder="action.result.making_charge_type === 'percentage' ? 'e.g. 10' : (action.result.making_charge_type === 'flat' ? 'e.g. 1200' : 'e.g. 450')"
+                                class="w-full rounded-none pr-8 pl-2.5 !font-sans font-semibold text-slate-900"
+                            />
+                            <span class="absolute top-2 right-2.5 text-[10.5px] font-bold text-slate-400">
+                                {{ action.result.making_charge_type === 'percentage' ? '%' : (action.result.making_charge_type === 'flat' ? '₹' : '₹/g') }}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -251,7 +299,7 @@ const formatWeight = (val: any) => {
                     Purity<br /><strong class="text-slate-900">{{ action.result.purity }}</strong>
                 </div>
                 <div v-if="Number(action.result.quantity) <= 1" class="border-t border-surface-200 p-2 min-[380px]:border-t-0">
-                    Making<br /><strong class="font-mono text-slate-900">₹{{ formatMoney(action.result.making_charge_per_gm) }}/g</strong>
+                    Making<br /><strong class="font-mono text-slate-900">{{ formatMakingCharge(action.result.making_charge_per_gm, action.result.making_charge_type) }}</strong>
                 </div>
             </div>
         </div>
