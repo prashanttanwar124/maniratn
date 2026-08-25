@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Purity;
 use App\Models\Supplier;
 use App\Services\BarcodeLabelPdfService;
+use App\Support\Inventory\GoldProductRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -140,23 +141,15 @@ class ProductController extends Controller
         if (! $makingType) {
             $makingType = ((float) $request->input('making_charge', 0) > 100) ? 'per_gram' : 'percentage';
         }
-        $makingMaxRule = ($makingType === 'percentage') ? '|max:100' : '';
+        $hasBatchItems = is_array($request->input('batch_items')) && $request->input('batch_items') !== [];
 
         $validated = $request->validate([
-            'name' => 'required',
-            'category_id' => ['required', Rule::exists('categories', 'id')->where(fn ($query) => $query->where('metal_type', 'GOLD'))],
-            'purity_id' => 'required|exists:purities,id',
-            'supplier_id' => 'required|exists:suppliers,id',
-            'counter_id' => 'nullable|exists:counters,id',
-            'gross_weight' => 'required_without:batch_items|nullable|numeric|min:0.001',
-            'net_weight' => 'required_without:batch_items|nullable|numeric|min:0.001',
-            'making_charge' => 'required|numeric|min:0'.$makingMaxRule,
-            'making_charge_type' => 'nullable|string|in:percentage,flat,per_gram',
+            ...GoldProductRules::rules(requireWeights: ! $hasBatchItems, makingChargeType: $makingType),
             'image' => 'nullable|image|max:2048',
             'image_path' => 'nullable|image|max:2048',
             'batch_items' => ['nullable', 'array', 'min:1', 'max:10'],
             'batch_items.*.gross_weight' => ['required_with:batch_items', 'numeric', 'min:0.001'],
-            'batch_items.*.net_weight' => ['required_with:batch_items', 'numeric', 'min:0.001'],
+            'batch_items.*.net_weight' => ['required_with:batch_items', 'numeric', 'min:0.001', 'lte:batch_items.*.gross_weight'],
         ]);
 
         $validated['making_charge_type'] = $validated['making_charge_type'] ?? $makingType;

@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { useProductDraftTray } from '@/composables/useProductDraftTray';
 import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { AlertCircle, AlertTriangle, BarChart3, Bot, Calculator, CheckCircle2, Clock, Coins, Info, Mic, MicOff, PackagePlus, Receipt, RefreshCw, Send, Sparkles, TrendingUp, UserRound, Volume2, VolumeX, Wallet, X, Zap } from 'lucide-vue-next';
+import { AlertCircle, AlertTriangle, BarChart3, Bot, Calculator, CheckCircle2, Clock, Coins, Info, Layers3, Mic, MicOff, PackagePlus, Receipt, RefreshCw, Send, Sparkles, TrendingUp, UserRound, Volume2, VolumeX, Wallet, X, Zap } from 'lucide-vue-next';
 import Drawer from 'primevue/drawer';
 import Textarea from 'primevue/textarea';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
@@ -12,7 +13,6 @@ import DailyRatesCard from './ai/DailyRatesCard.vue';
 import InvoiceDraftCard from './ai/InvoiceDraftCard.vue';
 import InvoiceHistoryCard from './ai/InvoiceHistoryCard.vue';
 import OldGoldCard from './ai/OldGoldCard.vue';
-import ProductDraftCard from './ai/ProductDraftCard.vue';
 import SalesSummaryCard from './ai/SalesSummaryCard.vue';
 import StockCheckCard from './ai/StockCheckCard.vue';
 import TaskCard from './ai/TaskCard.vue';
@@ -40,6 +40,7 @@ const props = defineProps<{
 
 const emit = defineEmits(['update:visible']);
 const page = usePage();
+const { open: openProductDraftTray } = useProductDraftTray();
 
 const isVoiceGloballyEnabled = computed(() => {
     return Boolean((page.props as any).business?.ai_voice_enabled);
@@ -302,6 +303,10 @@ const sendMessage = async (customText?: string) => {
         messages.value.push(assistantMessage);
         scrollToBottom();
 
+        if (actions.some((action: ActionItem) => action.tool === 'add_product' && action.result?.is_preview !== false)) {
+            openProductDrafts(assistantMessage);
+        }
+
         if (autoVoiceOutput.value && isVoiceGloballyEnabled.value && audioUri) {
             playAudio(audioUri);
         }
@@ -434,40 +439,25 @@ const confirmBillAction = async (action: ActionItem, msgId: string) => {
     }
 };
 
-const confirmProductAction = async (action: ActionItem, msgId: string) => {
-    const key = `prod_${msgId}`;
-    isConfirming.value[key] = true;
-    if (action.result) action.result.error_message = null;
-    try {
-        const payload = { ...action.result, message_id: msgId };
-        const res = await axios.post('/api/ai/copilot/confirm-product', payload);
-        if (res.data && res.data.success) {
-            action.result = {
-                ...action.result,
-                ...res.data,
-                is_preview: false,
-                error_message: null,
-                status: 'IN_STOCK_REAL_DB',
-            };
-            const targetMsg = messages.value.find((m) => m.id === msgId);
-            if (targetMsg) {
-                targetMsg.content = `Done! Product stock me save ho gayi, Barcode ${res.data.barcode}.`;
-            }
-            showToast(`Product stock me save ho gaya! Barcode: ${res.data.barcode}`, 'Stock Added', 'success');
-            if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
-                speakText(`Done! Product stock me save ho gayi, Barcode ${res.data.barcode}.`);
-            }
-        }
-    } catch (err: any) {
-        const errorMsg = err.response?.data?.message || 'Error adding product.';
-        if (action.result) action.result.error_message = errorMsg;
-        showToast(errorMsg, 'Product Save Failed', 'error');
-        if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
-            speakText(errorMsg);
-        }
-    } finally {
-        isConfirming.value[key] = false;
-    }
+const productActionsFor = (message: Message) => (message.actions || []).filter((action) => action.tool === 'add_product');
+
+const pendingProductActionsFor = (message: Message) => productActionsFor(message).filter((action) => (
+    action.result?.is_preview !== false
+    && !action.result?.is_discarded
+    && !action.result?.is_superseded
+    && action.result?.status !== 'IN_STOCK_REAL_DB'
+));
+
+const savedProductCountFor = (message: Message) => productActionsFor(message).reduce(
+    (total, action) => total + (action.result?.status === 'IN_STOCK_REAL_DB' ? Number(action.result?.quantity || 1) : 0),
+    0,
+);
+
+const openProductDrafts = (message: Message) => {
+    const actions = pendingProductActionsFor(message);
+    if (actions.length === 0) return;
+    openProductDraftTray(message.id, actions);
+    emit('update:visible', false);
 };
 
 const confirmRatesAction = async (action: ActionItem, msgId: string) => {
@@ -907,16 +897,37 @@ onMounted(() => {
                                             @recalculate="calculateLiveBill"
                                         />
 
-                                        <!-- 2. Product Add Draft Card -->
-                                        <ProductDraftCard
-                                            v-else-if="action.tool === 'add_product'"
-                                            :action="action"
-                                            :msg-id="msg.id + (msg.actions.length > 1 ? ('_' + idx) : '')"
-                                            :is-confirming="Boolean(isConfirming[`prod_${msg.id}_${idx}`] || isConfirming[`prod_${msg.id}`])"
-                                            :is-superseded="latestActionableMsgId !== msg.id"
-                                            @confirm="confirmProductAction"
-                                            @discard="discardAction"
-                                        />
+                                        <!-- 2. Product drafts open globally without leaving the current ERP page -->
+                                        <section
+                                            v-else-if="action.tool === 'add_product' && idx === msg.actions.findIndex((item) => item.tool === 'add_product')"
+                                            class="my-3 overflow-hidden rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50/80 to-white shadow-sm"
+                                        >
+                                            <div class="flex items-start gap-3 p-3.5">
+                                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1c3633] text-[#e5c278]">
+                                                    <PackagePlus class="h-4 w-4" />
+                                                </span>
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-xs font-semibold text-surface-900">
+                                                        {{ pendingProductActionsFor(msg).length > 0 ? `${pendingProductActionsFor(msg).length} product draft${pendingProductActionsFor(msg).length > 1 ? 's' : ''} ready` : 'Product stock updated' }}
+                                                    </p>
+                                                    <p class="mt-1 text-[11px] leading-4 text-surface-500">
+                                                        {{ pendingProductActionsFor(msg).length > 0 ? 'Current page chhode bina details review, edit aur save karein.' : `${savedProductCountFor(msg)} item(s) stock mein save ho gaye.` }}
+                                                    </p>
+                                                </div>
+                                                <span v-if="pendingProductActionsFor(msg).length === 0" class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
+                                                    <CheckCircle2 class="h-3 w-3" /> Saved
+                                                </span>
+                                            </div>
+                                            <button
+                                                v-if="pendingProductActionsFor(msg).length > 0"
+                                                type="button"
+                                                class="flex w-full items-center justify-center gap-2 border-t border-amber-200 bg-[#1c3633] px-3 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#254641]"
+                                                @click="openProductDrafts(msg)"
+                                            >
+                                                <Layers3 class="h-3.5 w-3.5 text-[#e5c278]" />
+                                                Review in Product Draft Tray
+                                            </button>
+                                        </section>
 
                                         <!-- 3. Daily Rates Draft Card -->
                                         <DailyRatesCard

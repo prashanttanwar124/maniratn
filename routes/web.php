@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AiCopilotController;
+use App\Http\Controllers\AiProductDraftController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AttendanceTerminalController;
 use App\Http\Controllers\CategoryController;
@@ -383,6 +384,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/api/ai/copilot/confirm-product', [AiCopilotController::class, 'confirmProduct'])
         ->middleware(['permission:manage_products', 'day.open'])
         ->name('ai.copilot.confirm-product');
+    Route::get('/api/ai/copilot/product-drafts/options', [AiProductDraftController::class, 'options'])
+        ->middleware('permission:manage_products')
+        ->name('ai.copilot.product-drafts.options');
+    Route::post('/api/ai/copilot/product-drafts', [AiProductDraftController::class, 'store'])
+        ->middleware(['permission:manage_products', 'day.open'])
+        ->name('ai.copilot.product-drafts.store');
     Route::post('/api/ai/copilot/confirm-rates', [AiCopilotController::class, 'confirmRates'])
         ->middleware(['permission:manage_daily_rates', 'day.open'])
         ->name('ai.copilot.confirm-rates');

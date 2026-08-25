@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import GoldProductFields from '@/components/products/GoldProductFields.vue';
+import { validateGoldProduct, type GoldProductFormModel } from '@/domain/products/goldProductForm';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import throttle from 'lodash/throttle';
@@ -12,7 +14,6 @@ import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
 import Drawer from 'primevue/drawer';
-import FileUpload from 'primevue/fileupload';
 import Image from 'primevue/image';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
@@ -20,16 +21,28 @@ import Paginator from 'primevue/paginator';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 
-const props = defineProps({
-    products: Object,
-    categories: Array,
-    purities: Array,
-    suppliers: Array,
-    counters: Array,
-    filters: Object,
-    summary: Object,
-    category_breakdown: Array,
-});
+interface MasterOption {
+    id: number;
+    name?: string;
+    company_name?: string;
+}
+
+interface GoldProductPageForm extends GoldProductFormModel {
+    id: number | null;
+    batch_items: Array<{ gross_weight: number | null; net_weight: number | null }>;
+    image: File | null;
+}
+
+const props = defineProps<{
+    products: any;
+    categories: MasterOption[];
+    purities: MasterOption[];
+    suppliers: MasterOption[];
+    counters: MasterOption[];
+    filters?: Record<string, any>;
+    summary?: Record<string, any>;
+    category_breakdown?: any[];
+}>();
 
 const toast = useToast();
 const productDialog = ref(false);
@@ -44,9 +57,9 @@ const historyProduct = ref(null);
 const historyTimeline = ref([]);
 const product = ref({});
 const isEditing = ref(false);
-const previewImage = ref(null);
+const previewImage = ref<string | null>(null);
 const batchMode = ref(false);
-const batchRows = ref([{ gross_weight: null, net_weight: null }]);
+const batchRows = ref<Array<{ gross_weight: number | null; net_weight: number | null }>>([{ gross_weight: null, net_weight: null }]);
 const selectedProductIds = ref<number[]>([]);
 const scanBarcode = ref('');
 const isScanning = ref(false);
@@ -133,7 +146,7 @@ const makingChargeTypeOptions = [
     { label: '₹/g (Per gram)', value: 'per_gram' },
 ];
 
-const form = useForm({
+const form = useForm<GoldProductPageForm>({
     id: null,
     name: '',
     category_id: null,
@@ -205,10 +218,14 @@ const resetFilters = () => {
     applyFilters();
 };
 
-const onFileSelect = (event) => {
-    const file = event.files[0];
+const onFileSelect = (file: File) => {
     form.image = file;
     previewImage.value = URL.createObjectURL(file);
+};
+
+const updateProductField = ({ field, value }: { field: keyof GoldProductFormModel; value: GoldProductFormModel[keyof GoldProductFormModel] }) => {
+    (form as any)[field] = value;
+    if ((form.errors as any)[field]) form.clearErrors(field as any);
 };
 
 const openNew = () => {
@@ -304,6 +321,35 @@ const batchItemsPayload = () => {
 };
 
 const saveProduct = () => {
+    form.clearErrors();
+    const clientErrors = validateGoldProduct(form as unknown as GoldProductFormModel, {
+        includeWeights: !batchMode.value || isEditing.value,
+    });
+
+    if (batchMode.value && !isEditing.value) {
+        const rows = batchItemsPayload();
+        if (rows.length === 0) {
+            clientErrors.batch_items = 'Add at least one valid weight row.';
+        } else {
+            rows.forEach((row, index) => {
+                if (Number(row.gross_weight || 0) < 0.001) clientErrors[`batch_items.${index}.gross_weight`] = 'Gross weight must be at least 0.001 g.';
+                if (Number(row.net_weight || 0) < 0.001) clientErrors[`batch_items.${index}.net_weight`] = 'Net weight must be at least 0.001 g.';
+                if (Number(row.net_weight || 0) > Number(row.gross_weight || 0)) clientErrors[`batch_items.${index}.net_weight`] = 'Net weight cannot exceed gross weight.';
+            });
+        }
+    }
+
+    if (Object.keys(clientErrors).length > 0) {
+        Object.entries(clientErrors).forEach(([field, message]) => form.setError(field as any, message));
+        toast.add({
+            severity: 'error',
+            summary: 'Check product details',
+            detail: 'Please complete the highlighted fields.',
+            life: 3000,
+        });
+        return;
+    }
+
     const options = {
         forceFormData: true,
         onSuccess: () => {
@@ -905,94 +951,21 @@ const copyBarcode = async (barcode) => {
                         </div>
                     </div>
 
-                    <div class="border border-surface-200 bg-surface-50 p-4">
-                        <div class="flex items-start gap-4">
-                            <div class="flex-1">
-                                <label class="mb-2 block text-sm font-medium text-surface-700"> Product Image </label>
+                    <GoldProductFields
+                        :model="form"
+                        :errors="form.errors"
+                        :categories="categories"
+                        :purities="purities"
+                        :suppliers="suppliers"
+                        :counters="counters"
+                        :image-preview="previewImage"
+                        :show-weights="!batchMode || isEditing"
+                        :autofocus-name="true"
+                        @image-selected="onFileSelect"
+                        @update-field="updateProductField"
+                    />
 
-                                <FileUpload
-                                    mode="basic"
-                                    name="image"
-                                    accept="image/*"
-                                    :maxFileSize="2000000"
-                                    @select="onFileSelect"
-                                    :auto="false"
-                                    chooseLabel="Choose Photo"
-                                    class="p-button-outlined"
-                                />
-
-                                <small class="mt-2 block text-xs text-surface-400"> Max size: 2MB </small>
-                                <small v-if="form.errors.image" class="mt-1 block text-xs text-red-500">
-                                    {{ form.errors.image }}
-                                </small>
-                            </div>
-
-                            <div v-if="previewImage">
-                                <img :src="previewImage" class="h-16 w-16 border border-surface-200 object-cover" />
-                            </div>
-                            <div v-else class="flex h-16 w-16 items-center justify-center border border-dashed border-surface-300 bg-white text-xs text-surface-400">No Img</div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="mb-2 block text-sm font-medium text-surface-700"> Product Name </label>
-                        <InputText v-model="form.name" required autofocus class="w-full" :class="{ 'p-invalid': form.errors.name }" />
-                        <small v-if="form.errors.name" class="mt-1 block text-xs text-red-500">
-                            {{ form.errors.name }}
-                        </small>
-                    </div>
-
-                    <div>
-                        <label class="mb-2 block text-sm font-medium text-surface-700"> Supplier </label>
-                        <Select v-model="form.supplier_id" :options="suppliers" optionLabel="company_name" optionValue="id" placeholder="Select supplier" class="w-full" />
-                        <small v-if="form.errors.supplier_id" class="mt-1 block text-xs text-red-500">
-                            {{ form.errors.supplier_id }}
-                        </small>
-                    </div>
-
-                    <div>
-                        <label class="mb-2 block text-sm font-medium text-surface-700"> Counter Name </label>
-                        <Select v-model="form.counter_id" :options="counters" optionLabel="name" optionValue="id" placeholder="Select counter" showClear class="w-full" />
-                        <small v-if="form.errors.counter_id" class="mt-1 block text-xs text-red-500">{{ form.errors.counter_id }}</small>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700"> Category </label>
-                            <Select v-model="form.category_id" :options="categories" optionLabel="name" optionValue="id" placeholder="Select category" class="w-full" />
-                            <small v-if="form.errors.category_id" class="mt-1 block text-xs text-red-500">
-                                {{ form.errors.category_id }}
-                            </small>
-                        </div>
-
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700"> Purity </label>
-                            <Select v-model="form.purity_id" :options="purities" optionLabel="name" optionValue="id" placeholder="Select purity" class="w-full" />
-                            <small v-if="form.errors.purity_id" class="mt-1 block text-xs text-red-500">
-                                {{ form.errors.purity_id }}
-                            </small>
-                        </div>
-                    </div>
-
-                    <div v-if="!batchMode" class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700"> Gross Weight (g) </label>
-                            <InputNumber v-model="form.gross_weight" :minFractionDigits="2" suffix=" g" class="w-full" />
-                            <small v-if="form.errors.gross_weight" class="mt-1 block text-xs text-red-500">
-                                {{ form.errors.gross_weight }}
-                            </small>
-                        </div>
-
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700"> Net Weight (g) </label>
-                            <InputNumber v-model="form.net_weight" :minFractionDigits="2" suffix=" g" class="w-full" />
-                            <small v-if="form.errors.net_weight" class="mt-1 block text-xs text-red-500">
-                                {{ form.errors.net_weight }}
-                            </small>
-                        </div>
-                    </div>
-
-                    <div v-else class="space-y-3 border border-surface-200 bg-surface-50 p-4">
+                    <div v-if="batchMode && !isEditing" class="space-y-3 border border-surface-200 bg-surface-50 p-4">
                         <div class="flex items-center justify-between gap-3">
                             <div>
                                 <p class="text-sm font-medium text-surface-900">Weight Rows</p>
@@ -1017,39 +990,6 @@ const copyBarcode = async (barcode) => {
                         </div>
 
                         <small v-if="form.errors.batch_items" class="block text-xs text-red-500">{{ form.errors.batch_items }}</small>
-                    </div>
-
-                    <div>
-                        <label class="mb-2 block text-sm font-medium text-surface-700">Making Charge</label>
-                        <div class="grid grid-cols-[1fr_160px] gap-2">
-                            <InputNumber
-                                v-model="form.making_charge"
-                                mode="decimal"
-                                :prefix="form.making_charge_type !== 'percentage' ? '₹ ' : undefined"
-                                :suffix="form.making_charge_type === 'percentage' ? ' %' : (form.making_charge_type === 'per_gram' ? ' /g' : undefined)"
-                                :min="0"
-                                :max="form.making_charge_type === 'percentage' ? 100 : undefined"
-                                :minFractionDigits="form.making_charge_type === 'percentage' ? 2 : 0"
-                                :maxFractionDigits="2"
-                                class="w-full"
-                            />
-                            <Select
-                                v-model="form.making_charge_type"
-                                :options="makingChargeTypeOptions"
-                                optionLabel="label"
-                                optionValue="value"
-                                class="w-full"
-                            />
-                        </div>
-                        <small class="mt-1 block text-xs text-surface-500">
-                            {{ form.making_charge_type === 'percentage' ? 'Example: enter 10 for 10% making on the gold rate.' : (form.making_charge_type === 'flat' ? 'Fixed lump-sum making charge.' : 'Per gram making charge on item weight.') }}
-                        </small>
-                        <small v-if="form.errors.making_charge" class="mt-1 block text-xs text-red-500">
-                            {{ form.errors.making_charge }}
-                        </small>
-                        <small v-if="form.errors.making_charge_type" class="mt-1 block text-xs text-red-500">
-                            {{ form.errors.making_charge_type }}
-                        </small>
                     </div>
 
                     <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">

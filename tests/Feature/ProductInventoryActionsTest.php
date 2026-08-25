@@ -124,6 +124,58 @@ it('creates a new gold product successfully with and without image', function ()
     \Illuminate\Support\Facades\Storage::disk('public')->assertExists($product->image_path);
 });
 
+it('rejects a gold product when net weight exceeds gross weight', function () {
+    openShopDayForProductActions($this->user);
+
+    [$category, $purity, $supplier] = productActionDependencies();
+
+    $this->post(route('products.store'), [
+        'name' => 'Invalid Gold Ring',
+        'category_id' => $category->id,
+        'purity_id' => $purity->id,
+        'supplier_id' => $supplier->id,
+        'gross_weight' => 5,
+        'net_weight' => 6,
+        'making_charge' => 10,
+        'making_charge_type' => 'percentage',
+    ])->assertSessionHasErrors(['net_weight']);
+
+    expect(Product::count())->toBe(0);
+});
+
+it('creates valid gold batch rows and validates each row weight', function () {
+    openShopDayForProductActions($this->user);
+
+    [$category, $purity, $supplier] = productActionDependencies();
+    $basePayload = [
+        'name' => 'Batch Gold Chain',
+        'category_id' => $category->id,
+        'purity_id' => $purity->id,
+        'supplier_id' => $supplier->id,
+        'making_charge' => 450,
+        'making_charge_type' => 'per_gram',
+    ];
+
+    $this->post(route('products.store'), [
+        ...$basePayload,
+        'batch_items' => [
+            ['gross_weight' => 5.2, 'net_weight' => 5.0],
+            ['gross_weight' => 6.1, 'net_weight' => 5.9],
+        ],
+    ])->assertSessionHasNoErrors();
+
+    expect(Product::count())->toBe(2);
+
+    $this->post(route('products.store'), [
+        ...$basePayload,
+        'batch_items' => [
+            ['gross_weight' => 4.0, 'net_weight' => 4.5],
+        ],
+    ])->assertSessionHasErrors(['batch_items.0.net_weight']);
+
+    expect(Product::count())->toBe(2);
+});
+
 it('finds a product by barcode in quick scan route', function () {
     [$category, $purity, $supplier] = productActionDependencies();
 

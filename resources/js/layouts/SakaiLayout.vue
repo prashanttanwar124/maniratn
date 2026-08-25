@@ -3,6 +3,7 @@ import AppFooter from '@/layout/AppFooter.vue';
 import AppSidebar from '@/layout/AppSidebar.vue';
 import AppTopbar from '@/layout/AppTopbar.vue';
 import AskAiDrawer from '@/components/AskAiDrawer.vue';
+import ProductDraftTray from '@/components/ai/ProductDraftTray.vue';
 import { useLayout } from '@/layout/composables/layout';
 import type { BreadcrumbItemType } from '@/types';
 import { useForm, usePage } from '@inertiajs/vue3';
@@ -116,6 +117,7 @@ watch(
             <AppFooter />
         </div>
         <AskAiDrawer v-model:visible="askAiVisible" />
+        <ProductDraftTray />
         <div class="layout-mask animate-fadein" />
         <Dialog
             :visible="showOpenDayModal"
