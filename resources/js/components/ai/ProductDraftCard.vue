@@ -31,15 +31,29 @@ const makingTypeOptions = [
     { label: '₹ Flat (Lump sum)', value: 'flat' },
 ];
 
+const isSilverProduct = computed(() => {
+    const metal = String(props.action.result?.metal || '').toUpperCase();
+    if (metal.includes('SILVER')) return true;
+    const name = String(props.action.result?.name || '').toUpperCase();
+    if (name.includes('SILVER') || name.includes('CHANDI') || name.includes('PAYAL') || name.includes('ANKLET')) return true;
+    return false;
+});
+
 const categoryOptions = computed(() => {
     const dbCats = (page.props as any).categories;
     const names: string[] = [];
     if (Array.isArray(dbCats)) {
         dbCats.forEach((c: any) => {
-            if (typeof c === 'string' && c.trim()) {
-                names.push(c.trim());
-            } else if (c && typeof c === 'object' && c.name) {
-                names.push(String(c.name).trim());
+            const name = typeof c === 'string' ? c.trim() : String(c?.name || '').trim();
+            if (!name) return;
+            const metalType = typeof c === 'object' && c?.metal_type ? String(c.metal_type).toUpperCase() : '';
+            if (metalType) {
+                if (isSilverProduct.value && metalType === 'SILVER') names.push(name);
+                else if (!isSilverProduct.value && metalType === 'GOLD') names.push(name);
+            } else {
+                const isSilverName = name.toLowerCase().includes('silver') || name.toLowerCase().includes('chandi') || name.toLowerCase().includes('payal') || name.toLowerCase().includes('anklet') || name.toLowerCase().includes('idol');
+                if (isSilverProduct.value && isSilverName) names.push(name);
+                else if (!isSilverProduct.value && !isSilverName) names.push(name);
             }
         });
     }
@@ -51,11 +65,11 @@ const purityOptions = computed(() => {
     const names: string[] = [];
     if (Array.isArray(dbPurities)) {
         dbPurities.forEach((p: any) => {
-            if (typeof p === 'string' && p.trim()) {
-                names.push(p.trim());
-            } else if (p && typeof p === 'object' && p.name) {
-                names.push(String(p.name).trim());
-            }
+            const name = typeof p === 'string' ? p.trim() : String(p?.name || '').trim();
+            if (!name) return;
+            const isSilverPurity = name.toLowerCase().includes('silver') || name.toLowerCase().includes('92.5');
+            if (isSilverProduct.value && isSilverPurity) names.push(name);
+            else if (!isSilverProduct.value && !isSilverPurity) names.push(name);
         });
     }
     return Array.from(new Set(names));
@@ -193,23 +207,22 @@ const formatMakingCharge = (val: any, type: string = 'per_gram') => {
             </div>
 
             <div v-if="isEditing" class="grid grid-cols-1 gap-3 border-l-2 border-[#c08f34] bg-surface-50/50 p-3 text-xs min-[430px]:grid-cols-2">
-                <div>
+                <div class="col-span-1 min-[430px]:col-span-2">
                     <label class="block text-[11px] font-medium text-surface-700">Ornament name <span class="text-red-600">*</span></label>
                     <InputText v-model="action.result.name" size="small" placeholder="e.g. 22K Gold Chain" class="mt-1 w-full rounded-none !font-sans font-semibold text-slate-900" />
                 </div>
                 <div>
-                    <label class="block text-[11px] font-medium text-surface-700">Quantity (Pieces) <span class="text-red-600">*</span></label>
-                    <InputText v-model.number="action.result.quantity" type="number" :min="1" size="small" placeholder="1" class="mt-1 w-full rounded-none !font-sans font-bold text-slate-900" />
+                    <label class="block text-[11px] font-medium text-surface-700">Category <span class="text-red-600">*</span></label>
+                    <Select
+                        v-model="action.result.category"
+                        :options="categoryOptions"
+                        placeholder="Select category"
+                        size="small"
+                        class="mt-1 w-full rounded-none !font-sans text-xs"
+                    />
                 </div>
                 <div>
-                    <label class="block text-[11px] font-medium text-surface-700">Net weight per piece (g) <span class="text-red-600">*</span></label>
-                    <div class="relative mt-1">
-                        <InputText v-model.number="action.result.weight" type="number" step="0.001" size="small" class="w-full rounded-none pr-7 pl-2.5 !font-sans font-bold text-slate-900" />
-                        <span class="absolute top-2 right-2.5 text-[10.5px] font-bold text-slate-400">g</span>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-[11px] font-medium text-surface-700">Purity</label>
+                    <label class="block text-[11px] font-medium text-surface-700">Purity <span class="text-red-600">*</span></label>
                     <Select
                         v-model="action.result.purity"
                         :options="purityOptions"
@@ -219,14 +232,15 @@ const formatMakingCharge = (val: any, type: string = 'per_gram') => {
                     />
                 </div>
                 <div>
-                    <label class="block text-[11px] font-medium text-surface-700">Category</label>
-                    <Select
-                        v-model="action.result.category"
-                        :options="categoryOptions"
-                        placeholder="Select category"
-                        size="small"
-                        class="mt-1 w-full rounded-none !font-sans text-xs"
-                    />
+                    <label class="block text-[11px] font-medium text-surface-700">Net weight per piece (g) <span class="text-red-600">*</span></label>
+                    <div class="relative mt-1">
+                        <InputText v-model.number="action.result.weight" type="number" step="0.001" size="small" class="w-full rounded-none pr-7 pl-2.5 !font-sans font-bold text-slate-900" />
+                        <span class="absolute top-2 right-2.5 text-[10.5px] font-bold text-slate-400">g</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-surface-700">Quantity (Pieces) <span class="text-red-600">*</span></label>
+                    <InputText v-model.number="action.result.quantity" type="number" :min="1" size="small" placeholder="1" class="mt-1 w-full rounded-none !font-sans font-bold text-slate-900" />
                 </div>
                 <div class="col-span-1 min-[430px]:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-surface-200/70 pt-2.5 mt-1">
                     <div>
