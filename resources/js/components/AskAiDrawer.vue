@@ -7,9 +7,12 @@ import Textarea from 'primevue/textarea';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 // Subcomponents
+import CustomerKhataCard from './ai/CustomerKhataCard.vue';
 import DailyRatesCard from './ai/DailyRatesCard.vue';
 import InvoiceDraftCard from './ai/InvoiceDraftCard.vue';
+import InvoiceHistoryCard from './ai/InvoiceHistoryCard.vue';
 import ProductDraftCard from './ai/ProductDraftCard.vue';
+import SalesSummaryCard from './ai/SalesSummaryCard.vue';
 import StockCheckCard from './ai/StockCheckCard.vue';
 import VaultBalanceCard from './ai/VaultBalanceCard.vue';
 
@@ -807,6 +810,24 @@ onMounted(() => {
                                                 </div>
                                             </div>
                                         </div>
+
+                                        <!-- 8. Customer Khata / Ledger Card -->
+                                        <CustomerKhataCard
+                                            v-else-if="action.tool === 'get_customer_khata' || action.tool === 'customer_khata'"
+                                            :action="action"
+                                        />
+
+                                        <!-- 9. Sales Summary & Counter Report Card -->
+                                        <SalesSummaryCard
+                                            v-else-if="action.tool === 'get_sales_summary' || action.tool === 'daily_sales_report'"
+                                            :action="action"
+                                        />
+
+                                        <!-- 10. Previous Invoices / Purchase History Card -->
+                                        <InvoiceHistoryCard
+                                            v-else-if="action.tool === 'search_invoices' || action.tool === 'get_customer_invoices'"
+                                            :action="action"
+                                        />
                                     </template>
                                 </div>
                             </div>

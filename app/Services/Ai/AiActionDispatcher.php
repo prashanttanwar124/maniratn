@@ -4,8 +4,11 @@ namespace App\Services\Ai;
 
 use App\Services\Ai\Actions\AddProductAction;
 use App\Services\Ai\Actions\CreateBillAction;
+use App\Services\Ai\Actions\CustomerKhataAction;
 use App\Services\Ai\Actions\DailyRatesAction;
 use App\Services\Ai\Actions\EstimateQuotationAction;
+use App\Services\Ai\Actions\SalesSummaryAction;
+use App\Services\Ai\Actions\SearchInvoicesAction;
 use App\Services\Ai\Actions\StockCheckAction;
 use App\Services\Ai\Actions\UpdateDailyRatesAction;
 use App\Services\Ai\Actions\VaultBalanceAction;
@@ -28,6 +31,12 @@ class AiActionDispatcher
         'create_bill' => CreateBillAction::class,
         'create_invoice' => CreateBillAction::class,
         'check_stock' => StockCheckAction::class,
+        'get_customer_khata' => CustomerKhataAction::class,
+        'customer_khata' => CustomerKhataAction::class,
+        'search_invoices' => SearchInvoicesAction::class,
+        'get_customer_invoices' => SearchInvoicesAction::class,
+        'get_sales_summary' => SalesSummaryAction::class,
+        'daily_sales_report' => SalesSummaryAction::class,
     ];
 
     /**
