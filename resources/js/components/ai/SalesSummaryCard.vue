@@ -19,7 +19,7 @@ defineProps<{
         <!-- 🏛️ 1. Header (Light Luxury ERP Style) -->
         <div class="flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
             <div class="flex items-center gap-2.5 min-w-0">
-                <span class="flex h-7 w-7 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#1c3633] text-[#e5c278]">
                     <TrendingUp class="h-3.5 w-3.5" />
                 </span>
                 <div class="flex flex-col justify-center min-w-0">
@@ -70,28 +70,28 @@ defineProps<{
         <div class="border-t border-surface-200 bg-surface-50/70 p-2.5 text-xs">
             <p class="text-[9.5px] font-bold text-surface-500 uppercase tracking-wider mb-1.5">Collection Breakdown</p>
             <div class="grid grid-cols-2 gap-1.5 min-[420px]:grid-cols-4 text-[10.5px]">
-                <div class="bg-white p-2 border border-surface-200 flex flex-col justify-between">
+                <div class="rounded-md bg-white p-2 border border-surface-200 flex flex-col justify-between">
                     <div class="flex items-center gap-1 text-[9.5px] font-semibold uppercase tracking-wider text-surface-500">
                         <Banknote class="h-3 w-3 text-emerald-600" />
                         <span>Cash</span>
                     </div>
                     <span class="mt-1 font-mono font-bold text-surface-900 text-xs">{{ action.result.cash_collected }}</span>
                 </div>
-                <div class="bg-white p-2 border border-surface-200 flex flex-col justify-between">
+                <div class="rounded-md bg-white p-2 border border-surface-200 flex flex-col justify-between">
                     <div class="flex items-center gap-1 text-[9.5px] font-semibold uppercase tracking-wider text-surface-500">
                         <QrCode class="h-3 w-3 text-sky-600" />
                         <span>UPI</span>
                     </div>
                     <span class="mt-1 font-mono font-bold text-surface-900 text-xs">{{ action.result.upi_collected }}</span>
                 </div>
-                <div class="bg-white p-2 border border-surface-200 flex flex-col justify-between">
+                <div class="rounded-md bg-white p-2 border border-surface-200 flex flex-col justify-between">
                     <div class="flex items-center gap-1 text-[9.5px] font-semibold uppercase tracking-wider text-surface-500">
                         <CreditCard class="h-3 w-3 text-indigo-600" />
                         <span>Card</span>
                     </div>
                     <span class="mt-1 font-mono font-bold text-surface-900 text-xs">{{ action.result.card_collected }}</span>
                 </div>
-                <div class="bg-white p-2 border border-surface-200 flex flex-col justify-between">
+                <div class="rounded-md bg-white p-2 border border-surface-200 flex flex-col justify-between">
                     <div class="flex items-center gap-1 text-[9.5px] font-semibold uppercase tracking-wider text-surface-500">
                         <Landmark class="h-3 w-3 text-amber-600" />
                         <span>Bank</span>

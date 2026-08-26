@@ -21,7 +21,7 @@ defineProps<{
         <!-- 📋 Header -->
         <div class="flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
             <div class="flex items-center gap-2.5 min-w-0">
-                <span class="flex h-7 w-7 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#1c3633] text-[#e5c278]">
                     <CheckSquare class="h-3.5 w-3.5" />
                 </span>
                 <div class="flex flex-col justify-center min-w-0">
@@ -47,10 +47,10 @@ defineProps<{
         <div v-if="action.result.created && action.result.task" class="p-3.5">
             <div class="flex items-start justify-between gap-2">
                 <div class="flex items-center gap-2">
-                    <span class="border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9.5px] font-bold text-amber-900 uppercase">
+                    <span class="ai-status-pill border border-amber-200 bg-amber-50 text-amber-900">
                         {{ action.result.task.priority || 'MEDIUM' }}
                     </span>
-                    <span class="border border-surface-200 bg-surface-50 px-2 py-0.5 text-[9.5px] font-medium text-surface-700">
+                    <span class="ai-status-pill border border-surface-200 bg-surface-50 text-surface-700">
                         {{ action.result.task.category || 'General' }}
                     </span>
                 </div>
@@ -84,7 +84,7 @@ defineProps<{
                     <div class="flex items-center gap-1.5 mb-1">
                         <span
                             :class="[
-                                'border px-1.5 py-0.2 text-[9px] font-bold uppercase',
+                                'ai-status-pill border',
                                 task.priority === 'URGENT'
                                     ? 'border-rose-300 bg-rose-50 text-rose-800'
                                     : task.priority === 'HIGH'

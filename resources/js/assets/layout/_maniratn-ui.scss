@@ -205,13 +205,43 @@ body {
 .erp-stat-card {
     position: relative;
     overflow: hidden;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between;
+    padding: 1rem 1.25rem !important;
     border-radius: var(--maniratn-radius) !important;
     background: linear-gradient(145deg, var(--maniratn-panel) 0%, var(--maniratn-panel-muted) 100%) !important;
+    border: 1px solid var(--maniratn-border) !important;
     box-shadow: var(--maniratn-shadow-card) !important;
     transition:
-        transform 170ms ease,
         border-color 170ms ease,
         box-shadow 170ms ease !important;
+
+    .erp-stat-card__label {
+        display: block !important;
+        font-size: 0.72rem !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.08em !important;
+        color: var(--maniratn-ink-soft) !important;
+    }
+
+    .erp-stat-card__value {
+        display: block !important;
+        margin-top: 0.35rem !important;
+        font-size: 1.5rem !important;
+        font-weight: 700 !important;
+        line-height: 1.25 !important;
+        color: var(--maniratn-ink) !important;
+        font-feature-settings: 'tnum' 1;
+    }
+
+    .erp-stat-card__meta {
+        display: block !important;
+        margin-top: 0.35rem !important;
+        font-size: 0.75rem !important;
+        color: var(--maniratn-ink-muted) !important;
+    }
 }
 
 .erp-stat-card:hover {
@@ -1533,17 +1563,20 @@ textarea.karat-composer::placeholder {
     box-shadow: var(--maniratn-shadow-card) !important;
 }
 
+.ai-status-pill,
 .erp-ai-card .ai-status-pill {
-    border-radius: 999px !important;
-    font-size: 0.625rem !important;
+    border-radius: 9999px !important;
+    font-size: 0.6875rem !important;
     font-weight: 700 !important;
-    letter-spacing: 0.06em !important;
+    letter-spacing: 0.05em !important;
     text-transform: uppercase !important;
-    padding: 0.2rem 0.6rem !important;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    line-height: 1;
+    padding: 0.2rem 0.65rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.3rem !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
 }
 
 .erp-ai-card .ai-action-link {

@@ -33,7 +33,7 @@ const statusClass = (status: string) => {
         <header class="border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
             <div class="flex items-center justify-between gap-3">
                 <div class="flex min-w-0 items-center gap-2.5">
-                    <span class="flex h-7 w-7 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                    <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#1c3633] text-[#e5c278]">
                         <ReceiptText class="h-3.5 w-3.5" />
                     </span>
                     <div class="flex flex-col justify-center">
@@ -43,12 +43,12 @@ const statusClass = (status: string) => {
                 </div>
 
                 <div class="flex items-center gap-1.5 shrink-0">
-                    <span class="inline-flex shrink-0 items-center border border-amber-300 bg-amber-50 px-2 py-0.5 text-[9.5px] font-semibold tracking-wide text-amber-900 uppercase">
+                    <span class="ai-status-pill border border-amber-300 bg-amber-50 text-amber-900">
                         {{ action.result.count ?? action.result.invoices.length }} found
                     </span>
                     <a
                         href="/invoices"
-                        class="inline-flex items-center gap-1 border border-surface-300 bg-white px-2 py-0.5 text-[10px] font-medium text-surface-700 hover:border-[#c08f34] hover:text-[#1c3633] transition-colors"
+                        class="ai-action-link"
                         title="Open All Invoices"
                     >
                         <ExternalLink class="h-2.5 w-2.5 text-[#b07b24]" />
@@ -60,7 +60,7 @@ const statusClass = (status: string) => {
 
         <div class="bg-surface-50/70 p-2.5">
             <div class="space-y-2">
-                <article v-for="inv in action.result.invoices" :key="inv.id" class="group border border-surface-200 bg-white transition-colors hover:border-surface-400">
+                <article v-for="inv in action.result.invoices" :key="inv.id" class="group overflow-hidden rounded-lg border border-surface-200 bg-white transition-colors hover:border-surface-400">
                     <div class="flex items-start justify-between gap-3 border-b border-surface-100 px-3 py-2.5">
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -82,7 +82,7 @@ const statusClass = (status: string) => {
                             </div>
                         </div>
 
-                        <span :class="['inline-flex shrink-0 items-center gap-1 border px-2 py-0.5 text-[9px] font-bold tracking-wide uppercase', statusClass(inv.status)]">
+                        <span :class="['ai-status-pill border', statusClass(inv.status)]">
                             <CheckCircle2 v-if="inv.status === 'COMPLETED'" class="h-3 w-3" />
                             <XCircle v-else-if="inv.status === 'CANCELLED'" class="h-3 w-3" />
                             <Clock3 v-else class="h-3 w-3" />
@@ -91,7 +91,7 @@ const statusClass = (status: string) => {
                     </div>
 
                     <div class="px-3 py-2">
-                        <div class="flex items-start gap-2 border-l-2 border-amber-300 bg-amber-50/40 px-2.5 py-2">
+                        <div class="flex items-start gap-2 rounded-md border-l-2 border-amber-300 bg-amber-50/40 px-2.5 py-2">
                             <ShoppingBag class="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#a8741f]" />
                             <div class="min-w-0">
                                 <p class="!m-0 !p-0 text-[9px] font-bold tracking-wider text-amber-900 uppercase">Purchased items</p>
@@ -125,7 +125,7 @@ const statusClass = (status: string) => {
                             :href="inv.print_url"
                             target="_blank"
                             rel="noopener noreferrer"
-                            class="inline-flex min-h-7 items-center justify-center gap-1.5 border border-[#1c3633] bg-[#1c3633] px-3 py-1 text-[10px] font-semibold tracking-wide text-white transition-colors hover:bg-[#284c47] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c08f34]"
+                            class="inline-flex min-h-7 items-center justify-center gap-1.5 rounded-md border border-[#1c3633] bg-[#1c3633] px-3 py-1 text-[10px] font-semibold tracking-wide text-white transition-colors hover:bg-[#284c47] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c08f34]"
                             :aria-label="`Print invoice ${inv.invoice_number}`"
                         >
                             <Printer class="h-3 w-3 text-[#e5c278]" />

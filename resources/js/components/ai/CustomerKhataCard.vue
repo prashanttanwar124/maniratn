@@ -31,7 +31,7 @@ const copyVaultLink = (url: string) => {
         <!-- 🏛️ 1. Header (Light Luxury ERP Style) -->
         <div class="flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
             <div class="flex items-center gap-2.5 min-w-0">
-                <span class="flex h-7 w-7 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#1c3633] text-[#e5c278]">
                     <BookOpen class="h-3.5 w-3.5" />
                 </span>
                 <div class="flex flex-col justify-center min-w-0">
@@ -100,12 +100,12 @@ const copyVaultLink = (url: string) => {
                     type="text"
                     :value="action.result.vault_url"
                     readonly
-                    class="w-full border border-surface-200 bg-white px-2.5 py-1.5 text-xs font-mono text-surface-800 focus:outline-none focus:border-[#c08f34]"
+                    class="w-full rounded-md border border-surface-200 bg-white px-2.5 py-1.5 text-xs font-mono text-surface-800 focus:outline-none focus:border-[#c08f34]"
                 />
                 <button
                     type="button"
                     @click="copyVaultLink(action.result.vault_url)"
-                    class="inline-flex shrink-0 items-center gap-1 border border-surface-300 bg-white px-2.5 py-1.5 text-xs font-medium text-surface-700 hover:border-[#1c3633] hover:bg-[#1c3633] hover:text-white transition-colors"
+                    class="inline-flex shrink-0 items-center gap-1 rounded-md border border-surface-300 bg-white px-2.5 py-1.5 text-xs font-medium text-surface-700 hover:border-[#1c3633] hover:bg-[#1c3633] hover:text-white transition-colors"
                 >
                     <Check v-if="copiedVault" class="h-3 w-3 text-emerald-500" />
                     <Copy v-else class="h-3 w-3 text-surface-400" />
@@ -124,7 +124,7 @@ const copyVaultLink = (url: string) => {
                 <div
                     v-for="bill in action.result.recent_bills"
                     :key="bill.id"
-                    class="flex items-center justify-between bg-white px-2.5 py-2 border border-surface-200 text-xs text-surface-700 transition-colors hover:border-surface-300"
+                    class="flex items-center justify-between rounded-md bg-white px-2.5 py-2 border border-surface-200 text-xs text-surface-700 transition-colors hover:border-surface-300"
                 >
                     <div class="flex items-center gap-2">
                         <Receipt class="h-3.5 w-3.5 text-[#c08f34]" />
@@ -146,7 +146,7 @@ const copyVaultLink = (url: string) => {
             </div>
         </div>
     </div>
-    <div v-else class="my-2 border border-surface-200 bg-surface-50 p-3 text-xs text-surface-600">
+    <div v-else class="my-2 rounded-lg border border-surface-200 bg-surface-50 p-3 text-xs text-surface-600">
         {{ action.result?.message || 'Customer record not found.' }}
     </div>
 </template>

@@ -280,20 +280,20 @@ const deleteCustomer = (customer) => {
                     </div>
 
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        <div class="erp-stat-card min-w-40">
+                        <div class="erp-stat-card min-w-40 p-4">
                             <span class="erp-stat-card__label">Customers</span>
                             <span class="erp-stat-card__value">{{ totalCount }}</span>
                             <span class="erp-stat-card__meta">Total registered</span>
                         </div>
-                        <div class="erp-stat-card min-w-40">
+                        <div class="erp-stat-card min-w-40 p-4">
                             <span class="erp-stat-card__label">New This Week</span>
                             <span class="erp-stat-card__value !text-emerald-700">{{ newThisWeek }}</span>
                             <span class="erp-stat-card__meta">Recent signups</span>
                         </div>
-                        <div class="erp-stat-card min-w-40">
+                        <div class="erp-stat-card min-w-40 p-4">
                             <span class="erp-stat-card__label">Open Due</span>
                             <span class="erp-stat-card__value !text-amber-700">{{ formatMoney(totalOutstanding) }}</span>
-                            <span class="erp-stat-card__meta">Pending recovery</span>
+                            <span class="erp-stat-card__meta">{{ totalOutstanding > 0 ? 'Pending recovery' : 'All clear' }}</span>
                         </div>
                     </div>
                 </div>

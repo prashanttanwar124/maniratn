@@ -19,7 +19,7 @@ defineProps<{
         <!-- 🏛️ 1. Header (Light Luxury ERP Style) -->
         <div class="flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
             <div class="flex items-center gap-2.5 min-w-0">
-                <span class="flex h-7 w-7 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#1c3633] text-[#e5c278]">
                     <Coins class="h-3.5 w-3.5" />
                 </span>
                 <div class="flex flex-col justify-center min-w-0">
@@ -75,7 +75,7 @@ defineProps<{
             <span class="font-medium text-surface-600">Base 24K Buy: {{ action.result.base_24k_rate }}</span>
         </div>
     </div>
-    <div v-else class="my-2 border border-surface-200 bg-surface-50 p-3 text-xs text-surface-600">
+    <div v-else class="my-2 rounded-lg border border-surface-200 bg-surface-50 p-3 text-xs text-surface-600">
         {{ action.result?.message || 'Old Gold valuation failed.' }}
     </div>
 </template>

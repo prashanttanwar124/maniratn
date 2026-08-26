@@ -140,7 +140,7 @@ const canConfirm = computed(() => {
                         type="button"
                         :disabled="isConfirming || !canConfirm"
                         @click="emit('confirm', action, msgId)"
-                        class="flex flex-1 items-center justify-center gap-1.5 border border-[#1c3633] bg-[#1c3633] py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#254642] disabled:cursor-not-allowed disabled:opacity-50"
+                        class="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#1c3633] bg-[#1c3633] py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#254642] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <Check class="h-4 w-4 text-[#c08f34]" />
                         <span>{{ isConfirming ? 'Rates update ho rahe hain...' : canConfirm ? 'Confirm and update rates' : 'Enter both rates' }}</span>
@@ -148,7 +148,7 @@ const canConfirm = computed(() => {
                     <button
                         type="button"
                         @click="emit('discard', action, msgId)"
-                        class="border border-surface-300 bg-white px-4 py-2.5 text-xs font-medium text-surface-600 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+                        class="rounded-lg border border-surface-300 bg-white px-4 py-2.5 text-xs font-medium text-surface-600 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700"
                     >
                         Discard
                     </button>
@@ -157,7 +157,7 @@ const canConfirm = computed(() => {
         </div>
 
         <!-- 📈 2. CONFIRMED RATES STATE -->
-        <div v-else-if="isConfirmed" class="flex flex-col gap-3 bg-emerald-50 p-4 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
+        <div v-else-if="isConfirmed" class="flex flex-col gap-3 rounded-lg bg-emerald-50 p-4 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
             <div class="flex items-start gap-2">
                 <CheckCircle2 class="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
                 <div>
@@ -165,7 +165,7 @@ const canConfirm = computed(() => {
                     <span class="text-[10px] text-emerald-700">New rates ab billing mein active hain</span>
                 </div>
             </div>
-            <div class="flex shrink-0 divide-x divide-emerald-200 border border-emerald-200 bg-white text-[10.5px]">
+            <div class="flex shrink-0 divide-x divide-emerald-200 rounded-md border border-emerald-200 bg-white text-[10.5px]">
                 <span class="px-2 py-1.5 text-emerald-900"
                     >Gold <strong class="font-mono">₹{{ Number(action.result.gold_24k_sell).toLocaleString('en-IN') }}/g</strong></span
                 >
@@ -176,6 +176,6 @@ const canConfirm = computed(() => {
         </div>
 
         <!-- 🚫 3. DISCARDED STATE -->
-        <div v-else class="bg-slate-100 p-2 text-center text-xs text-slate-500 italic">Rate update draft was discarded.</div>
+        <div v-else class="rounded-lg bg-slate-100 p-2 text-center text-xs text-slate-500 italic">Rate update draft was discarded.</div>
     </section>
 </template>

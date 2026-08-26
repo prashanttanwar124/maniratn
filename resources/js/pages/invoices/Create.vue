@@ -618,17 +618,17 @@ const submitInvoice = () => {
                     </div>
 
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        <div class="erp-stat-card min-w-40">
+                        <div class="erp-stat-card min-w-40 p-4">
                             <span class="erp-stat-card__label">Items</span>
                             <span class="erp-stat-card__value">{{ form.items.length }}</span>
                             <span class="erp-stat-card__meta">In current invoice</span>
                         </div>
-                        <div class="erp-stat-card min-w-40">
+                        <div class="erp-stat-card min-w-40 p-4">
                             <span class="erp-stat-card__label">Received</span>
                             <span class="erp-stat-card__value !text-emerald-700">{{ formatCurrency(totalReceived) }}</span>
                             <span class="erp-stat-card__meta">Total collected</span>
                         </div>
-                        <div class="erp-stat-card min-w-40">
+                        <div class="erp-stat-card min-w-40 p-4">
                             <span class="erp-stat-card__label">Balance Due</span>
                             <span class="erp-stat-card__value" :class="balanceDue > 0 ? '!text-amber-700' : '!text-emerald-700'">{{ formatCurrency(balanceDue) }}</span>
                             <span class="erp-stat-card__meta">{{ balanceDue > 0 ? 'Pending collection' : 'Fully settled' }}</span>

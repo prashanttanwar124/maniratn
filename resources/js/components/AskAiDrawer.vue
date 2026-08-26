@@ -768,7 +768,10 @@ onMounted(() => {
 
                 <div class="flex shrink-0 items-center justify-between gap-3 border-b border-surface-200 bg-white px-4 py-2 sm:px-5">
                     <p class="text-[10.5px] leading-4 text-surface-500">Live ERP data connected · Save hone se pehle aap review karenge</p>
-                    <span class="ai-status-pill shrink-0 border border-emerald-300 bg-emerald-50 text-emerald-800">Secure</span>
+                    <span class="ai-status-pill shrink-0 border border-emerald-300 bg-emerald-50 text-emerald-800">
+                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                        Secure
+                    </span>
                 </div>
 
                 <div class="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#f7f9f8]">

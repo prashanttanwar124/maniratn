@@ -21,7 +21,7 @@ defineProps<{
         <!-- 🏛️ 1. Sleek Compact Header -->
         <div class="flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
             <div class="flex items-center gap-2.5 min-w-0">
-                <span class="flex h-7 w-7 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#1c3633] text-[#e5c278]">
                     <Landmark class="h-3.5 w-3.5" />
                 </span>
                 <div class="flex flex-col justify-center min-w-0">
