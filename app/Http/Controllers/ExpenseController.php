@@ -59,25 +59,24 @@ class ExpenseController extends Controller
 
         try {
             DB::transaction(function () use ($validated, $vaultType) {
+                $expense = Expense::create([
+                    'title' => $validated['title'],
+                    'category' => $validated['category'],
+                    'amount' => $validated['amount'],
+                    'payment_method' => $validated['payment_method'],
+                    'user_id' => Auth::id(),
+                    'created_at' => $validated['date'],
+                ]);
 
-                // 1. DEDUCT MONEY
-                // This line throws the Exception if funds are low
                 VaultService::debit($vaultType, $validated['amount'], [
                     'source_type' => Expense::class,
+                    'source_id' => $expense->id,
+                    'operation_key' => "expense:{$expense->id}:pay",
                     'reference' => $validated['title'],
+                    'correlation_id' => 'EXPENSE-'.$expense->id,
                     'user_id' => Auth::id(),
                     'recorded_at' => $validated['date'],
                     'note' => "Expense paid: {$validated['title']}",
-                ]);
-
-                // 2. CREATE RECORD
-                Expense::create([
-                    'title'          => $validated['title'],
-                    'category'       => $validated['category'],
-                    'amount'         => $validated['amount'],
-                    'payment_method' => $validated['payment_method'],
-                    'user_id'        => Auth::id(),
-                    'created_at'     => $validated['date'],
                 ]);
             });
         } catch (\Exception $e) {
@@ -98,7 +97,9 @@ class ExpenseController extends Controller
             VaultService::credit($vaultType, $expense->amount, [
                 'source_type' => Expense::class,
                 'source_id' => $expense->id,
+                'operation_key' => "expense:{$expense->id}:reverse",
                 'reference' => $expense->title,
+                'correlation_id' => 'EXPENSE-'.$expense->id,
                 'user_id' => Auth::id(),
                 'note' => "Expense reversed: {$expense->title}",
             ]);

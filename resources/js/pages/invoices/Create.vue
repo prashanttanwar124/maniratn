@@ -1,7 +1,7 @@
 <script setup>
 import CustomerSelector from '@/components/CustomerSelector.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { useForm, usePage } from '@inertiajs/vue3';
+import { router, useForm, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
@@ -19,6 +19,7 @@ import Textarea from 'primevue/textarea';
 import { computed, onMounted, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
 import { formatIndianDateTime, toIndianDateInput, todayIndianDate } from '@/utils/indiaTime';
+import { Coins, Plus, Scale, Sparkles, Trash2, ArrowLeftRight, Check, Zap } from 'lucide-vue-next';
 
 const props = defineProps({
     prefilledItems: {
@@ -33,7 +34,15 @@ const props = defineProps({
         type: Number,
         default: 0,
     },
+    defaultGoldBuyRate: {
+        type: Number,
+        default: 0,
+    },
     defaultSilverRate: {
+        type: Number,
+        default: 0,
+    },
+    defaultSilverBuyRate: {
         type: Number,
         default: 0,
     },
@@ -66,6 +75,22 @@ const makingChargeTypeOptions = [
     { label: '₹/g (Per gram)', value: 'per_gram' },
 ];
 
+const metalTypeOptions = [
+    { label: 'Gold', value: 'GOLD' },
+    { label: 'Silver', value: 'SILVER' },
+];
+
+const oldGoldPurityOptions = [
+    { label: '24K (99.9%)', value: '24K', multiplier: 1.0, metal: 'GOLD' },
+    { label: '22K (91.6%)', value: '22K', multiplier: 0.916, metal: 'GOLD' },
+    { label: '18K (75.0%)', value: '18K', multiplier: 0.750, metal: 'GOLD' },
+    { label: '14K (58.5%)', value: '14K', multiplier: 0.585, metal: 'GOLD' },
+    { label: 'Silver 999 (99.9%)', value: 'Silver 999', multiplier: 1.0, metal: 'SILVER' },
+    { label: 'Silver 925 (92.5%)', value: 'Silver 925', multiplier: 0.925, metal: 'SILVER' },
+    { label: 'Silver 800 (80.0%)', value: 'Silver 800', multiplier: 0.800, metal: 'SILVER' },
+    { label: 'Custom Purity', value: 'Custom', multiplier: 1.0, metal: 'ANY' },
+];
+
 const form = useForm({
     customer_id: props.prefilledCustomer?.id || null,
     date: todayIndianDate(),
@@ -91,6 +116,7 @@ const form = useForm({
                       (String(item.metal_type || 'GOLD').toUpperCase() === 'SILVER' ? Number(props.defaultSilverRate || 0) : Number(props.defaultGoldRate || 0)),
               }))
             : [],
+    old_golds: [],
     payment_cash: 0,
     payment_card: 0,
     card_note: '',
@@ -123,8 +149,13 @@ const isSilverRateDependentItem = (item) => {
     return isSilverOrderItem(item);
 };
 
-const invalidDraftItemsCount = computed(() => form.items.filter((item) => item.draft_valid === false).length);
-const hasInvalidDraftItems = computed(() => invalidDraftItemsCount.value > 0);
+const invalidDraftItemsCount = computed(() => {
+    return form.items.filter((item) => item.draft_valid === false).length;
+});
+
+const hasInvalidDraftItems = computed(() => {
+    return invalidDraftItemsCount.value > 0;
+});
 
 const validateDraftItems = async ({ showToast = false } = {}) => {
     if (form.items.length === 0) {
@@ -180,6 +211,16 @@ const hydrateDraft = async (draft) => {
         draft_valid: true,
         draft_issue: null,
     }));
+    form.old_golds = (d.old_golds || []).map((og) => ({
+        metal_type: og.metal_type || 'GOLD',
+        description: og.description || '',
+        gross_weight: og.gross_weight !== undefined && og.gross_weight !== null ? Number(og.gross_weight) : null,
+        wastage_weight: Number(og.wastage_weight || 0),
+        net_weight: Number(og.net_weight || 0),
+        purity: og.purity || '22K',
+        rate: Number(og.rate || 0),
+        final_price: Number(og.final_price || 0),
+    }));
     form.payment_cash = Number(d.payment_cash || 0);
     form.payment_card = Number(d.payment_card || 0);
     form.card_note = d.card_note || '';
@@ -190,7 +231,7 @@ const hydrateDraft = async (draft) => {
 };
 
 const saveCurrentDraft = async () => {
-    if (form.items.length === 0 && !form.customer_id) {
+    if (form.items.length === 0 && form.old_golds.length === 0 && !form.customer_id) {
         toast.add({ severity: 'warn', summary: 'Nothing to save', detail: 'Add items or select a customer first.', life: 2000 });
         return;
     }
@@ -213,6 +254,7 @@ const saveCurrentDraft = async () => {
             discount_type: form.discount_type,
             discount_value: form.discount_value,
             items: form.items.map(({ draft_valid, draft_issue, ...item }) => item),
+            old_golds: form.old_golds,
             payment_cash: form.payment_cash,
             payment_card: form.payment_card,
             card_note: form.card_note,
@@ -472,8 +514,75 @@ const calculateRowMakingAmount = (item) => {
 };
 
 const recalculateRow = (item) => {
-    item.final_price = calculateRawRowTotal(item);
+    item.final_price = roundMoney(calculateRawRowTotal(item));
 };
+
+// --- Old Gold / Metal Exchange Handlers ---
+const addOldGoldRow = () => {
+    const metalType = 'GOLD';
+    const baseBuyRate = Number(props.defaultGoldBuyRate || form.gold_rate || 0);
+    const purity = '22K';
+    const rate = roundMoney(baseBuyRate * 0.916);
+
+    form.old_golds.push({
+        metal_type: metalType,
+        description: 'Old Gold',
+        gross_weight: null,
+        wastage_weight: 0,
+        net_weight: 0,
+        purity: purity,
+        rate: rate,
+        final_price: 0,
+    });
+};
+
+const removeOldGoldRow = (index) => {
+    form.old_golds.splice(index, 1);
+};
+
+const onOldGoldInput = (item) => {
+    const gross = parseFloat(item.gross_weight) || 0;
+    const wastage = parseFloat(item.wastage_weight) || 0;
+    item.net_weight = Number(Math.max(0, gross - wastage).toFixed(3));
+    const rate = parseFloat(item.rate) || 0;
+    item.final_price = roundMoney(item.net_weight * rate);
+};
+
+const onOldGoldMetalChange = (item) => {
+    if (item.metal_type === 'SILVER') {
+        item.description = 'Old Silver';
+        item.purity = 'Silver 925';
+        const baseBuyRate = Number(props.defaultSilverBuyRate || form.silver_rate || 0);
+        item.rate = roundMoney(baseBuyRate * 0.925);
+    } else {
+        item.description = 'Old Gold';
+        item.purity = '22K';
+        const baseBuyRate = Number(props.defaultGoldBuyRate || form.gold_rate || 0);
+        item.rate = roundMoney(baseBuyRate * 0.916);
+    }
+    onOldGoldInput(item);
+};
+
+const onOldGoldPurityChange = (item) => {
+    const option = oldGoldPurityOptions.find((p) => p.value === item.purity);
+    const isSilver = item.metal_type === 'SILVER';
+    const baseBuyRate = isSilver
+        ? Number(props.defaultSilverBuyRate || form.silver_rate || 0)
+        : Number(props.defaultGoldBuyRate || form.gold_rate || 0);
+    const mult = option?.multiplier ?? 1;
+    if (item.purity !== 'Custom') {
+        item.rate = roundMoney(baseBuyRate * mult);
+    }
+    onOldGoldInput(item);
+};
+
+const totalOldGoldValue = computed(() =>
+    roundMoney(form.old_golds.reduce((acc, og) => acc + (parseFloat(og.final_price) || 0), 0))
+);
+
+const totalOldGoldGrossWeight = computed(() =>
+    Number(form.old_golds.reduce((acc, og) => acc + (parseFloat(og.gross_weight) || 0), 0).toFixed(3))
+);
 
 const roundMoney = (value) => Number((Number(value || 0)).toFixed(2));
 const subTotal = computed(() => roundMoney(form.items.reduce((acc, item) => acc + calculateRawRowTotal(item), 0)));
@@ -491,7 +600,9 @@ const discountAmount = computed(() => {
 const taxableTotal = computed(() => roundMoney(Math.max(subTotal.value - discountAmount.value, 0)));
 const gstAmount = computed(() => roundMoney(taxableTotal.value * 0.03));
 const grandTotal = computed(() => roundMoney(taxableTotal.value + gstAmount.value));
-const totalReceived = computed(() => roundMoney(Number(form.payment_cash || 0) + Number(form.payment_card || 0)));
+const netPayable = computed(() => roundMoney(Math.max(0, grandTotal.value - totalOldGoldValue.value)));
+const totalCashCardReceived = computed(() => roundMoney(Number(form.payment_cash || 0) + Number(form.payment_card || 0)));
+const totalReceived = computed(() => roundMoney(totalCashCardReceived.value + totalOldGoldValue.value));
 const balanceDue = computed(() => roundMoney(grandTotal.value - totalReceived.value));
 const paymentState = computed(() => {
     if (grandTotal.value <= 0) return 'empty';
@@ -499,6 +610,30 @@ const paymentState = computed(() => {
     if (totalReceived.value > 0) return 'partial';
     return 'unpaid';
 });
+
+const checkoutBlocker = computed(() => {
+    if (!isDayOpen.value) return 'Open the shop day from the dashboard to start billing.';
+    if (form.items.length === 0) return 'Add at least one item to the bill.';
+    if (!form.customer_id) return 'Select a customer before generating the invoice.';
+    if (form.items.some((item) => Number(item.rate || 0) <= 0)) return 'Enter a valid rate for every item.';
+    if (form.items.some((item) => item.type === 'silver_product' && item.pricing_mode === 'PIECE' && Number(item.quantity || 0) > Number(item.quantity_available || 0))) {
+        return 'Reduce the silver quantity to the available stock.';
+    }
+    if (isValidatingDraftItems.value) return 'Checking saved draft items against live stock.';
+    if (draftValidationFailed.value) return 'Recheck the saved draft against current stock.';
+    if (hasInvalidDraftItems.value) return 'Fix or remove the flagged draft items.';
+    if (form.discount_type === 'percentage' && Number(form.discount_value || 0) > 100) return 'Discount percentage cannot be greater than 100.';
+    if (form.old_golds.some((item) => Number(item.gross_weight || 0) <= 0 || Number(item.rate || 0) <= 0)) return 'Enter gross weight and buy rate for every old-metal item.';
+    if (totalCashCardReceived.value > netPayable.value) return 'Cash and digital payment cannot be more than the net payable.';
+    return '';
+});
+
+const canGenerateInvoice = computed(() => !checkoutBlocker.value && !form.processing);
+
+const setCashToNetPayable = () => {
+    form.payment_cash = netPayable.value;
+    form.payment_card = 0;
+};
 
 const formatCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
 
@@ -585,6 +720,18 @@ const submitInvoice = () => {
         toast.add({ severity: 'error', summary: 'Invalid Discount', detail: 'Discount cannot be greater than item subtotal', life: 3000 });
         return;
     }
+    if (form.old_golds.some((og) => Number(og.gross_weight || 0) <= 0 || Number(og.rate || 0) <= 0)) {
+        toast.add({ severity: 'error', summary: 'Invalid Old Metal', detail: 'Gross weight and buy rate are required for all old metal rows.', life: 3000 });
+        return;
+    }
+    if (form.old_golds.some((og) => Number(og.net_weight || 0) > Number(og.gross_weight || 0))) {
+        toast.add({ severity: 'error', summary: 'Invalid Old Metal Weight', detail: 'Net weight cannot be greater than gross weight.', life: 3000 });
+        return;
+    }
+    if (totalCashCardReceived.value > netPayable.value) {
+        toast.add({ severity: 'error', summary: 'Overpayment', detail: `Received cash/card (${formatCurrency(totalCashCardReceived.value)}) cannot exceed net payable of ${formatCurrency(netPayable.value)} after Old Gold deduction.`, life: 3500 });
+        return;
+    }
     if (balanceDue.value < 0) {
         toast.add({ severity: 'error', summary: 'Overpayment', detail: 'Received amount cannot exceed invoice total', life: 3000 });
         return;
@@ -603,6 +750,16 @@ const submitInvoice = () => {
             making_charges: item.making_charges || 0,
             making_charge_type: item.making_charge_type || (item.type === 'product' ? 'percentage' : 'per_gram'),
         })),
+        old_golds: data.old_golds.map((og) => ({
+            metal_type: og.metal_type || 'GOLD',
+            description: og.description || `Old ${og.metal_type || 'Gold'} Exchange`,
+            gross_weight: Number(og.gross_weight || 0),
+            wastage_weight: Number(og.wastage_weight || 0),
+            net_weight: Number(og.net_weight || 0),
+            purity: og.purity || '22K',
+            rate: Number(og.rate || 0),
+            final_price: Number(og.final_price || 0),
+        })),
     })).post(route('invoices.store'), {
         onSuccess: () => {
             toast.add({ severity: 'success', summary: 'Success', detail: 'Invoice generated. Opening invoice register...', life: 2500 });
@@ -618,73 +775,95 @@ const submitInvoice = () => {
 <template>
     <AppLayout>
         <div class="space-y-6">
-            <section class="erp-panel relative overflow-hidden border border-surface-200 bg-white">
-                <div class="absolute inset-y-0 right-0 hidden w-80 bg-[radial-gradient(circle_at_top_right,_rgba(245,158,11,0.16),_transparent_62%)] lg:block" />
-                <div class="relative flex flex-col gap-6 px-5 py-6 lg:flex-row lg:items-end lg:justify-between">
+            <!-- Header follows the shared ERP page pattern. -->
+            <section class="erp-page-header border border-surface-200 bg-white px-5 py-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div class="max-w-3xl">
                         <div class="flex flex-wrap items-center gap-3">
                             <h1 class="text-2xl font-semibold tracking-tight text-surface-900">New Invoice</h1>
-                            <Tag value="Sales Billing" severity="secondary" />
+                            <Tag value="Sales POS" severity="secondary" />
                             <Tag
                                 :value="paymentState === 'paid' ? 'Fully Paid' : paymentState === 'partial' ? 'Partially Paid' : paymentState === 'unpaid' ? 'Payment Pending' : 'Draft'"
                                 :severity="paymentState === 'paid' ? 'success' : paymentState === 'partial' ? 'warn' : paymentState === 'unpaid' ? 'danger' : 'secondary'"
                             />
-                        </div>
-                        <p class="mt-3 max-w-2xl text-sm leading-6 text-surface-600">
-                            Build the bill, collect payment, and keep the customer ledger aligned with sale amount and received amount on the same screen.
-                        </p>
-                        <div class="mt-3 flex flex-wrap items-center gap-2">
-                            <Button label="Save Draft" icon="pi pi-save" severity="secondary" outlined size="small" @click="saveCurrentDraft" />
-                            <Button
-                                v-if="draftList.length > 0"
-                                :label="`Load Draft (${draftList.length})`"
-                                icon="pi pi-folder-open"
-                                severity="secondary"
-                                text
-                                size="small"
-                                @click="showDraftsDialog = true"
-                            />
                             <Tag v-if="currentDraftId" value="Editing Draft" severity="warn" />
                         </div>
+                        <p class="mt-2 text-sm leading-6 text-surface-600">Select a customer, add jewellery, collect payment, and generate the final bill.</p>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        <div class="erp-stat-card min-w-40 p-4">
-                            <span class="erp-stat-card__label">Items</span>
-                            <span class="erp-stat-card__value">{{ form.items.length }}</span>
-                            <span class="erp-stat-card__meta">In current invoice</span>
-                        </div>
-                        <div class="erp-stat-card min-w-40 p-4">
-                            <span class="erp-stat-card__label">Received</span>
-                            <span class="erp-stat-card__value !text-emerald-700">{{ formatCurrency(totalReceived) }}</span>
-                            <span class="erp-stat-card__meta">Total collected</span>
-                        </div>
-                        <div class="erp-stat-card min-w-40 p-4">
-                            <span class="erp-stat-card__label">Balance Due</span>
-                            <span class="erp-stat-card__value" :class="balanceDue > 0 ? '!text-amber-700' : '!text-emerald-700'">{{ formatCurrency(balanceDue) }}</span>
-                            <span class="erp-stat-card__meta">{{ balanceDue > 0 ? 'Pending collection' : 'Fully settled' }}</span>
-                        </div>
+                    <div class="flex shrink-0 flex-wrap items-center gap-2">
+                        <Button label="Save Draft" icon="pi pi-save" severity="secondary" outlined @click="saveCurrentDraft" />
+                        <Button
+                            v-if="draftList.length > 0"
+                            :label="`Saved Drafts (${draftList.length})`"
+                            icon="pi pi-folder-open"
+                            severity="secondary"
+                            text
+                            @click="showDraftsDialog = true"
+                        />
                     </div>
                 </div>
             </section>
 
-            <!-- TOP ROW: Customer, Rate, Date -->
-            <div class="erp-panel overflow-hidden !p-0">
-                <div class="border-b border-surface-200 bg-white px-5 py-4">
-                    <h3 class="text-lg font-semibold text-surface-900">Invoice Details</h3>
-                    <p class="mt-1 text-sm text-surface-500">Select customer, rate, and invoice date</p>
+            <section class="grid grid-cols-1 gap-4 sm:grid-cols-2" :class="totalOldGoldValue > 0 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'">
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Items</span>
+                    <span class="erp-stat-card__value">{{ form.items.length }}</span>
+                    <span class="erp-stat-card__meta">In current bill</span>
                 </div>
 
-                <div class="bg-white p-5">
-                    <div class="grid grid-cols-1 gap-5 md:grid-cols-5">
-                        <!-- Customer -->
-                        <div class="md:col-span-2">
-                            <label class="mb-2 block text-sm font-medium text-surface-700"> Customer </label>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Gross Bill</span>
+                    <span class="erp-stat-card__value">{{ formatCurrency(grandTotal) }}</span>
+                    <span class="erp-stat-card__meta">Including 3% GST</span>
+                </div>
+
+                <div v-if="totalOldGoldValue > 0" class="erp-stat-card">
+                    <span class="erp-stat-card__label flex items-center gap-1 !text-amber-800">
+                        <Coins class="h-3 w-3 text-amber-600" />
+                        Trade-in Credit
+                    </span>
+                    <span class="erp-stat-card__value !text-amber-800">{{ formatCurrency(totalOldGoldValue) }}</span>
+                    <span class="erp-stat-card__meta !text-amber-700">{{ totalOldGoldGrossWeight.toFixed(3) }} g old metal</span>
+                </div>
+
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Balance Due</span>
+                    <span class="erp-stat-card__value" :class="balanceDue <= 0 && grandTotal > 0 ? '!text-emerald-700' : ''">{{ formatCurrency(balanceDue) }}</span>
+                    <span class="erp-stat-card__meta" :class="balanceDue <= 0 && grandTotal > 0 ? '!text-emerald-700' : ''">
+                        {{ balanceDue <= 0 && grandTotal > 0 ? 'Fully settled' : 'Pending collection' }}
+                    </span>
+                </div>
+            </section>
+
+            <div v-if="!isDayOpen" class="erp-alert-row flex flex-col gap-3 border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-start gap-2.5">
+                    <i class="pi pi-lock mt-0.5 text-sm text-amber-700"></i>
+                    <div>
+                        <p class="text-xs font-bold">Billing is locked while the shop day is closed.</p>
+                        <p class="mt-0.5 text-[11px] text-amber-800">Open the day from the dashboard, then return here to create an invoice.</p>
+                    </div>
+                </div>
+                <Button label="Go to Dashboard" icon="pi pi-arrow-right" size="small" severity="warn" outlined class="shrink-0 !text-xs" @click="router.visit(route('dashboard'))" />
+            </div>
+
+            <!-- TOP ROW: Customer, Rate, Date, Discount Toolbar -->
+            <div class="erp-panel overflow-hidden !p-0 border border-surface-200 bg-white shadow-xs rounded-xl">
+                <div class="border-b border-surface-200 px-5 py-4">
+                    <h2 class="text-lg font-semibold text-surface-900">Invoice Details</h2>
+                    <p class="mt-1 text-sm text-surface-500">Choose the customer and confirm live metal rates before adding items.</p>
+                </div>
+                <div class="p-4 sm:p-5">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+                        <!-- Customer (2 cols) -->
+                        <div class="sm:col-span-2 lg:col-span-2">
+                            <label class="mb-1.5 block text-sm font-medium text-surface-700">
+                                Customer <span class="text-red-500">*</span>
+                            </label>
 
                             <div v-if="prefilledCustomer && lockCustomer">
-                                <InputText :modelValue="lockedCustomerName" readonly class="w-full" />
-
-                                <div class="mt-2 flex items-center gap-2 text-xs text-primary">
+                                <InputText :modelValue="lockedCustomerName" readonly class="w-full !text-sm font-medium" />
+                                <div class="mt-1 flex items-center gap-1.5 text-[11px] text-primary">
                                     <i class="pi pi-info-circle"></i>
                                     <span>Locked to Custom Order #{{ prefilledItems[0]?.order_id || 'Ref' }}</span>
                                 </div>
@@ -697,406 +876,662 @@ const submitInvoice = () => {
                                     :errorMessage="form.errors.customer_id"
                                     :selectedOption="selectedCustomerObj"
                                     @select="onCustomerSelect"
-                                    helperText="Pick the billing customer before scanning stock or adding custom-order items."
-                                    placeholder="Search billing customer by name or mobile..."
+                                    placeholder="Search customer by name or mobile..."
                                 />
                             </div>
                         </div>
 
-                        <!-- Gold Rate -->
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700">
-                                Today's Rate (22k)
-                                <span class="text-red-500">*</span>
+                        <!-- Gold Rate (22K) -->
+                        <div class="lg:col-span-1">
+                            <label class="mb-1.5 block text-sm font-medium text-surface-700">
+                                Gold Rate (22K) <span class="text-red-500">*</span>
                             </label>
-
-                            <InputNumber v-model="form.gold_rate" mode="currency" currency="INR" locale="en-IN" placeholder="₹0.00" class="w-full" inputClass="w-full font-medium" />
-                            <small class="mt-1 block text-xs text-surface-500">
-                                Auto-filled from today's stored rate. Changing it updates all invoice rows automatically.
-                            </small>
+                            <InputNumber
+                                v-model="form.gold_rate"
+                                mode="currency"
+                                currency="INR"
+                                locale="en-IN"
+                                placeholder="₹0.00"
+                                class="w-full"
+                                inputClass="w-full !text-sm font-medium"
+                            />
                         </div>
 
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700">Today's Silver Rate</label>
-                            <InputNumber v-model="form.silver_rate" mode="currency" currency="INR" locale="en-IN" placeholder="₹0.00" class="w-full" inputClass="w-full font-medium" />
-                            <small class="mt-1 block text-xs text-surface-500">Used only for weight-based silver items.</small>
+                        <!-- Silver Rate -->
+                        <div class="lg:col-span-1">
+                            <label class="mb-1.5 block text-sm font-medium text-surface-700">
+                                Silver Rate
+                            </label>
+                            <InputNumber
+                                v-model="form.silver_rate"
+                                mode="currency"
+                                currency="INR"
+                                locale="en-IN"
+                                placeholder="₹0.00"
+                                class="w-full"
+                                inputClass="w-full !text-sm font-medium"
+                            />
                         </div>
 
                         <!-- Invoice Date -->
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700"> Invoice Date </label>
-
-                            <InputText type="date" v-model="form.date" class="w-full" />
-                        </div>
-                    </div>
-
-                    <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-4">
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700">Discount Type</label>
-                            <Select
-                                v-model="form.discount_type"
-                                :options="discountTypeOptions"
-                                optionLabel="label"
-                                optionValue="value"
-                                class="w-full"
-                            />
-                        </div>
-
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700">
-                                Discount {{ form.discount_type === 'percentage' ? '(%)' : '(₹)' }}
+                        <div class="lg:col-span-1">
+                            <label class="mb-1.5 block text-sm font-medium text-surface-700">
+                                Invoice Date
                             </label>
-                            <InputNumber
-                                v-model="form.discount_value"
-                                :mode="form.discount_type === 'percentage' ? 'decimal' : 'currency'"
-                                :currency="form.discount_type === 'percentage' ? undefined : 'INR'"
-                                locale="en-IN"
-                                :maxFractionDigits="2"
-                                class="w-full"
-                                inputClass="w-full"
-                            />
-                            <small class="mt-1 block text-xs text-surface-500">Discount is applied before GST and stored on the invoice.</small>
-                            <small v-if="form.errors.discount_value" class="mt-1 block text-xs text-red-500">{{ form.errors.discount_value }}</small>
+                            <InputText type="date" v-model="form.date" class="w-full !text-sm font-medium" />
+                        </div>
+
+                        <!-- Discount: the mode switch stays inside the input so it shares the date field baseline. -->
+                        <div class="lg:col-span-1">
+                            <label class="mb-1.5 block text-sm font-medium text-surface-700">Discount</label>
+                            <div class="invoice-discount-field relative">
+                                <InputNumber
+                                    v-model="form.discount_value"
+                                    :mode="form.discount_type === 'percentage' ? 'decimal' : 'currency'"
+                                    :currency="form.discount_type === 'percentage' ? undefined : 'INR'"
+                                    locale="en-IN"
+                                    :maxFractionDigits="2"
+                                    placeholder="0"
+                                    class="w-full"
+                                    inputClass="w-full !pr-[4.75rem] !text-sm font-medium"
+                                />
+                                <div class="absolute inset-y-1 right-1 z-10 inline-flex items-center rounded-md border border-surface-200 bg-surface-50 p-0.5" role="group" aria-label="Discount type">
+                                    <button
+                                        type="button"
+                                        class="h-6 min-w-6 rounded px-1.5 text-[10px] font-bold transition-colors cursor-pointer"
+                                        :class="form.discount_type === 'percentage' ? 'bg-primary text-white shadow-2xs' : 'text-surface-600 hover:text-surface-900'"
+                                        :aria-pressed="form.discount_type === 'percentage'"
+                                        @click="form.discount_type = 'percentage'"
+                                    >%</button>
+                                    <button
+                                        type="button"
+                                        class="h-6 min-w-6 rounded px-1.5 text-[10px] font-bold transition-colors cursor-pointer"
+                                        :class="form.discount_type === 'amount' ? 'bg-primary text-white shadow-2xs' : 'text-surface-600 hover:text-surface-900'"
+                                        :aria-pressed="form.discount_type === 'amount'"
+                                        @click="form.discount_type = 'amount'"
+                                    >₹</button>
+                                </div>
+                                <small v-if="form.errors.discount_value" class="mt-0.5 block text-[11px] text-red-500">{{ form.errors.discount_value }}</small>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- MAIN CONTENT: Items Table + Bill Summary -->
-            <div class="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3">
-                <!-- ITEMS TABLE -->
-                <div class="erp-panel flex h-full flex-col overflow-hidden !p-0 lg:col-span-2">
-                    <!-- Header -->
-                    <div class="flex items-center justify-between border-b border-surface-200 bg-white px-5 py-4">
-                        <div>
-                            <h3 class="text-lg font-semibold text-surface-900">Invoice Items</h3>
-                            <p class="mt-1 text-sm text-surface-500">Scan any stock barcode and the invoice will detect gold or silver automatically.</p>
+            <!-- MAIN CONTENT: Items Table + Old Gold + Bill Summary -->
+            <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-3">
+                <!-- LEFT COLUMN: ITEMS TABLE + OLD METAL TRADE-IN -->
+                <div class="flex flex-col gap-5 lg:col-span-2">
+                    <!-- ITEMS TABLE -->
+                    <div class="erp-panel flex flex-col overflow-hidden !p-0 border border-surface-200 bg-white shadow-xs rounded-xl">
+                        <!-- Header -->
+                        <div class="flex items-center justify-between border-b border-surface-200 bg-white px-5 py-3.5">
+                            <div>
+                                <h3 class="text-base font-semibold text-surface-900">Sale Jewellery Items</h3>
+                                <p class="mt-1 text-sm text-surface-500">Add jewellery from stock or a custom order.</p>
+                            </div>
+
+                            <Tag :value="`${form.items?.length || 0} Item${form.items?.length === 1 ? '' : 's'}`" severity="secondary" class="!text-xs font-semibold" />
                         </div>
 
-                        <span class="text-sm font-medium text-surface-500"> {{ form.items?.length || 0 }} items </span>
-                    </div>
+                        <!-- Fast scanner / manual SKU entry -->
+                        <div class="scanner-entry border-b border-surface-200 bg-surface-50 px-5 py-4">
+                            <div class="mb-2 flex items-center justify-between gap-3">
+                                <label for="invoice-barcode" class="text-sm font-medium text-surface-700">Scan barcode or SKU</label>
+                                <span class="text-xs text-surface-500">Press <kbd class="rounded border border-surface-200 bg-white px-1.5 py-0.5 font-mono text-[11px] text-surface-700">Enter</kbd> to add</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="relative flex-1">
+                                    <i class="pi pi-barcode absolute left-3 top-1/2 z-10 -translate-y-1/2 text-surface-400"></i>
+                                    <InputText
+                                        id="invoice-barcode"
+                                        ref="barcodeInput"
+                                        v-model="scannedBarcode"
+                                        @keydown.enter="fetchProduct"
+                                        placeholder="Scan or type a product code"
+                                        class="w-full !h-11 !pl-10 !text-base"
+                                    />
+                                </div>
 
-                    <!-- Scanner Input -->
-                    <div class="erp-subpanel m-4 flex gap-3 rounded-lg border border-surface-200 bg-surface-50 p-3">
-                        <IconField class="erp-icon-field flex-1">
-                            <InputIcon class="pi pi-barcode" />
-                            <InputText ref="barcodeInput" v-model="scannedBarcode" @keydown.enter="fetchProduct" placeholder="Scan barcode or enter product code..." class="w-full" />
-                        </IconField>
-
-                        <Button label="Add Item" icon="pi pi-plus" @click="fetchProduct" :loading="isProcessing" />
-                    </div>
-
-                    <div v-if="hasInvalidDraftItems" class="erp-alert-row mx-4 mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-xs">
-                        <div class="flex items-start gap-3 text-sm text-red-700">
-                            <i class="pi pi-exclamation-triangle mt-0.5"></i>
-                            <div>
-                                <p class="font-medium">Some draft items are no longer billable.</p>
-                                <p class="mt-1 text-xs text-red-600">Review the flagged rows below and remove them or adjust quantities before generating the invoice.</p>
+                                <Button
+                                    label="Add Item"
+                                    icon="pi pi-plus"
+                                    @click="fetchProduct"
+                                    :loading="isProcessing"
+                                    class="!h-11 !px-4 !font-semibold shrink-0"
+                                />
                             </div>
                         </div>
-                    </div>
 
-                    <div v-if="draftValidationFailed" class="erp-alert-row mx-4 mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 shadow-xs">
-                        <div class="flex items-start justify-between gap-3 text-sm text-amber-800">
-                            <div class="flex items-start gap-3">
-                                <i class="pi pi-exclamation-circle mt-0.5"></i>
+                        <div v-if="hasInvalidDraftItems" class="erp-alert-row mx-3.5 mb-3 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 shadow-xs">
+                            <div class="flex items-start gap-2.5 text-xs text-red-700">
+                                <i class="pi pi-exclamation-triangle mt-0.5"></i>
                                 <div>
-                                    <p class="font-medium">Live draft validation did not complete.</p>
-                                    <p class="mt-1 text-xs text-amber-700">Please recheck the draft against current stock before billing.</p>
+                                    <p class="font-medium">Some draft items are no longer billable.</p>
+                                    <p class="mt-0.5 text-[11px] text-red-600">Review the flagged rows below and remove them or adjust quantities before billing.</p>
                                 </div>
                             </div>
-                            <Button label="Recheck Draft" icon="pi pi-refresh" size="small" severity="warn" outlined @click="validateDraftItems({ showToast: true })" />
                         </div>
-                    </div>
 
-                    <!-- Table -->
-                    <DataTable :value="form.items" scrollable scrollHeight="420px" stripedRows rowHover size="small" dataKey="id" class="erp-line-items text-sm">
-                        <!-- Empty -->
-                        <template #empty>
-                            <div class="flex flex-col items-center py-16 text-center text-surface-500">
-                                <i class="pi pi-barcode mb-4 text-4xl opacity-30"></i>
-                                <p class="font-medium">No items added</p>
-                                <span class="text-sm">Scan barcode to start billing</span>
-                            </div>
-                        </template>
-
-                        <!-- Type -->
-                        <Column header="Type" style="width: 88px">
-                            <template #body="{ data }">
-                                <Tag :value="data.type === 'order_item' ? 'ORDER' : data.type === 'silver_product' ? 'SILVER' : 'STOCK'" :severity="data.type === 'order_item' ? 'info' : data.type === 'silver_product' ? 'warn' : 'success'" />
-                            </template>
-                        </Column>
-
-                        <!-- Item -->
-                        <Column field="description" header="Item details" style="min-width: 320px">
-                            <template #body="{ data }">
-                                <div class="flex min-w-0 items-start gap-2">
-                                    <span
-                                        class="flex h-8 w-8 shrink-0 items-center justify-center border"
-                                        :class="data.type === 'silver_product' ? 'border-slate-200 bg-slate-50 text-slate-600' : data.type === 'order_item' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-amber-200 bg-amber-50 text-amber-700'"
-                                    >
-                                        <i :class="data.type === 'order_item' ? 'pi pi-wrench' : 'pi pi-tag'" class="text-sm"></i>
-                                    </span>
-
-                                    <div class="min-w-0 flex-1">
-                                        <div class="truncate text-sm font-semibold leading-5 text-surface-900" :title="itemIdentity(data).name">
-                                            {{ itemIdentity(data).name }}
-                                        </div>
-
-                                        <div class="mt-0.5 flex flex-wrap items-center gap-1.5">
-                                            <span
-                                                v-if="itemIdentity(data).barcode"
-                                                class="inline-flex items-center gap-1 border border-surface-200 bg-surface-50 px-1.5 py-0.5 font-mono text-[10.5px] font-semibold tracking-wide text-surface-700"
-                                                title="Product barcode"
-                                            >
-                                                <i class="pi pi-barcode text-[10px] text-surface-500"></i>
-                                                {{ itemIdentity(data).barcode }}
-                                            </span>
-
-                                            <span
-                                                v-if="itemPurityLabel(data)"
-                                                class="inline-flex items-center gap-1 border px-1.5 py-0.5 text-[10.5px] font-semibold"
-                                                :class="data.type === 'silver_product' ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-amber-200 bg-amber-50 text-amber-800'"
-                                                title="Metal purity"
-                                            >
-                                                <span class="h-1.5 w-1.5 rounded-full" :class="data.type === 'silver_product' ? 'bg-slate-400' : 'bg-amber-500'"></span>
-                                                {{ itemPurityLabel(data) }} purity
-                                            </span>
-
-                                            <span v-if="data.type === 'order_item'" class="inline-flex border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
-                                                Custom work
-                                            </span>
-                                            <span v-else-if="data.type === 'silver_product'" class="text-[11px] font-medium text-surface-500">
-                                                {{ data.pricing_mode === 'PIECE' ? 'Per piece' : 'By weight' }}
-                                            </span>
-                                        </div>
-
-                                        <p v-if="data.draft_valid === false" class="mb-0 mt-1.5 text-xs font-medium text-red-600">
-                                            {{ data.draft_issue }}
-                                        </p>
+                        <div v-if="draftValidationFailed" class="erp-alert-row mx-3.5 mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 shadow-xs">
+                            <div class="flex items-start justify-between gap-3 text-xs text-amber-800">
+                                <div class="flex items-start gap-2 text-xs">
+                                    <i class="pi pi-exclamation-circle mt-0.5"></i>
+                                    <div>
+                                        <p class="font-medium">Live draft validation did not complete.</p>
+                                        <p class="mt-0.5 text-[11px] text-amber-700">Please recheck the draft against current stock before billing.</p>
                                     </div>
                                 </div>
-                            </template>
-                        </Column>
-
-                        <Column header="Qty" headerClass="erp-th-right" style="width: 68px">
-                            <template #body="{ data }">
-                                <InputNumber
-                                    v-if="data.type === 'silver_product' && data.pricing_mode === 'PIECE'"
-                                    v-model="data.quantity"
-                                    inputClass="w-full text-right"
-                                    class="w-full"
-                                    :min="1"
-                                    :max="data.quantity_available || 1"
-                                    @input="onRowInput($event, data, 'quantity')"
-                                />
-                                <div v-else class="text-right font-medium">1</div>
-                            </template>
-                        </Column>
-
-                        <!-- Weight -->
-                        <Column header="Wt (g)" headerClass="erp-th-right" style="width: 82px">
-                            <template #body="{ data }">
-                                <div class="text-right font-medium">
-                                    {{ data.weight }}
-                                </div>
-                            </template>
-                        </Column>
-
-                        <!-- Rate -->
-                        <Column header="Rate" headerClass="erp-th-right" style="width: 132px">
-                            <template #body="{ data }">
-                                <InputNumber
-                                    v-model="data.rate"
-                                    inputClass="w-full text-right"
-                                    class="erp-line-control erp-line-rate-control"
-                                    mode="decimal"
-                                    :minFractionDigits="2"
-                                    :maxFractionDigits="2"
-                                    @input="onRowInput($event, data, 'rate')"
-                                />
-                            </template>
-                        </Column>
-
-                        <!-- Making -->
-                        <Column header="Making" headerClass="erp-th-center" style="width: 218px">
-                            <template #body="{ data }">
-                                <div class="flex items-center gap-1.5">
-                                    <InputNumber
-                                        v-model="data.making_charges"
-                                        inputClass="w-full text-right"
-                                        class="erp-line-control erp-line-making-control"
-                                        mode="decimal"
-                                        :max="data.making_charge_type === 'percentage' ? 100 : undefined"
-                                        :minFractionDigits="0"
-                                        :maxFractionDigits="2"
-                                        placeholder="0"
-                                        @input="onRowInput($event, data, 'making_charges')"
-                                    />
-                                    <Select
-                                        v-model="data.making_charge_type"
-                                        :options="makingChargeTypeOptions"
-                                        optionLabel="label"
-                                        optionValue="value"
-                                        class="erp-line-control erp-line-making-type shrink-0"
-                                        :panelClass="'!min-w-[190px]'"
-                                        title="Making charge type: % (Percentage), ₹ Flat (Lump sum), ₹/g (Per gram)"
-                                        @change="onMakingTypeChange(data)"
-                                    >
-                                        <template #value="slotProps">
-                                            <span class="text-xs font-semibold text-surface-800">
-                                                {{ slotProps.value === 'percentage' ? '%' : slotProps.value === 'flat' ? '₹ Flat' : '₹/g' }}
-                                            </span>
-                                        </template>
-                                    </Select>
-                                </div>
-                            </template>
-                        </Column>
-
-                        <!-- Total -->
-                        <Column header="Total" headerClass="erp-th-right" style="width: 140px">
-                            <template #body="{ data }">
-                                <div class="text-right font-semibold text-surface-900">
-                                    {{ formatCurrency(data.final_price) }}
-                                </div>
-                            </template>
-                        </Column>
-
-                        <!-- Delete -->
-                        <Column style="width: 70px">
-                            <template #body="{ index }">
-                                <div class="flex justify-center">
-                                    <Button icon="pi pi-trash" text severity="danger" rounded @click="removeItem(index)" />
-                                </div>
-                            </template>
-                        </Column>
-                    </DataTable>
-                </div>
-
-                <!-- BILL SUMMARY -->
-                <div class="erp-panel flex h-full flex-col justify-between overflow-hidden !p-0">
-                    <!-- Summary -->
-                    <div class="p-5">
-                        <div class="mb-5">
-                            <h3 class="text-lg font-semibold text-surface-900">Bill Summary</h3>
-                            <p class="mt-1 text-sm text-surface-500">Overview of charges and received payment</p>
+                                <Button label="Recheck Draft" icon="pi pi-refresh" size="small" severity="warn" outlined class="!text-xs !py-0.5 !px-2" @click="validateDraftItems({ showToast: true })" />
+                            </div>
                         </div>
 
-                        <div class="space-y-3">
+                        <!-- Table -->
+                        <DataTable
+                            :value="form.items"
+                            scrollable
+                            scrollHeight="360px"
+                            stripedRows
+                            rowHover
+                            size="small"
+                            dataKey="id"
+                            class="erp-line-items text-xs"
+                        >
+                            <!-- Empty -->
+                            <template #empty>
+                                <div class="flex flex-col items-center justify-center py-10 text-center text-surface-400">
+                                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-100/80 text-surface-400 mb-1.5">
+                                        <i class="pi pi-barcode text-lg"></i>
+                                    </div>
+                                    <p class="font-semibold text-surface-700 text-xs">No items added to bill yet</p>
+                                    <span class="text-[11px] text-surface-400 mt-0.5">Scan a jewellery barcode above to start billing</span>
+                                </div>
+                            </template>
+
+                            <!-- Type -->
+                            <Column header="Type" style="width: 80px">
+                                <template #body="{ data }">
+                                    <Tag
+                                        :value="data.type === 'order_item' ? 'ORDER' : data.type === 'silver_product' ? 'SILVER' : 'STOCK'"
+                                        :severity="data.type === 'order_item' ? 'info' : data.type === 'silver_product' ? 'warn' : 'success'"
+                                        class="!text-[10px] !font-bold"
+                                    />
+                                </template>
+                            </Column>
+
+                            <!-- Item Details -->
+                            <Column field="description" header="Item Details" style="min-width: 250px">
+                                <template #body="{ data }">
+                                    <div class="flex min-w-0 items-start gap-2.5">
+                                        <div
+                                            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border text-xs"
+                                            :class="data.type === 'silver_product' ? 'border-slate-200 bg-slate-50 text-slate-600' : data.type === 'order_item' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-amber-200 bg-amber-50 text-amber-700'"
+                                        >
+                                            <i :class="data.type === 'order_item' ? 'pi pi-wrench' : 'pi pi-tag'"></i>
+                                        </div>
+
+                                        <div class="min-w-0 flex-1">
+                                            <div class="truncate text-xs font-semibold leading-tight text-surface-900" :title="itemIdentity(data).name">
+                                                {{ itemIdentity(data).name }}
+                                            </div>
+
+                                            <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                                                <span
+                                                    v-if="itemIdentity(data).barcode"
+                                                    class="inline-flex items-center gap-1 rounded border border-surface-200 bg-surface-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-surface-700"
+                                                >
+                                                    <i class="pi pi-barcode text-[9px] text-surface-400"></i>
+                                                    {{ itemIdentity(data).barcode }}
+                                                </span>
+
+                                                <span
+                                                    v-if="itemPurityLabel(data)"
+                                                    class="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold"
+                                                    :class="data.type === 'silver_product' ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-amber-200 bg-amber-50 text-amber-800'"
+                                                >
+                                                    <span class="h-1.5 w-1.5 rounded-full" :class="data.type === 'silver_product' ? 'bg-slate-400' : 'bg-amber-500'"></span>
+                                                    {{ itemPurityLabel(data) }}
+                                                </span>
+
+                                                <span v-if="data.type === 'order_item'" class="inline-flex rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                                                    Custom Order
+                                                </span>
+                                                <span v-else-if="data.type === 'silver_product'" class="text-[10px] font-medium text-surface-500">
+                                                    {{ data.pricing_mode === 'PIECE' ? 'Per piece' : 'By weight' }}
+                                                </span>
+                                            </div>
+
+                                            <p v-if="data.draft_valid === false" class="mb-0 mt-1 text-[11px] font-medium text-red-600">
+                                                {{ data.draft_issue }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </template>
+                            </Column>
+
+                            <!-- Qty -->
+                            <Column header="Qty" headerClass="erp-th-right" style="width: 65px">
+                                <template #body="{ data }">
+                                    <InputNumber
+                                        v-if="data.type === 'silver_product' && data.pricing_mode === 'PIECE'"
+                                        v-model="data.quantity"
+                                        inputClass="w-full text-right"
+                                        class="erp-line-control w-full"
+                                        :min="1"
+                                        :max="data.quantity_available || 1"
+                                        @input="onRowInput($event, data, 'quantity')"
+                                    />
+                                    <div v-else class="text-right font-medium text-surface-800">1</div>
+                                </template>
+                            </Column>
+
+                            <!-- Weight -->
+                            <Column header="Wt (g)" headerClass="erp-th-right" style="width: 85px">
+                                <template #body="{ data }">
+                                    <div class="text-right font-mono font-semibold text-surface-900">
+                                        {{ data.weight }}
+                                    </div>
+                                </template>
+                            </Column>
+
+                            <!-- Rate -->
+                            <Column header="Rate (₹/g)" headerClass="erp-th-right" style="width: 125px">
+                                <template #body="{ data }">
+                                    <InputNumber
+                                        v-model="data.rate"
+                                        inputClass="w-full text-right font-medium"
+                                        class="erp-line-control w-full"
+                                        mode="decimal"
+                                        :minFractionDigits="2"
+                                        :maxFractionDigits="2"
+                                        @input="onRowInput($event, data, 'rate')"
+                                    />
+                                </template>
+                            </Column>
+
+                            <!-- Making Charges -->
+                            <Column header="Making Charges" headerClass="erp-th-center" style="width: 215px">
+                                <template #body="{ data }">
+                                    <div class="flex items-center gap-1.5">
+                                        <InputNumber
+                                            v-model="data.making_charges"
+                                            inputClass="w-full text-right font-medium"
+                                            class="erp-line-control w-full"
+                                            mode="decimal"
+                                            :max="data.making_charge_type === 'percentage' ? 100 : undefined"
+                                            :minFractionDigits="0"
+                                            :maxFractionDigits="2"
+                                            placeholder="0"
+                                            @input="onRowInput($event, data, 'making_charges')"
+                                        />
+                                        <Select
+                                            v-model="data.making_charge_type"
+                                            :options="makingChargeTypeOptions"
+                                            optionLabel="label"
+                                            optionValue="value"
+                                            class="erp-line-control shrink-0"
+                                            style="width: 5.75rem"
+                                            :panelClass="'!min-w-[190px]'"
+                                            @change="onMakingTypeChange(data)"
+                                        >
+                                            <template #value="slotProps">
+                                                <span class="text-xs font-semibold text-surface-800">
+                                                    {{ slotProps.value === 'percentage' ? '%' : slotProps.value === 'flat' ? '₹ Flat' : '₹/g' }}
+                                                </span>
+                                            </template>
+                                        </Select>
+                                    </div>
+                                </template>
+                            </Column>
+
+                            <!-- Total -->
+                            <Column header="Amount (₹)" headerClass="erp-th-right" style="width: 135px">
+                                <template #body="{ data }">
+                                    <div class="text-right font-mono font-bold text-surface-900">
+                                        {{ formatCurrency(data.final_price) }}
+                                    </div>
+                                </template>
+                            </Column>
+
+                            <!-- Delete -->
+                            <Column style="width: 48px">
+                                <template #body="{ index }">
+                                    <div class="flex justify-center">
+                                        <Button icon="pi pi-trash" text severity="danger" rounded size="small" @click="removeItem(index)" />
+                                    </div>
+                                </template>
+                            </Column>
+                        </DataTable>
+                    </div>
+
+                    <!-- OLD METAL & GOLD EXCHANGE PANEL -->
+                    <div class="erp-panel flex flex-col overflow-hidden !p-0 border border-surface-200 bg-white shadow-xs rounded-xl">
+                        <!-- Header -->
+                        <div class="flex items-center justify-between border-b border-surface-200 bg-white px-5 py-3.5">
+                            <div>
+                                <h3 class="text-base font-semibold text-surface-900">Old Metal & Gold Exchange</h3>
+                                <p class="text-xs text-surface-500">Customer trade-in credited to Vault and deducted from net payable</p>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <Tag v-if="form.old_golds.length > 0" :value="`${form.old_golds.length} Item${form.old_golds.length === 1 ? '' : 's'}`" severity="secondary" class="!text-xs font-semibold" />
+                                <Button label="Add Old Metal" icon="pi pi-plus" size="small" outlined severity="primary" class="!text-xs !py-1 !px-2.5" @click="addOldGoldRow" />
+                            </div>
+                        </div>
+
+                        <!-- DataTable with .erp-line-items -->
+                        <DataTable :value="form.old_golds" scrollable stripedRows rowHover size="small" class="invoice-old-metal-table erp-line-items text-sm">
+                            <template #empty>
+                                <div class="flex flex-col items-center justify-center py-7 text-center text-surface-400">
+                                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 mb-1.5 border border-amber-200/50">
+                                        <Coins class="h-5 w-5" />
+                                    </div>
+                                    <p class="font-semibold text-surface-700 text-xs">No old metal exchange added</p>
+                                    <p class="text-[11px] text-surface-400 mt-0.5">If customer is exchanging old gold or silver towards this bill, click "Add Old Metal" above</p>
+                                </div>
+                            </template>
+
+                            <!-- Metal -->
+                            <Column header="Metal" style="width: 105px">
+                                <template #body="{ data }">
+                                    <Select
+                                        v-model="data.metal_type"
+                                        :options="metalTypeOptions"
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        class="erp-line-control w-full"
+                                        @change="onOldGoldMetalChange(data)"
+                                    />
+                                </template>
+                            </Column>
+
+                            <!-- Description -->
+                            <Column header="Description" style="min-width: 150px">
+                                <template #body="{ data }">
+                                    <InputText
+                                        v-model="data.description"
+                                        placeholder="e.g. Old Ring"
+                                        class="erp-line-control w-full"
+                                    />
+                                </template>
+                            </Column>
+
+                            <!-- Gross Weight -->
+                            <Column header="Gross Wt (g)" headerClass="erp-th-right" style="width: 110px">
+                                <template #body="{ data }">
+                                    <InputNumber
+                                        v-model="data.gross_weight"
+                                        mode="decimal"
+                                        :min="0"
+                                        :minFractionDigits="3"
+                                        :maxFractionDigits="3"
+                                        placeholder="0.000"
+                                        class="erp-line-control w-full"
+                                        inputClass="w-full text-right font-medium"
+                                        @input="onOldGoldInput(data)"
+                                    />
+                                </template>
+                            </Column>
+
+                            <!-- Deduction -->
+                            <Column header="Deduction (g)" headerClass="erp-th-right" style="width: 110px">
+                                <template #body="{ data }">
+                                    <InputNumber
+                                        v-model="data.wastage_weight"
+                                        mode="decimal"
+                                        :min="0"
+                                        :minFractionDigits="3"
+                                        :maxFractionDigits="3"
+                                        placeholder="0.000"
+                                        class="erp-line-control w-full"
+                                        inputClass="w-full text-right text-surface-500"
+                                        @input="onOldGoldInput(data)"
+                                    />
+                                </template>
+                            </Column>
+
+                            <!-- Net Weight -->
+                            <Column header="Net Wt (g)" headerClass="erp-th-right" style="width: 90px">
+                                <template #body="{ data }">
+                                    <div class="text-right font-mono font-bold text-surface-900">
+                                        {{ Number(data.net_weight || 0).toFixed(3) }}
+                                    </div>
+                                </template>
+                            </Column>
+
+                            <!-- Purity -->
+                            <Column header="Purity" style="width: 140px">
+                                <template #body="{ data }">
+                                    <Select
+                                        v-model="data.purity"
+                                        :options="oldGoldPurityOptions.filter(p => p.metal === 'ANY' || p.metal === data.metal_type)"
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        class="erp-line-control w-full"
+                                        @change="onOldGoldPurityChange(data)"
+                                    />
+                                </template>
+                            </Column>
+
+                            <!-- Buy Rate -->
+                            <Column header="Rate (₹/g)" headerClass="erp-th-right" style="width: 120px">
+                                <template #body="{ data }">
+                                    <InputNumber
+                                        v-model="data.rate"
+                                        mode="decimal"
+                                        :min="0"
+                                        :minFractionDigits="2"
+                                        :maxFractionDigits="2"
+                                        class="erp-line-control w-full"
+                                        inputClass="w-full text-right font-medium"
+                                        @input="onOldGoldInput(data)"
+                                    />
+                                </template>
+                            </Column>
+
+                            <!-- Credit Value -->
+                            <Column header="Credit (₹)" headerClass="erp-th-right" style="width: 125px">
+                                <template #body="{ data }">
+                                    <div class="text-right font-mono font-bold text-emerald-700">
+                                        {{ formatCurrency(data.final_price) }}
+                                    </div>
+                                </template>
+                            </Column>
+
+                            <!-- Delete Action -->
+                            <Column style="width: 48px">
+                                <template #body="{ index }">
+                                    <div class="flex justify-center">
+                                        <Button icon="pi pi-trash" text severity="danger" rounded size="small" @click="removeOldGoldRow(index)" />
+                                    </div>
+                                </template>
+                            </Column>
+                        </DataTable>
+
+                        <!-- Footer Summary Bar -->
+                        <div v-if="form.old_golds.length > 0" class="flex flex-wrap items-center justify-between gap-4 border-t border-surface-200 bg-surface-50 px-5 py-2.5 text-xs">
+                            <div class="flex items-center gap-6">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-surface-500">Gross Wt:</span>
+                                    <span class="font-mono font-bold text-surface-900">{{ totalOldGoldGrossWeight.toFixed(3) }} g</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-surface-500">Net Pure:</span>
+                                    <span class="font-mono font-bold text-surface-900">
+                                        {{ form.old_golds.reduce((acc, r) => acc + Number(r.net_weight || 0), 0).toFixed(3) }} g
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold text-surface-700">Total Trade-In Credit:</span>
+                                <span class="font-mono text-sm font-bold text-emerald-700">{{ formatCurrency(totalOldGoldValue) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: BILL SUMMARY & PAYMENT -->
+                <div class="invoice-checkout-panel erp-panel flex flex-col justify-between overflow-hidden !p-0 sticky top-4 border border-surface-200 bg-white shadow-xs rounded-xl">
+                    <!-- Summary -->
+                    <div class="p-4 sm:p-5">
+                        <div class="mb-3.5 flex items-center justify-between border-b border-surface-100 pb-3">
+                            <div>
+                                <h3 class="text-base font-semibold text-surface-900">Bill Summary</h3>
+                                <p class="text-[11px] text-surface-400">Live breakdown of charges & taxes</p>
+                            </div>
+                            <Tag :value="paymentState === 'paid' ? 'Paid' : paymentState === 'partial' ? 'Partial' : paymentState === 'unpaid' ? 'Unpaid' : 'Draft'" :severity="paymentState === 'paid' ? 'success' : paymentState === 'partial' ? 'warn' : paymentState === 'unpaid' ? 'danger' : 'secondary'" class="!text-[10px] font-bold" />
+                        </div>
+
+                        <div class="space-y-2 text-xs">
                             <!-- Items -->
                             <div class="flex items-center justify-between">
-                                <span class="text-sm text-surface-500"> Items ({{ form.items.length }}) </span>
-                                <span class="text-sm font-semibold text-surface-900">
+                                <span class="text-surface-500"> Items Subtotal ({{ form.items.length }}) </span>
+                                <span class="font-mono font-semibold text-surface-900">
                                     {{ formatCurrency(subTotal) }}
                                 </span>
                             </div>
 
-                            <div class="flex items-center justify-between">
-                                <span class="text-sm text-surface-500">
+                            <!-- Discount -->
+                            <div v-if="discountAmount > 0" class="flex items-center justify-between">
+                                <span class="text-surface-500">
                                     Discount
-                                    <span v-if="Number(form.discount_value || 0) > 0" class="text-xs text-surface-400">
-                                        ({{ form.discount_type === 'percentage' ? `${Number(form.discount_value || 0)}%` : 'manual' }})
+                                    <span v-if="Number(form.discount_value || 0) > 0" class="text-[10.5px] text-surface-400">
+                                        ({{ form.discount_type === 'percentage' ? `${Number(form.discount_value || 0)}%` : 'Flat' }})
                                     </span>
                                 </span>
-                                <span class="text-sm font-semibold text-red-600">
+                                <span class="font-mono font-semibold text-red-600">
                                     - {{ formatCurrency(discountAmount) }}
                                 </span>
                             </div>
 
+                            <!-- Taxable -->
                             <div class="flex items-center justify-between">
-                                <span class="text-sm text-surface-500">Taxable Amount</span>
-                                <span class="text-sm font-semibold text-surface-900">
+                                <span class="text-surface-500">Taxable Value</span>
+                                <span class="font-mono font-semibold text-surface-900">
                                     {{ formatCurrency(taxableTotal) }}
                                 </span>
                             </div>
 
                             <!-- GST -->
                             <div class="flex items-center justify-between">
-                                <span class="text-sm text-surface-500">GST (3%)</span>
-                                <span class="text-sm font-semibold text-surface-900">
+                                <span class="text-surface-500">GST (3%)</span>
+                                <span class="font-mono font-semibold text-surface-900">
                                     {{ formatCurrency(gstAmount) }}
+                                </span>
+                            </div>
+
+                            <!-- Gross Total -->
+                            <div class="flex items-center justify-between pt-2 border-t border-surface-200 text-xs">
+                                <span class="font-bold text-surface-800 uppercase tracking-wide">Gross Bill</span>
+                                <span class="font-mono font-bold text-surface-900 text-sm">
+                                    {{ formatCurrency(grandTotal) }}
+                                </span>
+                            </div>
+
+                            <!-- Old Metal Deduction Card -->
+                            <div v-if="totalOldGoldValue > 0" class="flex items-center justify-between rounded-lg border border-amber-200/80 bg-amber-50/60 p-2 text-xs text-amber-950">
+                                <div class="flex items-center gap-1.5 font-medium">
+                                    <i class="pi pi-minus-circle text-amber-700"></i>
+                                    <span>Old Metal ({{ totalOldGoldGrossWeight.toFixed(3) }}g)</span>
+                                </div>
+                                <span class="font-mono font-bold text-amber-900">
+                                    - {{ formatCurrency(totalOldGoldValue) }}
                                 </span>
                             </div>
                         </div>
 
-                        <Divider class="my-4" />
+                        <Divider class="!my-3" />
 
-                        <!-- Grand Total -->
-                        <div class="flex items-end justify-between">
-                            <div>
-                                <p class="text-sm text-surface-500">Grand Total</p>
-                                <p class="mt-1 text-xs text-surface-400">Rounded final payable amount</p>
+                        <!-- Net Payable Spotlight -->
+                        <div class="rounded-xl border border-surface-200/80 bg-gradient-to-br from-surface-50 to-white p-3 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-surface-500">Net Payable</span>
+                                    <p class="text-[10px] text-surface-400">After trade-in deduction</p>
+                                </div>
+                                <span class="font-mono text-xl font-bold tracking-tight text-surface-900">
+                                    {{ formatCurrency(netPayable) }}
+                                </span>
                             </div>
-
-                            <span class="text-3xl font-bold text-primary">
-                                {{ formatCurrency(grandTotal) }}
-                            </span>
                         </div>
 
-                        <div class="mt-4 grid grid-cols-2 gap-3">
-                            <div class="erp-subpanel rounded-lg border border-surface-200 bg-white p-3.5 shadow-xs">
-                                <span class="block text-[11px] font-bold uppercase tracking-wider text-surface-500">Received</span>
-                                <span class="mt-1 block font-mono text-xl font-bold text-emerald-700">{{ formatCurrency(totalReceived) }}</span>
+                        <!-- Settled & Due Mini Badges -->
+                        <div class="mt-2.5 grid grid-cols-2 gap-2">
+                            <div class="rounded-lg border border-surface-200/70 bg-white p-2 text-center">
+                                <span class="block text-[10px] font-bold uppercase tracking-wider text-surface-400">Total Settled</span>
+                                <span class="mt-0.5 block font-mono text-sm font-bold text-emerald-700">{{ formatCurrency(totalReceived) }}</span>
                             </div>
-                            <div class="erp-subpanel rounded-lg border border-surface-200 bg-white p-3.5 shadow-xs">
-                                <span class="block text-[11px] font-bold uppercase tracking-wider" :class="balanceDue > 0 ? 'text-amber-700' : 'text-emerald-700'">Ledger Due</span>
-                                <span class="mt-1 block font-mono text-xl font-bold" :class="balanceDue > 0 ? 'text-amber-700' : 'text-emerald-700'">{{ formatCurrency(balanceDue) }}</span>
+                            <div class="rounded-lg border border-surface-200/70 bg-white p-2 text-center">
+                                <span class="block text-[10px] font-bold uppercase tracking-wider" :class="balanceDue > 0 ? 'text-amber-700' : 'text-emerald-700'">Ledger Due</span>
+                                <span class="mt-0.5 block font-mono text-sm font-bold" :class="balanceDue > 0 ? 'text-amber-700' : 'text-emerald-700'">{{ formatCurrency(balanceDue) }}</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Payment -->
-                    <div class="border-t border-surface-200 bg-surface-50 p-5">
-                        <div class="mb-4">
-                            <h3 class="text-sm font-semibold tracking-wide text-surface-700 uppercase">Payment Received</h3>
+                    <!-- Payment Collection -->
+                    <div class="border-t border-surface-200 bg-surface-50/70 p-4 sm:p-5">
+                        <div class="mb-3 flex items-center justify-between">
+                            <h3 class="text-base font-semibold text-surface-900">Payment Collection</h3>
+                            <button
+                                v-if="netPayable > 0 && Number(form.payment_cash || 0) !== netPayable"
+                                type="button"
+                                class="inline-flex items-center gap-1 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300/80 px-2 py-0.5 text-[10.5px] font-semibold transition-colors cursor-pointer"
+                                @click="setCashToNetPayable"
+                            >
+                                <span>⚡ Pay Full Cash</span>
+                            </button>
                         </div>
 
-                        <div class="space-y-4">
+                        <div class="space-y-2.5">
                             <div>
-                                <label class="mb-2 block text-sm font-medium text-surface-700">Cash</label>
-                                <InputNumber v-model="form.payment_cash" mode="currency" currency="INR" locale="en-IN" inputClass="w-full" class="w-full" placeholder="₹0.00" />
+                                <label class="mb-1.5 block text-sm font-medium text-surface-700">Cash Received</label>
+                                <InputNumber v-model="form.payment_cash" mode="currency" currency="INR" locale="en-IN" inputClass="w-full !text-sm font-medium" class="w-full" placeholder="₹0.00" />
                             </div>
 
                             <div>
-                                <label class="mb-2 block text-sm font-medium text-surface-700">UPI / Card / Bank</label>
-                                <InputNumber v-model="form.payment_card" mode="currency" currency="INR" locale="en-IN" inputClass="w-full" class="w-full" placeholder="₹0.00" />
+                                <label class="mb-1.5 block text-sm font-medium text-surface-700">UPI / Card / Bank</label>
+                                <InputNumber v-model="form.payment_card" mode="currency" currency="INR" locale="en-IN" inputClass="w-full !text-sm font-medium" class="w-full" placeholder="₹0.00" />
                             </div>
 
                             <div v-if="form.payment_card > 0">
-                                <label class="mb-2 block text-sm font-medium text-surface-700">Payment Note</label>
-                                <Textarea v-model="form.card_note" rows="2" class="w-full" placeholder="Optional UPI / card / bank reference" />
+                                <label class="mb-1.5 block text-sm font-medium text-surface-700">Payment Ref Note</label>
+                                <Textarea v-model="form.card_note" rows="2" class="w-full !text-sm" placeholder="UPI txn ID, card last 4 digits, or bank transfer ref..." />
                             </div>
                         </div>
 
-                        <Divider class="my-4" />
+                        <Divider class="!my-3" />
 
                         <!-- Balance -->
                         <div class="flex items-center justify-between">
-                            <span class="text-sm font-semibold text-surface-700">Balance Due</span>
-                            <span class="text-xl font-bold" :class="balanceDue > 0 ? 'text-red-500' : 'text-green-600'">
-                                {{ formatCurrency(balanceDue) }}
+                            <span class="text-xs font-bold uppercase tracking-wider text-surface-600">Balance Pending</span>
+                            <span class="font-mono text-base font-bold" :class="balanceDue <= 0 && grandTotal > 0 ? 'text-emerald-700' : 'text-surface-900'">
+                                {{ formatCurrency(balanceDue) }} {{ balanceDue <= 0 && grandTotal > 0 ? '✓' : '' }}
                             </span>
                         </div>
-                        <small v-if="balanceDue > 0" class="mt-2 block text-xs text-surface-500">This due amount remains outstanding in the customer ledger after invoice creation.</small>
+                        <small v-if="balanceDue > 0" class="mt-1 block text-[10.5px] text-surface-500">Unpaid balance is added to customer ledger.</small>
                     </div>
 
                     <!-- Action -->
                     <div class="border-t border-surface-200 bg-white p-4">
+                        <div class="invoice-readiness mb-3 flex items-start gap-2 rounded-md px-2.5 py-2 text-[11px]" :class="canGenerateInvoice ? 'bg-emerald-50 text-emerald-800' : 'bg-surface-50 text-surface-600'">
+                            <i :class="canGenerateInvoice ? 'pi pi-check-circle text-emerald-600' : 'pi pi-info-circle text-surface-400'" class="mt-0.5"></i>
+                            <span>{{ canGenerateInvoice ? 'Ready to generate and print.' : checkoutBlocker }}</span>
+                        </div>
                         <Button
-                            :label="isValidatingDraftItems ? 'Checking Draft...' : 'Generate Invoice'"
+                            :label="isValidatingDraftItems ? 'Checking Draft Stock...' : 'Generate & Print Invoice'"
                             icon="pi pi-print"
                             severity="success"
-                            class="w-full"
-                            size="large"
+                            class="w-full !py-3 !text-sm !font-bold shadow-xs hover:shadow-md transition-all"
                             @click="submitInvoice"
                             :loading="form.processing || isValidatingDraftItems"
-                            :disabled="!isDayOpen || hasInvalidDraftItems || isValidatingDraftItems || draftValidationFailed"
+                            :disabled="!canGenerateInvoice"
                         />
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- Saved Drafts Dialog -->
         <Dialog v-model:visible="showDraftsDialog" header="Saved Drafts" modal :style="{ width: '36rem' }">
             <div v-if="draftList.length === 0" class="py-8 text-center text-sm text-surface-500">
                 No saved drafts.
@@ -1136,3 +1571,19 @@ const submitInvoice = () => {
         </Dialog>
     </AppLayout>
 </template>
+
+<style>
+.invoice-discount-field .p-inputnumber-input {
+    padding-right: 4.75rem !important;
+}
+
+#invoice-barcode {
+    font-size: 1rem !important;
+}
+
+.invoice-old-metal-table .p-inputnumber-input,
+.invoice-old-metal-table .p-inputtext,
+.invoice-old-metal-table .p-select-label {
+    font-size: 0.9375rem !important;
+}
+</style>

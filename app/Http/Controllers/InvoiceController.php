@@ -11,12 +11,14 @@ use App\Enums\VaultType;
 use App\Models\Customer;
 use App\Models\OrderItem;
 use App\Models\InvoiceItem;
+use App\Models\InvoiceOldGold;
 use App\Models\InvoiceDraft;
 use App\Models\BusinessSetting;
 use Illuminate\Http\Request;
 use App\Services\VaultService;
 use App\Services\LedgerImpactService;
 use App\Services\InvoiceRateService;
+use App\Services\MetalWeightService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Transaction; // <--- The Ledger Model
@@ -137,6 +139,7 @@ class InvoiceController extends Controller
                 'discount_type' => $data['discount_type'] ?? 'amount',
                 'discount_value' => (float) ($data['discount_value'] ?? 0),
                 'items' => $data['items'] ?? [],
+                'old_golds' => $data['old_golds'] ?? [],
                 'payment_cash' => (float) ($data['payment_cash'] ?? 0),
                 'payment_card' => (float) ($data['payment_card'] ?? 0),
                 'card_note' => $data['card_note'] ?? '',
@@ -149,7 +152,7 @@ class InvoiceController extends Controller
     public function index()
     {
         $invoices = Invoice::with('customer')
-            ->with(['items.product', 'items.silverProduct', 'items.orderItem', 'transactions', 'cancelledBy', 'user'])
+            ->with(['items.product', 'items.silverProduct', 'items.orderItem', 'oldGolds', 'transactions', 'cancelledBy', 'user'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -185,6 +188,8 @@ class InvoiceController extends Controller
                     'discount_type' => $invoice->discount_type,
                     'discount_value' => (float) ($invoice->discount_value ?? 0),
                     'discount_amount' => (float) ($invoice->discount_amount ?? 0),
+                    'old_gold_amount' => (float) ($invoice->old_gold_amount ?? 0),
+                    'old_gold_weight' => (float) ($invoice->old_gold_weight ?? 0),
                     'tax_amount' => (float) ($invoice->tax_amount ?? 0),
                     'paid_amount' => $paidAmount,
                     'pending_amount' => $pendingAmount,
@@ -203,6 +208,19 @@ class InvoiceController extends Controller
                             'total_price' => (float) ($item->final_price ?? $item->total_price ?? 0),
                             'product_barcode' => $item->product?->barcode,
                             'silver_product_barcode' => $item->silverProduct?->barcode,
+                        ];
+                    })->values()->all(),
+                    'old_golds' => $invoice->oldGolds->map(function ($og) {
+                        return [
+                            'id' => $og->id,
+                            'metal_type' => $og->metal_type,
+                            'description' => $og->description,
+                            'gross_weight' => (float) $og->gross_weight,
+                            'wastage_weight' => (float) $og->wastage_weight,
+                            'net_weight' => (float) $og->net_weight,
+                            'purity' => $og->purity,
+                            'rate' => (float) $og->rate,
+                            'final_price' => (float) $og->final_price,
                         ];
                     })->values()->all(),
                     'payments' => $invoice->transactions->where('type', 'PAYMENT')->map(function ($txn) {
@@ -276,7 +294,9 @@ class InvoiceController extends Controller
         return Inertia::render('invoices/Create', [
             'customers'      => \App\Models\Customer::all(),
             'defaultGoldRate' => (float) ($todayRate?->gold_sell ?? 0),
+            'defaultGoldBuyRate' => (float) ($todayRate?->gold_buy ?? ($todayRate?->gold_sell ? $todayRate->gold_sell - 150 : 0)),
             'defaultSilverRate' => (float) ($todayRate?->silver_sell ?? 0),
+            'defaultSilverBuyRate' => (float) ($todayRate?->silver_sell ?? 0),
             // Pass the ready items to the frontend
             'prefilledItems' => $prefilledItems,
             'prefilledCustomer' => $customer,
@@ -315,6 +335,15 @@ class InvoiceController extends Controller
             'items.*.making_charges' => 'nullable|numeric|min:0',
             'items.*.making_charge_type' => 'nullable|string|in:percentage,flat,lump_sum,per_gram',
             'items.*.final_price' => 'nullable|numeric|min:0',
+            'old_golds' => 'nullable|array',
+            'old_golds.*.metal_type' => 'nullable|string',
+            'old_golds.*.description' => 'nullable|string',
+            'old_golds.*.gross_weight' => 'nullable|numeric|min:0',
+            'old_golds.*.wastage_weight' => 'nullable|numeric|min:0',
+            'old_golds.*.net_weight' => 'nullable|numeric|min:0',
+            'old_golds.*.purity' => 'nullable|string',
+            'old_golds.*.rate' => 'nullable|numeric|min:0',
+            'old_golds.*.final_price' => 'nullable|numeric|min:0',
             'payment_cash' => 'nullable|numeric|min:0',
             'payment_card' => 'nullable|numeric|min:0',
             'card_note' => 'nullable|string|max:100',
@@ -338,6 +367,7 @@ class InvoiceController extends Controller
             'discount_type' => $validated['discount_type'] ?? 'amount',
             'discount_value' => (float) ($validated['discount_value'] ?? 0),
             'items' => $validated['items'] ?? [],
+            'old_golds' => $validated['old_golds'] ?? [],
             'payment_cash' => (float) ($validated['payment_cash'] ?? 0),
             'payment_card' => (float) ($validated['payment_card'] ?? 0),
             'card_note' => $validated['card_note'] ?? '',
@@ -417,7 +447,7 @@ class InvoiceController extends Controller
             } elseif ($makingType === 'flat' || $makingType === 'lump_sum') {
                 $makingAmount = $making;
             } else {
-                $makingAmount = $weight * $making;
+                $makingAmount = $weight * $quantity * making;
             }
             return round($base + $makingAmount, 2);
         }
@@ -449,6 +479,7 @@ class InvoiceController extends Controller
             'items.product',
             'items.silverProduct',
             'items.orderItem',
+            'oldGolds',
             'transactions',
             'user',
         ]);
@@ -528,10 +559,9 @@ class InvoiceController extends Controller
     }
 
 
-
     public function store(Request $request)
     {
-        // 1. Validate: Accept a generic 'items' array containing mixed types
+        // 1. Validate: Accept items + optional old_golds exchange items
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'gold_rate'   => 'nullable|numeric|min:0',
@@ -550,6 +580,17 @@ class InvoiceController extends Controller
             'items.*.quantity' => 'nullable|integer|min:1',
             'draft_id' => 'nullable|integer',
 
+            // OLD GOLD / METAL EXCHANGE LIST
+            'old_golds' => 'nullable|array',
+            'old_golds.*.metal_type' => 'nullable|string|in:GOLD,SILVER,gold,silver',
+            'old_golds.*.description' => 'nullable|string|max:255',
+            'old_golds.*.gross_weight' => 'required_with:old_golds|numeric|min:0.001',
+            'old_golds.*.wastage_weight' => 'nullable|numeric|min:0',
+            'old_golds.*.net_weight' => 'required_with:old_golds|numeric|min:0.001',
+            'old_golds.*.purity' => 'required_with:old_golds|string|max:50',
+            'old_golds.*.rate' => 'required_with:old_golds|numeric|min:0.01',
+            'old_golds.*.final_price' => 'required_with:old_golds|numeric|min:0.01',
+
             'payment_cash' => 'nullable|numeric|min:0',
             'payment_card' => 'nullable|numeric|min:0',
             'card_note'    => 'nullable|string|max:100',
@@ -560,6 +601,8 @@ class InvoiceController extends Controller
             $totalBillAmount = 0;
             $totalVaultGoldSoldWeight = 0;
             $totalVaultSilverSoldWeight = 0;
+            $totalVaultGoldSoldFineWeight = 0;
+            $totalVaultSilverSoldFineWeight = 0;
             $defaultGoldRate = (float) ($validated['gold_rate'] ?? 0);
             $defaultSilverRate = (float) ($validated['silver_rate'] ?? 0);
             $items = collect($validated['items']);
@@ -603,6 +646,8 @@ class InvoiceController extends Controller
                 'discount_type' => $validated['discount_type'] ?? null,
                 'discount_value' => (float) ($validated['discount_value'] ?? 0),
                 'discount_amount' => 0,
+                'old_gold_amount' => 0,
+                'old_gold_weight' => 0,
                 'date'           => $validated['date'],
                 'total_amount'   => 0,
                 'user_id'        => Auth::id(),
@@ -782,8 +827,10 @@ class InvoiceController extends Controller
 
                     if ($orderItemMetalType === 'SILVER') {
                         $totalVaultSilverSoldWeight += (float) $weight;
+                        $totalVaultSilverSoldFineWeight += MetalWeightService::fineWeight((float) $weight, $purity) ?? 0;
                     } else {
                         $totalVaultGoldSoldWeight += (float) $weight;
+                        $totalVaultGoldSoldFineWeight += MetalWeightService::fineWeight((float) $weight, $purity) ?? 0;
                     }
 
                     $totalBillAmount += $itemTotal;
@@ -817,43 +864,132 @@ class InvoiceController extends Controller
             $taxableAmount = round($totalBillAmount - $discountAmount, 2);
             $gst = round($taxableAmount * 0.03, 2); // 3% GST after discount
             $finalTotal = round($taxableAmount + $gst, 2);
-            $totalPaid = (float) ($validated['payment_cash'] ?? 0) + (float) ($validated['payment_card'] ?? 0);
 
-            if ($totalPaid > $finalTotal) {
+            // 5. Process Old Gold / Metal Exchange items
+            $oldGoldRows = collect($validated['old_golds'] ?? [])->filter(fn ($r) => (float) ($r['gross_weight'] ?? 0) > 0);
+            $totalOldGoldAmount = 0;
+            $totalOldGoldGrossWeight = 0;
+            $totalOldGoldFineWeight = 0;
+            $totalOldSilverGrossWeight = 0;
+            $totalOldSilverFineWeight = 0;
+
+            foreach ($oldGoldRows as $ogRow) {
+                $metalType = strtoupper((string) ($ogRow['metal_type'] ?? 'GOLD'));
+                $grossWt = round((float) $ogRow['gross_weight'], 3);
+                $wastageWt = round((float) ($ogRow['wastage_weight'] ?? 0), 3);
+                $netWt = round((float) ($ogRow['net_weight'] ?? max($grossWt - $wastageWt, 0)), 3);
+                $purity = trim((string) ($ogRow['purity'] ?? '22K'));
+                $rate = round((float) $ogRow['rate'], 2);
+                $rowPrice = round((float) $ogRow['final_price'], 2);
+
+                if ($netWt > $grossWt) {
+                    throw ValidationException::withMessages([
+                        'old_golds' => 'Net weight cannot exceed gross weight for old metal exchange items.',
+                    ]);
+                }
+
+                $totalOldGoldAmount += $rowPrice;
+
+                if ($metalType === 'SILVER') {
+                    $totalOldSilverGrossWeight += $grossWt;
+                    $totalOldSilverFineWeight += MetalWeightService::fineWeight($netWt, $purity) ?? 0;
+                } else {
+                    $totalOldGoldGrossWeight += $grossWt;
+                    $totalOldGoldFineWeight += MetalWeightService::fineWeight($netWt, $purity) ?? 0;
+                }
+
+                InvoiceOldGold::create([
+                    'invoice_id'     => $invoice->id,
+                    'metal_type'     => $metalType,
+                    'description'    => $ogRow['description'] ?? "Old {$metalType} Exchange",
+                    'gross_weight'   => $grossWt,
+                    'wastage_weight' => $wastageWt,
+                    'net_weight'     => $netWt,
+                    'purity'         => $purity,
+                    'rate'           => $rate,
+                    'final_price'    => $rowPrice,
+                ]);
+            }
+
+            $totalOldGoldAmount = round($totalOldGoldAmount, 2);
+            $netPayable = max(0, round($finalTotal - $totalOldGoldAmount, 2));
+            $totalCashCardPaid = round((float) ($validated['payment_cash'] ?? 0) + (float) ($validated['payment_card'] ?? 0), 2);
+
+            if ($totalCashCardPaid > $netPayable) {
                 throw ValidationException::withMessages([
-                    'payment_cash' => 'Received amount cannot be greater than the invoice total.',
+                    'payment_cash' => 'Received cash/card amount (₹' . number_format($totalCashCardPaid, 2) . ') cannot exceed the net payable amount of ₹' . number_format($netPayable, 2) . ' after Old Gold exchange deduction.',
                 ]);
             }
 
             $invoice->update([
-                'discount_type' => $discountType,
-                'discount_value' => $discountValue,
+                'discount_type'   => $discountType,
+                'discount_value'  => $discountValue,
                 'discount_amount' => $discountAmount,
-                'total_amount' => $finalTotal,
-                'tax_amount'   => $gst
+                'old_gold_amount' => $totalOldGoldAmount,
+                'old_gold_weight' => $totalOldGoldGrossWeight + $totalOldSilverGrossWeight,
+                'total_amount'    => $finalTotal,
+                'tax_amount'      => $gst,
             ]);
 
+            // 6. VAULT CREDITS FOR OLD METAL RECEIVED
+            if ($totalOldGoldGrossWeight > 0) {
+                VaultService::credit(VaultType::GOLD, $totalOldGoldGrossWeight, [
+                    'source_type'    => Invoice::class,
+                    'source_id'      => $invoice->id,
+                    'operation_key'  => "invoice:{$invoice->id}:exchange:gold",
+                    'reference'      => $invoice->invoice_number,
+                    'correlation_id' => $invoice->invoice_number,
+                    'gross_weight'   => $totalOldGoldGrossWeight,
+                    'fine_weight'    => $totalOldGoldFineWeight ?: null,
+                    'user_id'        => Auth::id(),
+                    'note'           => "Old Gold exchange received in {$invoice->invoice_number}",
+                ]);
+            }
+
+            if ($totalOldSilverGrossWeight > 0) {
+                VaultService::credit(VaultType::SILVER, $totalOldSilverGrossWeight, [
+                    'source_type'    => Invoice::class,
+                    'source_id'      => $invoice->id,
+                    'operation_key'  => "invoice:{$invoice->id}:exchange:silver",
+                    'reference'      => $invoice->invoice_number,
+                    'correlation_id' => $invoice->invoice_number,
+                    'gross_weight'   => $totalOldSilverGrossWeight,
+                    'fine_weight'    => $totalOldSilverFineWeight ?: null,
+                    'user_id'        => Auth::id(),
+                    'note'           => "Old Silver exchange received in {$invoice->invoice_number}",
+                ]);
+            }
+
+            // 7. VAULT DEBITS FOR FINISHED CUSTOM ORDER METAL SOLD
             if ($totalVaultGoldSoldWeight > 0) {
                 VaultService::debit(VaultType::GOLD, $totalVaultGoldSoldWeight, [
-                    'source_type' => Invoice::class,
-                    'source_id' => $invoice->id,
-                    'reference' => $invoice->invoice_number,
-                    'user_id' => Auth::id(),
-                    'note' => "Gold sold in {$invoice->invoice_number}",
+                    'source_type'    => Invoice::class,
+                    'source_id'      => $invoice->id,
+                    'operation_key'  => "invoice:{$invoice->id}:sell:gold",
+                    'reference'      => $invoice->invoice_number,
+                    'correlation_id' => $invoice->invoice_number,
+                    'gross_weight'   => $totalVaultGoldSoldWeight,
+                    'fine_weight'    => $totalVaultGoldSoldFineWeight ?: null,
+                    'user_id'        => Auth::id(),
+                    'note'           => "Gold sold in {$invoice->invoice_number}",
                 ]);
             }
 
             if ($totalVaultSilverSoldWeight > 0) {
                 VaultService::debit(VaultType::SILVER, $totalVaultSilverSoldWeight, [
-                    'source_type' => Invoice::class,
-                    'source_id' => $invoice->id,
-                    'reference' => $invoice->invoice_number,
-                    'user_id' => Auth::id(),
-                    'note' => "Silver sold in {$invoice->invoice_number}",
+                    'source_type'    => Invoice::class,
+                    'source_id'      => $invoice->id,
+                    'operation_key'  => "invoice:{$invoice->id}:sell:silver",
+                    'reference'      => $invoice->invoice_number,
+                    'correlation_id' => $invoice->invoice_number,
+                    'gross_weight'   => $totalVaultSilverSoldWeight,
+                    'fine_weight'    => $totalVaultSilverSoldFineWeight ?: null,
+                    'user_id'        => Auth::id(),
+                    'note'           => "Silver sold in {$invoice->invoice_number}",
                 ]);
             }
 
-            // 5. ACCOUNTING (Ledger Entries)
+            // 8. ACCOUNTING (Ledger Entries)
 
             // A. DEBIT THE CUSTOMER (Sale Entry)
             Transaction::create([
@@ -868,7 +1004,23 @@ class InvoiceController extends Controller
                 'entry_type_code'   => 'INVOICE_SALE',
             ]);
 
-            // B. CREDIT THE CUSTOMER (Cash Payment)
+            // B. CREDIT THE CUSTOMER (Old Gold Exchange Payment)
+            if ($totalOldGoldAmount > 0) {
+                Transaction::create([
+                    'transactable_type' => Customer::class,
+                    'transactable_id'   => $validated['customer_id'],
+                    'invoice_id'        => $invoice->id,
+                    'type'              => 'PAYMENT',
+                    'amount'            => $totalOldGoldAmount,
+                    'description'       => "Old Metal Exchange (" . number_format($totalOldGoldGrossWeight + $totalOldSilverGrossWeight, 3) . "g)",
+                    'date'              => $validated['date'],
+                    'user_id'           => Auth::id(),
+                    'payment_method'    => 'OLD_GOLD',
+                    'entry_type_code'   => 'INVOICE_OLD_GOLD',
+                ]);
+            }
+
+            // C. CREDIT THE CUSTOMER (Cash Payment)
             if (!empty($validated['payment_cash']) && $validated['payment_cash'] > 0) {
                 $transaction = Transaction::create([
                     'transactable_type' => Customer::class,
@@ -879,13 +1031,13 @@ class InvoiceController extends Controller
                     'description'       => "Cash Payment",
                     'date'              => $validated['date'],
                     'user_id'           => Auth::id(),
-                    'payment_method' => 'CASH',
-                    'entry_type_code' => 'INVOICE_PAYMENT',
+                    'payment_method'    => 'CASH',
+                    'entry_type_code'   => 'INVOICE_PAYMENT',
                 ]);
                 LedgerImpactService::applyCashTransaction($transaction);
             }
 
-            // C. CREDIT THE CUSTOMER (Card Payment)
+            // D. CREDIT THE CUSTOMER (Card Payment)
             if (!empty($validated['payment_card']) && $validated['payment_card'] > 0) {
                 $transaction = Transaction::create([
                     'transactable_type' => Customer::class,
@@ -896,9 +1048,8 @@ class InvoiceController extends Controller
                     'description'       => "Card Payment " . ($validated['card_note'] ?? ''),
                     'date'              => $validated['date'],
                     'user_id'           => Auth::id(),
-                    'payment_method' => 'CARD',
-                    'entry_type_code' => 'INVOICE_PAYMENT',
-
+                    'payment_method'    => 'CARD',
+                    'entry_type_code'   => 'INVOICE_PAYMENT',
                 ]);
                 LedgerImpactService::applyCashTransaction($transaction);
             }
@@ -918,108 +1069,186 @@ class InvoiceController extends Controller
     {
         $validated = $request->validate([
             'mode' => 'nullable|in:keep_advance,refund,none',
+            'old_gold_mode' => 'nullable|in:keep_advance,return_metal,none',
             'reason' => 'required|string|max:500',
         ]);
 
-        $invoice = Invoice::with(['items.product', 'items.silverProduct', 'items.orderItem', 'transactions'])->findOrFail($id);
+        $invoice = Invoice::with(['items.product', 'items.silverProduct', 'items.orderItem', 'oldGolds', 'transactions'])->findOrFail($id);
 
         if ($invoice->status === 'CANCELLED') {
             return back()->with('error', 'This invoice is already cancelled.');
         }
 
         $paidAmount = (float) $invoice->transactions->where('type', 'PAYMENT')->sum('amount');
-        $effectiveMode = $paidAmount > 0 ? ($validated['mode'] ?? 'keep_advance') : 'none';
+        $hasCashPayment = $invoice->transactions->where('type', 'PAYMENT')->where('entry_type_code', '!=', 'INVOICE_OLD_GOLD')->sum('amount') > 0;
+        $effectiveMode = $hasCashPayment ? ($validated['mode'] ?? 'keep_advance') : 'none';
+        $hasOldGold = $invoice->oldGolds->isNotEmpty();
+        $oldGoldMode = $hasOldGold ? ($validated['old_gold_mode'] ?? ($effectiveMode === 'refund' ? 'return_metal' : 'keep_advance')) : 'none';
 
         try {
-            DB::transaction(function () use ($invoice, $validated, $effectiveMode) {
-            $invoice->update([
-                'status' => 'CANCELLED',
-                'cancellation_mode' => $effectiveMode,
-                'cancellation_reason' => $validated['reason'],
-                'cancelled_by' => Auth::id(),
-                'cancelled_at' => now(),
-            ]);
+            DB::transaction(function () use ($invoice, $validated, $effectiveMode, $oldGoldMode) {
+                $cancellationMode = $validated['mode'] ?? $effectiveMode;
 
-            $restoredGoldWeight = (float) $invoice->items
-                ->filter(fn ($item) => $item->order_item_id !== null && strtoupper((string) ($item->orderItem?->metal_type ?? 'GOLD')) !== 'SILVER')
-                ->sum('weight');
-
-            if ($restoredGoldWeight > 0) {
-                VaultService::credit(VaultType::GOLD, $restoredGoldWeight, [
-                    'source_type' => Invoice::class,
-                    'source_id' => $invoice->id,
-                    'reference' => $invoice->invoice_number,
-                    'user_id' => Auth::id(),
-                    'note' => "Gold restored after voiding {$invoice->invoice_number}",
+                $invoice->update([
+                    'status' => 'CANCELLED',
+                    'cancellation_mode' => $cancellationMode,
+                    'cancellation_reason' => $validated['reason'],
+                    'cancelled_by' => Auth::id(),
+                    'cancelled_at' => now(),
                 ]);
-            }
 
-            $restoredSilverWeight = (float) $invoice->items
-                ->filter(fn ($item) => $item->order_item_id !== null && strtoupper((string) ($item->orderItem?->metal_type ?? 'GOLD')) === 'SILVER')
-                ->sum('weight');
-
-            if ($restoredSilverWeight > 0) {
-                VaultService::credit(VaultType::SILVER, $restoredSilverWeight, [
-                    'source_type' => Invoice::class,
-                    'source_id' => $invoice->id,
-                    'reference' => $invoice->invoice_number,
-                    'user_id' => Auth::id(),
-                    'note' => "Silver restored after voiding {$invoice->invoice_number}",
-                ]);
-            }
-
-            foreach ($invoice->items as $item) {
-                if ($item->product) {
-                    $item->product->update(['is_sold' => false]);
-                }
-
-                if ($item->silverProduct) {
-                    if ($item->silverProduct->pricing_mode === 'PIECE') {
-                        $item->silverProduct->update([
-                            'quantity' => (int) $item->silverProduct->quantity + (int) ($item->quantity ?? 1),
-                            'is_sold' => false,
+                // If Old Gold is returned to customer, reverse metal from Vault
+                if ($oldGoldMode === 'return_metal') {
+                    $oldGoldWeightToReverse = (float) $invoice->oldGolds->filter(fn ($og) => strtoupper((string) ($og->metal_type ?? 'GOLD')) !== 'SILVER')->sum('gross_weight');
+                    $oldGoldFineWeightToReverse = (float) $invoice->oldGolds->filter(fn ($og) => strtoupper((string) ($og->metal_type ?? 'GOLD')) !== 'SILVER')->sum(
+                        fn ($og) => MetalWeightService::fineWeight((float) $og->net_weight, $og->purity) ?? 0
+                    );
+                    if ($oldGoldWeightToReverse > 0) {
+                        VaultService::debit(VaultType::GOLD, $oldGoldWeightToReverse, [
+                            'source_type'    => Invoice::class,
+                            'source_id'      => $invoice->id,
+                            'operation_key'  => "invoice:{$invoice->id}:void:exchange:gold",
+                            'reference'      => $invoice->invoice_number,
+                            'correlation_id' => $invoice->invoice_number,
+                            'gross_weight'   => $oldGoldWeightToReverse,
+                            'fine_weight'    => $oldGoldFineWeightToReverse ?: null,
+                            'user_id'        => Auth::id(),
+                            'note'           => "Old Gold exchange reversed after voiding {$invoice->invoice_number}",
                         ]);
-                    } else {
-                        $item->silverProduct->update([
-                            'quantity' => max(1, (int) ($item->quantity ?? 1)),
-                            'is_sold' => false,
+                    }
+
+                    $oldSilverWeightToReverse = (float) $invoice->oldGolds->filter(fn ($og) => strtoupper((string) ($og->metal_type ?? 'GOLD')) === 'SILVER')->sum('gross_weight');
+                    $oldSilverFineWeightToReverse = (float) $invoice->oldGolds->filter(fn ($og) => strtoupper((string) ($og->metal_type ?? 'GOLD')) === 'SILVER')->sum(
+                        fn ($og) => MetalWeightService::fineWeight((float) $og->net_weight, $og->purity) ?? 0
+                    );
+                    if ($oldSilverWeightToReverse > 0) {
+                        VaultService::debit(VaultType::SILVER, $oldSilverWeightToReverse, [
+                            'source_type'    => Invoice::class,
+                            'source_id'      => $invoice->id,
+                            'operation_key'  => "invoice:{$invoice->id}:void:exchange:silver",
+                            'reference'      => $invoice->invoice_number,
+                            'correlation_id' => $invoice->invoice_number,
+                            'gross_weight'   => $oldSilverWeightToReverse,
+                            'fine_weight'    => $oldSilverFineWeightToReverse ?: null,
+                            'user_id'        => Auth::id(),
+                            'note'           => "Old Silver exchange reversed after voiding {$invoice->invoice_number}",
                         ]);
                     }
                 }
 
-                if ($item->orderItem) {
-                    $item->orderItem->update(['status' => 'READY']);
-                }
-            }
+                // Restore custom order metal debits back to vault
+                $restoredGoldItems = $invoice->items
+                    ->filter(fn ($item) => $item->order_item_id !== null && strtoupper((string) ($item->orderItem?->metal_type ?? 'GOLD')) !== 'SILVER')
+                    ->values();
+                $restoredGoldWeight = (float) $restoredGoldItems->sum('weight');
+                $restoredGoldFineWeight = (float) $restoredGoldItems->sum(
+                    fn ($item) => MetalWeightService::fineWeight((float) $item->weight, $item->purity) ?? 0,
+                );
 
-            foreach ($invoice->transactions as $transaction) {
-                if ($transaction->type === 'SALE') {
-                    $transaction->update([
-                        'type' => 'VOID',
-                        'description' => "Voided sale for {$invoice->invoice_number}",
-                        'entry_type_code' => 'VOID_INVOICE_SALE',
-                    ]);
-                    continue;
-                }
-
-                if ($transaction->type !== 'PAYMENT') {
-                    continue;
-                }
-
-                if ($effectiveMode === 'refund') {
-                    LedgerImpactService::reverseCashTransaction($transaction);
-
-                    $transaction->update([
-                        'type' => 'VOID',
-                        'description' => "Refunded payment for {$invoice->invoice_number}",
-                        'entry_type_code' => 'INVOICE_REFUND',
-                    ]);
-                } else {
-                    $transaction->update([
-                        'description' => trim(($transaction->description ?: 'Payment') . " | Kept as customer advance after void {$invoice->invoice_number}"),
+                if ($restoredGoldWeight > 0) {
+                    VaultService::credit(VaultType::GOLD, $restoredGoldWeight, [
+                        'source_type'    => Invoice::class,
+                        'source_id'      => $invoice->id,
+                        'operation_key'  => "invoice:{$invoice->id}:void:gold",
+                        'reference'      => $invoice->invoice_number,
+                        'correlation_id' => $invoice->invoice_number,
+                        'gross_weight'   => $restoredGoldWeight,
+                        'fine_weight'    => $restoredGoldFineWeight ?: null,
+                        'user_id'        => Auth::id(),
+                        'note'           => "Gold restored after voiding {$invoice->invoice_number}",
                     ]);
                 }
-            }
+
+                $restoredSilverItems = $invoice->items
+                    ->filter(fn ($item) => $item->order_item_id !== null && strtoupper((string) ($item->orderItem?->metal_type ?? 'GOLD')) === 'SILVER')
+                    ->values();
+                $restoredSilverWeight = (float) $restoredSilverItems->sum('weight');
+                $restoredSilverFineWeight = (float) $restoredSilverItems->sum(
+                    fn ($item) => MetalWeightService::fineWeight((float) $item->weight, $item->purity) ?? 0,
+                );
+
+                if ($restoredSilverWeight > 0) {
+                    VaultService::credit(VaultType::SILVER, $restoredSilverWeight, [
+                        'source_type'    => Invoice::class,
+                        'source_id'      => $invoice->id,
+                        'operation_key'  => "invoice:{$invoice->id}:void:silver",
+                        'reference'      => $invoice->invoice_number,
+                        'correlation_id' => $invoice->invoice_number,
+                        'gross_weight'   => $restoredSilverWeight,
+                        'fine_weight'    => $restoredSilverFineWeight ?: null,
+                        'user_id'        => Auth::id(),
+                        'note'           => "Silver restored after voiding {$invoice->invoice_number}",
+                    ]);
+                }
+
+                foreach ($invoice->items as $item) {
+                    if ($item->product) {
+                        $item->product->update(['is_sold' => false]);
+                    }
+
+                    if ($item->silverProduct) {
+                        if ($item->silverProduct->pricing_mode === 'PIECE') {
+                            $item->silverProduct->update([
+                                'quantity' => (int) $item->silverProduct->quantity + (int) ($item->quantity ?? 1),
+                                'is_sold' => false,
+                            ]);
+                        } else {
+                            $item->silverProduct->update([
+                                'quantity' => max(1, (int) ($item->quantity ?? 1)),
+                                'is_sold' => false,
+                            ]);
+                        }
+                    }
+
+                    if ($item->orderItem) {
+                        $item->orderItem->update(['status' => 'READY']);
+                    }
+                }
+
+                foreach ($invoice->transactions as $transaction) {
+                    if ($transaction->type === 'SALE') {
+                        $transaction->update([
+                            'type' => 'VOID',
+                            'description' => "Voided sale for {$invoice->invoice_number}",
+                            'entry_type_code' => 'VOID_INVOICE_SALE',
+                        ]);
+                        continue;
+                    }
+
+                    if ($transaction->entry_type_code === 'INVOICE_OLD_GOLD') {
+                        if ($oldGoldMode === 'keep_advance') {
+                            $transaction->update([
+                                'type' => 'PAYMENT',
+                                'description' => trim(($transaction->description ?: 'Old Metal Exchange') . " | Kept as customer advance after void {$invoice->invoice_number}"),
+                            ]);
+                        } else {
+                            $transaction->update([
+                                'type' => 'VOID',
+                                'description' => "Voided Old Metal exchange for {$invoice->invoice_number}",
+                                'entry_type_code' => 'VOID_INVOICE_OLD_GOLD',
+                            ]);
+                        }
+                        continue;
+                    }
+
+                    if ($transaction->type !== 'PAYMENT') {
+                        continue;
+                    }
+
+                    if ($effectiveMode === 'refund') {
+                        LedgerImpactService::reverseCashTransaction($transaction);
+
+                        $transaction->update([
+                            'type' => 'VOID',
+                            'description' => "Refunded payment for {$invoice->invoice_number}",
+                            'entry_type_code' => 'INVOICE_REFUND',
+                        ]);
+                    } else {
+                        $transaction->update([
+                            'description' => trim(($transaction->description ?: 'Payment') . " | Kept as customer advance after void {$invoice->invoice_number}"),
+                        ]);
+                    }
+                }
             });
         } catch (\Throwable $e) {
             return back()->withErrors([
@@ -1028,11 +1257,20 @@ class InvoiceController extends Controller
         }
 
         if ($paidAmount <= 0) {
-            $message = 'Invoice voided and stock restored (No payment was collected on this bill).';
+            $message = 'Invoice voided and stock restored (No payment or old metal was on this bill).';
         } else {
-            $message = $effectiveMode === 'refund'
-                ? 'Invoice voided, stock restored, and paid amount refunded.'
-                : 'Invoice voided, stock restored, and paid amount kept as customer advance.';
+            $parts = [];
+            if ($hasOldGold) {
+                $parts[] = $oldGoldMode === 'keep_advance'
+                    ? 'Old Metal kept as advance'
+                    : 'Old Metal reversed to customer';
+            }
+            if ($hasCashPayment) {
+                $parts[] = $effectiveMode === 'refund'
+                    ? 'Cash refunded'
+                    : 'Cash kept as advance';
+            }
+            $message = 'Invoice voided, stock restored. ' . implode(', ', $parts) . '.';
         }
 
         return back()->with('success', $message);

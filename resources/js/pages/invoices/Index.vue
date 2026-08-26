@@ -2,7 +2,7 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import { Search } from 'lucide-vue-next';
+import { Search, Coins } from 'lucide-vue-next';
 import { route } from 'ziggy-js';
 
 import Button from 'primevue/button';
@@ -41,6 +41,7 @@ const search = ref('');
 
 const voidForm = useForm({
     mode: 'keep_advance',
+    old_gold_mode: 'keep_advance',
     reason: '',
 });
 
@@ -81,8 +82,13 @@ const filteredInvoices = computed(() => {
 });
 
 const voidModeOptions = [
-    { label: 'Keep As Advance', value: 'keep_advance', hint: 'Paid amount stays in the customer ledger as advance for the next bill.' },
-    { label: 'Refund Customer', value: 'refund', hint: 'Paid amount is reversed from the vault and returned to the customer.' },
+    { label: 'Keep Cash As Advance', value: 'keep_advance', hint: 'Paid cash/card stays in the customer ledger as advance credit for the next bill.' },
+    { label: 'Refund Cash To Customer', value: 'refund', hint: 'Paid cash is reversed from the Cash Vault and refunded to the customer.' },
+];
+
+const oldGoldVoidModeOptions = [
+    { label: 'Keep Old Metal Value As Advance', value: 'keep_advance', hint: 'Old metal stays in store vault, and its full exchange value is credited to customer ledger as advance balance.' },
+    { label: 'Return Physical Old Metal To Customer', value: 'return_metal', hint: 'Metal is debited from vault and returned to customer. Old metal credit is cancelled.' },
 ];
 
 const formatCurrency = (value) =>
@@ -147,7 +153,11 @@ const openVoidDialog = (invoice) => {
     selectedInvoice.value = invoice;
     voidForm.reset();
     voidForm.clearErrors();
-    voidForm.mode = Number(invoice.paid_amount || 0) > 0 ? 'keep_advance' : 'none';
+    const cashPaid = Math.max(0, Number(invoice.paid_amount || 0) - Number(invoice.old_gold_amount || 0));
+    const hasOldGold = Number(invoice.old_gold_amount || 0) > 0;
+
+    voidForm.mode = cashPaid > 0 ? 'keep_advance' : 'none';
+    voidForm.old_gold_mode = hasOldGold ? 'keep_advance' : 'none';
     voidForm.reason = '';
     showVoidDialog.value = true;
 };
@@ -158,7 +168,20 @@ const closeVoidDialog = () => {
     voidForm.reset();
     voidForm.clearErrors();
     voidForm.mode = 'keep_advance';
+    voidForm.old_gold_mode = 'keep_advance';
 };
+
+const voidPreviewAdvance = computed(() => {
+    if (!selectedInvoice.value) return 0;
+    let total = 0;
+    if (voidForm.old_gold_mode === 'keep_advance') {
+        total += Number(selectedInvoice.value.old_gold_amount || 0);
+    }
+    if (voidForm.mode === 'keep_advance') {
+        total += Math.max(0, Number(selectedInvoice.value.paid_amount || 0) - Number(selectedInvoice.value.old_gold_amount || 0));
+    }
+    return total;
+});
 
 const openViewDialog = (invoice) => {
     viewInvoice.value = invoice;
@@ -400,6 +423,9 @@ const draftFormatCurrency = (val) =>
                                             {{ formatCurrency(data.pending_amount) }}
                                         </span>
                                     </div>
+                                    <div v-if="Number(data.old_gold_amount || 0) > 0" class="pt-0.5">
+                                        <Tag :value="`Exch: ${formatCurrency(data.old_gold_amount)}`" severity="warn" class="!text-[10px] !py-0 !px-1.5 !bg-amber-50 !text-amber-900 !border-amber-200" />
+                                    </div>
                                 </div>
                             </template>
                         </Column>
@@ -590,64 +616,107 @@ const draftFormatCurrency = (val) =>
             </form>
         </Dialog>
 
-        <Dialog v-model:visible="showVoidDialog" header="Void Invoice" modal :style="{ width: '34rem' }" @hide="closeVoidDialog">
-            <div class="space-y-5 pt-2">
-                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
-                    <p class="text-sm font-medium text-surface-900">{{ selectedInvoice?.invoice_number }}</p>
-                    <p class="mt-1 text-sm text-surface-500">{{ selectedInvoice?.customer?.name || 'Walk-in' }}</p>
-                    <div class="mt-3 grid grid-cols-3 gap-3 text-sm">
+        <Dialog v-model:visible="showVoidDialog" header="Void Invoice" modal :style="{ width: '36rem' }" @hide="closeVoidDialog">
+            <div class="space-y-4 pt-2">
+                <!-- Summary Card -->
+                <div class="rounded-xl border border-surface-200 bg-surface-50 p-4">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-bold text-surface-900">{{ selectedInvoice?.invoice_number }}</p>
+                        <Tag :value="selectedInvoice?.status" severity="secondary" class="!text-[10px] font-bold" />
+                    </div>
+                    <p class="mt-0.5 text-xs text-surface-500">{{ selectedInvoice?.customer?.name || 'Walk-in Customer' }}</p>
+
+                    <div class="mt-3 grid grid-cols-3 gap-2.5 rounded-lg border border-surface-200/80 bg-white p-3 text-xs">
                         <div>
-                            <p class="text-surface-500">Total</p>
-                            <p class="mt-1 font-semibold text-surface-900">{{ formatCurrency(selectedInvoice?.total_amount) }}</p>
+                            <p class="text-surface-500">Gross Total</p>
+                            <p class="mt-0.5 font-mono font-bold text-surface-900">{{ formatCurrency(selectedInvoice?.total_amount) }}</p>
                         </div>
                         <div>
-                            <p class="text-surface-500">Paid</p>
-                            <p class="mt-1 font-semibold text-emerald-700">{{ formatCurrency(selectedInvoice?.paid_amount) }}</p>
+                            <p class="text-surface-500">Old Metal Credit</p>
+                            <p class="mt-0.5 font-mono font-bold text-amber-800">{{ formatCurrency(selectedInvoice?.old_gold_amount || 0) }}</p>
                         </div>
                         <div>
-                            <p class="text-surface-500">Pending</p>
-                            <p class="mt-1 font-semibold text-amber-700">{{ formatCurrency(selectedInvoice?.pending_amount) }}</p>
+                            <p class="text-surface-500">Cash / Paid</p>
+                            <p class="mt-0.5 font-mono font-bold text-emerald-700">
+                                {{ formatCurrency(Math.max(0, Number(selectedInvoice?.paid_amount || 0) - Number(selectedInvoice?.old_gold_amount || 0))) }}
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                <!-- If paid amount is 0 -->
-                <div v-if="Number(selectedInvoice?.paid_amount || 0) <= 0" class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 text-xs text-surface-700">
-                    <p class="font-semibold text-surface-900">No Payments Received (Paid: ₹0)</p>
-                    <p class="mt-1 text-surface-500">Voiding this invoice will cancel the bill and restore all stock back to active inventory without creating ledger advance or refund entries.</p>
-                </div>
-
-                <!-- If paid amount > 0 -->
-                <div v-else>
-                    <label class="mb-2 block text-sm font-medium text-surface-700">Void Mode (Collected: {{ formatCurrency(selectedInvoice?.paid_amount) }})</label>
-                    <Select v-model="voidForm.mode" :options="voidModeOptions" optionLabel="label" optionValue="value" class="w-full" />
-                    <p class="mt-2 text-xs text-surface-500">
-                        {{ voidModeOptions.find((option) => option.value === voidForm.mode)?.hint }}
+                <!-- 1. OLD METAL HANDLING (If bill has Old Metal Exchange) -->
+                <div v-if="Number(selectedInvoice?.old_gold_amount || 0) > 0" class="rounded-xl border border-amber-200/80 bg-amber-50/50 p-3.5 space-y-2">
+                    <label class="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center justify-between">
+                        <span>Old Metal Handling ({{ formatCurrency(selectedInvoice?.old_gold_amount) }} • {{ Number(selectedInvoice?.old_gold_weight || 0).toFixed(3) }}g)</span>
+                    </label>
+                    <Select
+                        v-model="voidForm.old_gold_mode"
+                        :options="oldGoldVoidModeOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        class="w-full !text-xs"
+                    />
+                    <p class="text-[11px] text-amber-800 leading-relaxed">
+                        {{ oldGoldVoidModeOptions.find((o) => o.value === voidForm.old_gold_mode)?.hint }}
                     </p>
                 </div>
 
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-surface-700">Reason</label>
-                    <Textarea v-model="voidForm.reason" rows="3" class="w-full" placeholder="Why is this bill being voided?" />
-                    <small v-if="voidForm.errors.reason" class="mt-1 block text-xs text-red-500">{{ voidForm.errors.reason }}</small>
-                </div>
-
-                <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-                    Stock and custom order items will be restored.
-                    <span v-if="Number(selectedInvoice?.paid_amount || 0) > 0">
-                        If you choose refund, received money will also be reversed from the vault.
-                    </span>
-                </div>
-
-                <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">
-                    <Button label="Close" severity="secondary" text @click="closeVoidDialog" />
-                    <Button
-                        :label="Number(selectedInvoice?.paid_amount || 0) <= 0 ? 'Void Invoice' : (voidForm.mode === 'refund' ? 'Void And Refund (' + formatCurrency(selectedInvoice?.paid_amount) + ')' : 'Void & Keep Advance (' + formatCurrency(selectedInvoice?.paid_amount) + ')')"
-                        icon="pi pi-check"
-                        severity="danger"
-                        @click="submitVoid"
-                        :loading="voidForm.processing"
+                <!-- 2. CASH / CARD PAYMENT HANDLING (If cash/card was collected) -->
+                <div v-if="Number(selectedInvoice?.paid_amount || 0) > Number(selectedInvoice?.old_gold_amount || 0)" class="rounded-xl border border-surface-200 bg-surface-50/80 p-3.5 space-y-2">
+                    <label class="text-xs font-bold uppercase tracking-wider text-surface-700">
+                        Cash / Card Collected ({{ formatCurrency(Number(selectedInvoice?.paid_amount || 0) - Number(selectedInvoice?.old_gold_amount || 0)) }})
+                    </label>
+                    <Select
+                        v-model="voidForm.mode"
+                        :options="voidModeOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        class="w-full !text-xs"
                     />
+                    <p class="text-[11px] text-surface-500 leading-relaxed">
+                        {{ voidModeOptions.find((o) => o.value === voidForm.mode)?.hint }}
+                    </p>
+                </div>
+
+                <!-- If NO payments and NO old gold was collected -->
+                <div v-if="Number(selectedInvoice?.paid_amount || 0) <= 0" class="rounded-xl border border-surface-200 bg-surface-50 p-3 text-xs text-surface-600">
+                    <p class="font-semibold text-surface-900">No Payments or Old Metal Collected</p>
+                    <p class="mt-0.5 text-surface-500">Voiding this invoice will cancel the bill and restore jewellery stock back to active inventory.</p>
+                </div>
+
+                <!-- Reason -->
+                <div>
+                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Void Reason <span class="text-red-500">*</span></label>
+                    <Textarea v-model="voidForm.reason" rows="2" class="w-full !text-xs" placeholder="Why is this invoice being voided/cancelled?" />
+                    <small v-if="voidForm.errors.reason" class="mt-0.5 block text-[11px] text-red-500">{{ voidForm.errors.reason }}</small>
+                </div>
+
+                <!-- Stock Note -->
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-[11.5px] text-surface-600">
+                    <i class="pi pi-info-circle mr-1 text-primary"></i>
+                    Sold jewellery pieces will automatically return to active store inventory.
+                </div>
+
+                <!-- Footer -->
+                <div class="flex items-center justify-between border-t border-surface-200 pt-3.5">
+                    <div class="text-xs">
+                        <span class="text-surface-500">Customer Advance: </span>
+                        <span class="font-mono font-bold text-emerald-700">
+                            {{ formatCurrency(voidPreviewAdvance) }}
+                        </span>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <Button label="Close" severity="secondary" text size="small" @click="closeVoidDialog" />
+                        <Button
+                            :label="voidPreviewAdvance > 0 ? 'Void & Keep Advance (' + formatCurrency(voidPreviewAdvance) + ')' : 'Confirm Void Invoice'"
+                            icon="pi pi-check"
+                            severity="danger"
+                            size="small"
+                            @click="submitVoid"
+                            :loading="voidForm.processing"
+                        />
+                    </div>
                 </div>
             </div>
         </Dialog>
@@ -764,6 +833,51 @@ const draftFormatCurrency = (val) =>
                     </div>
                 </div>
 
+                <!-- Old Metal Exchange Table -->
+                <div v-if="viewInvoice.old_golds?.length" class="mt-3">
+                    <div class="mb-2 flex items-center justify-between">
+                        <p class="text-xs font-bold tracking-wider text-surface-700 uppercase flex items-center gap-1.5">
+                            <Coins class="w-3.5 h-3.5 text-amber-600" />
+                            <span>Old Metal Exchange ({{ viewInvoice.old_golds.length }})</span>
+                        </p>
+                        <span class="text-xs font-semibold text-amber-800">
+                            Total: {{ Number(viewInvoice.old_gold_weight || 0).toFixed(3) }} g
+                        </span>
+                    </div>
+                    <div class="erp-native-table overflow-hidden rounded-lg border border-surface-200 bg-white">
+                        <table class="w-full text-left text-xs">
+                            <thead class="border-b border-surface-200 bg-surface-50/80 font-semibold tracking-wider text-surface-700 uppercase">
+                                <tr>
+                                    <th class="px-3 py-2.5">#</th>
+                                    <th class="px-3 py-2.5">Metal</th>
+                                    <th class="px-3 py-2.5">Description</th>
+                                    <th class="px-3 py-2.5 text-right">Gross Wt</th>
+                                    <th class="px-3 py-2.5 text-right">Deduction</th>
+                                    <th class="px-3 py-2.5 text-right">Net Wt</th>
+                                    <th class="px-3 py-2.5">Purity</th>
+                                    <th class="px-3 py-2.5 text-right">Buy Rate</th>
+                                    <th class="px-3 py-2.5 text-right">Credit Value</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-surface-100">
+                                <tr v-for="(og, oidx) in viewInvoice.old_golds" :key="og.id || oidx" class="hover:bg-amber-50/20">
+                                    <td class="px-3 py-2 text-surface-400">{{ oidx + 1 }}</td>
+                                    <td class="px-3 py-2">
+                                        <Tag :value="og.metal_type" :severity="og.metal_type === 'SILVER' ? 'secondary' : 'warn'" class="!text-[10px]" />
+                                    </td>
+                                    <td class="px-3 py-2 font-medium text-surface-900">{{ og.description || `Old ${og.metal_type}` }}</td>
+                                    <td class="px-3 py-2 text-right font-mono text-surface-700">{{ Number(og.gross_weight).toFixed(3) }} g</td>
+                                    <td class="px-3 py-2 text-right font-mono text-surface-500">{{ Number(og.wastage_weight).toFixed(3) }} g</td>
+                                    <td class="px-3 py-2 text-right font-mono font-semibold text-surface-800">{{ Number(og.net_weight).toFixed(3) }} g</td>
+                                    <td class="px-3 py-2 font-semibold">{{ og.purity }}</td>
+                                    <td class="px-3 py-2 text-right font-mono text-surface-700">{{ formatCurrency(og.rate) }}</td>
+                                    <td class="px-3 py-2 text-right font-mono font-bold text-amber-900">{{ formatCurrency(og.final_price) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- Financial Summary & Payment Breakdown -->
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <!-- Payment Timeline -->
@@ -810,12 +924,20 @@ const draftFormatCurrency = (val) =>
                             <span>GST (3%)</span>
                             <span class="font-mono font-medium text-surface-900">{{ formatCurrency(viewInvoice.tax_amount) }}</span>
                         </div>
-                        <div class="flex justify-between border-t border-surface-200 pt-1.5 text-sm font-bold text-surface-900">
-                            <span>Grand Total</span>
+                        <div class="flex justify-between border-t border-surface-200 pt-1.5 font-bold text-surface-900">
+                            <span>Gross Total</span>
                             <span class="font-mono">{{ formatCurrency(viewInvoice.total_amount) }}</span>
                         </div>
+                        <div v-if="Number(viewInvoice.old_gold_amount || 0) > 0" class="flex justify-between text-amber-800 font-medium">
+                            <span>Less Old Metal Exchange</span>
+                            <span class="font-mono font-bold">- {{ formatCurrency(viewInvoice.old_gold_amount) }}</span>
+                        </div>
+                        <div v-if="Number(viewInvoice.old_gold_amount || 0) > 0" class="flex justify-between border-t border-surface-200 pt-1 font-bold text-amber-900">
+                            <span>Net Payable</span>
+                            <span class="font-mono">{{ formatCurrency(Math.max(0, Number(viewInvoice.total_amount || 0) - Number(viewInvoice.old_gold_amount || 0))) }}</span>
+                        </div>
                         <div class="flex justify-between font-medium text-emerald-700">
-                            <span>Total Paid</span>
+                            <span>Total Settled (Cash/Card/Exch)</span>
                             <span class="font-mono font-bold">{{ formatCurrency(viewInvoice.paid_amount) }}</span>
                         </div>
                         <div class="flex justify-between font-bold" :class="viewInvoice.pending_amount > 0 ? 'text-amber-700' : 'text-surface-500'">

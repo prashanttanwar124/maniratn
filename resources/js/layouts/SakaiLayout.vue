@@ -41,7 +41,6 @@ const dayStatus = computed(() => page.props.dayStatus ?? { is_open: true });
 const auth = computed(() => page.props.auth ?? {});
 const canManageVault = computed(() => Boolean(auth.value.can?.manage_vault));
 const showOpenDayModal = computed(() => !dayStatus.value.is_open);
-const isInitialSetup = computed(() => Boolean(dayStatus.value.is_initial_setup));
 const expectedOpeningCash = computed(() => Number(dayStatus.value.expected_opening_cash || 0));
 const expectedOpeningGold = computed(() => Number(dayStatus.value.expected_opening_gold || 0));
 const expectedOpeningSilver = computed(() => Number(dayStatus.value.expected_opening_silver || 0));
@@ -129,16 +128,12 @@ watch(
         >
             <div class="space-y-4 pt-2">
                 <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-xs">
-                    {{ isInitialSetup
-                        ? 'This is the first time the software is being opened. Enter the business opening cash, gold, and silver to initialize the system.'
-                        : "Record today's counted opening balances before using billing, ledger, order, expense, or recovery actions." }}
+                    Record today's counted opening balances before using billing, ledger, order, expense, or recovery actions.
                 </div>
 
                 <template v-if="canManageVault">
                     <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-700">
-                        {{ isInitialSetup
-                            ? 'First-time setup will create the initial vault balances from these counted values and store an audit entry.'
-                            : 'This does not add funds to the vault. It only records the counted opening snapshot for the day.' }}
+                        This is for physical drawer verification and discrepancy tracking. Live vault balances are not altered.
                     </div>
 
                     <div v-if="hasExpectedOpening" class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-700">
@@ -157,9 +152,7 @@ watch(
                         <label class="mb-2 block text-sm font-medium text-surface-700">Counted Opening Cash</label>
                         <InputNumber v-model="openDayForm.opening_cash" mode="currency" currency="INR" locale="en-IN" class="w-full" />
                         <small class="mt-1 block text-xs text-surface-500">
-                            {{ isInitialSetup
-                                ? 'Enter the business cash balance available when starting the software.'
-                                : 'Enter the physically counted opening cash. Zero is allowed.' }}
+                            Enter the physically counted opening cash in drawer. Zero is allowed.
                         </small>
                         <small v-if="openDayForm.errors.opening_cash" class="mt-1 block text-xs text-red-500">
                             {{ openDayForm.errors.opening_cash }}
@@ -170,9 +163,7 @@ watch(
                         <label class="mb-2 block text-sm font-medium text-surface-700">Counted Opening Gold</label>
                         <InputNumber v-model="openDayForm.opening_gold" :minFractionDigits="3" suffix=" g" class="w-full" />
                         <small class="mt-1 block text-xs text-surface-500">
-                            {{ isInitialSetup
-                                ? 'Enter the loose gold physically available in the business when starting the software.'
-                                : 'Enter the physically counted opening gold. Zero is allowed.' }}
+                            Enter the physically counted opening gold in safe (in grams). Zero is allowed.
                         </small>
                         <small v-if="openDayForm.errors.opening_gold" class="mt-1 block text-xs text-red-500">
                             {{ openDayForm.errors.opening_gold }}
@@ -183,9 +174,7 @@ watch(
                         <label class="mb-2 block text-sm font-medium text-surface-700">Counted Opening Silver</label>
                         <InputNumber v-model="openDayForm.opening_silver" :minFractionDigits="3" suffix=" g" class="w-full" />
                         <small class="mt-1 block text-xs text-surface-500">
-                            {{ isInitialSetup
-                                ? 'Enter the loose silver physically available in the business when starting the software.'
-                                : 'Enter the physically counted opening silver. Zero is allowed.' }}
+                            Enter the physically counted opening silver in drawer (in grams). Zero is allowed.
                         </small>
                         <small v-if="openDayForm.errors.opening_silver" class="mt-1 block text-xs text-red-500">
                             {{ openDayForm.errors.opening_silver }}

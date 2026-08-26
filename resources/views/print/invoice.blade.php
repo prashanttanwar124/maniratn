@@ -576,6 +576,48 @@
                 </table>
             </div>
 
+            @if ($invoice->oldGolds && $invoice->oldGolds->count() > 0)
+                <!-- Old Metal Exchange Section -->
+                <div class="items-section" style="margin-top: 10px;">
+                    <div style="font-size: 10px; color: #78350f; margin-bottom: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                        🪙 Old Metal Purchase / Exchange Receipt
+                    </div>
+                    <table class="items">
+                        <thead>
+                            <tr style="background: #78350f;">
+                                <th style="width: 28px; background: #78350f; border-color: #78350f;" class="align-center">#</th>
+                                <th style="background: #78350f; border-color: #78350f;">Description</th>
+                                <th style="width: 70px; background: #78350f; border-color: #78350f;" class="align-right">Gross Wt</th>
+                                <th style="width: 65px; background: #78350f; border-color: #78350f;" class="align-right">Deduction</th>
+                                <th style="width: 70px; background: #78350f; border-color: #78350f;" class="align-right">Net Wt</th>
+                                <th style="width: 60px; background: #78350f; border-color: #78350f;" class="align-center">Purity</th>
+                                <th style="width: 80px; background: #78350f; border-color: #78350f;" class="align-right">Buy Rate</th>
+                                <th style="width: 95px; background: #78350f; border-color: #78350f;" class="align-right">Exchange Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($invoice->oldGolds as $ogIdx => $og)
+                                <tr>
+                                    <td class="align-center mono" style="color: var(--surface-500);">{{ $ogIdx + 1 }}</td>
+                                    <td>
+                                        <div style="font-weight: 600; color: var(--surface-900);">{{ $og->description ?: "Old {$og->metal_type} Exchange" }}</div>
+                                        <span class="barcode-pill" style="background: #fef3c7; color: #92400e; border-color: #fde68a;">{{ $og->metal_type }}</span>
+                                    </td>
+                                    <td class="align-right mono font-semibold">{{ number_format((float) $og->gross_weight, 3) }} g</td>
+                                    <td class="align-right mono" style="color: var(--surface-500);">{{ number_format((float) $og->wastage_weight, 3) }} g</td>
+                                    <td class="align-right mono font-semibold">{{ number_format((float) $og->net_weight, 3) }} g</td>
+                                    <td class="align-center font-bold">{{ $og->purity }}</td>
+                                    <td class="align-right mono font-semibold">Rs {{ number_format((float) $og->rate, 2) }}</td>
+                                    <td class="align-right mono font-bold" style="color: #92400e;">
+                                        Rs {{ number_format((float) $og->final_price, 2) }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+
             <!-- Bottom Section: Vault QR & Totals -->
             <div class="bottom-section">
                 <!-- Left: Vault QR & Greetings -->
@@ -589,7 +631,7 @@
                                         {!! $qrSvg !!}
                                     @else
                                         <img src="{{ $qrCodeBase64 }}" alt="Customer Digital Vault QR Code"
-                                            style="width: 55px; height: 55px; display: block;" />
+                                             style="width: 55px; height: 55px; display: block;" />
                                     @endif
                                 </div>
                                 <span style="font-size: 7.5px; font-weight: 700; color: var(--brand-maroon); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 3px; line-height: 1;">
@@ -607,6 +649,9 @@
                 <div class="totals-wrap">
                     @php
                         $subTotal = (float) $invoice->items->sum('final_price');
+                        $oldGoldTotal = (float) ($invoice->old_gold_amount ?? 0);
+                        $cashCardPaid = (float) $invoice->transactions->where('type', 'PAYMENT')->where('payment_method', '!=', 'OLD_GOLD')->sum('amount');
+                        $netPayable = max(0, round((float) $invoice->total_amount - $oldGoldTotal, 2));
                     @endphp
                     <table class="totals-table">
                         <tr>
@@ -627,12 +672,37 @@
                             </tr>
                         @endif
                         <tr>
-                            <td class="meta-key">GST:</td>
+                            <td class="meta-key">GST (3%):</td>
                             <td class="align-right mono">Rs {{ number_format((float) ($invoice->tax_amount ?? 0), 2) }}</td>
                         </tr>
-                        <tr class="grand-row">
-                            <td>Total Amount:</td>
+                        <tr>
+                            <td class="meta-key" style="font-weight: 700;">Gross Total:</td>
                             <td class="align-right mono font-bold">Rs {{ number_format((float) $invoice->total_amount, 2) }}</td>
+                        </tr>
+                        @if ($oldGoldTotal > 0)
+                            <tr style="color: #92400e;">
+                                <td class="meta-key" style="color: #92400e; font-weight: 600;">Less Old Metal:</td>
+                                <td class="align-right mono font-bold" style="color: #92400e;">- Rs {{ number_format($oldGoldTotal, 2) }}</td>
+                            </tr>
+                            <tr class="grand-row">
+                                <td>Net Payable:</td>
+                                <td class="align-right mono font-bold">Rs {{ number_format($netPayable, 2) }}</td>
+                            </tr>
+                        @else
+                            <tr class="grand-row">
+                                <td>Total Amount:</td>
+                                <td class="align-right mono font-bold">Rs {{ number_format((float) $invoice->total_amount, 2) }}</td>
+                            </tr>
+                        @endif
+                        <tr>
+                            <td class="meta-key" style="color: #15803d; font-weight: 600;">Paid (Cash/Card):</td>
+                            <td class="align-right mono font-semibold" style="color: #15803d;">Rs {{ number_format($cashCardPaid, 2) }}</td>
+                        </tr>
+                        <tr>
+                            <td class="meta-key">Balance Due:</td>
+                            <td class="align-right mono font-bold" style="color: {{ $balanceDue > 0 ? 'var(--danger-700)' : '#15803d' }};">
+                                Rs {{ number_format($balanceDue, 2) }} {{ $balanceDue <= 0 ? '(PAID)' : '' }}
+                            </td>
                         </tr>
                     </table>
                 </div>

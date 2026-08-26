@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\DailyRegister;
 use App\Models\Vault;
+use App\Services\DayOpeningService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -53,6 +54,7 @@ class HandleInertiaRequests extends Middleware
         $cashVault = Vault::query()->where('type', 'CASH')->value('balance') ?? 0;
         $goldVault = Vault::query()->where('type', 'GOLD')->value('balance') ?? 0;
         $silverVault = Vault::query()->where('type', 'SILVER')->value('balance') ?? 0;
+        $openingExpectation = DayOpeningService::expectation($lastClosedRegister);
         $businessSetting = \App\Models\BusinessSetting::first();
 
         return [
@@ -75,10 +77,11 @@ class HandleInertiaRequests extends Middleware
                 'closed_at' => optional($todayRegister?->closed_at)?->toDateTimeString(),
                 'has_register' => (bool) $todayRegister,
                 'is_initial_setup' => ! $hasAnyRegister,
-                'expected_opening_cash' => (float) ($lastClosedRegister?->closing_cash ?? 0),
-                'expected_opening_gold' => (float) ($lastClosedRegister?->closing_gold ?? 0),
-                'expected_opening_silver' => (float) ($lastClosedRegister?->closing_silver ?? 0),
-                'expected_opening_date' => optional($lastClosedRegister?->date)?->toDateString(),
+                'expected_opening_cash' => $openingExpectation['cash'],
+                'expected_opening_gold' => $openingExpectation['gold'],
+                'expected_opening_silver' => $openingExpectation['silver'],
+                'expected_opening_date' => $openingExpectation['date'],
+                'has_opening_expectation' => $openingExpectation['has_expectation'],
                 'current_vault_cash' => (float) $cashVault,
                 'current_vault_gold' => (float) $goldVault,
                 'current_vault_silver' => (float) $silverVault,

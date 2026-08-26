@@ -14,8 +14,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Models\Vault;
-use App\Models\VaultMovement;
+use App\Services\VaultService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -43,42 +42,41 @@ class DashboardDemoSeeder extends Seeder
             );
         }
 
-        // 2. SAFE VAULTS & MOVEMENTS
-        $vaultMap = [
-            'CASH' => 68500.00,
-            'BANK' => 345000.00,
-            'GOLD' => 285.450,
-            'SILVER' => 1450.000,
-        ];
-
-        foreach ($vaultMap as $type => $balance) {
-            $vault = Vault::firstOrCreate(['type' => $type], ['name' => ucfirst(strtolower($type)).' Safe', 'balance' => 0]);
-            $vault->update(['balance' => $balance]);
-        }
-
-        // Recent Vault Movements
+        // 2. SAFE VAULTS & RECONCILED MOVEMENTS
         $sampleMovements = [
-            ['vault_type' => 'CASH', 'direction' => 'CREDIT', 'amount' => 25000, 'balance_before' => 43500, 'balance_after' => 68500, 'note' => 'Counter sales cash settlement', 'recorded_at' => $today->copy()->subHours(2)],
-            ['vault_type' => 'BANK', 'direction' => 'CREDIT', 'amount' => 48200, 'balance_before' => 296800, 'balance_after' => 345000, 'note' => 'HDFC UPI settlement batch', 'recorded_at' => $today->copy()->subHours(3)],
-            ['vault_type' => 'GOLD', 'direction' => 'CREDIT', 'amount' => 45.200, 'balance_before' => 240.250, 'balance_after' => 285.450, 'note' => 'Old Gold purchase exchange', 'recorded_at' => $today->copy()->subHours(5)],
-            ['vault_type' => 'CASH', 'direction' => 'DEBIT', 'amount' => 3500, 'balance_before' => 72000, 'balance_after' => 68500, 'note' => 'Showroom packaging & supplies', 'recorded_at' => $today->copy()->subDay()],
-            ['vault_type' => 'SILVER', 'direction' => 'CREDIT', 'amount' => 250.000, 'balance_before' => 1200.000, 'balance_after' => 1450.000, 'note' => 'Silver coin stock replenishment', 'recorded_at' => $today->copy()->subDays(2)],
+            [VaultType::CASH, 'CREDIT', 72000.00, 'Opening counter cash', $today->copy()->subDays(6), null, null],
+            [VaultType::BANK, 'CREDIT', 296800.00, 'Opening bank balance', $today->copy()->subDays(6), null, null],
+            [VaultType::GOLD, 'CREDIT', 240.250, 'Opening loose gold balance', $today->copy()->subDays(6), 220.069, 91.6000],
+            [VaultType::SILVER, 'CREDIT', 1200.000, 'Opening loose silver balance', $today->copy()->subDays(6), 1110.000, 92.5000],
+            [VaultType::SILVER, 'CREDIT', 250.000, 'Silver coin stock replenishment', $today->copy()->subDays(2), 249.750, 99.9000],
+            [VaultType::CASH, 'DEBIT', 3500.00, 'Showroom packaging & supplies', $today->copy()->subDay(), null, null],
+            [VaultType::GOLD, 'CREDIT', 45.200, 'Old gold purchase exchange', $today->copy()->subHours(5), 37.665, 83.3300],
+            [VaultType::BANK, 'CREDIT', 48200.00, 'HDFC UPI settlement batch', $today->copy()->subHours(3), null, null],
         ];
 
-        foreach ($sampleMovements as $mov) {
-            $v = Vault::where('type', $mov['vault_type'])->first();
-            VaultMovement::create([
-                'vault_id' => $v ? $v->id : 1,
-                'vault_type' => $mov['vault_type'],
-                'direction' => $mov['direction'],
-                'amount' => $mov['amount'],
-                'balance_before' => $mov['balance_before'],
-                'balance_after' => $mov['balance_after'],
-                'note' => $mov['note'],
-                'recorded_at' => $mov['recorded_at'],
-                'created_at' => $mov['recorded_at'],
+        foreach ($sampleMovements as $index => [$type, $direction, $amount, $note, $recordedAt, $fineWeight, $purityPercent]) {
+            $context = [
+                'source_type' => self::class,
+                'source_id' => $index + 1,
+                'reference' => 'DEMO-VAULT-'.str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT),
+                'correlation_id' => 'DEMO-VAULT-'.str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT),
+                'operation_key' => 'demo:vault:'.($index + 1),
+                'note' => $note,
                 'user_id' => $user->id,
-            ]);
+                'recorded_at' => $recordedAt,
+            ];
+
+            if (in_array($type, [VaultType::GOLD, VaultType::SILVER], true)) {
+                $context += [
+                    'gross_weight' => $amount,
+                    'fine_weight' => $fineWeight,
+                    'purity_percent' => $purityPercent,
+                ];
+            }
+
+            $direction === 'CREDIT'
+                ? VaultService::credit($type, $amount, $context)
+                : VaultService::debit($type, $amount, $context);
         }
 
         // 3. CUSTOMERS WITH BIRTHDAYS & ANNIVERSARIES

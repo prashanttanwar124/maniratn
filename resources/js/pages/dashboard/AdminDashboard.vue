@@ -31,7 +31,6 @@ const props = defineProps({
 
 const page = usePage();
 const can = computed(() => page.props.auth?.can || {});
-const isInitialSetup = computed(() => Boolean(page.props.dayStatus?.is_initial_setup));
 const openingExpectation = computed(() => props.opening_expectation || { cash: 0, gold: 0, silver: 0, date: null });
 
 // Helper to get initials
@@ -116,7 +115,7 @@ const dayForm = useForm({
 });
 
 const dayOpeningMismatch = computed(() => {
-    return !isInitialSetup.value && (
+    return Boolean(openingExpectation.value?.has_expectation) && (
         Math.abs(Number(dayForm.opening_cash || 0) - Number(openingExpectation.value?.cash || 0)) > 0.0001 ||
         Math.abs(Number(dayForm.opening_gold || 0) - Number(openingExpectation.value?.gold || 0)) > 0.0001 ||
         Math.abs(Number(dayForm.opening_silver || 0) - Number(openingExpectation.value?.silver || 0)) > 0.0001
@@ -1355,6 +1354,13 @@ const handleSvgMouseLeave = () => {
                                         </span>
                                     </div>
                                     <div class="text-[10px] text-surface-400 truncate">{{ m.note || m.reference || m.time }}</div>
+                                    <div v-if="m.fine_weight !== null || m.correlation_id" class="mt-0.5 flex items-center gap-1.5 text-[9.5px] font-medium text-surface-500">
+                                        <span v-if="m.fine_weight !== null">Fine {{ formatWeight(m.fine_weight) }}</span>
+                                        <span v-if="m.fine_weight !== null && m.purity_percent !== null" class="text-surface-300">•</span>
+                                        <span v-if="m.purity_percent !== null">{{ Number(m.purity_percent).toFixed(2) }}%</span>
+                                        <span v-if="m.correlation_id && (m.fine_weight !== null || m.purity_percent !== null)" class="text-surface-300">•</span>
+                                        <span v-if="m.correlation_id" class="truncate font-mono">{{ m.correlation_id }}</span>
+                                    </div>
                                 </div>
                                 <span class="font-bold text-surface-900">{{ formatVaultMovementAmount(m) }}</span>
                             </div>
@@ -1401,7 +1407,7 @@ const handleSvgMouseLeave = () => {
         <Dialog v-model:visible="showDayDialog" modal header="Open Store Day Register" :style="{ width: '460px' }">
             <div class="space-y-4 pt-2">
                 <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 shadow-xs">
-                    Verify cash and metal in safe drawers before opening the store for billing.
+                    Verify cash and metal in safe drawers before opening the store for billing. Opening the day records physical verification and does not change vault balance.
                 </div>
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-surface-700">Opening Cash in Hand</label>
@@ -1433,6 +1439,9 @@ const handleSvgMouseLeave = () => {
         <!-- 3. Close Day Dialog -->
         <Dialog v-model:visible="showCloseDialog" modal header="Close Daily Register" :style="{ width: '460px' }">
             <div class="space-y-4 pt-2">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 p-3 text-xs text-surface-600">
+                    Physical count will be compared against system balances to record any day-end variance. System vault balances remain untouched.
+                </div>
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-surface-700">Physical Closing Cash</label>
                     <InputNumber v-model="closeForm.closing_cash" mode="currency" currency="INR" locale="en-IN" class="w-full" />
@@ -1443,10 +1452,16 @@ const handleSvgMouseLeave = () => {
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-surface-700">Physical Closing Gold (g)</label>
                     <InputNumber v-model="closeForm.closing_gold" :minFractionDigits="3" class="w-full" suffix=" g" />
+                    <small v-if="closingGoldDifference !== null" :class="closingGoldDifference === 0 ? 'text-emerald-600' : 'text-rose-600'" class="block mt-1 font-semibold text-xs">
+                        Variance: {{ closingGoldDifference > 0 ? '+' : '' }}{{ Number(closingGoldDifference).toFixed(3) }} g
+                    </small>
                 </div>
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-surface-700">Physical Closing Silver (g)</label>
                     <InputNumber v-model="closeForm.closing_silver" :minFractionDigits="3" class="w-full" suffix=" g" />
+                    <small v-if="closingSilverDifference !== null" :class="closingSilverDifference === 0 ? 'text-emerald-600' : 'text-rose-600'" class="block mt-1 font-semibold text-xs">
+                        Variance: {{ closingSilverDifference > 0 ? '+' : '' }}{{ Number(closingSilverDifference).toFixed(3) }} g
+                    </small>
                 </div>
             </div>
 

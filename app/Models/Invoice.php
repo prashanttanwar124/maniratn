@@ -12,6 +12,8 @@ class Invoice extends Model
         'cancelled_at' => 'datetime',
         'discount_value' => 'decimal:2',
         'discount_amount' => 'decimal:2',
+        'old_gold_amount' => 'decimal:2',
+        'old_gold_weight' => 'decimal:3',
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
     ];
@@ -25,9 +27,15 @@ class Invoice extends Model
     {
         return $this->hasMany(Transaction::class);
     }
+
     public function items()
     {
         return $this->hasMany(InvoiceItem::class);
+    }
+
+    public function oldGolds()
+    {
+        return $this->hasMany(InvoiceOldGold::class);
     }
 
     public function orders()

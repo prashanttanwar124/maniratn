@@ -14,6 +14,7 @@
 - Order item must be `READY`.
 - Final invoice removes linked draft.
 - Void invoice by reversing stock, ledger, and vault effects.
+- Barcode stock sales do not change the loose-metal vault; only custom-order metal affects that vault during billing.
 
 ## Data Structure
 - `invoices`: totals, customer, payment, status.

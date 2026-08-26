@@ -31,7 +31,7 @@
 - `transactions`: cash ledger.
 - `metal_transactions`: metal ledger.
 - `vaults`: current balances.
-- `vault_movements`: vault audit trail.
+- `vault_movements`: vault audit trail with source/correlation, optional idempotent operation key, and gross/fine metal metadata.
 - `daily_registers`: opening/closing balances.
 - `daily_rates`: gold/silver daily rates.
 - `expenses`: expense records.
@@ -50,6 +50,7 @@
 - Invoice uses customer and stock/order item.
 - Invoice item links to product, silver product, or order item.
 - Ledger and vault movements follow invoice/payment actions.
+- Vault balance mutation and its movement row are written atomically under a vault row lock.
 - Daily register snapshots vault at open/close.
 
 ## Constraints
@@ -59,3 +60,4 @@
 - `users.attendance_card_uid` must remain unique.
 - `invoice_items.id` is required for tag linking.
 - Avoid nullable links where business ownership is mandatory.
+- Re-runnable financial operations must provide a stable vault movement operation key.

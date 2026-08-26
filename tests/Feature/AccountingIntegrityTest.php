@@ -967,6 +967,10 @@ it('can source extra production gold from a karigar', function () {
 });
 
 it('reopens the same day without creating a duplicate register', function () {
+    Vault::query()->updateOrCreate(['type' => VaultType::CASH->value], ['name' => 'Cash', 'balance' => 5000]);
+    Vault::query()->updateOrCreate(['type' => VaultType::GOLD->value], ['name' => 'Gold', 'balance' => 50]);
+    Vault::query()->updateOrCreate(['type' => VaultType::SILVER->value], ['name' => 'Silver', 'balance' => 100]);
+
     $firstOpen = post(route('dashboard.open-day'), [
         'opening_cash' => 5000,
         'opening_gold' => 50,
@@ -1019,12 +1023,6 @@ it('reopens the same day without creating a duplicate register', function () {
 });
 
 it('stores both cash and gold reconciliation differences when closing the day', function () {
-    post(route('dashboard.open-day'), [
-        'opening_cash' => 5000,
-        'opening_gold' => 50,
-        'opening_silver' => 100,
-    ])->assertRedirect();
-
     Vault::query()->updateOrCreate(
         ['type' => VaultType::CASH->value],
         ['name' => VaultType::CASH->value, 'balance' => 1000]
@@ -1040,6 +1038,12 @@ it('stores both cash and gold reconciliation differences when closing the day', 
         ['name' => VaultType::SILVER->value, 'balance' => 100]
     );
 
+    post(route('dashboard.open-day'), [
+        'opening_cash' => 1000,
+        'opening_gold' => 10,
+        'opening_silver' => 100,
+    ])->assertRedirect();
+
     post(route('dashboard.close-day'), [
         'closing_cash' => 950,
         'closing_gold' => 9.250,
@@ -1054,10 +1058,26 @@ it('stores both cash and gold reconciliation differences when closing the day', 
         ->and((float) $register->difference_cash)->toBe(-50.0)
         ->and((float) $register->difference_gold)->toBe(-0.750)
         ->and((float) $register->difference_silver)->toBe(-1.000)
-        ->and($register->closed_at)->not->toBeNull();
+        ->and($register->closed_at)->not->toBeNull()
+        ->and((float) Vault::where('type', VaultType::CASH->value)->value('balance'))->toBe(1000.0)
+        ->and((float) Vault::where('type', VaultType::GOLD->value)->value('balance'))->toBe(10.0)
+        ->and((float) Vault::where('type', VaultType::SILVER->value)->value('balance'))->toBe(100.0);
 });
 
-it('initializes vault balances from the first-ever opening day', function () {
+it('does not mutate vault balances on day open even on first-ever opening', function () {
+    Vault::query()->updateOrCreate(
+        ['type' => VaultType::CASH->value],
+        ['name' => VaultType::CASH->value, 'balance' => 0]
+    );
+    Vault::query()->updateOrCreate(
+        ['type' => VaultType::GOLD->value],
+        ['name' => VaultType::GOLD->value, 'balance' => 0]
+    );
+    Vault::query()->updateOrCreate(
+        ['type' => VaultType::SILVER->value],
+        ['name' => VaultType::SILVER->value, 'balance' => 0]
+    );
+
     post(route('dashboard.open-day'), [
         'opening_cash' => 25000,
         'opening_gold' => 50,
@@ -1072,10 +1092,52 @@ it('initializes vault balances from the first-ever opening day', function () {
     expect((float) $register->opening_cash)->toBe(25000.0)
         ->and((float) $register->opening_gold)->toBe(50.0)
         ->and((float) $register->opening_silver)->toBe(100.0)
-        ->and((float) $cashVault->balance)->toBe(25000.0)
-        ->and((float) $goldVault->balance)->toBe(50.0)
-        ->and((float) $silverVault->balance)->toBe(100.0)
-        ->and(VaultMovement::query()->where('reference', 'Initial Opening Balance')->count())->toBe(3);
+        ->and((float) $cashVault->balance)->toBe(0.0)
+        ->and((float) $goldVault->balance)->toBe(0.0)
+        ->and((float) $silverVault->balance)->toBe(0.0)
+        ->and(VaultMovement::query()->count())->toBe(0);
+});
+
+it('preserves an existing audited vault when the first day register is opened', function () {
+    Vault::query()->updateOrCreate(
+        ['type' => VaultType::CASH->value],
+        ['name' => 'Counter Drawer', 'balance' => 68500]
+    );
+    Vault::query()->updateOrCreate(
+        ['type' => VaultType::GOLD->value],
+        ['name' => 'Main Gold Safe', 'balance' => 285.450]
+    );
+    Vault::query()->updateOrCreate(
+        ['type' => VaultType::SILVER->value],
+        ['name' => 'Silver Drawer', 'balance' => 1450]
+    );
+
+    post(route('dashboard.open-day'), [
+        'opening_cash' => 0,
+        'opening_gold' => 0,
+        'opening_silver' => 0,
+    ])->assertSessionHasErrors('mismatch_reason');
+
+    expect(DailyRegister::query()->count())->toBe(0)
+        ->and((float) Vault::query()->where('type', VaultType::CASH->value)->value('balance'))->toBe(68500.0)
+        ->and((float) Vault::query()->where('type', VaultType::GOLD->value)->value('balance'))->toBe(285.450)
+        ->and((float) Vault::query()->where('type', VaultType::SILVER->value)->value('balance'))->toBe(1450.0);
+
+    post(route('dashboard.open-day'), [
+        'opening_cash' => 68500,
+        'opening_gold' => 285.450,
+        'opening_silver' => 1450,
+    ])->assertRedirect();
+
+    $register = DailyRegister::query()->firstOrFail();
+
+    expect((float) $register->expected_opening_cash)->toBe(68500.0)
+        ->and((float) $register->expected_opening_gold)->toBe(285.450)
+        ->and((float) $register->expected_opening_silver)->toBe(1450.0)
+        ->and((float) Vault::query()->where('type', VaultType::CASH->value)->value('balance'))->toBe(68500.0)
+        ->and((float) Vault::query()->where('type', VaultType::GOLD->value)->value('balance'))->toBe(285.450)
+        ->and((float) Vault::query()->where('type', VaultType::SILVER->value)->value('balance'))->toBe(1450.0)
+        ->and(VaultMovement::query()->where('reference', 'Initial Opening Balance')->count())->toBe(0);
 });
 
 function openShopDay(User $user, float $cash, float $gold): void

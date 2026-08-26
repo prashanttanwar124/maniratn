@@ -83,7 +83,7 @@ class LedgerImpactService
         return match ($code) {
             'PAY_CASH', 'CASH_TO_GOLD', 'CASH_TO_SILVER', 'ORDER_CASH_PAYMENT', 'INVOICE_REFUND' => ['debit', $vaultType],
             'RECEIVE_CASH', 'INVOICE_PAYMENT' => ['credit', $vaultType],
-            'GOLD_TO_CASH', 'SILVER_TO_CASH', 'INVOICE_SALE', 'VOID_INVOICE_SALE' => [null, null],
+            'GOLD_TO_CASH', 'SILVER_TO_CASH', 'INVOICE_SALE', 'VOID_INVOICE_SALE', 'INVOICE_OLD_GOLD' => [null, null],
             default => self::cashEffectFromLegacyFields($transaction, $vaultType),
         };
     }
@@ -160,10 +160,21 @@ class LedgerImpactService
         return [
             'source_type' => Transaction::class,
             'source_id' => $transaction->id,
-            'reference' => $transaction->invoice_id ? 'Invoice #' . $transaction->invoice_id : null,
+            'operation_key' => implode(':', [
+                'cash',
+                $transaction->id,
+                $reverse ? 'reverse' : 'apply',
+                $transaction->entry_type_code,
+                $transaction->payment_method,
+                (string) $transaction->amount,
+            ]),
+            'reference' => $transaction->invoice_id ? 'Invoice #'.$transaction->invoice_id : null,
+            'correlation_id' => $transaction->invoice_id
+                ? 'INVOICE-'.$transaction->invoice_id
+                : 'CASH-TXN-'.$transaction->id,
             'user_id' => $transaction->user_id,
             'recorded_at' => $transaction->created_at ?? now(),
-            'note' => trim(($reverse ? 'Reversal: ' : '') . ($transaction->description ?: "{$party} cash {$action}")),
+            'note' => trim(($reverse ? 'Reversal: ' : '').($transaction->description ?: "{$party} cash {$action}")),
         ];
     }
 
@@ -171,13 +182,31 @@ class LedgerImpactService
     {
         $party = class_basename((string) $transaction->party_type);
         $action = strtoupper($direction) === 'CREDIT' ? 'inflow' : 'outflow';
+        $purityPercent = MetalWeightService::purityPercent($transaction->purity)
+            ?? MetalWeightService::purityFromWeights(
+                (float) $transaction->gross_weight,
+                (float) $transaction->fine_weight,
+            );
 
         return [
             'source_type' => MetalTransaction::class,
             'source_id' => $transaction->id,
+            'operation_key' => implode(':', [
+                'metal',
+                $transaction->id,
+                $reverse ? 'reverse' : 'apply',
+                $transaction->entry_type_code,
+                (string) $transaction->gross_weight,
+                (string) $transaction->fine_weight,
+            ]),
+            'reference' => 'Metal transaction #'.$transaction->id,
+            'correlation_id' => 'METAL-TXN-'.$transaction->id,
+            'gross_weight' => (float) $transaction->gross_weight,
+            'fine_weight' => (float) $transaction->fine_weight,
+            'purity_percent' => $purityPercent,
             'user_id' => $transaction->user_id ?? null,
             'recorded_at' => $transaction->created_at ?? now(),
-            'note' => trim(($reverse ? 'Reversal: ' : '') . ($transaction->description ?: "{$party} " . strtolower((string) ($transaction->metal_type ?: 'gold')) . " {$action}")),
+            'note' => trim(($reverse ? 'Reversal: ' : '').($transaction->description ?: "{$party} ".strtolower((string) ($transaction->metal_type ?: 'gold'))." {$action}")),
         ];
     }
 }

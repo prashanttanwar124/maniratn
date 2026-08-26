@@ -17,6 +17,7 @@ use App\Models\Customer;
 use Illuminate\Http\Request;
 use App\Models\DailyRegister;
 use App\Services\VaultService;
+use App\Services\DayOpeningService;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -251,6 +252,7 @@ class DashboardController extends Controller
         $today = Carbon::today();
         $customerReminders = $this->buildCustomerReminders($today);
         $lastClosedRegister = $this->lastClosedRegister();
+        $openingExpectation = DayOpeningService::expectation($lastClosedRegister);
         $todayRegister = DailyRegister::query()
             ->whereDate('date', $today)
             ->latest('id')
@@ -366,8 +368,12 @@ class DashboardController extends Controller
                     'vault_type' => $movement->vault_type,
                     'direction' => $movement->direction,
                     'amount' => (float) $movement->amount,
+                    'gross_weight' => $movement->gross_weight !== null ? (float) $movement->gross_weight : null,
+                    'fine_weight' => $movement->fine_weight !== null ? (float) $movement->fine_weight : null,
+                    'purity_percent' => $movement->purity_percent !== null ? (float) $movement->purity_percent : null,
                     'balance_after' => (float) $movement->balance_after,
                     'reference' => $movement->reference,
+                    'correlation_id' => $movement->correlation_id,
                     'note' => $movement->note,
                     'time' => optional($movement->recorded_at)?->diffForHumans(),
                 ]);
@@ -378,10 +384,7 @@ class DashboardController extends Controller
                 'rates' => $rates,
                 'isDayOpen' => $isDayOpen,
                 'opening_expectation' => [
-                    'cash' => (float) ($lastClosedRegister?->closing_cash ?? 0),
-                    'gold' => (float) ($lastClosedRegister?->closing_gold ?? 0),
-                    'silver' => (float) ($lastClosedRegister?->closing_silver ?? 0),
-                    'date' => optional($lastClosedRegister?->date)?->toDateString(),
+                    ...$openingExpectation,
                 ],
                 'vaults' => [
                     'cash' => $vaults['CASH']->balance ?? 0,
@@ -479,10 +482,7 @@ class DashboardController extends Controller
                 'rates' => $rates,
                 'isDayOpen' => $isDayOpen,
                 'opening_expectation' => [
-                    'cash' => (float) ($lastClosedRegister?->closing_cash ?? 0),
-                    'gold' => (float) ($lastClosedRegister?->closing_gold ?? 0),
-                    'silver' => (float) ($lastClosedRegister?->closing_silver ?? 0),
-                    'date' => optional($lastClosedRegister?->date)?->toDateString(),
+                    ...$openingExpectation,
                 ],
                 'metrics' => [
                     'my_sales' => (float) $mySales,
@@ -520,8 +520,6 @@ class DashboardController extends Controller
     // OPEN THE DAY (Verify Cash/Gold/Silver)
     public function openDay(Request $request)
     {
-        $isInitialSetup = ! DailyRegister::query()->exists();
-
         $validated = $request->validate([
             'opening_cash' => ['required', 'numeric', 'min:0'],
             'opening_gold' => ['required', 'numeric', 'min:0'],
@@ -531,10 +529,11 @@ class DashboardController extends Controller
         ]);
 
         $lastClosedRegister = $this->lastClosedRegister();
-        $expectedOpeningCash = (float) ($lastClosedRegister?->closing_cash ?? 0);
-        $expectedOpeningGold = (float) ($lastClosedRegister?->closing_gold ?? 0);
-        $expectedOpeningSilver = (float) ($lastClosedRegister?->closing_silver ?? 0);
-        $hasExpectation = $lastClosedRegister !== null;
+        $openingExpectation = DayOpeningService::expectation($lastClosedRegister);
+        $expectedOpeningCash = $openingExpectation['cash'];
+        $expectedOpeningGold = $openingExpectation['gold'];
+        $expectedOpeningSilver = $openingExpectation['silver'];
+        $hasExpectation = $openingExpectation['has_expectation'];
 
         $cashMatches = ! $hasExpectation || abs((float) $validated['opening_cash'] - $expectedOpeningCash) < 0.0001;
         $goldMatches = ! $hasExpectation || abs((float) $validated['opening_gold'] - $expectedOpeningGold) < 0.0001;
@@ -570,136 +569,24 @@ class DashboardController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($validated, $expectedOpeningCash, $expectedOpeningGold, $expectedOpeningSilver, $today, $todayLastRegister, $isReopen, $isInitialSetup) {
-            $today = Carbon::today();
+        DB::transaction(function () use ($validated, $expectedOpeningCash, $expectedOpeningGold, $expectedOpeningSilver, $hasExpectation, $today, $todayLastRegister, $isReopen) {
             DailyRegister::create([
                 'date' => $today,
                 'session_number' => ($todayLastRegister?->session_number ?? 0) + 1,
                 'opening_cash' => $validated['opening_cash'],
                 'opening_gold' => $validated['opening_gold'],
                 'opening_silver' => $validated['opening_silver'],
-                'expected_opening_cash' => $expectedOpeningCash ?: null,
-                'expected_opening_gold' => $expectedOpeningGold ?: null,
-                'expected_opening_silver' => $expectedOpeningSilver ?: null,
+                'expected_opening_cash' => $hasExpectation ? $expectedOpeningCash : null,
+                'expected_opening_gold' => $hasExpectation ? $expectedOpeningGold : null,
+                'expected_opening_silver' => $hasExpectation ? $expectedOpeningSilver : null,
                 'opening_mismatch_reason' => blank(trim((string) ($validated['mismatch_reason'] ?? ''))) ? null : trim((string) $validated['mismatch_reason']),
                 'reopen_reason' => $isReopen ? trim((string) $validated['reopen_reason']) : null,
                 'reopened_from_id' => $isReopen ? $todayLastRegister?->id : null,
                 'opened_by' => Auth::id(),
             ]);
-
-            $cashVault = Vault::firstOrCreate(['type' => 'CASH'], ['name' => 'CASH', 'balance' => 0]);
-            $goldVault = Vault::firstOrCreate(['type' => 'GOLD'], ['name' => 'GOLD', 'balance' => 0]);
-            $silverVault = Vault::firstOrCreate(['type' => 'SILVER'], ['name' => 'SILVER', 'balance' => 0]);
-
-            if ($isInitialSetup) {
-                $cashBefore = (float) $cashVault->balance;
-                $goldBefore = (float) $goldVault->balance;
-                $silverBefore = (float) $silverVault->balance;
-                $cashAfter = round((float) $validated['opening_cash'], 2);
-                $goldAfter = round((float) $validated['opening_gold'], 3);
-                $silverAfter = round((float) $validated['opening_silver'], 3);
-
-                $cashVault->update(['balance' => $cashAfter]);
-                $goldVault->update(['balance' => $goldAfter]);
-                $silverVault->update(['balance' => $silverAfter]);
-
-                VaultMovement::create([
-                    'vault_id' => $cashVault->id,
-                    'vault_type' => VaultType::CASH->value,
-                    'direction' => 'CREDIT',
-                    'amount' => $cashAfter,
-                    'balance_before' => $cashBefore,
-                    'balance_after' => $cashAfter,
-                    'source_type' => DailyRegister::class,
-                    'reference' => 'Initial Opening Balance',
-                    'note' => 'Initial cash balance created during first-time system setup',
-                    'user_id' => Auth::id(),
-                    'recorded_at' => now(),
-                ]);
-
-                VaultMovement::create([
-                    'vault_id' => $goldVault->id,
-                    'vault_type' => VaultType::GOLD->value,
-                    'direction' => 'CREDIT',
-                    'amount' => $goldAfter,
-                    'balance_before' => $goldBefore,
-                    'balance_after' => $goldAfter,
-                    'source_type' => DailyRegister::class,
-                    'reference' => 'Initial Opening Balance',
-                    'note' => 'Initial gold balance created during first-time system setup',
-                    'user_id' => Auth::id(),
-                    'recorded_at' => now(),
-                ]);
-
-                VaultMovement::create([
-                    'vault_id' => $silverVault->id,
-                    'vault_type' => VaultType::SILVER->value,
-                    'direction' => 'CREDIT',
-                    'amount' => $silverAfter,
-                    'balance_before' => $silverBefore,
-                    'balance_after' => $silverAfter,
-                    'source_type' => DailyRegister::class,
-                    'reference' => 'Initial Opening Balance',
-                    'note' => 'Initial silver balance created during first-time system setup',
-                    'user_id' => Auth::id(),
-                    'recorded_at' => now(),
-                ]);
-
-                return;
-            }
-
-            VaultMovement::create([
-                'vault_id' => $cashVault->id,
-                'vault_type' => VaultType::CASH->value,
-                'direction' => 'CREDIT',
-                'amount' => 0,
-                'balance_before' => (float) $cashVault->balance,
-                'balance_after' => (float) $cashVault->balance,
-                'source_type' => DailyRegister::class,
-                'reference' => 'Day Open Snapshot',
-                'note' => blank(trim((string) ($validated['mismatch_reason'] ?? '')))
-                    ? 'Opening cash verified for the day without changing live vault balance'
-                    : 'Opening cash verified with mismatch reason: ' . trim((string) $validated['mismatch_reason']),
-                'user_id' => Auth::id(),
-                'recorded_at' => now(),
-            ]);
-
-            VaultMovement::create([
-                'vault_id' => $goldVault->id,
-                'vault_type' => VaultType::GOLD->value,
-                'direction' => 'CREDIT',
-                'amount' => 0,
-                'balance_before' => (float) $goldVault->balance,
-                'balance_after' => (float) $goldVault->balance,
-                'source_type' => DailyRegister::class,
-                'reference' => 'Day Open Snapshot',
-                'note' => blank(trim((string) ($validated['mismatch_reason'] ?? '')))
-                    ? 'Opening gold verified for the day without changing live vault balance'
-                    : 'Opening gold verified with mismatch reason: ' . trim((string) $validated['mismatch_reason']),
-                'user_id' => Auth::id(),
-                'recorded_at' => now(),
-            ]);
-
-            VaultMovement::create([
-                'vault_id' => $silverVault->id,
-                'vault_type' => VaultType::SILVER->value,
-                'direction' => 'CREDIT',
-                'amount' => 0,
-                'balance_before' => (float) $silverVault->balance,
-                'balance_after' => (float) $silverVault->balance,
-                'source_type' => DailyRegister::class,
-                'reference' => 'Day Open Snapshot',
-                'note' => blank(trim((string) ($validated['mismatch_reason'] ?? '')))
-                    ? 'Opening silver verified for the day without changing live vault balance'
-                    : 'Opening silver verified with mismatch reason: ' . trim((string) $validated['mismatch_reason']),
-                'user_id' => Auth::id(),
-                'recorded_at' => now(),
-            ]);
         });
 
-        return redirect()->back()->with('success', $isInitialSetup
-            ? 'Initial opening balance saved and shop day opened.'
-            : 'Good Morning! Shop is Open.');
+        return redirect()->back()->with('success', 'Good Morning! Shop is Open.');
     }
 
     public function closeDay(Request $request)

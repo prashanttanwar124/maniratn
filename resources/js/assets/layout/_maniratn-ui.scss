@@ -510,7 +510,7 @@ body {
 
 .erp-line-items .p-inputnumber-input,
 .erp-line-items .p-select {
-    min-height: 2.35rem;
+    min-height: 2.25rem;
 }
 
 .erp-line-items .erp-line-control {
@@ -529,20 +529,31 @@ body {
     width: 5.75rem;
 }
 
-.erp-line-items .erp-line-control.p-inputnumber .p-inputnumber-input {
-    width: 100%;
+.erp-line-items .erp-line-control.p-inputnumber,
+.erp-line-items .erp-line-control.p-inputnumber .p-inputnumber-input,
+.erp-line-items .erp-line-control.p-inputtext,
+.erp-line-items .erp-line-control.p-select {
+    height: 2.25rem !important;
+    min-height: 2.25rem !important;
+    font-size: 0.825rem !important;
 }
 
-.erp-line-items .erp-line-control.p-inputnumber .p-inputnumber-input,
-.erp-line-items .erp-line-control.p-select {
-    height: 2.25rem;
-    min-height: 2.25rem;
+.erp-line-items .erp-line-control.p-inputnumber .p-inputnumber-input {
+    width: 100%;
+    padding-inline: 0.5rem;
+}
+
+.erp-line-items .erp-line-control.p-inputtext {
+    padding-inline: 0.5rem;
 }
 
 .erp-line-items .erp-line-control.p-select .p-select-label {
     display: flex;
     align-items: center;
     padding-block: 0;
+    padding-inline: 0.5rem;
+    font-size: 0.825rem;
+    line-height: 1;
 }
 
 .erp-line-items .erp-th-right .p-datatable-column-header-content {
