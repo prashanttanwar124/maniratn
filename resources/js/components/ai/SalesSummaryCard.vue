@@ -31,16 +31,16 @@ defineProps<{
                     </p>
                 </div>
             </div>
-            <div class="flex items-center gap-1.5 shrink-0">
-                <span class="inline-flex items-center gap-1 border border-amber-300 bg-amber-50 px-2 py-0.5 text-[9.5px] font-semibold tracking-wide text-amber-900 uppercase">
+            <div class="flex items-center gap-2 shrink-0">
+                <span class="ai-status-pill border border-amber-300 bg-amber-50 text-amber-900">
                     {{ action.result.total_bills }} Bills
                 </span>
                 <a
                     href="/reports"
-                    class="inline-flex items-center gap-1 border border-surface-300 bg-white px-2 py-0.5 text-[10px] font-medium text-surface-700 hover:border-[#c08f34] hover:text-[#1c3633] transition-colors"
+                    class="ai-action-link"
                     title="Open Full Sales Reports"
                 >
-                    <ExternalLink class="h-2.5 w-2.5 text-[#b07b24]" />
+                    <ExternalLink class="h-3 w-3 text-[#b07b24]" />
                     Reports
                 </a>
             </div>

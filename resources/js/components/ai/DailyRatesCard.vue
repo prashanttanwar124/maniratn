@@ -56,21 +56,21 @@ const canConfirm = computed(() => {
                         <p class="!m-0 !p-0 !text-[10.5px] font-normal text-surface-500 !leading-tight mt-0.5">Aaj ke rates verify karke live karein</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-1.5 shrink-0">
-                    <span v-if="isExpired" class="inline-flex items-center gap-1 border border-slate-300 bg-slate-100 px-2 py-0.5 text-[9.5px] font-semibold tracking-wide text-slate-600 uppercase">
+                <div class="flex items-center gap-2 shrink-0">
+                    <span v-if="isExpired" class="ai-status-pill border border-slate-300 bg-slate-100 text-slate-600">
                         <Clock class="h-3 w-3 text-slate-500" />
                         Expired
                     </span>
-                    <span v-else class="inline-flex items-center gap-1 border border-amber-300 bg-amber-50 px-2 py-0.5 text-[9.5px] font-semibold tracking-wide text-amber-900 uppercase">
+                    <span v-else class="ai-status-pill border border-amber-300 bg-amber-50 text-amber-900">
                         <ShieldCheck class="h-3 w-3 text-amber-700" />
                         Review
                     </span>
                     <a
                         href="/dashboard"
-                        class="inline-flex items-center gap-1 border border-surface-300 bg-white px-2 py-0.5 text-[10px] font-medium text-surface-700 hover:border-[#c08f34] hover:text-[#1c3633] transition-colors"
+                        class="ai-action-link"
                         title="View Dashboard Rates"
                     >
-                        <ExternalLink class="h-2.5 w-2.5 text-[#b07b24]" />
+                        <ExternalLink class="h-3 w-3 text-[#b07b24]" />
                         Rates
                     </a>
                 </div>

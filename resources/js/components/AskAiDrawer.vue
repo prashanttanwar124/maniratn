@@ -685,7 +685,7 @@ onMounted(() => {
 
                         <button
                             type="button"
-                            class="flex h-9 w-9 items-center justify-center border border-white/15 bg-white/5 text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+                            class="flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
                             aria-label="Clear chat history"
                             title="Clear chat history"
                             @click="showResetConfirm = true"
@@ -695,7 +695,7 @@ onMounted(() => {
 
                         <button
                             type="button"
-                            class="flex h-9 w-9 items-center justify-center border border-white/15 bg-white/5 text-white/75 transition-colors hover:border-red-300/40 hover:bg-red-500/20 hover:text-white"
+                            class="flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-white/10 text-white/80 transition-colors hover:border-red-300/40 hover:bg-red-500/20 hover:text-white"
                             aria-label="Close Karat AI"
                             title="Close Karat AI"
                             @click="
@@ -917,16 +917,16 @@ onMounted(() => {
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div class="flex items-center gap-1.5 shrink-0">
-                                                    <span v-if="pendingProductActionsFor(msg).length === 0" class="inline-flex items-center gap-1 border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9.5px] font-semibold text-emerald-700 uppercase">
-                                                        <CheckCircle2 class="h-3 w-3" /> Saved
+                                                <div class="flex items-center gap-2 shrink-0">
+                                                    <span v-if="pendingProductActionsFor(msg).length === 0" class="ai-status-pill border border-emerald-300 bg-emerald-50 text-emerald-800">
+                                                        <CheckCircle2 class="h-3 w-3 text-emerald-600" /> Saved
                                                     </span>
                                                     <a
                                                         href="/products"
-                                                        class="inline-flex items-center gap-1 border border-surface-300 bg-white px-2 py-0.5 text-[10px] font-medium text-surface-700 hover:border-[#c08f34] hover:text-[#1c3633] transition-colors"
+                                                        class="ai-action-link"
                                                         title="Open Products Page"
                                                     >
-                                                        <ExternalLink class="h-2.5 w-2.5 text-[#b07b24]" />
+                                                        <ExternalLink class="h-3 w-3 text-[#b07b24]" />
                                                         Catalog
                                                     </a>
                                                 </div>
@@ -1113,59 +1113,59 @@ onMounted(() => {
                         </div>
                     </div>
 
-                    <!-- 🎙️ 3. Bottom Command Area: Enterprise Sharp Pinned Footer -->
-                    <div class="z-10 shrink-0 space-y-2.5 border-t border-surface-200 bg-white px-3 py-3 sm:px-5">
-                        <!-- Quick Suggestion Chips (Sharp Rectangular Buttons - Click to edit before submit) -->
-                        <div v-if="!isStarterConversation" class="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                    <!-- 🎙️ 3. Bottom Command Area: Enterprise Luxury Pinned Footer -->
+                    <div class="z-10 shrink-0 space-y-2.5 border-t border-surface-200 bg-white px-3.5 py-3 sm:px-5">
+                        <!-- Quick Suggestion Chips (Rounded Luxury Capsule Pills - Click to edit before submit) -->
+                        <div v-if="!isStarterConversation" class="no-scrollbar flex items-center gap-2 overflow-x-auto pb-0.5">
                             <button
                                 v-for="(item, idx) in quickSuggestions"
                                 :key="idx"
                                 type="button"
                                 :disabled="isLoading"
                                 title="Click karke prompt edit karein"
-                                class="erp-chip-action flex shrink-0 items-center gap-1.5 border border-surface-200 bg-surface-50 px-2.5 py-1.5 text-[10.5px] font-medium text-surface-600 transition-colors hover:text-[#1c3633] disabled:opacity-50"
+                                class="erp-chip-action flex shrink-0 items-center gap-1.5 border border-surface-200 bg-[#f8f6f0] px-3 py-1.5 text-xs font-medium text-surface-700 transition-colors hover:border-[#c08f34] hover:bg-amber-50 hover:text-[#1c3633] disabled:opacity-50"
                                 @click="applyQuickPrompt(item.prompt)"
                             >
-                                <component :is="item.icon" class="h-3 w-3 text-[#b07b24]" />
+                                <component :is="item.icon" class="h-3.5 w-3.5 text-[#b07b24]" />
                                 <span>{{ item.label }}</span>
                             </button>
                         </div>
 
-                        <div v-if="isListening" class="erp-alert-row flex items-center justify-between border border-red-200 bg-red-50 px-3 py-2" role="status">
-                            <div class="flex items-center gap-2 text-[11px] font-medium text-red-700">
+                        <div v-if="isListening" class="erp-alert-row flex items-center justify-between border border-red-200 bg-red-50 px-3 py-2 rounded-lg" role="status">
+                            <div class="flex items-center gap-2 text-xs font-medium text-red-700">
                                 <span class="relative flex h-2 w-2">
                                     <span class="absolute inline-flex h-full w-full animate-ping bg-red-400 opacity-75"></span>
                                     <span class="relative inline-flex h-2 w-2 bg-red-600"></span>
                                 </span>
                                 <span>Sun raha hoon... Hindi ya English mein boliye</span>
                             </div>
-                            <button type="button" class="ml-3 text-[11px] font-semibold text-red-700 underline-offset-2 hover:underline" @click="toggleListening">Stop</button>
+                            <button type="button" class="ml-3 text-xs font-semibold text-red-700 underline-offset-2 hover:underline" @click="toggleListening">Stop</button>
                         </div>
 
-                        <div v-if="speechError || chatError" class="erp-alert-row border border-amber-200 bg-amber-50 px-3 py-2 text-[10.5px] leading-4 text-amber-800" role="alert">
+                        <div v-if="speechError || chatError" class="erp-alert-row border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 rounded-lg" role="alert">
                             {{ speechError || chatError }}
                         </div>
 
-                        <div class="erp-composer border border-surface-300 bg-white p-2 shadow-xs transition-colors">
+                        <div class="erp-composer border border-surface-300 bg-white p-2.5 shadow-xs transition-colors rounded-xl focus-within:border-[#c08f34] focus-within:ring-2 focus-within:ring-[#c08f34]/15">
                             <Textarea
                                 ref="composerRef"
                                 v-model="inputPrompt"
                                 :auto-resize="true"
                                 :rows="1"
                                 :disabled="isLoading"
-                                placeholder="Jaise: 12g 22K ring ka estimate banao..."
-                                class="karat-composer !max-h-28 !min-h-10 !w-full !resize-none !border-0 !bg-transparent !px-2 !py-2 text-xs !shadow-none focus:!ring-0 placeholder:!text-slate-400/80 placeholder:!font-light"
+                                placeholder="Jaise: 12g 22K ring ka estimate banao ya stock check karo..."
+                                class="karat-composer !max-h-36 !min-h-12 !w-full !resize-none !border-0 !bg-transparent !px-2.5 !py-2 text-sm sm:text-[15px] !leading-relaxed font-normal text-surface-900 !shadow-none focus:!ring-0 placeholder:!text-slate-400 placeholder:!text-sm placeholder:!font-normal"
                                 aria-label="Ask Karat AI"
                                 @keydown.enter.exact.prevent="sendMessage()"
                             />
 
-                            <div class="mt-1 flex items-center justify-between gap-2 border-t border-surface-100 pt-2">
+                            <div class="mt-1.5 flex items-center justify-between gap-2 border-t border-surface-100 pt-2 px-1">
                                 <div class="flex items-center gap-2">
                                     <button
                                         type="button"
                                         :disabled="!recognitionSupported || isLoading"
                                         :class="[
-                                            'erp-action-button flex h-7 items-center gap-1.5 border px-2 text-[10.5px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+                                            'erp-action-button flex h-8 items-center gap-1.5 border px-3 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 rounded-md',
                                             isListening
                                                 ? 'border-red-600 bg-red-600 text-white shadow-xs animate-pulse'
                                                 : 'border-surface-200 bg-surface-50 text-surface-700 hover:border-[#c08f34] hover:bg-amber-50',
@@ -1173,18 +1173,18 @@ onMounted(() => {
                                         :title="recognitionSupported ? 'Voice typing shuru karein' : 'Voice is browser me supported nahi hai'"
                                         @click="toggleListening"
                                     >
-                                        <Mic v-if="!isListening" class="h-3 w-3 text-[#b07b24]" />
-                                        <MicOff v-else class="h-3 w-3 text-white" />
+                                        <Mic v-if="!isListening" class="h-3.5 w-3.5 text-[#b07b24]" />
+                                        <MicOff v-else class="h-3.5 w-3.5 text-white" />
                                         <span>{{ isListening ? 'Listening...' : 'Voice Input' }}</span>
                                     </button>
                                     
-                                    <span v-if="isVoiceGloballyEnabled" class="text-[10px] text-surface-400">Aoede Studio</span>
+                                    <span v-if="isVoiceGloballyEnabled" class="text-[11px] font-medium text-surface-400">Aoede Studio</span>
                                 </div>
 
                                 <button
                                     type="button"
                                     :disabled="!inputPrompt.trim() || isLoading"
-                                    class="erp-action-button flex h-7 items-center gap-1 border border-[#1c3633] bg-[#1c3633] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#254642] disabled:cursor-not-allowed disabled:opacity-40"
+                                    class="erp-action-button flex h-8 items-center gap-1.5 border border-[#1c3633] bg-[#1c3633] px-4 text-xs font-semibold text-white transition-colors hover:bg-[#254642] disabled:cursor-not-allowed disabled:opacity-40 rounded-md"
                                     aria-label="Send message"
                                     @click="sendMessage()"
                                 >

@@ -35,10 +35,10 @@ defineProps<{
             </div>
             <a
                 href="/tasks"
-                class="inline-flex shrink-0 items-center gap-1 border border-surface-300 bg-white px-2 py-0.5 text-[10px] font-medium text-surface-700 hover:border-[#c08f34] hover:text-[#1c3633] transition-colors"
+                class="ai-action-link"
                 title="Open Kanban Task Board"
             >
-                <ExternalLink class="h-2.5 w-2.5 text-[#b07b24]" />
+                <ExternalLink class="h-3 w-3 text-[#b07b24]" />
                 Board
             </a>
         </div>

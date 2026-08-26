@@ -699,30 +699,27 @@ const handleSvgMouseLeave = () => {
                     <!-- ========================================== -->
                     <!-- ULTRA-REACTIVE FINTECH SVG CHART           -->
                     <!-- ========================================== -->
-                    <div class="border border-surface-200 bg-white p-5 shadow-2xs">
+                    <div class="erp-panel p-5">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-surface-100 pb-3">
                             <!-- Tab Switcher -->
-                            <div class="flex items-center border border-surface-200 bg-surface-50 p-0.5">
+                            <div class="erp-segmented-control">
                                 <button
                                     type="button"
-                                    class="px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer"
-                                    :class="activeChartTab === 'sales' ? 'bg-surface-900 text-white shadow-xs' : 'text-surface-600 hover:bg-surface-200 hover:text-surface-900'"
+                                    :class="{ active: activeChartTab === 'sales' }"
                                     @click="activeChartTab = 'sales'"
                                 >
                                     Total Sales
                                 </button>
                                 <button
                                     type="button"
-                                    class="px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer"
-                                    :class="activeChartTab === 'collections' ? 'bg-surface-900 text-white shadow-xs' : 'text-surface-600 hover:bg-surface-200 hover:text-surface-900'"
+                                    :class="{ active: activeChartTab === 'collections' }"
                                     @click="activeChartTab = 'collections'"
                                 >
                                     Collections
                                 </button>
                                 <button
                                     type="button"
-                                    class="px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer"
-                                    :class="activeChartTab === 'bullion' ? 'bg-surface-900 text-white shadow-xs' : 'text-surface-600 hover:bg-surface-200 hover:text-surface-900'"
+                                    :class="{ active: activeChartTab === 'bullion' }"
                                     @click="activeChartTab = 'bullion'"
                                 >
                                     Rates Trend
@@ -735,13 +732,12 @@ const handleSvgMouseLeave = () => {
                                     <div class="text-[10px] uppercase tracking-wider text-surface-400 font-semibold">{{ currentChartSummary.label }}</div>
                                     <div class="text-sm font-bold text-surface-900">{{ currentChartSummary.value }}</div>
                                 </div>
-                                <div class="flex items-center border border-surface-200 bg-surface-50 p-0.5">
+                                <div class="erp-segmented-control">
                                     <button
                                         v-for="range in ['7D', '14D', '30D']"
                                         :key="range"
                                         type="button"
-                                        class="px-3 py-1 text-xs font-medium transition cursor-pointer"
-                                        :class="chartRange === range ? 'bg-surface-900 text-white font-bold shadow-xs' : 'text-surface-600 hover:bg-surface-200 hover:text-surface-900'"
+                                        :class="{ active: chartRange === range }"
                                         @click="chartRange = range"
                                     >
                                         {{ range }}

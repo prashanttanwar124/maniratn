@@ -303,6 +303,45 @@ body {
     box-shadow: var(--maniratn-focus), var(--maniratn-shadow-card) !important;
 }
 
+.erp-segmented-control {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1875rem;
+    border: 1px solid var(--maniratn-border) !important;
+    border-radius: var(--maniratn-radius-sm) !important;
+    background: var(--maniratn-panel-muted) !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.erp-segmented-control button,
+.erp-segmented-control .segment-btn {
+    border-radius: calc(var(--maniratn-radius-sm) - 0.15rem);
+    border: 1px solid transparent !important;
+    padding: 0.32rem 0.85rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--p-surface-600);
+    transition: all 150ms ease;
+    cursor: pointer;
+    background: transparent;
+    line-height: 1.25;
+}
+
+.erp-segmented-control button:hover:not(.active),
+.erp-segmented-control .segment-btn:hover:not(.active) {
+    color: var(--maniratn-ink);
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.erp-segmented-control button.active,
+.erp-segmented-control .segment-btn.active,
+.erp-segmented-control button[aria-selected='true'] {
+    border-color: var(--maniratn-ink) !important;
+    background: var(--maniratn-ink) !important;
+    color: #ffffff !important;
+    box-shadow: var(--maniratn-shadow-xs);
+}
+
 .erp-media-placeholder {
     overflow: hidden;
     border-color: var(--maniratn-border-strong) !important;
@@ -1406,11 +1445,50 @@ body {
     box-shadow: var(--maniratn-shadow-card) !important;
 }
 
+.erp-ai-card .ai-status-pill {
+    border-radius: 999px !important;
+    font-size: 0.625rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.06em !important;
+    text-transform: uppercase !important;
+    padding: 0.2rem 0.6rem !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    line-height: 1;
+}
+
+.erp-ai-card .ai-action-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid var(--maniratn-border) !important;
+    background: var(--maniratn-panel) !important;
+    border-radius: var(--maniratn-radius-sm) !important;
+    padding: 0.22rem 0.55rem !important;
+    font-size: 0.6875rem !important;
+    font-weight: 600 !important;
+    color: var(--p-surface-700) !important;
+    box-shadow: var(--maniratn-shadow-xs) !important;
+    transition: all 150ms ease !important;
+    text-decoration: none !important;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.erp-ai-card .ai-action-link:hover {
+    border-color: var(--maniratn-gold) !important;
+    color: var(--maniratn-ink) !important;
+    background: var(--maniratn-gold-soft) !important;
+    transform: translateY(-1px);
+    box-shadow: var(--maniratn-shadow-card) !important;
+}
+
 .erp-ai-card :where(button, input, textarea)[class~='rounded-none'] {
     border-radius: var(--maniratn-radius-sm) !important;
 }
 
-.erp-ai-card :where(span, div)[class~='rounded-none'][class~='border'] {
+.erp-ai-card :where(div)[class~='rounded-none'][class~='border'] {
     border-radius: calc(var(--maniratn-radius-sm) - 0.15rem) !important;
 }
 

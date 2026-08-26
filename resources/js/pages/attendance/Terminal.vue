@@ -248,10 +248,10 @@ onMounted(() => {
 
     <div class="min-h-screen bg-surface-50 px-4 py-5 md:px-6 md:py-6">
         <div class="mx-auto max-w-4xl space-y-5">
-            <div class="card mb-0">
+            <div class="erp-page-header border border-surface-200 bg-white px-5 py-5 mb-0">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-500">Attendance Terminal</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#b07b24]">Attendance Terminal</p>
                         <h1 class="mt-2 text-2xl font-semibold text-surface-900">Staff Attendance</h1>
                         <p class="mt-2 max-w-2xl text-sm text-surface-500">
                             This screen is only for attendance. Staff can enter their passcode or tap their NFC card, then choose the correct action shown on screen.
@@ -259,15 +259,15 @@ onMounted(() => {
                     </div>
 
                     <div class="grid gap-3 sm:grid-cols-3 lg:w-[400px]">
-                        <div class="border border-surface-200 bg-surface-0 px-4 py-3">
+                        <div class="erp-stat-card border border-surface-200 bg-surface-0 px-4 py-3">
                             <p class="text-xs uppercase tracking-wide text-surface-500">Today</p>
                             <p class="mt-1 text-sm font-medium text-surface-900">{{ todayLabel }}</p>
                         </div>
-                        <div class="border border-surface-200 bg-surface-0 px-4 py-3">
+                        <div class="erp-stat-card border border-surface-200 bg-surface-0 px-4 py-3">
                             <p class="text-xs uppercase tracking-wide text-surface-500">Step 1</p>
                             <p class="mt-1 text-sm font-medium text-surface-900">Enter passcode</p>
                         </div>
-                        <div class="border border-surface-200 bg-surface-0 px-4 py-3">
+                        <div class="erp-stat-card border border-surface-200 bg-surface-0 px-4 py-3">
                             <p class="text-xs uppercase tracking-wide text-surface-500">Step 2</p>
                             <p class="mt-1 text-sm font-medium text-surface-900">Tap action</p>
                         </div>
@@ -275,13 +275,13 @@ onMounted(() => {
                 </div>
             </div>
 
-            <div class="card">
+            <div class="erp-panel p-5">
                 <div class="border-b border-surface-200 pb-4">
-                        <div class="border border-primary-100 bg-primary-50 px-4 py-4">
-                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary-600">Current Step</p>
+                        <div class="erp-subpanel border border-[#c08f34]/30 bg-[#fdfbf7] px-4 py-4">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#b07b24]">Current Step</p>
                             <h2 class="mt-2 text-xl font-semibold text-surface-900">{{ terminalHeadline }}</h2>
                             <p class="mt-2 text-sm text-surface-600">{{ terminalInstruction }}</p>
-                            <p class="mt-3 text-xs" :class="helperAvailable ? 'text-emerald-700' : 'text-amber-700'">
+                            <p class="mt-3 text-xs font-medium" :class="helperAvailable ? 'text-emerald-700' : 'text-amber-700'">
                                 {{ helperAvailable ? 'Local NFC helper connected. Card tap is ready on this PC.' : 'Local NFC helper not detected. Passcode still works.' }}
                             </p>
                         </div>
@@ -290,7 +290,7 @@ onMounted(() => {
                 <div class="space-y-5 pt-5">
                     <div class="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
                         <div class="space-y-5">
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                            <div class="erp-subpanel border border-surface-200 bg-surface-50 px-4 py-4">
                                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
                                         <label class="block text-sm font-medium text-surface-700">Tap Attendance Card</label>

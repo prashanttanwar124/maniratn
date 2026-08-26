@@ -31,17 +31,17 @@ defineProps<{
                     <p class="!m-0 !p-0 !text-[10.5px] font-normal text-surface-500 !leading-tight mt-0.5">Cash & bullion holdings</p>
                 </div>
             </div>
-            <div class="flex items-center gap-1.5 shrink-0">
-                <span class="inline-flex items-center gap-1 border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9.5px] font-semibold text-emerald-800 uppercase">
-                    <ShieldCheck class="h-2.5 w-2.5 text-emerald-600" />
+            <div class="flex items-center gap-2 shrink-0">
+                <span class="ai-status-pill border border-emerald-300 bg-emerald-50 text-emerald-800">
+                    <ShieldCheck class="h-3 w-3 text-emerald-600" />
                     Live
                 </span>
                 <a
                     href="/reports"
-                    class="inline-flex items-center gap-1 border border-surface-300 bg-white px-2 py-0.5 text-[10px] font-medium text-surface-700 hover:border-[#c08f34] hover:text-[#1c3633] transition-colors"
+                    class="ai-action-link"
                     title="Open Reports"
                 >
-                    <ExternalLink class="h-2.5 w-2.5 text-[#b07b24]" />
+                    <ExternalLink class="h-3 w-3 text-[#b07b24]" />
                     Reports
                 </a>
             </div>

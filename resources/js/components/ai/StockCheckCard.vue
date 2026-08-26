@@ -43,16 +43,16 @@ const copyBarcode = (barcode: string) => {
                     <p class="!m-0 !p-0 !text-[10.5px] font-normal text-surface-500 !leading-tight mt-0.5">Live showroom stock</p>
                 </div>
             </div>
-            <div class="flex items-center gap-1.5 shrink-0">
-                <span class="border border-surface-300 bg-white px-2 py-0.5 text-[10px] font-mono font-medium text-surface-700">
+            <div class="flex items-center gap-2 shrink-0">
+                <span class="ai-status-pill border border-surface-300 bg-white text-surface-700 font-mono">
                     {{ action.result.total_items ?? 0 }} items
                 </span>
                 <a
                     href="/products"
-                    class="inline-flex items-center gap-1 border border-surface-300 bg-white px-2 py-0.5 text-[10px] font-medium text-surface-700 hover:border-[#c08f34] hover:text-[#1c3633] transition-colors"
+                    class="ai-action-link"
                     title="Open Inventory Catalog"
                 >
-                    <ExternalLink class="h-2.5 w-2.5 text-[#b07b24]" />
+                    <ExternalLink class="h-3 w-3 text-[#b07b24]" />
                     Catalog
                 </a>
             </div>
