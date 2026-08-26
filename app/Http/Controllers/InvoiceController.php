@@ -447,7 +447,7 @@ class InvoiceController extends Controller
             } elseif ($makingType === 'flat' || $makingType === 'lump_sum') {
                 $makingAmount = $making;
             } else {
-                $makingAmount = $weight * $quantity * making;
+                $makingAmount = $weight * $making;
             }
             return round($base + $makingAmount, 2);
         }
@@ -586,10 +586,10 @@ class InvoiceController extends Controller
             'old_golds.*.description' => 'nullable|string|max:255',
             'old_golds.*.gross_weight' => 'required_with:old_golds|numeric|min:0.001',
             'old_golds.*.wastage_weight' => 'nullable|numeric|min:0',
-            'old_golds.*.net_weight' => 'required_with:old_golds|numeric|min:0.001',
-            'old_golds.*.purity' => 'required_with:old_golds|string|max:50',
+            'old_golds.*.net_weight' => 'nullable|numeric|min:0',
+            'old_golds.*.purity' => 'nullable|string|max:50',
             'old_golds.*.rate' => 'required_with:old_golds|numeric|min:0.01',
-            'old_golds.*.final_price' => 'required_with:old_golds|numeric|min:0.01',
+            'old_golds.*.final_price' => 'nullable|numeric|min:0',
 
             'payment_cash' => 'nullable|numeric|min:0',
             'payment_card' => 'nullable|numeric|min:0',
@@ -875,18 +875,26 @@ class InvoiceController extends Controller
 
             foreach ($oldGoldRows as $ogRow) {
                 $metalType = strtoupper((string) ($ogRow['metal_type'] ?? 'GOLD'));
-                $grossWt = round((float) $ogRow['gross_weight'], 3);
+                $grossWt = round((float) ($ogRow['gross_weight'] ?? 0), 3);
                 $wastageWt = round((float) ($ogRow['wastage_weight'] ?? 0), 3);
-                $netWt = round((float) ($ogRow['net_weight'] ?? max($grossWt - $wastageWt, 0)), 3);
                 $purity = trim((string) ($ogRow['purity'] ?? '22K'));
-                $rate = round((float) $ogRow['rate'], 2);
-                $rowPrice = round((float) $ogRow['final_price'], 2);
+                $rate = round((float) ($ogRow['rate'] ?? 0), 2);
 
-                if ($netWt > $grossWt) {
+                if ($grossWt <= 0 || $rate <= 0) {
                     throw ValidationException::withMessages([
-                        'old_golds' => 'Net weight cannot exceed gross weight for old metal exchange items.',
+                        'old_golds' => 'Gross weight and buy rate must be greater than zero for all old metal exchange items.',
                     ]);
                 }
+
+                if ($wastageWt < 0 || $wastageWt > $grossWt) {
+                    throw ValidationException::withMessages([
+                        'old_golds' => 'Wastage deduction cannot be negative or exceed gross weight.',
+                    ]);
+                }
+
+                // Strictly recalculate net weight and final price on backend (never trust client final_price)
+                $netWt = round(max(0, $grossWt - $wastageWt), 3);
+                $rowPrice = round($netWt * $rate, 2);
 
                 $totalOldGoldAmount += $rowPrice;
 
@@ -912,6 +920,13 @@ class InvoiceController extends Controller
             }
 
             $totalOldGoldAmount = round($totalOldGoldAmount, 2);
+
+            if ($totalOldGoldAmount > $finalTotal) {
+                throw ValidationException::withMessages([
+                    'old_golds' => 'Total Old Metal exchange value (₹' . number_format($totalOldGoldAmount, 2) . ') cannot exceed the invoice total of ₹' . number_format($finalTotal, 2) . '.',
+                ]);
+            }
+
             $netPayable = max(0, round($finalTotal - $totalOldGoldAmount, 2));
             $totalCashCardPaid = round((float) ($validated['payment_cash'] ?? 0) + (float) ($validated['payment_card'] ?? 0), 2);
 
@@ -1073,20 +1088,27 @@ class InvoiceController extends Controller
             'reason' => 'required|string|max:500',
         ]);
 
-        $invoice = Invoice::with(['items.product', 'items.silverProduct', 'items.orderItem', 'oldGolds', 'transactions'])->findOrFail($id);
-
-        if ($invoice->status === 'CANCELLED') {
-            return back()->with('error', 'This invoice is already cancelled.');
-        }
-
-        $paidAmount = (float) $invoice->transactions->where('type', 'PAYMENT')->sum('amount');
-        $hasCashPayment = $invoice->transactions->where('type', 'PAYMENT')->where('entry_type_code', '!=', 'INVOICE_OLD_GOLD')->sum('amount') > 0;
-        $effectiveMode = $hasCashPayment ? ($validated['mode'] ?? 'keep_advance') : 'none';
-        $hasOldGold = $invoice->oldGolds->isNotEmpty();
-        $oldGoldMode = $hasOldGold ? ($validated['old_gold_mode'] ?? ($effectiveMode === 'refund' ? 'return_metal' : 'keep_advance')) : 'none';
-
         try {
-            DB::transaction(function () use ($invoice, $validated, $effectiveMode, $oldGoldMode) {
+            $summary = DB::transaction(function () use ($id, $validated) {
+                $invoice = Invoice::with([
+                    'items.product',
+                    'items.silverProduct',
+                    'items.orderItem',
+                    'oldGolds',
+                    'transactions',
+                ])->lockForUpdate()->findOrFail($id);
+
+                if ($invoice->status === 'CANCELLED') {
+                    throw ValidationException::withMessages([
+                        'invoice' => 'This invoice is already cancelled.',
+                    ]);
+                }
+
+                $paidAmount = (float) $invoice->transactions->where('type', 'PAYMENT')->sum('amount');
+                $hasCashPayment = $invoice->transactions->where('type', 'PAYMENT')->where('entry_type_code', '!=', 'INVOICE_OLD_GOLD')->sum('amount') > 0;
+                $effectiveMode = $hasCashPayment ? ($validated['mode'] ?? 'keep_advance') : 'none';
+                $hasOldGold = $invoice->oldGolds->isNotEmpty();
+                $oldGoldMode = $hasOldGold ? ($validated['old_gold_mode'] ?? ($effectiveMode === 'refund' ? 'return_metal' : 'keep_advance')) : 'none';
                 $cancellationMode = $validated['mode'] ?? $effectiveMode;
 
                 $invoice->update([
@@ -1182,26 +1204,29 @@ class InvoiceController extends Controller
                 }
 
                 foreach ($invoice->items as $item) {
-                    if ($item->product) {
-                        $item->product->update(['is_sold' => false]);
+                    if ($item->product_id) {
+                        Product::where('id', $item->product_id)->lockForUpdate()->update(['is_sold' => false]);
                     }
 
-                    if ($item->silverProduct) {
-                        if ($item->silverProduct->pricing_mode === 'PIECE') {
-                            $item->silverProduct->update([
-                                'quantity' => (int) $item->silverProduct->quantity + (int) ($item->quantity ?? 1),
-                                'is_sold' => false,
-                            ]);
-                        } else {
-                            $item->silverProduct->update([
-                                'quantity' => max(1, (int) ($item->quantity ?? 1)),
-                                'is_sold' => false,
-                            ]);
+                    if ($item->silver_product_id) {
+                        $silverProduct = SilverProduct::where('id', $item->silver_product_id)->lockForUpdate()->first();
+                        if ($silverProduct) {
+                            if ($silverProduct->pricing_mode === 'PIECE') {
+                                $silverProduct->update([
+                                    'quantity' => (int) $silverProduct->quantity + (int) ($item->quantity ?? 1),
+                                    'is_sold' => false,
+                                ]);
+                            } else {
+                                $silverProduct->update([
+                                    'quantity' => max(1, (int) ($item->quantity ?? 1)),
+                                    'is_sold' => false,
+                                ]);
+                            }
                         }
                     }
 
-                    if ($item->orderItem) {
-                        $item->orderItem->update(['status' => 'READY']);
+                    if ($item->order_item_id) {
+                        OrderItem::where('id', $item->order_item_id)->lockForUpdate()->update(['status' => 'READY']);
                     }
                 }
 
@@ -1249,24 +1274,34 @@ class InvoiceController extends Controller
                         ]);
                     }
                 }
+
+                return [
+                    'paidAmount' => $paidAmount,
+                    'hasOldGold' => $hasOldGold,
+                    'hasCashPayment' => $hasCashPayment,
+                    'oldGoldMode' => $oldGoldMode,
+                    'effectiveMode' => $effectiveMode,
+                ];
             });
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
         } catch (\Throwable $e) {
             return back()->withErrors([
                 'reason' => $e->getMessage(),
             ]);
         }
 
-        if ($paidAmount <= 0) {
+        if ($summary['paidAmount'] <= 0) {
             $message = 'Invoice voided and stock restored (No payment or old metal was on this bill).';
         } else {
             $parts = [];
-            if ($hasOldGold) {
-                $parts[] = $oldGoldMode === 'keep_advance'
+            if ($summary['hasOldGold']) {
+                $parts[] = $summary['oldGoldMode'] === 'keep_advance'
                     ? 'Old Metal kept as advance'
                     : 'Old Metal reversed to customer';
             }
-            if ($hasCashPayment) {
-                $parts[] = $effectiveMode === 'refund'
+            if ($summary['hasCashPayment']) {
+                $parts[] = $summary['effectiveMode'] === 'refund'
                     ? 'Cash refunded'
                     : 'Cash kept as advance';
             }
@@ -1278,45 +1313,52 @@ class InvoiceController extends Controller
 
     public function addPayment(Request $request, Invoice $invoice)
     {
-        if ($invoice->status === 'CANCELLED') {
-            return back()->withErrors([
-                'amount' => 'Cannot add payment to a voided invoice.',
-            ]);
-        }
-
-        $paidAmount = (float) $invoice->transactions()
-            ->where('type', 'PAYMENT')
-            ->sum('amount');
-
-        $pendingAmount = max((float) $invoice->total_amount - $paidAmount, 0);
-
-        if ($pendingAmount <= 0) {
-            return back()->withErrors([
-                'amount' => 'This invoice is already fully paid.',
-            ]);
-        }
-
         $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0.01', 'max:' . $pendingAmount],
+            'amount' => ['required', 'numeric', 'min:0.01'],
             'payment_method' => ['required', 'string', Rule::in(['CASH', 'CARD', 'UPI', 'BANK'])],
             'date' => ['required', 'date'],
             'note' => ['nullable', 'string', 'max:255'],
-        ], [
-            'amount.max' => 'Payment amount cannot exceed the pending balance of ₹' . number_format($pendingAmount, 2),
         ]);
 
         try {
             DB::transaction(function () use ($invoice, $validated) {
+                $lockedInvoice = Invoice::where('id', $invoice->id)->lockForUpdate()->firstOrFail();
+
+                if ($lockedInvoice->status === 'CANCELLED') {
+                    throw ValidationException::withMessages([
+                        'amount' => 'Cannot add payment to a voided invoice.',
+                    ]);
+                }
+
+                $paidAmount = (float) $lockedInvoice->transactions()
+                    ->where('type', 'PAYMENT')
+                    ->sum('amount');
+
+                $pendingAmount = max((float) $lockedInvoice->total_amount - $paidAmount, 0);
+
+                if ($pendingAmount <= 0) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'This invoice is already fully paid.',
+                    ]);
+                }
+
+                $amount = round((float) $validated['amount'], 2);
+                if ($amount > round($pendingAmount, 2)) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'Payment amount cannot exceed the pending balance of ₹' . number_format($pendingAmount, 2),
+                    ]);
+                }
+
                 $paymentMethod = strtoupper($validated['payment_method']);
                 $note = trim($validated['note'] ?? '');
-                $description = "Payment for Invoice #{$invoice->invoice_number}" . ($note !== '' ? " ({$note})" : '');
+                $description = "Payment for Invoice #{$lockedInvoice->invoice_number}" . ($note !== '' ? " ({$note})" : '');
 
                 $transaction = Transaction::create([
                     'transactable_type' => Customer::class,
-                    'transactable_id'   => $invoice->customer_id,
-                    'invoice_id'        => $invoice->id,
+                    'transactable_id'   => $lockedInvoice->customer_id,
+                    'invoice_id'        => $lockedInvoice->id,
                     'type'              => 'PAYMENT',
-                    'amount'            => (float) $validated['amount'],
+                    'amount'            => $amount,
                     'description'       => $description,
                     'date'              => $validated['date'],
                     'user_id'           => Auth::id(),
@@ -1327,6 +1369,8 @@ class InvoiceController extends Controller
 
                 LedgerImpactService::applyCashTransaction($transaction);
             });
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
         } catch (\Throwable $e) {
             return back()->withErrors([
                 'amount' => 'Failed to record payment: ' . $e->getMessage(),

@@ -725,39 +725,47 @@ const draftFormatCurrency = (val) =>
         <Dialog v-model:visible="showViewDialog" header="Invoice Details" modal :style="{ width: '52rem', maxWidth: '95vw' }" @hide="closeViewDialog">
             <div v-if="viewInvoice" class="space-y-4 pt-1 text-sm">
                 <!-- Top Banner / Header -->
-                <div class="erp-dialog-banner rounded-lg border border-surface-200 bg-surface-50 p-4">
-                    <div class="flex flex-col gap-3 border-b border-surface-200 pb-3 md:flex-row md:items-center md:justify-between">
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <span class="font-mono text-lg font-bold text-surface-900">{{ viewInvoice.invoice_number }}</span>
-                                <Tag :severity="viewInvoice.status === 'CANCELLED' ? 'danger' : 'success'" :value="viewInvoice.status === 'CANCELLED' ? 'Voided' : 'Valid'" />
+                <div class="erp-dialog-banner overflow-hidden rounded-xl border border-surface-200 bg-white">
+                    <div class="bg-surface-50 px-4 py-4">
+                        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono text-lg font-bold text-surface-900">{{ viewInvoice.invoice_number }}</span>
+                                    <Tag :severity="viewInvoice.status === 'CANCELLED' ? 'danger' : 'success'" :value="viewInvoice.status === 'CANCELLED' ? 'Voided' : 'Valid'" />
+                                </div>
+                                <p class="mt-1 text-xs text-surface-500">
+                                    Billed on {{ formatDate(viewInvoice.date) }}
+                                    <span v-if="viewInvoice.created_at" class="text-surface-400"> ({{ viewInvoice.created_at }})</span>
+                                    <span v-if="viewInvoice.created_by" class="ml-2 font-medium text-surface-700">• Billed by: {{ viewInvoice.created_by }}</span>
+                                </p>
                             </div>
-                            <p class="mt-1 text-xs text-surface-500">
-                                Billed on {{ formatDate(viewInvoice.date) }}
-                                <span v-if="viewInvoice.created_at" class="text-surface-400"> ({{ viewInvoice.created_at }})</span>
-                                <span v-if="viewInvoice.created_by" class="ml-2 font-medium text-surface-700">• Billed by: {{ viewInvoice.created_by }}</span>
-                            </p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <Button label="Print Bill" icon="pi pi-print" size="small" outlined @click="printInvoice(viewInvoice)" />
-                            <Button
-                                v-if="viewInvoice.status !== 'CANCELLED' && viewInvoice.pending_amount > 0"
-                                label="Collect Payment"
-                                icon="pi pi-wallet"
-                                severity="success"
-                                size="small"
-                                @click="openPaymentDialog(viewInvoice); showViewDialog = false;"
-                            />
+                            <div class="flex items-center gap-2">
+                                <Button label="Print Bill" icon="pi pi-print" size="small" outlined @click="printInvoice(viewInvoice)" />
+                                <Button
+                                    v-if="viewInvoice.status !== 'CANCELLED' && viewInvoice.pending_amount > 0"
+                                    label="Collect Payment"
+                                    icon="pi pi-wallet"
+                                    severity="success"
+                                    size="small"
+                                    @click="openPaymentDialog(viewInvoice); showViewDialog = false;"
+                                />
+                            </div>
                         </div>
                     </div>
 
                     <!-- Customer Snapshot -->
-                    <div class="pt-3 text-xs">
-                        <div>
-                            <p class="font-semibold tracking-wider text-surface-500 uppercase">Customer Details</p>
-                            <p class="mt-1 text-sm font-semibold text-surface-900">{{ viewInvoice.customer?.name || 'Walk-in Customer' }}</p>
-                            <p v-if="viewInvoice.customer?.mobile" class="text-surface-600">Mobile: {{ viewInvoice.customer.mobile }}</p>
-                            <p v-if="viewInvoice.customer?.city" class="text-surface-600">City: {{ viewInvoice.customer.city }}</p>
+                    <div class="grid grid-cols-1 divide-y divide-surface-100 text-sm sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                        <div class="px-4 py-3">
+                            <p class="text-[11px] font-semibold tracking-wider text-surface-500 uppercase">Customer</p>
+                            <p class="mt-1 font-semibold text-surface-900">{{ viewInvoice.customer?.name || 'Walk-in Customer' }}</p>
+                        </div>
+                        <div class="px-4 py-3">
+                            <p class="text-[11px] font-semibold tracking-wider text-surface-500 uppercase">Mobile</p>
+                            <p class="mt-1 font-medium text-surface-800">{{ viewInvoice.customer?.mobile || 'Not provided' }}</p>
+                        </div>
+                        <div class="px-4 py-3">
+                            <p class="text-[11px] font-semibold tracking-wider text-surface-500 uppercase">City</p>
+                            <p class="mt-1 font-medium text-surface-800">{{ viewInvoice.customer?.city || 'Not provided' }}</p>
                         </div>
                     </div>
                 </div>
@@ -834,8 +842,8 @@ const draftFormatCurrency = (val) =>
                 </div>
 
                 <!-- Old Metal Exchange Table -->
-                <div v-if="viewInvoice.old_golds?.length" class="mt-3">
-                    <div class="mb-2 flex items-center justify-between">
+                <div v-if="viewInvoice.old_golds?.length" class="mt-3 overflow-hidden rounded-xl border border-amber-200 bg-white">
+                    <div class="flex items-center justify-between border-b border-amber-200 bg-amber-50/70 px-3 py-2.5">
                         <p class="text-xs font-bold tracking-wider text-surface-700 uppercase flex items-center gap-1.5">
                             <Coins class="w-3.5 h-3.5 text-amber-600" />
                             <span>Old Metal Exchange ({{ viewInvoice.old_golds.length }})</span>
@@ -844,8 +852,8 @@ const draftFormatCurrency = (val) =>
                             Total: {{ Number(viewInvoice.old_gold_weight || 0).toFixed(3) }} g
                         </span>
                     </div>
-                    <div class="erp-native-table overflow-hidden rounded-lg border border-surface-200 bg-white">
-                        <table class="w-full text-left text-xs">
+                    <div class="erp-native-table overflow-x-auto bg-white">
+                        <table class="w-full min-w-[760px] text-left text-xs">
                             <thead class="border-b border-surface-200 bg-surface-50/80 font-semibold tracking-wider text-surface-700 uppercase">
                                 <tr>
                                     <th class="px-3 py-2.5">#</th>

@@ -495,11 +495,11 @@ it('supports combined old gold and old silver exchange in the same invoice', fun
                 'metal_type' => 'GOLD',
                 'description' => 'Old Gold 22K Chain',
                 'gross_weight' => 10.000,
-                'wastage_weight' => 0.500,
-                'net_weight' => 9.500,
+                'wastage_weight' => 0.000,
+                'net_weight' => 10.000,
                 'purity' => '22K',
-                'rate' => 6315.789,
-                'final_price' => 60000,
+                'rate' => 6000.00,
+                'final_price' => 60000.00,
             ],
             [
                 'metal_type' => 'SILVER',
@@ -600,3 +600,167 @@ it('saves and loads old gold exchange rows in draft persistence', function () {
     expect((float) $draft->draft_data['old_golds'][0]['final_price'])->toBe(20400.0);
 });
 
+it('strictly recalculates old metal net_weight and final_price server-side regardless of tampered client payload', function () {
+    $customer = Customer::create([
+        'name' => 'Tamper Test Customer',
+        'mobile' => '9876543219',
+        'city' => 'Mumbai',
+    ]);
+
+    $purity = Purity::firstOrCreate(['name' => '22K']);
+    $category = Category::firstOrCreate(['name' => 'Ring', 'code' => 'RNG']);
+
+    $product = Product::create([
+        'name' => 'Gold Ring 22K',
+        'barcode' => 'RNG-TAMPER-001',
+        'purity_id' => $purity->id,
+        'category_id' => $category->id,
+        'supplier_id' => $this->supplier->id,
+        'gross_weight' => 10.000,
+        'net_weight' => 10.000,
+        'making_charge' => 0,
+        'is_sold' => false,
+    ]);
+
+    // Item: 10g @ ₹7,000 = ₹70,000 + 3% GST (₹2,100) = ₹72,100 Grand Total
+    // Old Gold: Gross 5g, Wastage 0.5g => True Net 4.5g @ ₹6,000/g = ₹27,000 True Value (<= ₹72,100)
+    // BUT Client sends tampered payload: net_weight: 1g, final_price: ₹100
+    $response = post(route('invoices.store'), [
+        'customer_id' => $customer->id,
+        'date' => '2026-08-26',
+        'gold_rate' => 7000,
+        'items' => [
+            [
+                'type' => 'product',
+                'id' => $product->id,
+                'rate' => 7000,
+                'making_charges' => 0,
+                'quantity' => 1,
+            ],
+        ],
+        'old_golds' => [
+            [
+                'metal_type' => 'GOLD',
+                'description' => 'Tampered Old Gold',
+                'gross_weight' => 5.000,
+                'wastage_weight' => 0.500,
+                'net_weight' => 1.000, // Tampered client value
+                'purity' => '22K',
+                'rate' => 6000,
+                'final_price' => 100, // Tampered client price
+            ],
+        ],
+        'payment_cash' => 45100, // 72100 - 27000 = 45100 net payable
+        'payment_card' => 0,
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $response->assertRedirect();
+
+    $oldGold = InvoiceOldGold::latest('id')->first();
+    expect($oldGold)->not->toBeNull()
+        ->and((float) $oldGold->gross_weight)->toBe(5.000)
+        ->and((float) $oldGold->wastage_weight)->toBe(0.500)
+        // Server MUST enforce net = 4.500 and final_price = 27,000.00
+        ->and((float) $oldGold->net_weight)->toBe(4.500)
+        ->and((float) $oldGold->final_price)->toBe(27000.00);
+});
+
+it('rejects old metal item with non-positive gross weight, rate, or excessive wastage', function () {
+    $customer = Customer::create([
+        'name' => 'Validation Test Customer',
+        'mobile' => '9876543220',
+        'city' => 'Mumbai',
+    ]);
+
+    $purity = Purity::firstOrCreate(['name' => '22K']);
+    $category = Category::firstOrCreate(['name' => 'Ring', 'code' => 'RNG']);
+
+    $product = Product::create([
+        'name' => 'Gold Ring 22K',
+        'barcode' => 'RNG-VAL-001',
+        'purity_id' => $purity->id,
+        'category_id' => $category->id,
+        'supplier_id' => $this->supplier->id,
+        'gross_weight' => 5.000,
+        'net_weight' => 5.000,
+        'making_charge' => 0,
+        'is_sold' => false,
+    ]);
+
+    // Test wastage > gross
+    $response = post(route('invoices.store'), [
+        'customer_id' => $customer->id,
+        'date' => '2026-08-26',
+        'gold_rate' => 7000,
+        'items' => [
+            [
+                'type' => 'product',
+                'id' => $product->id,
+                'rate' => 7000,
+                'making_charges' => 0,
+                'quantity' => 1,
+            ],
+        ],
+        'old_golds' => [
+            [
+                'metal_type' => 'GOLD',
+                'gross_weight' => 5.000,
+                'wastage_weight' => 6.000, // Wastage exceeds gross
+                'rate' => 6000,
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasErrors('old_golds');
+});
+
+it('rejects old metal trade-in when total old metal value exceeds invoice total', function () {
+    $customer = Customer::create([
+        'name' => 'Excess Metal Customer',
+        'mobile' => '9876543221',
+        'city' => 'Mumbai',
+    ]);
+
+    $purity = Purity::firstOrCreate(['name' => '22K']);
+    $category = Category::firstOrCreate(['name' => 'Ring', 'code' => 'RNG']);
+
+    $product = Product::create([
+        'name' => 'Small Gold Ring 22K',
+        'barcode' => 'RNG-EXCESS-001',
+        'purity_id' => $purity->id,
+        'category_id' => $category->id,
+        'supplier_id' => $this->supplier->id,
+        'gross_weight' => 2.000,
+        'net_weight' => 2.000,
+        'making_charge' => 0,
+        'is_sold' => false,
+    ]);
+
+    // Item: 2g @ 7000 = 14,000 + 3% GST (420) = 14,420 Grand Total
+    // Old Gold: 10g @ 6000 = 60,000 (Exceeds 14,420 bill total)
+    $response = post(route('invoices.store'), [
+        'customer_id' => $customer->id,
+        'date' => '2026-08-26',
+        'gold_rate' => 7000,
+        'items' => [
+            [
+                'type' => 'product',
+                'id' => $product->id,
+                'rate' => 7000,
+                'making_charges' => 0,
+                'quantity' => 1,
+            ],
+        ],
+        'old_golds' => [
+            [
+                'metal_type' => 'GOLD',
+                'gross_weight' => 10.000,
+                'wastage_weight' => 0,
+                'rate' => 6000,
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasErrors('old_golds');
+});

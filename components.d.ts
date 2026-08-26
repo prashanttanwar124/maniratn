@@ -11,7 +11,6 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    IconField: typeof import('primevue/iconfield')['default']
     InputOTP: typeof import('primevue/inputotp')['default']
   }
   export interface GlobalDirectives {

@@ -375,3 +375,138 @@ it('correctly voids an unpaid invoice without creating phantom advance', functio
         ->and((bool) $product->fresh()->is_sold)->toBeFalse()
         ->and((float) $customer->fresh()->balance)->toBe(0.0);
 });
+
+it('rejects adding payment to a cancelled invoice with validation error', function () {
+    openShopDayForTest($this->user, 1000, 10);
+
+    $customer = Customer::create([
+        'name' => 'Voided Invoice Payment Customer',
+        'mobile' => '9876543201',
+        'city' => 'Delhi',
+    ]);
+
+    $supplier = Supplier::create([
+        'company_name' => 'Supplier Gold',
+        'contact_person' => 'Supplier Person',
+        'mobile' => '9999999998',
+        'type' => 'GOLD',
+    ]);
+
+    $category = Category::create(['name' => 'Ring', 'code' => 'RNG']);
+    $purity = Purity::create(['name' => '22K']);
+
+    $product = Product::create([
+        'name' => 'Gold Ring 22K',
+        'category_id' => $category->id,
+        'purity_id' => $purity->id,
+        'supplier_id' => $supplier->id,
+        'gross_weight' => 1.0,
+        'net_weight' => 1.0,
+        'making_charge' => 0,
+        'is_sold' => false,
+    ]);
+
+    post(route('invoices.store'), [
+        'customer_id' => $customer->id,
+        'gold_rate' => 7000,
+        'date' => today()->toDateString(),
+        'items' => [
+            [
+                'type' => 'product',
+                'id' => $product->id,
+                'rate' => 7000,
+                'making_charges' => 0,
+            ],
+        ],
+        'payment_cash' => 0,
+        'payment_card' => 0,
+    ])->assertRedirect();
+
+    $invoice = Invoice::latest('id')->firstOrFail();
+
+    // Cancel invoice
+    post(route('invoices.cancel', $invoice->id), [
+        'mode' => 'none',
+        'reason' => 'Void test',
+    ])->assertRedirect();
+
+    expect($invoice->fresh()->status)->toBe('CANCELLED');
+
+    // Attempt to add payment to cancelled invoice
+    $payResponse = post(route('invoices.payment', $invoice->id), [
+        'amount' => 1000,
+        'payment_method' => 'CASH',
+        'date' => today()->toDateString(),
+    ]);
+
+    $payResponse->assertSessionHasErrors('amount');
+});
+
+it('rejects duplicate cancellation attempts and does not double restore stock', function () {
+    openShopDayForTest($this->user, 1000, 10);
+
+    $customer = Customer::create([
+        'name' => 'Double Void Customer',
+        'mobile' => '9876543202',
+        'city' => 'Delhi',
+    ]);
+
+    $supplier = Supplier::create([
+        'company_name' => 'Silver Supplier Ltd',
+        'contact_person' => 'Supplier Person',
+        'mobile' => '9999999997',
+        'type' => 'SILVER',
+    ]);
+
+    $category = Category::create(['name' => 'Silver Item', 'code' => 'SLV']);
+
+    $silverProduct = \App\Models\SilverProduct::create([
+        'name' => 'Silver Glass',
+        'category_id' => $category->id,
+        'supplier_id' => $supplier->id,
+        'pricing_mode' => 'PIECE',
+        'quantity' => 10,
+        'gross_weight' => 50.0,
+        'net_weight' => 50.0,
+        'piece_price' => 2000,
+        'making_charge' => 0,
+    ]);
+
+    // Buy 2 pieces (quantity left = 8)
+    post(route('invoices.store'), [
+        'customer_id' => $customer->id,
+        'silver_rate' => 90,
+        'date' => today()->toDateString(),
+        'items' => [
+            [
+                'type' => 'silver_product',
+                'id' => $silverProduct->id,
+                'rate' => 2000,
+                'making_charges' => 0,
+                'quantity' => 2,
+            ],
+        ],
+        'payment_cash' => 4120, // 4000 + 3% GST (120)
+        'payment_card' => 0,
+    ])->assertRedirect();
+
+    $invoice = Invoice::latest('id')->firstOrFail();
+    expect($silverProduct->fresh()->quantity)->toBe(8);
+
+    // Cancel 1: Should restore quantity to 10
+    $firstCancel = post(route('invoices.cancel', $invoice->id), [
+        'mode' => 'refund',
+        'reason' => 'First cancel attempt',
+    ]);
+    $firstCancel->assertRedirect();
+    $firstCancel->assertSessionHas('success');
+    expect($silverProduct->fresh()->quantity)->toBe(10);
+
+    // Cancel 2 (duplicate/replay): Should fail with error and quantity must REMAIN 10 (not 12!)
+    $secondCancel = post(route('invoices.cancel', $invoice->id), [
+        'mode' => 'refund',
+        'reason' => 'Second duplicate cancel attempt',
+    ]);
+    $secondCancel->assertSessionHasErrors('invoice');
+    expect($silverProduct->fresh()->quantity)->toBe(10);
+});

@@ -189,6 +189,14 @@ body {
     border-radius: var(--maniratn-radius-lg) !important;
 }
 
+/* A table placed flush inside a panel uses the panel as its visual shell.
+   Keeping both radii creates a second rounded outline at the table header. */
+.erp-panel > .p-datatable {
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
 .erp-page-header {
     background: linear-gradient(135deg, color-mix(in srgb, var(--maniratn-gold-soft) 26%, var(--maniratn-panel)) 0%, var(--maniratn-panel) 48%), var(--maniratn-panel) !important;
 }

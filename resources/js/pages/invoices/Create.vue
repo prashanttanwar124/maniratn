@@ -548,6 +548,11 @@ const onOldGoldInput = (item) => {
     item.final_price = roundMoney(item.net_weight * rate);
 };
 
+const updateOldGoldNumber = (item, field, value) => {
+    item[field] = value;
+    onOldGoldInput(item);
+};
+
 const onOldGoldMetalChange = (item) => {
     if (item.metal_type === 'SILVER') {
         item.description = 'Old Silver';
@@ -624,6 +629,7 @@ const checkoutBlocker = computed(() => {
     if (hasInvalidDraftItems.value) return 'Fix or remove the flagged draft items.';
     if (form.discount_type === 'percentage' && Number(form.discount_value || 0) > 100) return 'Discount percentage cannot be greater than 100.';
     if (form.old_golds.some((item) => Number(item.gross_weight || 0) <= 0 || Number(item.rate || 0) <= 0)) return 'Enter gross weight and buy rate for every old-metal item.';
+    if (form.old_golds.some((item) => Number(item.wastage_weight || 0) > Number(item.gross_weight || 0))) return 'Old-metal deduction cannot be greater than gross weight.';
     if (totalCashCardReceived.value > netPayable.value) return 'Cash and digital payment cannot be more than the net payable.';
     return '';
 });
@@ -1219,6 +1225,24 @@ const submitInvoice = () => {
                             </div>
                         </div>
 
+                        <div v-if="form.old_golds.length > 0" class="border-b border-surface-200 bg-surface-50/80 px-5 py-2.5">
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-surface-600">
+                                <span class="inline-flex items-center gap-1.5 font-semibold text-surface-800">
+                                    <i class="pi pi-info-circle text-primary-600"></i>
+                                    Valuation
+                                </span>
+                                <span class="hidden h-4 w-px bg-surface-300 sm:block"></span>
+                                <span><strong class="font-semibold text-surface-800">Net weight</strong> = Gross − Deduction</span>
+                                <span class="text-surface-300">•</span>
+                                <span>
+                                    Purity auto-adjusts the <strong class="font-semibold text-amber-800">buy rate</strong>
+                                    <span class="text-surface-400">(editable)</span>
+                                </span>
+                                <span class="text-surface-300">•</span>
+                                <span><strong class="font-semibold text-emerald-700">Credit</strong> = Net weight × Rate</span>
+                            </div>
+                        </div>
+
                         <!-- DataTable with .erp-line-items -->
                         <DataTable :value="form.old_golds" scrollable stripedRows rowHover size="small" class="invoice-old-metal-table erp-line-items text-sm">
                             <template #empty>
@@ -1268,7 +1292,7 @@ const submitInvoice = () => {
                                         placeholder="0.000"
                                         class="erp-line-control w-full"
                                         inputClass="w-full text-right font-medium"
-                                        @input="onOldGoldInput(data)"
+                                        @update:modelValue="updateOldGoldNumber(data, 'gross_weight', $event)"
                                     />
                                 </template>
                             </Column>
@@ -1280,12 +1304,13 @@ const submitInvoice = () => {
                                         v-model="data.wastage_weight"
                                         mode="decimal"
                                         :min="0"
+                                        :max="Number(data.gross_weight || 0)"
                                         :minFractionDigits="3"
                                         :maxFractionDigits="3"
                                         placeholder="0.000"
                                         class="erp-line-control w-full"
                                         inputClass="w-full text-right text-surface-500"
-                                        @input="onOldGoldInput(data)"
+                                        @update:modelValue="updateOldGoldNumber(data, 'wastage_weight', $event)"
                                     />
                                 </template>
                             </Column>
@@ -1324,7 +1349,7 @@ const submitInvoice = () => {
                                         :maxFractionDigits="2"
                                         class="erp-line-control w-full"
                                         inputClass="w-full text-right font-medium"
-                                        @input="onOldGoldInput(data)"
+                                        @update:modelValue="updateOldGoldNumber(data, 'rate', $event)"
                                     />
                                 </template>
                             </Column>
@@ -1356,7 +1381,7 @@ const submitInvoice = () => {
                                     <span class="font-mono font-bold text-surface-900">{{ totalOldGoldGrossWeight.toFixed(3) }} g</span>
                                 </div>
                                 <div class="flex items-center gap-1.5">
-                                    <span class="text-surface-500">Net Pure:</span>
+                                    <span class="text-surface-500">Net Wt:</span>
                                     <span class="font-mono font-bold text-surface-900">
                                         {{ form.old_golds.reduce((acc, r) => acc + Number(r.net_weight || 0), 0).toFixed(3) }} g
                                     </span>

@@ -51,7 +51,6 @@ beforeEach(function () {
         'type' => 'GOLD',
     ]);
 });
-
 it('creates invoice with percentage making charges', function () {
     $product = Product::create([
         'name' => 'Gold Ring 22K',
@@ -164,4 +163,49 @@ it('creates invoice with per-gram making charges', function () {
         ->and((float) $item->making_charges)->toBe(500.0)
         // 4g * 7000 = 28000; + 4g * 500 = 2000 => 30000
         ->and((float) $item->final_price)->toBe(30000.0);
+});
+
+it('creates invoice for silver piece product with per-gram making charge without crash or quantity-squared bug', function () {
+    $silverProduct = \App\Models\SilverProduct::create([
+        'name' => 'Silver Idol Statue',
+        'category_id' => $this->category->id,
+        'supplier_id' => $this->supplier->id,
+        'pricing_mode' => 'PIECE',
+        'quantity' => 10,
+        'gross_weight' => 5.0,
+        'net_weight' => 5.0, // 5g per piece
+        'piece_price' => 500, // ₹500 per piece
+        'making_charge' => 20, // ₹20/g
+        'making_charge_type' => 'per_gram',
+    ]);
+
+    // Selling 3 pieces: Base = 3 * 500 = 1500; Total weight = 3 * 5g = 15g; Making = 15g * 20 = 300; Row total = 1800
+    $response = $this->post(route('invoices.store'), [
+        'customer_id' => $this->customer->id,
+        'date' => today()->toDateString(),
+        'silver_rate' => 90,
+        'items' => [
+            [
+                'type' => 'silver_product',
+                'id' => $silverProduct->id,
+                'rate' => 500, // piece rate
+                'making_charges' => 20,
+                'making_charge_type' => 'per_gram',
+                'quantity' => 3,
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $response->assertRedirect();
+
+    $item = InvoiceItem::where('silver_product_id', $silverProduct->id)->first();
+    expect($item)->not->toBeNull()
+        ->and($item->quantity)->toBe(3)
+        ->and((float) $item->weight)->toBe(15.0)
+        ->and((float) $item->final_price)->toBe(1800.0);
+
+    // Verify stock was reduced by 3
+    expect($silverProduct->fresh()->quantity)->toBe(7)
+        ->and($silverProduct->fresh()->is_sold)->toBeFalse();
 });
