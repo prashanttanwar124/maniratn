@@ -101,7 +101,7 @@ const deleteCounter = () => {
 <template>
     <AppLayout>
         <div class="space-y-6">
-            <section class="border border-surface-200 bg-white px-5 py-6">
+            <section class="erp-page-header border border-surface-200 bg-white px-5 py-6">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                         <div class="flex flex-wrap items-center gap-3">
@@ -115,21 +115,21 @@ const deleteCounter = () => {
             </section>
 
             <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Total Counters</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ summary.total_counters }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Linked Gold Items</p>
                     <p class="mt-2 text-2xl font-semibold text-amber-700">{{ summary.gold_items }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Linked Silver Items</p>
                     <p class="mt-2 text-2xl font-semibold text-slate-700">{{ summary.silver_items }}</p>
                 </div>
             </section>
 
-            <section class="overflow-hidden border border-surface-200 bg-white">
+            <section class="erp-panel overflow-hidden border border-surface-200 bg-white">
                 <div class="flex flex-col gap-3 border-b border-surface-200 px-5 py-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <h2 class="text-lg font-semibold text-surface-900">Counter Register</h2>

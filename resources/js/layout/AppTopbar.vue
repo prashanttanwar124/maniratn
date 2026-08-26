@@ -233,7 +233,7 @@ const submitLogout = () => {
             <button
                 type="button"
                 @click="openRatesModal"
-                class="hidden xl:inline-flex items-center gap-2 px-3 h-9 bg-amber-50/80 hover:bg-amber-100/90 border border-amber-200/70 text-xs text-amber-950 transition-all cursor-pointer group"
+                class="topbar-rate-pill hidden xl:inline-flex items-center gap-2 px-3.5 h-10 bg-amber-50/80 hover:bg-amber-100/90 border border-amber-200/70 text-xs text-amber-950 transition-all cursor-pointer group"
                 title="Click to update today's live rates"
             >
                 <span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
@@ -246,7 +246,7 @@ const submitLogout = () => {
             <!-- + New Bill Button (Primary Action) -->
             <Link
                 href="/invoices/create"
-                class="inline-flex items-center gap-1.5 h-9 px-3.5 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
+                class="topbar-primary-action inline-flex items-center gap-2 h-10 px-4 bg-[#1c3633] hover:bg-[#254642] text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
                 title="Create New Bill (Shortcut: F2)"
             >
                 <i class="pi pi-plus text-xs text-[#c08f34] font-bold"></i>
@@ -258,7 +258,7 @@ const submitLogout = () => {
             <button
                 v-if="aiSettings.enabled"
                 type="button"
-                class="inline-flex items-center justify-center h-9 w-9 border border-surface-200 bg-surface-50 hover:bg-surface-100 text-surface-600 hover:text-amber-700 transition-all cursor-pointer"
+                class="topbar-icon-action inline-flex items-center justify-center h-10 w-10 border border-surface-200 bg-surface-50 hover:bg-surface-100 text-surface-600 hover:text-amber-700 transition-all cursor-pointer"
                 title="Karat AI Assistant"
                 @click="emit('openAskAi')"
             >
@@ -267,7 +267,7 @@ const submitLogout = () => {
 
             <!-- Day Status Live Indicator -->
             <div
-                class="hidden sm:inline-flex items-center gap-1.5 px-3 h-9 text-xs font-medium border"
+                class="topbar-status hidden sm:inline-flex items-center gap-2 px-3.5 h-10 text-xs font-medium border"
                 :class="dayStatus.is_open ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'"
                 :title="dayStatus.is_open ? 'Store Register is Open' : 'Store Register is Closed'"
             >
@@ -282,9 +282,9 @@ const submitLogout = () => {
                 <button
                     type="button"
                     @click.stop="isUserMenuOpen = !isUserMenuOpen"
-                    class="flex items-center gap-2 px-2 h-9 border border-transparent hover:border-surface-200 hover:bg-surface-50 transition-all cursor-pointer group"
+                    class="topbar-profile flex items-center gap-2.5 px-2 h-10 border border-transparent hover:border-surface-200 hover:bg-surface-50 transition-all cursor-pointer group"
                 >
-                    <div class="h-6.5 w-6.5 bg-[#1c3633] text-white flex items-center justify-center text-[10px] font-bold shadow-xs">
+                    <div class="erp-icon-tile h-6.5 w-6.5 bg-[#1c3633] text-white flex items-center justify-center text-[10px] font-bold shadow-xs">
                         {{ initials }}
                     </div>
                     <div class="hidden md:flex flex-col text-left">
@@ -297,7 +297,7 @@ const submitLogout = () => {
                 <!-- Dropdown Menu -->
                 <div
                     v-if="isUserMenuOpen"
-                    class="absolute right-0 mt-2 w-56 bg-white border border-surface-200 shadow-xl z-50 py-1.5 divide-y divide-surface-100 animate-in fade-in zoom-in-95 duration-100"
+                    class="erp-menu-popover absolute right-0 mt-2 w-56 bg-white border border-surface-200 shadow-xl z-50 py-1.5 divide-y divide-surface-100 animate-in fade-in zoom-in-95 duration-100"
                 >
                     <div class="px-3.5 py-2.5">
                         <p class="text-xs font-bold text-[#1c3633]">{{ pageUser?.name }}</p>
@@ -340,9 +340,9 @@ const submitLogout = () => {
         class="fixed inset-0 z-[9999] flex items-start justify-center pt-16 sm:pt-24 px-4 bg-black/40 animate-in fade-in duration-150"
         @click.self="closeSpotlight"
     >
-        <div class="w-full max-w-xl bg-white border border-surface-200 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+        <div class="erp-overlay-panel w-full max-w-xl bg-white border border-surface-200 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
             <!-- Search Header Input -->
-            <div class="flex items-center gap-3 px-4 py-3 border-b border-surface-200 bg-white">
+            <div class="erp-overlay-search flex items-center gap-3 px-4 py-3 border-b border-surface-200 bg-white">
                 <i class="pi pi-search text-base text-[#c08f34]"></i>
                 <input
                     ref="searchInputRef"
@@ -384,7 +384,7 @@ const submitLogout = () => {
                                 :key="c.id"
                                 :href="`/customers/${c.id}`"
                                 @click="closeSpotlight"
-                                class="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#1c3633]/5 transition-colors group cursor-pointer"
+                                class="erp-search-result flex items-center justify-between px-3 py-2 text-xs hover:bg-[#1c3633]/5 transition-colors group cursor-pointer"
                             >
                                 <div class="flex items-center gap-2.5 min-w-0">
                                     <i class="pi pi-user text-xs text-[#c08f34] flex-shrink-0"></i>
@@ -413,7 +413,7 @@ const submitLogout = () => {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 @click="closeSpotlight"
-                                class="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#1c3633]/5 transition-colors group cursor-pointer"
+                                class="erp-search-result flex items-center justify-between px-3 py-2 text-xs hover:bg-[#1c3633]/5 transition-colors group cursor-pointer"
                             >
                                 <div class="flex items-center gap-2.5 min-w-0">
                                     <i class="pi pi-receipt text-xs text-[#c08f34] flex-shrink-0"></i>
@@ -440,7 +440,7 @@ const submitLogout = () => {
                                 :key="p.id"
                                 :href="`/products`"
                                 @click="closeSpotlight"
-                                class="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#1c3633]/5 transition-colors group cursor-pointer"
+                                class="erp-search-result flex items-center justify-between px-3 py-2 text-xs hover:bg-[#1c3633]/5 transition-colors group cursor-pointer"
                             >
                                 <div class="flex items-center gap-2.5 min-w-0">
                                     <i class="pi pi-tag text-xs text-[#c08f34] flex-shrink-0"></i>
@@ -474,7 +474,7 @@ const submitLogout = () => {
                             :key="item.title"
                             :href="item.url"
                             @click="closeSpotlight"
-                            class="flex items-start gap-3 p-3 bg-surface-50 hover:bg-[#eef4f2] border border-surface-200 hover:border-[#1c3633]/30 transition-all group cursor-pointer"
+                            class="erp-overlay-action flex items-start gap-3 p-3 bg-surface-50 hover:bg-[#eef4f2] border border-surface-200 hover:border-[#1c3633]/30 transition-all group cursor-pointer"
                         >
                             <i :class="item.icon" class="text-sm text-[#1c3633] mt-0.5 group-hover:text-[#c08f34]"></i>
                             <div>
@@ -487,7 +487,7 @@ const submitLogout = () => {
             </div>
 
             <!-- Modal Footer -->
-            <div class="px-4 py-2.5 bg-surface-50 border-t border-surface-200 flex items-center justify-between text-[11px] text-surface-500">
+            <div class="erp-overlay-footer px-4 py-2.5 bg-surface-50 border-t border-surface-200 flex items-center justify-between text-[11px] text-surface-500">
                 <div class="flex items-center gap-3">
                     <span><kbd class="px-1 py-0.5 bg-white border border-surface-200 text-[9px] font-mono">F2</kbd> New Invoice</span>
                     <span><kbd class="px-1 py-0.5 bg-white border border-surface-200 text-[9px] font-mono">ESC</kbd> Close</span>
@@ -503,7 +503,7 @@ const submitLogout = () => {
         class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 animate-in fade-in duration-150"
         @click.self="isRatesModalOpen = false"
     >
-        <div class="w-full max-w-lg bg-white border border-surface-200 shadow-2xl p-6">
+        <div class="erp-overlay-panel w-full max-w-lg bg-white border border-surface-200 shadow-2xl p-6">
             <!-- Modal Header -->
             <div class="flex items-start justify-between pb-3.5 mb-4 border-b border-surface-200">
                 <div>
@@ -535,7 +535,7 @@ const submitLogout = () => {
                             step="0.01"
                             required
                             placeholder="e.g. 7160.00"
-                            class="w-full pl-8 pr-4 h-11 border border-surface-300 text-sm font-bold text-[#1c3633] outline-hidden focus:border-[#1c3633] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            class="erp-form-control w-full pl-8 pr-4 h-11 border border-surface-300 text-sm font-bold text-[#1c3633] outline-hidden [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                     </div>
                 </div>
@@ -554,7 +554,7 @@ const submitLogout = () => {
                                 step="0.01"
                                 required
                                 placeholder="e.g. 7010.00"
-                                class="w-full pl-8 pr-4 h-11 border border-surface-300 text-sm font-medium text-surface-800 outline-hidden focus:border-[#1c3633] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                class="erp-form-control w-full pl-8 pr-4 h-11 border border-surface-300 text-sm font-medium text-surface-800 outline-hidden [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                         </div>
                     </div>
@@ -571,7 +571,7 @@ const submitLogout = () => {
                                 step="0.01"
                                 required
                                 placeholder="e.g. 88.00"
-                                class="w-full pl-8 pr-4 h-11 border border-surface-300 text-sm font-medium text-surface-800 outline-hidden focus:border-[#1c3633] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                class="erp-form-control w-full pl-8 pr-4 h-11 border border-surface-300 text-sm font-medium text-surface-800 outline-hidden [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                         </div>
                     </div>

@@ -90,7 +90,7 @@ const openWriter = (tagId) => {
 <template>
     <AppLayout>
         <div class="space-y-6">
-            <div class="border border-surface-200 bg-white px-5 py-5">
+            <div class="erp-page-header border border-surface-200 bg-white px-5 py-5">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                         <h2 class="text-2xl font-semibold tracking-tight text-surface-900">Verification Tags</h2>
@@ -104,19 +104,19 @@ const openWriter = (tagId) => {
             </div>
 
             <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
-                <div class="border border-surface-200 bg-white p-4">
+                <div class="erp-stat-card border border-surface-200 bg-white p-4">
                     <p class="text-xs uppercase tracking-wide text-surface-500">Public Base URL</p>
                     <p class="mt-2 break-all text-sm font-medium text-surface-900">{{ publicBaseUrl || 'Not set' }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white p-4">
+                <div class="erp-stat-card border border-surface-200 bg-white p-4">
                     <p class="text-xs uppercase tracking-wide text-surface-500">Active Tags</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ activeTagsCount }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white p-4">
+                <div class="erp-stat-card border border-surface-200 bg-white p-4">
                     <p class="text-xs uppercase tracking-wide text-surface-500">Pending Setup</p>
                     <p class="mt-2 text-2xl font-semibold text-amber-600">{{ pendingTagsCount }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white p-4">
+                <div class="erp-stat-card border border-surface-200 bg-white p-4">
                     <p class="text-xs uppercase tracking-wide text-surface-500">Locked Tags</p>
                     <p class="mt-2 text-2xl font-semibold text-emerald-600">{{ lockedTagsCount }}</p>
                 </div>

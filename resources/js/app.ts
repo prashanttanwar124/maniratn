@@ -32,17 +32,17 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 const ManiratnGold = definePreset(Nora, {
     semantic: {
         primary: {
-            50: '#eff6ff',
-            100: '#dbeafe',
-            200: '#bfdbfe',
-            300: '#93c5fd',
-            400: '#60a5fa',
-            500: '#3b82f6',
-            600: '#2563eb',
-            700: '#1d4ed8',
-            800: '#1e40af',
-            900: '#1e3a8a',
-            950: '#172554',
+            50: '#f2f7f6',
+            100: '#e2eeec',
+            200: '#c4ddd8',
+            300: '#9bc5bd',
+            400: '#6ca89e',
+            500: '#4a8b80',
+            600: '#356f66',
+            700: '#2b5a53',
+            800: '#254943',
+            900: '#1c3633',
+            950: '#102421',
         },
     },
 });
@@ -64,6 +64,10 @@ createInertiaApp({
                 preset: ManiratnGold,
                 options: {
                     darkModeSelector: '.dark',
+                    cssLayer: {
+                        name: 'primevue',
+                        order: 'theme, base, primevue, components, utilities',
+                    },
                 },
             },
             ripple: true,
@@ -89,6 +93,6 @@ createInertiaApp({
         app.mount(el);
     },
     progress: {
-        color: '#4B5563',
+        color: '#c08f34',
     },
 });

@@ -139,8 +139,7 @@ watch(
                 forceSelection
                 dropdown
                 dropdownMode="blank"
-                placeholder="Search customer by name or mobile..."
-                class="customer-selector w-full"
+                class="customer-selector erp-entity-selector w-full"
                 inputClass="customer-selector-input w-full"
                 panelClass="customer-selector-panel"
                 :class="{ 'p-invalid': errorMessage }"

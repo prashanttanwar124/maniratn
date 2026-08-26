@@ -462,7 +462,7 @@ const markComplete = async () => {
     <AppLayout>
         <div class="space-y-6">
             <!-- Header section -->
-            <div class="border-b border-surface-200 bg-white px-5 py-5">
+            <div class="erp-page-header border border-surface-200 bg-white px-5 py-5">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-3">
@@ -497,7 +497,7 @@ const markComplete = async () => {
             </div>
 
             <!-- Top Filter Controls Bar with PrimeVue DatePicker -->
-            <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div class="flex flex-wrap items-end gap-6">
                         <div class="flex flex-col">
@@ -614,23 +614,23 @@ const markComplete = async () => {
 
             <!-- Summary KPI Cards -->
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Expected Items</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ summary?.expected_items || 0 }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Counted Items</p>
                     <p class="mt-2 text-2xl font-semibold text-emerald-600">{{ summary?.counted_items || 0 }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Remaining</p>
                     <p class="mt-2 text-2xl font-semibold text-amber-600">{{ summary?.remaining_items || 0 }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Match %</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ summary?.match_percentage || 0 }}%</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Counted Net Weight</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ formatWeight(summary?.counted_net_weight) }}</p>
                     <p class="mt-1 text-xs text-surface-500">Expected: {{ formatWeight(summary?.expected_net_weight) }}</p>
@@ -680,8 +680,8 @@ const markComplete = async () => {
 
                     <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-surface-500 border-t border-surface-100 pt-3">
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="border border-surface-200 bg-surface-50 px-2 py-1">Example: G00025</span>
-                            <span class="border border-surface-200 bg-surface-50 px-2 py-1">Duplicate scan blocked</span>
+                            <span class="erp-hint-chip border border-surface-200 bg-surface-50 px-2 py-1">Example: G00025</span>
+                            <span class="erp-hint-chip border border-surface-200 bg-surface-50 px-2 py-1">Duplicate scan blocked</span>
                         </div>
                         <div class="flex flex-wrap items-center gap-3 text-[11px]">
                             <span class="inline-flex items-center gap-1.5 font-medium text-emerald-700">
@@ -854,7 +854,7 @@ const markComplete = async () => {
                         <div v-if="previewImage">
                             <img :src="previewImage" class="h-16 w-16 border border-surface-200 object-cover" />
                         </div>
-                        <div v-else class="flex h-16 w-16 items-center justify-center border border-dashed border-surface-300 bg-white text-xs text-surface-400">No Img</div>
+                        <div v-else class="erp-media-placeholder flex h-16 w-16 items-center justify-center border border-dashed border-surface-300 bg-white text-xs text-surface-400">No Img</div>
                     </div>
                 </div>
 

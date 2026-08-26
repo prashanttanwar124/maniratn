@@ -116,7 +116,7 @@ const deleteRecord = () => {
     <AppLayout>
         <Toast />
         <div class="space-y-6">
-            <section class="border border-surface-200 bg-white px-5 py-6">
+            <section class="erp-page-header border border-surface-200 bg-white px-5 py-6">
                 <div class="flex flex-col gap-5">
                     <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                         <div class="max-w-3xl">
@@ -137,26 +137,26 @@ const deleteRecord = () => {
             </section>
 
             <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Karigars</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ metrics?.karigar_count || 0 }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Cash Exposure</p>
                     <p class="mt-2 text-2xl font-semibold text-red-600">{{ formatCurrency(metrics?.karigar_cash_exposure) }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Gold With Karigars</p>
                     <p class="mt-2 text-2xl font-semibold text-amber-700">{{ formatWeight(metrics?.karigar_gold_out) }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Urgent Accounts</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ metrics?.urgent_accounts || 0 }}</p>
                 </div>
             </section>
 
             <section class="grid grid-cols-1 gap-4 xl:grid-cols-3">
-                <div class="overflow-hidden border border-surface-200 bg-white xl:col-span-2">
+                <div class="erp-panel overflow-hidden border border-surface-200 bg-white xl:col-span-2">
                     <div class="border-b border-surface-200 px-5 py-4">
                         <h2 class="text-lg font-semibold text-surface-900">Priority Recovery</h2>
                         <p class="mt-1 text-sm text-surface-500">Karigars with the highest combined cash and metal exposure.</p>
@@ -190,7 +190,7 @@ const deleteRecord = () => {
                     </div>
                 </div>
 
-                <div class="overflow-hidden border border-surface-200 bg-white">
+                <div class="erp-panel overflow-hidden border border-surface-200 bg-white">
                     <div class="border-b border-surface-200 px-5 py-4">
                         <h2 class="text-lg font-semibold text-surface-900">Recovery Notes</h2>
                         <p class="mt-1 text-sm text-surface-500">Suggested workshop follow-up actions.</p>
@@ -203,7 +203,7 @@ const deleteRecord = () => {
                 </div>
             </section>
 
-            <section class="overflow-hidden border border-surface-200 bg-white">
+            <section class="erp-panel overflow-hidden border border-surface-200 bg-white">
                 <div class="border-b border-surface-200 px-5 py-4">
                     <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                         <div>

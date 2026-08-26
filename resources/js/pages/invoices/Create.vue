@@ -587,7 +587,7 @@ const submitInvoice = () => {
 <template>
     <AppLayout>
         <div class="space-y-6">
-            <section class="relative overflow-hidden border border-surface-200 bg-white">
+            <section class="erp-panel relative overflow-hidden border border-surface-200 bg-white">
                 <div class="absolute inset-y-0 right-0 hidden w-80 bg-[radial-gradient(circle_at_top_right,_rgba(245,158,11,0.16),_transparent_62%)] lg:block" />
                 <div class="relative flex flex-col gap-6 px-5 py-6 lg:flex-row lg:items-end lg:justify-between">
                     <div class="max-w-3xl">
@@ -743,8 +743,8 @@ const submitInvoice = () => {
                     </div>
 
                     <!-- Scanner Input -->
-                    <div class="flex gap-3 border-b border-surface-200 bg-surface-50 p-4">
-                        <IconField class="flex-1">
+                    <div class="erp-subpanel m-4 flex gap-3 border border-surface-200 bg-surface-50 p-3">
+                        <IconField class="erp-icon-field flex-1">
                             <InputIcon class="pi pi-barcode" />
                             <InputText ref="barcodeInput" v-model="scannedBarcode" @keydown.enter="fetchProduct" placeholder="Scan barcode or enter product code..." class="w-full" />
                         </IconField>
@@ -752,7 +752,7 @@ const submitInvoice = () => {
                         <Button label="Add Item" icon="pi pi-plus" @click="fetchProduct" :loading="isProcessing" />
                     </div>
 
-                    <div v-if="hasInvalidDraftItems" class="border-b border-red-200 bg-red-50 px-4 py-3">
+                    <div v-if="hasInvalidDraftItems" class="erp-alert-row mx-4 mb-3 border border-red-200 bg-red-50 px-4 py-3">
                         <div class="flex items-start gap-3 text-sm text-red-700">
                             <i class="pi pi-exclamation-triangle mt-0.5"></i>
                             <div>
@@ -762,7 +762,7 @@ const submitInvoice = () => {
                         </div>
                     </div>
 
-                    <div v-if="draftValidationFailed" class="border-b border-amber-200 bg-amber-50 px-4 py-3">
+                    <div v-if="draftValidationFailed" class="erp-alert-row mx-4 mb-3 border border-amber-200 bg-amber-50 px-4 py-3">
                         <div class="flex items-start justify-between gap-3 text-sm text-amber-800">
                             <div class="flex items-start gap-3">
                                 <i class="pi pi-exclamation-circle mt-0.5"></i>
@@ -776,7 +776,7 @@ const submitInvoice = () => {
                     </div>
 
                     <!-- Table -->
-                    <DataTable :value="form.items" scrollable scrollHeight="420px" stripedRows rowHover size="small" dataKey="id" class="text-sm">
+                    <DataTable :value="form.items" scrollable scrollHeight="420px" stripedRows rowHover size="small" dataKey="id" class="erp-line-items text-sm">
                         <!-- Empty -->
                         <template #empty>
                             <div class="flex flex-col items-center py-16 text-center text-surface-500">

@@ -420,13 +420,13 @@ onMounted(() => {
                             <p class="mt-2 text-sm text-surface-500">Enter the attendance passcode above. The terminal will guide the next step automatically.</p>
                         </div>
 
-                        <div class="border border-surface-200 bg-white px-4 py-4">
+                        <div class="erp-subpanel border border-surface-200 bg-white px-4 py-4">
                             <p class="text-xs uppercase tracking-wide text-surface-500">Available Outside Reasons</p>
                             <div class="mt-3 flex flex-wrap gap-2">
                                 <span
                                     v-for="reason in props.reasons"
                                     :key="reason.value"
-                                    class="border border-surface-200 bg-surface-50 px-3 py-2 text-sm font-medium text-surface-700"
+                                    class="erp-hint-chip border border-surface-200 bg-surface-50 px-3 py-2 text-sm font-medium text-surface-700"
                                 >
                                     {{ reason.label }}
                                 </span>

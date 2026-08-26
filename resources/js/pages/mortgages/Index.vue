@@ -236,7 +236,7 @@ const tableData = computed(() => props.customers.data);
                                 <img :src="previewImage" class="h-16 w-16 rounded border border-gray-300 object-cover shadow-sm" />
                             </div>
 
-                            <div v-else class="flex h-16 w-16 items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400">No Img</div>
+                            <div v-else class="erp-media-placeholder flex h-16 w-16 items-center justify-center border border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400">No Img</div>
                         </div>
                     </div>
 

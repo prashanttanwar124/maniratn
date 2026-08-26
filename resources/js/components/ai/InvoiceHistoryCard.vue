@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CalendarDays, CheckCircle2, Clock3, FileSearch, Phone, Printer, ReceiptText, ShoppingBag, UserRound, XCircle } from 'lucide-vue-next';
+import { CalendarDays, CheckCircle2, Clock3, ExternalLink, FileSearch, Phone, Printer, ReceiptText, ShoppingBag, UserRound, XCircle } from 'lucide-vue-next';
 
 defineProps<{
     action: {
@@ -27,7 +27,7 @@ const statusClass = (status: string) => {
 <template>
     <section
         v-if="action.result?.found && action.result.invoices?.length"
-        class="my-3 overflow-hidden border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_5px_18px_rgba(15,23,42,0.07)]"
+        class="erp-ai-card my-3 overflow-hidden border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_5px_18px_rgba(15,23,42,0.07)]"
         aria-label="Previous purchase invoices"
     >
         <header class="border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
@@ -42,9 +42,19 @@ const statusClass = (status: string) => {
                     </div>
                 </div>
 
-                <span class="inline-flex shrink-0 items-center border border-amber-300 bg-amber-50 px-2 py-0.5 text-[9.5px] font-semibold tracking-wide text-amber-900 uppercase">
-                    {{ action.result.count ?? action.result.invoices.length }} found
-                </span>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <span class="inline-flex shrink-0 items-center border border-amber-300 bg-amber-50 px-2 py-0.5 text-[9.5px] font-semibold tracking-wide text-amber-900 uppercase">
+                        {{ action.result.count ?? action.result.invoices.length }} found
+                    </span>
+                    <a
+                        href="/invoices"
+                        class="inline-flex items-center gap-1 border border-surface-300 bg-white px-2 py-0.5 text-[10px] font-medium text-surface-700 hover:border-[#c08f34] hover:text-[#1c3633] transition-colors"
+                        title="Open All Invoices"
+                    >
+                        <ExternalLink class="h-2.5 w-2.5 text-[#b07b24]" />
+                        Invoices
+                    </a>
+                </div>
             </div>
         </header>
 

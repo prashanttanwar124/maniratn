@@ -140,7 +140,7 @@ const deletePurity = () => {
         <Toast />
 
         <div class="space-y-6">
-            <section class="border border-surface-200 bg-white px-5 py-6">
+            <section class="erp-page-header border border-surface-200 bg-white px-5 py-6">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div class="max-w-3xl">
                         <div class="flex flex-wrap items-center gap-3">
@@ -155,21 +155,21 @@ const deletePurity = () => {
             </section>
 
             <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Total Purities</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ summary.total_purities }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Linked to Products</p>
                     <p class="mt-2 text-2xl font-semibold text-amber-700">{{ summary.linked_purities }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Unused Purities</p>
                     <p class="mt-2 text-2xl font-semibold text-emerald-700">{{ summary.unused_purities }}</p>
                 </div>
             </section>
 
-            <section class="overflow-hidden border border-surface-200 bg-white">
+            <section class="erp-panel overflow-hidden border border-surface-200 bg-white">
                 <div class="border-b border-surface-200 px-5 py-4">
                     <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                         <div>
@@ -178,7 +178,7 @@ const deletePurity = () => {
                         </div>
 
                         <div class="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,18rem)_14rem_auto]">
-                            <IconField>
+                            <IconField class="erp-icon-field">
                                 <InputIcon class="pi pi-search" />
                                 <InputText v-model="searchTerm" placeholder="Search purity name" class="w-full" />
                             </IconField>

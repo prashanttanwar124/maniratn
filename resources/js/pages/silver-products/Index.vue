@@ -530,7 +530,7 @@ const copyBarcode = async (barcode) => {
 <template>
     <AppLayout>
         <div class="space-y-6">
-            <div class="border-b border-surface-200 bg-white px-5 py-5">
+            <div class="erp-page-header border border-surface-200 bg-white px-5 py-5">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-3">
@@ -543,45 +543,48 @@ const copyBarcode = async (barcode) => {
             </div>
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="inventory-summary-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Total Silver SKUs</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ summary?.total_items || 0 }}</p>
                     <p class="mt-1 text-xs text-surface-500">Available: {{ summary?.available_items || 0 }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="inventory-summary-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Total Quantity</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ summary?.total_quantity || 0 }}</p>
                     <p class="mt-1 text-xs text-surface-500">Piece-based and stock-count view</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="inventory-summary-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Total Gross Weight</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ formatWeight(summary?.gross_weight) }}</p>
                     <p class="mt-1 text-xs text-surface-500">Across filtered silver products</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="inventory-summary-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Total Net Weight</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ formatWeight(summary?.net_weight) }}</p>
                     <p class="mt-1 text-xs text-surface-500">Useful for weight-based silver stock</p>
                 </div>
             </div>
 
-            <div class="border border-surface-200 bg-white">
+            <div class="erp-panel border border-surface-200 bg-white">
                 <div class="border-b border-surface-200 px-5 py-4">
                     <h3 class="text-base font-semibold text-surface-900">Silver Category Breakdown</h3>
                     <p class="mt-1 text-sm text-surface-500">Counts, quantity, and weight split by silver category.</p>
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
-                    <div v-for="entry in category_breakdown" :key="entry.category" class="border border-surface-200 bg-surface-50 px-4 py-4">
+                    <div v-for="entry in category_breakdown" :key="entry.category" class="inventory-category-card border border-surface-200 bg-surface-50 px-5 py-5">
                         <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <p class="text-sm font-semibold text-surface-900">{{ entry.category }}</p>
-                                <p class="mt-1 text-xs text-surface-500">{{ entry.items_count }} sku{{ entry.items_count === 1 ? '' : 's' }} · {{ entry.quantity }} qty</p>
+                            <div class="flex min-w-0 items-center gap-3">
+                                <span class="inventory-category-card__icon"><i class="pi pi-box"></i></span>
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm font-semibold text-surface-900">{{ entry.category }}</p>
+                                    <p class="mt-1 text-xs text-surface-500">{{ entry.items_count }} sku{{ entry.items_count === 1 ? '' : 's' }} · {{ entry.quantity }} qty</p>
+                                </div>
                             </div>
-                            <Tag :value="`${entry.sold_count} sold`" severity="warn" />
+                            <Tag class="inventory-category-card__tag" :value="`${entry.sold_count} sold`" severity="warn" />
                         </div>
 
-                        <div class="mt-4 space-y-2 text-sm">
+                        <div class="inventory-category-card__metrics mt-5 space-y-2.5 border-t border-surface-200 pt-4 text-sm">
                             <div class="flex items-center justify-between gap-3">
                                 <span class="text-surface-500">Gross Weight</span>
                                 <span class="font-medium text-surface-900">{{ formatWeight(entry.gross_weight) }}</span>
@@ -617,7 +620,7 @@ const copyBarcode = async (barcode) => {
                 <div class="border-b border-surface-200 bg-surface-50 px-5 py-4">
                     <div class="flex flex-col gap-4">
                         <div class="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_24rem]">
-                            <div class="border border-surface-200 bg-white px-4 py-4">
+                            <div class="erp-subpanel border border-surface-200 bg-white px-4 py-4">
                                 <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                                     <div class="min-w-0">
                                         <p class="text-sm font-medium text-surface-900">Filters</p>
@@ -644,9 +647,9 @@ const copyBarcode = async (barcode) => {
                                 </div>
                             </div>
 
-                            <div class="border border-surface-200 bg-white px-4 py-4">
+                            <div class="erp-subpanel border border-surface-200 bg-white px-4 py-4">
                                 <div class="flex items-start gap-3">
-                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                                    <div class="erp-icon-tile flex h-10 w-10 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
                                         <ScanLine class="h-5 w-5" />
                                     </div>
                                     <div class="min-w-0 flex-1">
@@ -673,8 +676,8 @@ const copyBarcode = async (barcode) => {
                                     </div>
 
                                     <div class="flex flex-wrap items-center gap-2 text-xs text-surface-500">
-                                        <span class="border border-surface-200 bg-surface-50 px-2 py-1">Example: S00025</span>
-                                        <span>Press Enter after scan</span>
+                                        <span class="erp-hint-chip border border-surface-200 bg-surface-50 px-2 py-1">Example: S00025</span>
+                                        <span class="erp-hint-chip border border-surface-200 bg-white px-2 py-1">Press Enter after scan</span>
                                     </div>
                                 </div>
                             </div>
@@ -705,7 +708,7 @@ const copyBarcode = async (barcode) => {
                                 <div v-if="data.image_path">
                                     <Image :src="`/storage/${data.image_path}`" alt="Silver product image" width="52" preview />
                                 </div>
-                                <div v-else class="flex h-12 w-12 items-center justify-center border border-surface-200 bg-surface-50 text-xs text-surface-400">No Img</div>
+                                <div v-else class="erp-media-placeholder flex h-12 w-12 items-center justify-center border border-surface-200 bg-surface-50 text-xs text-surface-400">No Img</div>
                             </template>
                         </Column>
 
@@ -713,7 +716,7 @@ const copyBarcode = async (barcode) => {
                             <template #body="{ data }">
                                 <button
                                     type="button"
-                                    class="border border-surface-200 bg-surface-50 px-3 py-2 text-left text-xs font-medium tracking-wide text-surface-700 transition hover:bg-surface-100"
+                                    class="erp-code-pill erp-action-button border border-surface-200 bg-surface-50 px-3 py-2 text-left text-xs font-medium tracking-wide text-surface-700 transition hover:bg-surface-100"
                                     @click.stop="copyBarcode(data.barcode)"
                                 >
                                     {{ data.barcode || 'No Barcode' }}
@@ -898,7 +901,7 @@ const copyBarcode = async (barcode) => {
                             <div v-if="previewImage">
                                 <img :src="previewImage" class="h-16 w-16 border border-surface-200 object-cover" />
                             </div>
-                            <div v-else class="flex h-16 w-16 items-center justify-center border border-dashed border-surface-300 bg-white text-xs text-surface-400">No Img</div>
+                            <div v-else class="erp-media-placeholder flex h-16 w-16 items-center justify-center border border-dashed border-surface-300 bg-white text-xs text-surface-400">No Img</div>
                         </div>
                     </div>
 

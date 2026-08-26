@@ -424,7 +424,7 @@ const clearAttendanceCard = (user) => {
         <Toast />
 
         <div class="space-y-6">
-            <div class="border-b border-surface-200 bg-white px-5 py-5">
+            <div class="erp-page-header border border-surface-200 bg-white px-5 py-5">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-3">

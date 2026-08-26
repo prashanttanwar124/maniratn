@@ -396,7 +396,7 @@ const submitTransaction = () => {
 
         <div class="space-y-6">
             <!-- Header -->
-            <div class="border-b border-surface-200 bg-white px-5 py-5">
+            <div class="erp-page-header border border-surface-200 bg-white px-5 py-5">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-3">
@@ -420,7 +420,7 @@ const submitTransaction = () => {
 
             <!-- Summary -->
             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <div class="text-xs tracking-wide text-surface-500 uppercase">Gold Balance</div>
                     <div class="mt-2 text-3xl font-semibold text-surface-900">
                         {{ formatWeight(currentGoldBal) }}
@@ -430,7 +430,7 @@ const submitTransaction = () => {
                     </div>
                 </div>
 
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <div class="text-xs tracking-wide text-surface-500 uppercase">Silver Balance</div>
                     <div class="mt-2 text-3xl font-semibold text-surface-900">
                         {{ formatWeight(currentSilverBal) }}
@@ -440,7 +440,7 @@ const submitTransaction = () => {
                     </div>
                 </div>
 
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <div class="text-xs tracking-wide text-surface-500 uppercase">Cash Balance</div>
                     <div class="mt-2 text-3xl font-semibold text-surface-900">
                         {{ formatCurrency(currentCashBal) }}

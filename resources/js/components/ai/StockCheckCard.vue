@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Boxes, Check, Copy, Info, Search } from 'lucide-vue-next';
+import { Boxes, Check, Copy, ExternalLink, Info, Search } from 'lucide-vue-next';
 import { ref } from 'vue';
 
 interface ActionItem {
@@ -26,26 +26,36 @@ const copyBarcode = (barcode: string) => {
 
 <template>
     <section
-        class="my-3 overflow-hidden rounded-none border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
+        class="erp-ai-card my-3 overflow-hidden border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
         style="font-family: 'Poppins', sans-serif !important"
         aria-label="Stock availability results"
     >
         <!-- 🏛️ 1. Sleek Compact Header (Light Luxury ERP Style) -->
         <div class="flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
-            <div class="flex items-center gap-2.5">
+            <div class="flex items-center gap-2.5 min-w-0">
                 <span class="flex h-7 w-7 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
                     <Boxes class="h-3.5 w-3.5" />
                 </span>
-                <div class="flex flex-col justify-center">
-                    <p class="!m-0 !p-0 !text-xs font-semibold tracking-wide text-surface-900 !leading-tight">
+                <div class="flex flex-col justify-center min-w-0">
+                    <p class="!m-0 !p-0 !text-xs font-semibold tracking-wide text-surface-900 !leading-tight truncate">
                         {{ action.result.query || 'Showroom Inventory' }}
                     </p>
-                    <p class="!m-0 !p-0 !text-[10px] font-normal text-surface-500 !leading-tight">Live showroom stock</p>
+                    <p class="!m-0 !p-0 !text-[10.5px] font-normal text-surface-500 !leading-tight mt-0.5">Live showroom stock</p>
                 </div>
             </div>
-            <span class="shrink-0 border border-surface-300 bg-white px-2 py-0.5 text-[10.5px] font-mono font-medium text-surface-700 shadow-2xs">
-                {{ action.result.total_items ?? 0 }} items
-            </span>
+            <div class="flex items-center gap-1.5 shrink-0">
+                <span class="border border-surface-300 bg-white px-2 py-0.5 text-[10px] font-mono font-medium text-surface-700">
+                    {{ action.result.total_items ?? 0 }} items
+                </span>
+                <a
+                    href="/products"
+                    class="inline-flex items-center gap-1 border border-surface-300 bg-white px-2 py-0.5 text-[10px] font-medium text-surface-700 hover:border-[#c08f34] hover:text-[#1c3633] transition-colors"
+                    title="Open Inventory Catalog"
+                >
+                    <ExternalLink class="h-2.5 w-2.5 text-[#b07b24]" />
+                    Catalog
+                </a>
+            </div>
         </div>
 
         <!-- 💡 2. Smart Proximity Info (If requested weight is unavailable) -->
@@ -85,16 +95,14 @@ const copyBarcode = (barcode: string) => {
                 <div class="min-w-0 flex-1 space-y-0.5">
                     <div class="flex flex-wrap items-center gap-1.5">
                         <span class="text-xs font-medium text-surface-900">{{ item.name }}</span>
-                        <span class="py-0.2 rounded-none border border-amber-200 bg-amber-50 px-1.5 font-mono text-[9px] font-bold text-amber-900 uppercase">
+                        <span class="border border-amber-200 bg-amber-50 px-1.5 py-0.2 font-mono text-[9px] font-bold text-amber-900 uppercase">
                             {{ item.purity || '22K' }}
                         </span>
                     </div>
-                    <div class="flex items-center gap-1.5 text-[10px] text-surface-400">
+                    <div class="flex items-center gap-1.5 text-[10.5px] text-surface-400">
                         <span>{{ item.category || 'Jewellery' }}</span>
                         <span>•</span>
-                        <span
-                            >Making: <strong class="text-surface-600">{{ item.making }}</strong></span
-                        >
+                        <span>Making: <strong class="text-surface-600">{{ item.making }}</strong></span>
                     </div>
                 </div>
 
@@ -105,7 +113,7 @@ const copyBarcode = (barcode: string) => {
                         type="button"
                         @click="copyBarcode(item.barcode)"
                         :title="copiedBarcode === item.barcode ? 'Copied!' : 'Copy Barcode'"
-                        class="inline-flex min-h-7 items-center gap-1 rounded-none border border-surface-200 bg-surface-50 px-2 py-1 text-[9.5px] font-medium text-surface-600 transition-colors hover:border-[#1c3633] hover:bg-[#1c3633] hover:text-white"
+                        class="inline-flex min-h-7 items-center gap-1 border border-surface-200 bg-surface-50 px-2 py-1 text-[9.5px] font-medium text-surface-600 transition-colors hover:border-[#1c3633] hover:bg-[#1c3633] hover:text-white"
                         :aria-label="`Copy barcode ${item.barcode}`"
                     >
                         <Check v-if="copiedBarcode === item.barcode" class="h-2.5 w-2.5 text-emerald-500" />

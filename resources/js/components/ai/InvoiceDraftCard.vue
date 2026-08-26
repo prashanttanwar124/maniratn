@@ -95,7 +95,7 @@ const setPurity = (draft: any, purity: string) => {
 
 <template>
     <section
-        class="my-3 overflow-hidden rounded-none border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
+class="erp-ai-card my-3 overflow-hidden border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
         style="font-family: 'Poppins', sans-serif !important"
         aria-label="Invoice draft"
     >
@@ -125,15 +125,25 @@ const setPurity = (draft: any, purity: string) => {
             <div class="border border-surface-200 bg-[#fafbfa]">
                 <div class="flex items-center justify-between gap-3 border-b border-surface-200 px-3 py-2">
                     <span class="text-[10px] font-semibold tracking-wide text-surface-500 uppercase">Review summary</span>
-                    <button
-                        type="button"
-                        class="flex items-center gap-1 border border-surface-300 bg-white px-2 py-1 text-[10px] font-medium text-surface-700 transition-colors hover:border-[#c08f34] hover:text-[#1c3633]"
-                        :aria-expanded="isEditing"
-                        @click="isEditing = !isEditing"
-                    >
-                        <Pencil class="h-3 w-3 text-[#b07b24]" />
-                        {{ isEditing ? 'Hide details' : 'Edit details' }}
-                    </button>
+                    <div class="flex items-center gap-1.5">
+                        <a
+                            href="/invoices/create"
+                            class="flex items-center gap-1 border border-surface-300 bg-white px-2 py-1 text-[10px] font-medium text-surface-700 transition-colors hover:border-[#c08f34] hover:text-[#1c3633]"
+                            title="Open Full Billing Screen"
+                        >
+                            <ExternalLink class="h-3 w-3 text-[#b07b24]" />
+                            Full Form
+                        </a>
+                        <button
+                            type="button"
+                            class="flex items-center gap-1 border border-surface-300 bg-white px-2 py-1 text-[10px] font-medium text-surface-700 transition-colors hover:border-[#c08f34] hover:text-[#1c3633]"
+                            :aria-expanded="isEditing"
+                            @click="isEditing = !isEditing"
+                        >
+                            <Pencil class="h-3 w-3 text-[#b07b24]" />
+                            {{ isEditing ? 'Hide details' : 'Edit details' }}
+                        </button>
+                    </div>
                 </div>
                 <dl class="grid grid-cols-2 divide-x divide-y divide-surface-200 text-[10.5px] min-[460px]:grid-cols-4 min-[460px]:divide-y-0">
                     <div class="p-2.5">

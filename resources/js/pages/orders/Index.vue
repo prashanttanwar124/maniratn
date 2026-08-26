@@ -509,7 +509,7 @@ watch(
         <Toast />
         <div class="space-y-6">
             <!-- Header -->
-            <div class="border-b border-surface-200 bg-white px-5 py-5">
+            <div class="erp-page-header border border-surface-200 bg-white px-5 py-5">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-3">
@@ -528,7 +528,7 @@ watch(
 
             <!-- Stats -->
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-sm text-surface-500">Pending</p>
@@ -543,7 +543,7 @@ watch(
                     <p class="mt-3 text-xs text-surface-500">{{ overdueNew }} overdue · {{ dueSoonNew }} due within 3 days</p>
                 </div>
 
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-sm text-surface-500">In Production</p>
@@ -558,7 +558,7 @@ watch(
                     <p class="mt-3 text-xs text-surface-500">Assigned to karigars and suppliers with live metal tracking</p>
                 </div>
 
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-sm text-surface-500">Metal Issued</p>
@@ -571,7 +571,7 @@ watch(
                     <p class="mt-3 text-xs text-surface-500">Net issued into active workshop jobs</p>
                 </div>
 
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-sm text-surface-500">Ready</p>
@@ -588,7 +588,7 @@ watch(
             </div>
 
             <!-- Tabs / Tables -->
-            <div class="border border-surface-200 bg-white">
+            <div class="erp-panel border border-surface-200 bg-white">
                 <div class="border-b border-surface-200 px-5 py-4">
                     <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div>
@@ -596,7 +596,7 @@ watch(
                             <p class="mt-1 text-sm text-surface-500">Move items from intake to assignment, production, and ready stock in one place.</p>
                         </div>
                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                            <div v-for="step in pipelineSteps" :key="step.label" class="border border-surface-200 bg-surface-50 px-3 py-3">
+                            <div v-for="step in pipelineSteps" :key="step.label" class="erp-stat-card border border-surface-200 bg-surface-50 px-3 py-3">
                                 <p class="text-xs font-medium uppercase tracking-wide text-surface-500">{{ step.label }}</p>
                                 <p class="mt-2 text-xl font-semibold text-surface-900">{{ step.value }}</p>
                                 <p class="mt-1 text-xs text-surface-500">{{ step.hint }}</p>
@@ -639,8 +639,8 @@ watch(
                                         <p class="mt-1 text-sm text-surface-500">Items waiting for assignment to workshop or supplier.</p>
                                     </div>
                                     <div class="flex flex-wrap items-center gap-2 text-xs text-surface-500">
-                                        <span class="border border-surface-200 bg-surface-50 px-3 py-1.5">{{ orders.NEW.length }} open items</span>
-                                        <span class="border border-red-200 bg-red-50 px-3 py-1.5 text-red-700">{{ overdueNew }} overdue</span>
+                                        <span class="erp-hint-chip border border-surface-200 bg-surface-50 px-3 py-1.5">{{ orders.NEW.length }} open items</span>
+                                        <span class="erp-hint-chip border border-red-200 bg-red-50 px-3 py-1.5 text-red-700">{{ overdueNew }} overdue</span>
                                     </div>
                                 </div>
                             </div>
@@ -711,8 +711,8 @@ watch(
                                         <p class="mt-1 text-sm text-surface-500">Track issued metal, movement history, and finished receipt.</p>
                                     </div>
                                     <div class="flex flex-wrap items-center gap-2 text-xs text-surface-500">
-                                        <span class="border border-surface-200 bg-surface-50 px-3 py-1.5">{{ orders.ASSIGNED.length }} active jobs</span>
-                                        <span class="border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-700">{{ formatWeight(totalGoldInPipeline) }} g issued</span>
+                                        <span class="erp-hint-chip border border-surface-200 bg-surface-50 px-3 py-1.5">{{ orders.ASSIGNED.length }} active jobs</span>
+                                        <span class="erp-hint-chip border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-700">{{ formatWeight(totalGoldInPipeline) }} g issued</span>
                                     </div>
                                 </div>
                             </div>
@@ -788,8 +788,8 @@ watch(
                                         <p class="mt-1 text-sm text-surface-500">Completed items available for invoice creation.</p>
                                     </div>
                                     <div class="flex flex-wrap items-center gap-2 text-xs text-surface-500">
-                                        <span class="border border-surface-200 bg-surface-50 px-3 py-1.5">{{ orders.READY.length }} ready items</span>
-                                        <span class="border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-700">{{ formatWeight(totalReadyWeight) }} g ready weight</span>
+                                        <span class="erp-hint-chip border border-surface-200 bg-surface-50 px-3 py-1.5">{{ orders.READY.length }} ready items</span>
+                                        <span class="erp-hint-chip border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-700">{{ formatWeight(totalReadyWeight) }} g ready weight</span>
                                     </div>
                                 </div>
                             </div>

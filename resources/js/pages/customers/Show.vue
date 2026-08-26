@@ -141,7 +141,7 @@ const getSeverity = (type) => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="space-y-6 p-4">
-            <section class="relative overflow-hidden border border-surface-200 bg-white">
+            <section class="erp-panel relative overflow-hidden border border-surface-200 bg-white">
                 <div class="absolute inset-y-0 right-0 hidden w-96 bg-[radial-gradient(circle_at_top_right,_rgba(245,158,11,0.16),_transparent_62%)] lg:block" />
                 <div class="relative flex flex-col gap-6 px-5 py-6 lg:flex-row lg:items-start lg:justify-between">
                     <div class="max-w-3xl">
@@ -266,7 +266,7 @@ const getSeverity = (type) => {
 
                 <div v-if="vault?.has_card && vault?.card_status !== 'DISABLED'" class="p-4 sm:p-5">
                     <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr]">
-                        <div class="flex flex-col justify-between border border-surface-200 bg-surface-50 p-4">
+                        <div class="erp-subpanel flex flex-col justify-between border border-surface-200 bg-surface-50 p-4">
                             <div>
                                 <label class="block text-xs font-semibold tracking-wider text-surface-600 uppercase">Public Customer Vault URL</label>
                                 <div class="mt-2 flex items-center gap-2">
@@ -274,7 +274,7 @@ const getSeverity = (type) => {
                                         type="text"
                                         :value="vault?.vault_url"
                                         readonly
-                                        class="w-full border border-surface-200 bg-white px-3 py-2 text-xs font-mono text-surface-800 focus:outline-none"
+                                        class="erp-form-control w-full border border-surface-200 bg-white px-3 py-2 text-xs font-mono text-surface-800 focus:outline-none"
                                     />
                                     <Button
                                         :icon="copied ? 'pi pi-check' : 'pi pi-copy'"
@@ -293,19 +293,19 @@ const getSeverity = (type) => {
                         </div>
 
                         <div class="grid grid-cols-2 gap-3">
-                            <div class="border border-surface-200 bg-white p-3">
+                            <div class="erp-stat-card border border-surface-200 bg-white p-3">
                                 <p class="text-xs font-medium text-surface-500">Card Scans / Taps</p>
                                 <p class="mt-1 font-mono text-lg font-bold text-surface-900">{{ vault?.card_access_count || 0 }}</p>
                             </div>
-                            <div class="border border-surface-200 bg-white p-3">
+                            <div class="erp-stat-card border border-surface-200 bg-white p-3">
                                 <p class="text-xs font-medium text-surface-500">Last Tapped</p>
                                 <p class="mt-1 text-xs font-semibold text-surface-800">{{ vault?.card_last_accessed_at ? formatDate(vault.card_last_accessed_at) : 'Never' }}</p>
                             </div>
-                            <div class="border border-surface-200 bg-white p-3">
+                            <div class="erp-stat-card border border-surface-200 bg-white p-3">
                                 <p class="text-xs font-medium text-surface-500">Invoices In Vault</p>
                                 <p class="mt-1 font-mono text-lg font-bold text-surface-900">{{ vault?.invoices_count || 0 }}</p>
                             </div>
-                            <div class="border border-surface-200 bg-white p-3">
+                            <div class="erp-stat-card border border-surface-200 bg-white p-3">
                                 <p class="text-xs font-medium text-surface-500">Active Schemes</p>
                                 <p class="mt-1 font-mono text-lg font-bold text-surface-900">{{ vault?.schemes_count || 0 }}</p>
                             </div>
@@ -354,7 +354,7 @@ const getSeverity = (type) => {
             </section>
 
             <section class="grid grid-cols-1 gap-6 xl:grid-cols-[1.6fr_1fr]">
-                <div class="overflow-hidden border border-surface-200 bg-white">
+                <div class="erp-panel overflow-hidden border border-surface-200 bg-white">
                     <div class="border-b border-surface-200 px-5 py-4">
                         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                             <div>
@@ -427,7 +427,7 @@ const getSeverity = (type) => {
                 </div>
 
                 <div class="space-y-6">
-                    <div class="overflow-hidden border border-surface-200 bg-white">
+                    <div class="erp-panel overflow-hidden border border-surface-200 bg-white">
                         <div class="border-b border-surface-200 px-5 py-4">
                             <h3 class="text-base font-semibold text-surface-900">Account actions</h3>
                             <p class="mt-1 text-sm text-surface-500">Most common next steps for this customer account.</p>
@@ -452,7 +452,7 @@ const getSeverity = (type) => {
                         </div>
                     </div>
 
-                    <div class="overflow-hidden border border-surface-200 bg-white">
+                    <div class="erp-panel overflow-hidden border border-surface-200 bg-white">
                         <div class="border-b border-surface-200 px-5 py-4">
                             <h3 class="text-base font-semibold text-surface-900">Recovery note</h3>
                             <p class="mt-1 text-sm text-surface-500">Use this at-a-glance summary during collection follow-up.</p>

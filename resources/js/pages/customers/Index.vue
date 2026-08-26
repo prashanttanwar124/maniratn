@@ -262,7 +262,7 @@ const deleteCustomer = (customer) => {
     <AppLayout :breadcrumbs="breadcrumbs">
         <Toast />
         <div class="space-y-6">
-            <section class="relative overflow-hidden border border-surface-200 bg-white">
+            <section class="erp-panel relative overflow-hidden border border-surface-200 bg-white">
                 <div class="absolute inset-y-0 right-0 hidden w-80 bg-[radial-gradient(circle_at_top_right,_rgba(217,119,6,0.14),_transparent_62%)] lg:block" />
                 <div class="relative flex flex-col gap-6 px-5 py-6 lg:flex-row lg:items-end lg:justify-between">
                     <div class="max-w-3xl">
@@ -492,7 +492,7 @@ const deleteCustomer = (customer) => {
                 </div>
 
                 <div class="space-y-6">
-                    <div class="overflow-hidden border border-surface-200 bg-white">
+                    <div class="erp-panel overflow-hidden border border-surface-200 bg-white">
                         <div class="border-b border-surface-200 px-5 py-4">
                             <div class="flex items-center gap-3">
                                 <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-amber-700">1</span>
@@ -519,7 +519,7 @@ const deleteCustomer = (customer) => {
                         </div>
                     </div>
 
-                    <div class="overflow-hidden border border-surface-200 bg-white">
+                    <div class="erp-panel overflow-hidden border border-surface-200 bg-white">
                         <div class="border-b border-surface-200 px-5 py-4">
                             <div class="flex items-center gap-3">
                                 <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-700">

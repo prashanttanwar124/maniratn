@@ -63,7 +63,7 @@ const selectImage = (event: Event) => {
 
 <template>
     <div class="space-y-4">
-        <div class="rounded-lg border border-surface-200 bg-surface-50 p-3">
+        <div class="rounded-xl border border-surface-200 bg-surface-50 p-3 shadow-[0_4px_14px_rgba(20,40,38,0.05)]">
             <label class="mb-2 block text-xs font-medium text-surface-700">Product photo <span class="font-normal text-surface-400">(optional, max 2 MB)</span></label>
             <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-surface-300 bg-white px-3 py-3 hover:border-[#c08f34] hover:bg-amber-50/40">
                 <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-[#b07b24]"><ImagePlus class="h-4 w-4" /></span>
@@ -77,13 +77,13 @@ const selectImage = (event: Event) => {
             <small v-if="errors.image" class="mt-1 block text-xs text-red-600">{{ errors.image }}</small>
         </div>
 
-        <div>
+        <div class="rounded-xl border border-surface-200 bg-white p-3 shadow-[0_4px_14px_rgba(20,40,38,0.05)]">
             <label class="mb-1.5 block text-xs font-medium text-surface-700">Product name <span class="text-red-500">*</span></label>
             <InputText v-model="name" :autofocus="autofocusName" class="w-full" :invalid="Boolean(errors.name)" @blur="emit('field-blur')" />
             <small v-if="errors.name" class="mt-1 block text-xs text-red-600">{{ errors.name }}</small>
         </div>
 
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 rounded-xl border border-surface-200 bg-white p-3 shadow-[0_4px_14px_rgba(20,40,38,0.05)] sm:grid-cols-2">
             <div>
                 <label class="mb-1.5 block text-xs font-medium text-surface-700">Supplier <span class="text-red-500">*</span></label>
                 <Select
@@ -146,7 +146,7 @@ const selectImage = (event: Event) => {
             </div>
         </div>
 
-        <div v-if="showWeights" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div v-if="showWeights" class="grid grid-cols-1 gap-4 rounded-xl border border-surface-200 bg-white p-3 shadow-[0_4px_14px_rgba(20,40,38,0.05)] sm:grid-cols-2">
             <div>
                 <label class="mb-1.5 block text-xs font-medium text-surface-700">Gross weight <span class="text-red-500">*</span></label>
                 <InputNumber
@@ -179,7 +179,7 @@ const selectImage = (event: Event) => {
             </div>
         </div>
 
-        <div>
+        <div class="rounded-xl border border-surface-200 bg-white p-3 shadow-[0_4px_14px_rgba(20,40,38,0.05)]">
             <label class="mb-1.5 block text-xs font-medium text-surface-700">Making charge <span class="text-red-500">*</span></label>
             <div class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_180px]">
                 <InputNumber

@@ -531,7 +531,7 @@ const deleteTask = () => {
         <Toast />
 
         <div class="space-y-5">
-            <section class="border-b border-surface-200 bg-white px-5 py-5">
+            <section class="erp-page-header border border-surface-200 bg-white px-5 py-5">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-3">
@@ -543,7 +543,7 @@ const deleteTask = () => {
                     </div>
 
                     <div class="flex shrink-0 flex-wrap items-center gap-2">
-                        <div class="inline-flex rounded border border-surface-200 bg-surface-50 p-0.5" role="group" aria-label="Task view">
+                        <div class="erp-segmented-control inline-flex border border-surface-200 bg-surface-50 p-0.5" role="group" aria-label="Task view">
                             <button
                                 type="button"
                                 @click="viewMode = 'kanban'"
@@ -577,7 +577,7 @@ const deleteTask = () => {
                 <button
                     type="button"
                     :class="[
-                        'col-span-2 border bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 lg:col-span-1',
+                        'erp-stat-card col-span-2 border bg-white p-4 text-left transition-all lg:col-span-1',
                         isQueueActive('all') ? 'border-primary-300 ring-1 ring-primary-100' : 'border-surface-200',
                     ]"
                     @click="setQueue('all')"
@@ -597,7 +597,7 @@ const deleteTask = () => {
                 <button
                     type="button"
                     :class="[
-                        'border bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+                        'erp-stat-card border bg-white p-4 text-left transition-all',
                         isQueueActive('all', 'TODO') ? 'border-amber-300 ring-1 ring-amber-100' : 'border-surface-200',
                     ]"
                     @click="setQueue('all', 'TODO')"
@@ -614,7 +614,7 @@ const deleteTask = () => {
                 <button
                     type="button"
                     :class="[
-                        'border bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+                        'erp-stat-card border bg-white p-4 text-left transition-all',
                         isQueueActive('all', 'IN_PROGRESS') ? 'border-blue-300 ring-1 ring-blue-100' : 'border-surface-200',
                     ]"
                     @click="setQueue('all', 'IN_PROGRESS')"
@@ -631,7 +631,7 @@ const deleteTask = () => {
                 <button
                     type="button"
                     :class="[
-                        'border bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+                        'erp-stat-card border bg-white p-4 text-left transition-all',
                         isQueueActive('overdue') ? 'border-rose-400 ring-1 ring-rose-100' : metrics.overdue > 0 ? 'border-rose-200' : 'border-surface-200',
                     ]"
                     @click="setQueue('overdue')"
@@ -654,7 +654,7 @@ const deleteTask = () => {
                 <button
                     type="button"
                     :class="[
-                        'border bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+                        'erp-stat-card border bg-white p-4 text-left transition-all',
                         isQueueActive('completed_today') ? 'border-emerald-300 ring-1 ring-emerald-100' : 'border-surface-200',
                     ]"
                     @click="setQueue('completed_today')"
@@ -670,7 +670,7 @@ const deleteTask = () => {
                 </button>
             </section>
 
-            <section class="overflow-hidden border border-surface-200 bg-white">
+            <section class="erp-panel overflow-hidden border border-surface-200 bg-white">
                 <div class="overflow-x-auto border-b border-surface-200 px-3 pt-3 sm:px-4">
                     <div class="flex min-w-max items-center gap-1" role="tablist" aria-label="Task shortcuts">
                         <button
@@ -759,7 +759,7 @@ const deleteTask = () => {
 
                 <div class="p-3 sm:p-4">
                     <div class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_160px_160px_190px_170px_auto]">
-                        <IconField class="w-full">
+                        <IconField class="erp-icon-field w-full">
                             <InputIcon class="pi pi-search text-xs" />
                             <InputText v-model="search" placeholder="Search title, notes or staff..." class="w-full text-sm" aria-label="Search tasks" />
                         </IconField>
@@ -817,7 +817,7 @@ const deleteTask = () => {
                 v-if="viewMode === 'kanban'"
                 class="grid snap-x snap-mandatory auto-cols-[minmax(300px,calc(100vw_-_3rem))] grid-flow-col gap-4 overflow-x-auto pb-3 sm:auto-cols-[minmax(320px,1fr)] xl:grid-flow-row xl:grid-cols-3 xl:overflow-visible"
             >
-                <section v-for="column in kanbanColumns" :key="column.status" class="min-h-[460px] snap-start border border-surface-200 bg-surface-50/70 p-3 sm:p-4">
+                <section v-for="column in kanbanColumns" :key="column.status" class="erp-kanban-column min-h-[460px] snap-start border border-surface-200 bg-surface-50/70 p-3 sm:p-4">
                     <header class="mb-3 flex items-center justify-between border-b border-surface-200 pb-3">
                         <div class="flex items-center gap-2">
                             <span class="h-2.5 w-2.5 shrink-0 rounded-full" :class="column.dotClass"></span>
@@ -840,7 +840,7 @@ const deleteTask = () => {
                     <div class="flex flex-col gap-3">
                         <div
                             v-if="tasksForStatus(column.status).length === 0"
-                            class="flex min-h-40 flex-col items-center justify-center border border-dashed border-surface-300 bg-white/60 px-5 text-center"
+                            class="erp-empty-state flex min-h-40 flex-col items-center justify-center border border-dashed border-surface-300 bg-white/60 px-5 text-center"
                         >
                             <span class="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-surface-100 text-surface-400"><i :class="column.icon"></i></span>
                             <p class="text-xs font-semibold text-surface-700">{{ column.emptyTitle }}</p>
@@ -851,7 +851,7 @@ const deleteTask = () => {
                             v-for="task in tasksForStatus(column.status)"
                             :key="task.id"
                             :class="[
-                                'group relative border border-l-4 border-surface-200 bg-white p-3.5 shadow-sm transition-all hover:border-surface-300 hover:shadow-md',
+                                'erp-task-card group relative border border-l-4 border-surface-200 bg-white p-3.5 transition-all hover:border-surface-300',
                                 task.is_overdue ? '!border-l-rose-500' : column.accentClass,
                                 task.status === 'COMPLETED' ? 'opacity-90' : '',
                             ]"
@@ -944,13 +944,13 @@ const deleteTask = () => {
             <!-- ========================================== -->
             <div v-else>
                 <div class="space-y-3 lg:hidden">
-                    <div v-if="tasks.length === 0" class="border border-dashed border-surface-300 bg-white px-5 py-12 text-center">
+                    <div v-if="tasks.length === 0" class="erp-empty-state border border-dashed border-surface-300 bg-white px-5 py-12 text-center">
                         <span class="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-surface-100 text-surface-400"><i class="pi pi-search"></i></span>
                         <p class="mt-3 text-sm font-semibold text-surface-700">No matching tasks</p>
                         <p class="mt-1 text-xs text-surface-400">Try changing or resetting your filters.</p>
                     </div>
 
-                    <article v-for="task in tasks" :key="task.id" class="border border-surface-200 bg-white p-4 shadow-sm">
+                    <article v-for="task in tasks" :key="task.id" class="erp-task-card border border-surface-200 bg-white p-4">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-1.5">
@@ -1003,7 +1003,7 @@ const deleteTask = () => {
                     </article>
                 </div>
 
-                <div class="hidden border border-surface-200 bg-white lg:block">
+                <div class="erp-panel hidden border border-surface-200 bg-white lg:block">
                     <DataTable :value="tasks" dataKey="id" stripedRows rowHover paginator :rows="10" :rowsPerPageOptions="[10, 20, 50]" responsiveLayout="scroll" class="p-datatable-sm">
                         <template #empty>
                             <div class="py-8 text-center text-surface-500">

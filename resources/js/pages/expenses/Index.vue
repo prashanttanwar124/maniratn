@@ -114,7 +114,7 @@ const onPageChange = (event: { page: number }) => {
     <AppLayout>
         <Toast />
         <div class="space-y-6">
-            <section class="border border-surface-200 bg-white px-5 py-6">
+            <section class="erp-page-header border border-surface-200 bg-white px-5 py-6">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div class="max-w-3xl">
                         <div class="flex flex-wrap items-center gap-3">
@@ -137,25 +137,25 @@ const onPageChange = (event: { page: number }) => {
             </section>
 
             <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Total Entries</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ totalRecords }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">This Page Spend</p>
                     <p class="mt-2 text-2xl font-semibold text-red-600">{{ formatCurrency(pageSpend) }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Cash Payments</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ cashCount }}</p>
                 </div>
-                <div class="border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
                     <p class="text-sm text-surface-500">Bank/UPI Payments</p>
                     <p class="mt-2 text-2xl font-semibold text-surface-900">{{ digitalCount }}</p>
                 </div>
             </section>
 
-            <section class="overflow-hidden border border-surface-200 bg-white">
+            <section class="erp-panel overflow-hidden border border-surface-200 bg-white">
                 <div class="border-b border-surface-200 px-5 py-4">
                     <h2 class="text-lg font-semibold text-surface-900">Expense Register</h2>
                     <p class="mt-1 text-sm text-surface-500">Recent expenses with payment method and deduction source.</p>

@@ -42,7 +42,7 @@ const statusSeverity = (status) => {
 <template>
     <AppLayout>
         <div class="mx-auto max-w-7xl space-y-6">
-            <div class="border border-surface-200 bg-white px-5 py-5">
+            <div class="erp-page-header border border-surface-200 bg-white px-5 py-5">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-3">
@@ -68,25 +68,25 @@ const statusSeverity = (status) => {
             </div>
 
             <div class="grid grid-cols-1 gap-4 xl:grid-cols-4">
-                <div class="border border-surface-200 bg-white p-4">
+                <div class="erp-stat-card border border-surface-200 bg-white p-4">
                     <p class="text-sm text-surface-500">My Billing Today</p>
                     <p class="mt-2 text-xl font-semibold text-surface-900">{{ formatCurrency(metrics?.my_sales) }}</p>
                     <p class="mt-1 text-xs text-surface-400">{{ metrics?.my_invoices || 0 }} invoices posted</p>
                 </div>
 
-                <div class="border border-surface-200 bg-white p-4">
+                <div class="erp-stat-card border border-surface-200 bg-white p-4">
                     <p class="text-sm text-surface-500">My Collections</p>
                     <p class="mt-2 text-xl font-semibold text-green-700">{{ formatCurrency(metrics?.my_collections) }}</p>
                     <p class="mt-1 text-xs text-surface-400">Cash and digital receipts handled today</p>
                 </div>
 
-                <div class="border border-surface-200 bg-white p-4">
+                <div class="erp-stat-card border border-surface-200 bg-white p-4">
                     <p class="text-sm text-surface-500">Ready for Billing</p>
                     <p class="mt-2 text-xl font-semibold text-surface-900">{{ metrics?.ready_items || 0 }}</p>
                     <p class="mt-1 text-xs text-surface-400">Order items available to convert into bills</p>
                 </div>
 
-                <div class="border border-surface-200 bg-white p-4">
+                <div class="erp-stat-card border border-surface-200 bg-white p-4">
                     <p class="text-sm text-surface-500">Overdue Orders</p>
                     <p class="mt-2 text-xl font-semibold" :class="metrics?.overdue_items ? 'text-orange-600' : 'text-surface-900'">
                         {{ metrics?.overdue_items || 0 }}
@@ -96,33 +96,33 @@ const statusSeverity = (status) => {
             </div>
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-                <div class="border border-surface-200 bg-white p-4">
+                <div class="erp-stat-card border border-surface-200 bg-white p-4">
                     <p class="text-sm text-surface-500">Gold Sell</p>
                     <p class="mt-2 text-lg font-semibold text-surface-900">{{ formatCurrency(rates?.gold_sell) }}</p>
                 </div>
 
-                <div class="border border-surface-200 bg-white p-4">
+                <div class="erp-stat-card border border-surface-200 bg-white p-4">
                     <p class="text-sm text-surface-500">Gold Buy</p>
                     <p class="mt-2 text-lg font-semibold text-surface-900">{{ formatCurrency(rates?.gold_buy) }}</p>
                 </div>
 
-                <div class="border border-surface-200 bg-white p-4">
+                <div class="erp-stat-card border border-surface-200 bg-white p-4">
                     <p class="text-sm text-surface-500">Silver</p>
                     <p class="mt-2 text-lg font-semibold text-surface-900">{{ formatCurrency(rates?.silver_sell) }}</p>
                 </div>
 
-                <div class="border border-surface-200 bg-white p-4">
+                <div class="erp-stat-card border border-surface-200 bg-white p-4">
                     <p class="text-sm text-surface-500">New Orders</p>
                     <p class="mt-2 text-lg font-semibold text-surface-900">{{ metrics?.new_orders || 0 }}</p>
                 </div>
 
-                <div class="border border-surface-200 bg-white p-4">
+                <div class="erp-stat-card border border-surface-200 bg-white p-4">
                     <p class="text-sm text-surface-500">In Production</p>
                     <p class="mt-2 text-lg font-semibold text-surface-900">{{ metrics?.in_production || 0 }}</p>
                 </div>
             </div>
 
-            <div class="overflow-hidden border border-surface-200 bg-white">
+            <div class="erp-panel overflow-hidden border border-surface-200 bg-white">
                 <div class="border-b border-surface-200 px-5 py-4">
                     <div class="flex items-center justify-between gap-3">
                         <div>
@@ -163,7 +163,7 @@ const statusSeverity = (status) => {
             </div>
 
             <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
-                <div class="overflow-hidden border border-surface-200 bg-white xl:col-span-7">
+                <div class="erp-panel overflow-hidden border border-surface-200 bg-white xl:col-span-7">
                     <div class="border-b border-surface-200 px-5 py-4">
                         <div class="flex items-center justify-between gap-3">
                             <div>
@@ -201,7 +201,7 @@ const statusSeverity = (status) => {
                     </div>
                 </div>
 
-                <div class="overflow-hidden border border-surface-200 bg-white xl:col-span-5">
+                <div class="erp-panel overflow-hidden border border-surface-200 bg-white xl:col-span-5">
                     <div class="border-b border-surface-200 px-5 py-4">
                         <div class="flex items-center justify-between gap-3">
                             <div>

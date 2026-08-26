@@ -900,23 +900,36 @@ onMounted(() => {
                                         <!-- 2. Product drafts open globally without leaving the current ERP page -->
                                         <section
                                             v-else-if="action.tool === 'add_product' && idx === msg.actions.findIndex((item) => item.tool === 'add_product')"
-                                            class="my-3 overflow-hidden rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50/80 to-white shadow-sm"
+                                            class="erp-ai-card my-3 overflow-hidden border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
+                                            style="font-family: 'Poppins', sans-serif !important"
                                         >
-                                            <div class="flex items-start gap-3 p-3.5">
-                                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1c3633] text-[#e5c278]">
-                                                    <PackagePlus class="h-4 w-4" />
-                                                </span>
-                                                <div class="min-w-0 flex-1">
-                                                    <p class="text-xs font-semibold text-surface-900">
-                                                        {{ pendingProductActionsFor(msg).length > 0 ? `${pendingProductActionsFor(msg).length} product draft${pendingProductActionsFor(msg).length > 1 ? 's' : ''} ready` : 'Product stock updated' }}
-                                                    </p>
-                                                    <p class="mt-1 text-[11px] leading-4 text-surface-500">
-                                                        {{ pendingProductActionsFor(msg).length > 0 ? 'Current page chhode bina details review, edit aur save karein.' : `${savedProductCountFor(msg)} item(s) stock mein save ho gaye.` }}
-                                                    </p>
+                                            <div class="flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
+                                                <div class="flex items-center gap-2.5 min-w-0">
+                                                    <span class="flex h-7 w-7 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                                                        <PackagePlus class="h-3.5 w-3.5" />
+                                                    </span>
+                                                    <div class="flex flex-col justify-center min-w-0">
+                                                        <p class="!m-0 !p-0 !text-xs font-semibold tracking-wide text-surface-900 !leading-tight truncate">
+                                                            {{ pendingProductActionsFor(msg).length > 0 ? `${pendingProductActionsFor(msg).length} product draft${pendingProductActionsFor(msg).length > 1 ? 's' : ''} ready` : 'Product stock updated' }}
+                                                        </p>
+                                                        <p class="!m-0 !p-0 !text-[10.5px] font-normal text-surface-500 !leading-tight mt-0.5">
+                                                            {{ pendingProductActionsFor(msg).length > 0 ? 'Current page chhode bina details review aur save karein.' : `${savedProductCountFor(msg)} item(s) stock mein save ho gaye.` }}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <span v-if="pendingProductActionsFor(msg).length === 0" class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
-                                                    <CheckCircle2 class="h-3 w-3" /> Saved
-                                                </span>
+                                                <div class="flex items-center gap-1.5 shrink-0">
+                                                    <span v-if="pendingProductActionsFor(msg).length === 0" class="inline-flex items-center gap-1 border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9.5px] font-semibold text-emerald-700 uppercase">
+                                                        <CheckCircle2 class="h-3 w-3" /> Saved
+                                                    </span>
+                                                    <a
+                                                        href="/products"
+                                                        class="inline-flex items-center gap-1 border border-surface-300 bg-white px-2 py-0.5 text-[10px] font-medium text-surface-700 hover:border-[#c08f34] hover:text-[#1c3633] transition-colors"
+                                                        title="Open Products Page"
+                                                    >
+                                                        <ExternalLink class="h-2.5 w-2.5 text-[#b07b24]" />
+                                                        Catalog
+                                                    </a>
+                                                </div>
                                             </div>
                                             <button
                                                 v-if="pendingProductActionsFor(msg).length > 0"
@@ -1110,7 +1123,7 @@ onMounted(() => {
                                 type="button"
                                 :disabled="isLoading"
                                 title="Click karke prompt edit karein"
-                                class="flex shrink-0 items-center gap-1.5 border border-surface-200 bg-surface-50 px-2.5 py-1.5 text-[10.5px] font-medium text-surface-600 transition-colors hover:border-[#c08f34] hover:bg-amber-50 hover:text-[#1c3633] disabled:opacity-50"
+                                class="erp-chip-action flex shrink-0 items-center gap-1.5 border border-surface-200 bg-surface-50 px-2.5 py-1.5 text-[10.5px] font-medium text-surface-600 transition-colors hover:text-[#1c3633] disabled:opacity-50"
                                 @click="applyQuickPrompt(item.prompt)"
                             >
                                 <component :is="item.icon" class="h-3 w-3 text-[#b07b24]" />
@@ -1118,7 +1131,7 @@ onMounted(() => {
                             </button>
                         </div>
 
-                        <div v-if="isListening" class="flex items-center justify-between border border-red-200 bg-red-50 px-3 py-2" role="status">
+                        <div v-if="isListening" class="erp-alert-row flex items-center justify-between border border-red-200 bg-red-50 px-3 py-2" role="status">
                             <div class="flex items-center gap-2 text-[11px] font-medium text-red-700">
                                 <span class="relative flex h-2 w-2">
                                     <span class="absolute inline-flex h-full w-full animate-ping bg-red-400 opacity-75"></span>
@@ -1129,11 +1142,11 @@ onMounted(() => {
                             <button type="button" class="ml-3 text-[11px] font-semibold text-red-700 underline-offset-2 hover:underline" @click="toggleListening">Stop</button>
                         </div>
 
-                        <div v-if="speechError || chatError" class="border border-amber-200 bg-amber-50 px-3 py-2 text-[10.5px] leading-4 text-amber-800" role="alert">
+                        <div v-if="speechError || chatError" class="erp-alert-row border border-amber-200 bg-amber-50 px-3 py-2 text-[10.5px] leading-4 text-amber-800" role="alert">
                             {{ speechError || chatError }}
                         </div>
 
-                        <div class="border border-surface-300 bg-white p-2 shadow-xs transition-colors focus-within:border-[#c08f34] focus-within:ring-2 focus-within:ring-amber-100">
+                        <div class="erp-composer border border-surface-300 bg-white p-2 shadow-xs transition-colors">
                             <Textarea
                                 ref="composerRef"
                                 v-model="inputPrompt"
@@ -1152,7 +1165,7 @@ onMounted(() => {
                                         type="button"
                                         :disabled="!recognitionSupported || isLoading"
                                         :class="[
-                                            'flex h-7 items-center gap-1.5 border px-2 text-[10.5px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+                                            'erp-action-button flex h-7 items-center gap-1.5 border px-2 text-[10.5px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40',
                                             isListening
                                                 ? 'border-red-600 bg-red-600 text-white shadow-xs animate-pulse'
                                                 : 'border-surface-200 bg-surface-50 text-surface-700 hover:border-[#c08f34] hover:bg-amber-50',
@@ -1171,7 +1184,7 @@ onMounted(() => {
                                 <button
                                     type="button"
                                     :disabled="!inputPrompt.trim() || isLoading"
-                                    class="flex h-7 items-center gap-1 border border-[#1c3633] bg-[#1c3633] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#254642] disabled:cursor-not-allowed disabled:opacity-40"
+                                    class="erp-action-button flex h-7 items-center gap-1 border border-[#1c3633] bg-[#1c3633] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#254642] disabled:cursor-not-allowed disabled:opacity-40"
                                     aria-label="Send message"
                                     @click="sendMessage()"
                                 >

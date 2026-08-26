@@ -141,7 +141,7 @@ watch(
                                 <ProgressSpinner style="width: 20px; height: 20px" strokeWidth="4" />
                             </div>
                             <template v-else>
-                                <input type="text" readonly :value="manualSetupKey" class="h-full w-full bg-surface-0 p-3 text-sm text-surface-900 dark:bg-surface-800 dark:text-surface-0" />
+                                <input type="text" readonly :value="manualSetupKey" class="erp-form-control h-full w-full bg-surface-0 p-3 text-sm text-surface-900 dark:bg-surface-800 dark:text-surface-0" />
                                 <button
                                     @click="copy(manualSetupKey || '')"
                                     class="relative block h-auto border-l border-surface-200 px-3 hover:bg-surface-100 dark:border-surface-700 dark:hover:bg-surface-700"

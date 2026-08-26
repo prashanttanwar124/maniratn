@@ -111,12 +111,16 @@ class CustomerKhataAction implements AiActionInterface
             ];
         })->toArray();
 
+        $vaultUrl = $customer->vault_token ? url('/vault/' . $customer->vault_token) : null;
+
         return [
             'found' => true,
             'customer_id' => $customer->id,
             'customer_name' => $customer->name,
             'mobile' => $customer->mobile ?: '—',
             'city' => $customer->city ?: '—',
+            'vault_token' => $customer->vault_token,
+            'vault_url' => $vaultUrl,
             'total_bills_count' => $allInvoices->count(),
             'total_purchases' => '₹' . number_format($totalPurchases, 2),
             'total_paid' => '₹' . number_format($totalPaid, 2),
