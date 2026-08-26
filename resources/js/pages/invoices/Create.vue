@@ -635,7 +635,7 @@ const submitInvoice = () => {
             </section>
 
             <!-- TOP ROW: Customer, Rate, Date -->
-            <div class="card overflow-hidden !p-0">
+            <div class="erp-panel overflow-hidden !p-0">
                 <div class="border-b border-surface-200 bg-white px-5 py-4">
                     <h3 class="text-lg font-semibold text-surface-900">Invoice Details</h3>
                     <p class="mt-1 text-sm text-surface-500">Select customer, rate, and invoice date</p>
@@ -731,7 +731,7 @@ const submitInvoice = () => {
             <!-- MAIN CONTENT: Items Table + Bill Summary -->
             <div class="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3">
                 <!-- ITEMS TABLE -->
-                <div class="card flex h-full flex-col overflow-hidden !p-0 lg:col-span-2">
+                <div class="erp-panel flex h-full flex-col overflow-hidden !p-0 lg:col-span-2">
                     <!-- Header -->
                     <div class="flex items-center justify-between border-b border-surface-200 bg-white px-5 py-4">
                         <div>
@@ -907,7 +907,7 @@ const submitInvoice = () => {
                 </div>
 
                 <!-- BILL SUMMARY -->
-                <div class="card flex h-full flex-col justify-between overflow-hidden !p-0">
+                <div class="erp-panel flex h-full flex-col justify-between overflow-hidden !p-0">
                     <!-- Summary -->
                     <div class="p-5">
                         <div class="mb-5">

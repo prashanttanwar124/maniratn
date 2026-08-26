@@ -144,52 +144,71 @@ const tableData = computed(() => props.customers.data);
 
 <template>
     <AppLayout>
-        <div class="card p-4">
-            <div class="mb-4 flex items-center justify-between">
-                <h2 class="text-xl font-bold">Active Mortgages (Girvi)</h2>
-                <Button label="New Mortgage" icon="pi pi-plus" @click="openCreate" />
+        <div class="space-y-6 p-4">
+            <div class="erp-page-header border border-surface-200 bg-white px-5 py-5">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <h1 class="text-2xl font-semibold tracking-tight text-surface-900">Active Mortgages (Girvi)</h1>
+                            <Tag value="Loan & Collateral" severity="secondary" />
+                        </div>
+                        <p class="mt-1 text-sm text-surface-500">Track mortgaged gold items, principal loan amounts, and customer collateral safely.</p>
+                    </div>
+                    <Button label="New Mortgage" icon="pi pi-plus" @click="openCreate" />
+                </div>
             </div>
 
-            <DataTable :value="mortgages.data" stripedRows tableStyle="min-width: 50rem">
-                <Column header="Customer">
-                    <template #body="slotProps">
-                        <div class="font-bold">{{ slotProps.data.customer.name }}</div>
-                        <div class="text-xs text-gray-500">{{ slotProps.data.customer.mobile }}</div>
+            <div class="erp-panel border border-surface-200 bg-white p-5">
+                <DataTable :value="mortgages.data" stripedRows rowHover tableStyle="min-width: 50rem">
+                    <template #empty>
+                        <div class="py-12 text-center text-surface-500">No active mortgages found.</div>
                     </template>
-                </Column>
+                    <Column header="Customer">
+                        <template #body="slotProps">
+                            <div class="font-bold text-surface-900">{{ slotProps.data.customer?.name || 'Walk-in' }}</div>
+                            <div class="text-xs text-surface-500 font-mono">{{ slotProps.data.customer?.mobile || 'No Mobile' }}</div>
+                        </template>
+                    </Column>
 
-                <Column field="item_name" header="Item" />
+                    <Column field="item_name" header="Item">
+                        <template #body="slotProps">
+                            <span class="font-medium text-surface-800">{{ slotProps.data.item_name }}</span>
+                        </template>
+                    </Column>
 
-                <Column header="Weight">
-                    <template #body="slotProps"> {{ slotProps.data.gross_weight }}g </template>
-                </Column>
+                    <Column header="Weight">
+                        <template #body="slotProps">
+                            <span class="font-mono text-sm">{{ slotProps.data.gross_weight }} g</span>
+                        </template>
+                    </Column>
 
-                <Column header="Loan Amount">
-                    <template #body="slotProps">
-                        <span class="font-bold text-red-600">{{ $formatMoney(slotProps.data.loan_amount) }}</span>
-                    </template>
-                </Column>
+                    <Column header="Loan Amount">
+                        <template #body="slotProps">
+                            <span class="font-mono font-bold text-red-600">{{ $formatMoney(slotProps.data.loan_amount) }}</span>
+                        </template>
+                    </Column>
 
-                <Column header="Date">
-                    <template #body="slotProps">
-                        {{ formatIndianDate(slotProps.data.start_date) }}
-                    </template>
-                </Column>
+                    <Column header="Date">
+                        <template #body="slotProps">
+                            <span class="font-mono text-xs text-surface-600">{{ formatIndianDate(slotProps.data.start_date) }}</span>
+                        </template>
+                    </Column>
 
-                <Column header="Action">
-                    <template #body="slotProps">
-                        <Button icon="pi pi-eye" size="small" outlined @click="openView(slotProps.data)" />
-                    </template>
-                </Column>
-            </DataTable>
+                    <Column header="Action" style="width: 5rem">
+                        <template #body="slotProps">
+                            <Button icon="pi pi-eye" size="small" outlined @click="openView(slotProps.data)" />
+                        </template>
+                    </Column>
+                </DataTable>
 
-            <Paginator
-                :rows="mortgages.per_page"
-                :totalRecords="mortgages.total"
-                :first="(mortgages.current_page - 1) * mortgages.per_page"
-                @page="onPageChange"
-                class="border-t border-gray-100"
-            ></Paginator>
+                <Paginator
+                    :rows="mortgages.per_page"
+                    :totalRecords="mortgages.total"
+                    :first="(mortgages.current_page - 1) * mortgages.per_page"
+                    @page="onPageChange"
+                    class="mt-4 border-t border-surface-100"
+                ></Paginator>
+            </div>
 
             <Dialog v-model:visible="showCreateModal" header="Add New Girvi" :modal="true" :style="{ width: '500px' }">
                 <form @submit.prevent="submitCreate" class="mt-2 flex flex-col gap-4">

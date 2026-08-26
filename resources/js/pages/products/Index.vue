@@ -688,7 +688,7 @@ const copyBarcode = async (barcode) => {
                 </div>
             </div>
 
-            <div class="card overflow-hidden !p-0">
+            <div class="erp-panel overflow-hidden !p-0">
                 <div class="border-b border-surface-200 bg-white px-5 py-4">
                     <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div>

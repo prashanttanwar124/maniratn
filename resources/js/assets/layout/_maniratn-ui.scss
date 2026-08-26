@@ -240,59 +240,59 @@ body {
     border-radius: var(--maniratn-radius-sm) !important;
     box-shadow: var(--maniratn-shadow-xs);
     transition:
-        transform 150ms ease,
         border-color 150ms ease,
+        background-color 150ms ease,
         box-shadow 150ms ease !important;
 }
 
 .erp-list-item:hover {
-    border-color: color-mix(in srgb, var(--maniratn-gold) 36%, var(--maniratn-border)) !important;
-    box-shadow: var(--maniratn-shadow-card) !important;
-    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--maniratn-gold) 45%, var(--maniratn-border)) !important;
+    background: var(--maniratn-gold-soft) !important;
+    box-shadow: var(--maniratn-shadow-xs) !important;
 }
 
 .erp-alert-row {
     border-radius: var(--maniratn-radius-sm) !important;
     box-shadow: var(--maniratn-shadow-xs);
     transition:
-        transform 150ms ease,
         border-color 150ms ease,
         box-shadow 150ms ease !important;
 }
 
 .erp-alert-row:hover {
+    border-color: var(--maniratn-gold) !important;
     box-shadow: var(--maniratn-shadow-card);
-    transform: translateY(-1px);
 }
 
 .erp-chip-action,
 .erp-hint-chip {
     border-radius: 999px !important;
     box-shadow: var(--maniratn-shadow-xs);
+    line-height: 1.25;
 }
 
 .erp-chip-action {
     background: var(--maniratn-panel) !important;
     transition:
-        transform 150ms ease,
         border-color 150ms ease,
         background-color 150ms ease,
+        color 150ms ease,
         box-shadow 150ms ease !important;
 }
 
 .erp-chip-action:hover {
-    border-color: color-mix(in srgb, var(--maniratn-gold) 45%, var(--maniratn-border)) !important;
+    border-color: var(--maniratn-gold) !important;
     background: var(--maniratn-gold-soft) !important;
-    box-shadow: var(--maniratn-shadow-card);
-    transform: translateY(-1px);
+    color: var(--maniratn-ink) !important;
+    box-shadow: 0 0 0 1px rgba(192, 143, 52, 0.25) !important;
 }
 
 .erp-composer {
     overflow: hidden;
     border-color: var(--maniratn-border-strong) !important;
     border-radius: var(--maniratn-radius) !important;
-    background: linear-gradient(145deg, var(--maniratn-panel), var(--maniratn-panel-muted)) !important;
-    box-shadow: var(--maniratn-shadow-card) !important;
+    background: #ffffff !important;
+    box-shadow: var(--maniratn-shadow-xs) !important;
     transition:
         border-color 150ms ease,
         box-shadow 150ms ease !important;
@@ -370,7 +370,6 @@ body {
     border-radius: var(--maniratn-radius-sm) !important;
     box-shadow: var(--maniratn-shadow-xs);
     transition:
-        transform 150ms ease,
         border-color 150ms ease,
         background-color 150ms ease,
         box-shadow 150ms ease !important;
@@ -378,7 +377,7 @@ body {
 
 .erp-action-button:hover {
     box-shadow: var(--maniratn-shadow-sm);
-    transform: translateY(-1px);
+    border-color: var(--maniratn-gold) !important;
 }
 
 .erp-native-table {
@@ -754,7 +753,7 @@ body {
 .topbar-icon-action:hover,
 .topbar-profile:hover {
     box-shadow: var(--maniratn-shadow-sm);
-    transform: translateY(-1px);
+    border-color: var(--maniratn-gold);
 }
 
 .topbar-primary-action {
@@ -763,7 +762,6 @@ body {
 
 .topbar-primary-action:hover {
     box-shadow: 0 9px 22px rgba(28, 54, 51, 0.24);
-    transform: translateY(-1px);
 }
 
 .topbar-rate-pill:focus-visible,
@@ -986,15 +984,50 @@ body {
 
 .p-inputgroup {
     display: flex;
+    align-items: stretch;
     width: 100%;
     border-radius: var(--maniratn-radius-sm);
+    isolation: isolate;
 }
 
-.p-inputgroupaddon {
-    min-width: var(--maniratn-control-height);
-    border-color: var(--maniratn-border-strong);
+.p-inputgroup > .p-inputgroupaddon,
+.p-inputgroup > .p-inputgroup-addon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.85rem;
+    min-width: 2.75rem;
+    border: 1px solid var(--maniratn-border-strong);
     background: var(--maniratn-panel-muted);
     color: var(--maniratn-ink-soft);
+}
+
+.p-inputgroup > :first-child {
+    border-top-left-radius: var(--maniratn-radius-sm) !important;
+    border-bottom-left-radius: var(--maniratn-radius-sm) !important;
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+
+.p-inputgroup > :last-child {
+    border-top-right-radius: var(--maniratn-radius-sm) !important;
+    border-bottom-right-radius: var(--maniratn-radius-sm) !important;
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+}
+
+.p-inputgroup > :not(:first-child):not(:last-child) {
+    border-radius: 0 !important;
+}
+
+.p-inputgroup > :not(:first-child) {
+    margin-left: -1px;
+}
+
+.p-inputgroup > .p-inputgroupaddon:first-child + .p-inputtext,
+.p-inputgroup > .p-inputgroup-addon:first-child + .p-inputtext {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
 }
 
 .p-inputotp {
@@ -1056,6 +1089,40 @@ body {
     opacity: 0.82;
 }
 
+/* Global ERP Placeholder Typography & Contrast */
+::placeholder,
+.p-inputtext::placeholder,
+.p-textarea::placeholder,
+input::placeholder,
+textarea::placeholder {
+    color: #64748b !important;
+    font-size: 0.875rem !important;
+    font-weight: 400 !important;
+    opacity: 0.9 !important;
+}
+
+/* AI Karat Composer specific larger, crystal-clear placeholder */
+.karat-composer,
+.karat-composer textarea,
+.p-textarea.karat-composer,
+textarea.karat-composer {
+    font-size: 0.9375rem !important; /* 15px */
+    line-height: 1.6 !important;
+    font-weight: 400 !important;
+    color: var(--p-surface-900) !important;
+}
+
+.karat-composer::placeholder,
+.karat-composer textarea::placeholder,
+.p-textarea.karat-composer::placeholder,
+textarea.karat-composer::placeholder {
+    font-size: 0.9375rem !important; /* 15px */
+    line-height: 1.6 !important;
+    color: #64748b !important;
+    font-weight: 400 !important;
+    opacity: 0.9 !important;
+}
+
 .p-checkbox-box {
     width: 1.2rem;
     height: 1.2rem;
@@ -1090,7 +1157,6 @@ body {
     line-height: 1.2;
     box-shadow: var(--maniratn-shadow-xs);
     transition:
-        transform 150ms ease,
         box-shadow 150ms ease,
         background-color 150ms ease,
         border-color 150ms ease;
@@ -1117,7 +1183,6 @@ body {
 }
 
 .p-button:not(.p-button-text):not(:disabled):hover {
-    transform: translateY(-1px);
     box-shadow: var(--maniratn-shadow-sm);
 }
 
@@ -1149,11 +1214,11 @@ body {
 
 .p-tag {
     gap: 0.35rem;
-    min-height: 1.55rem;
-    padding: 0.25rem 0.58rem;
+    min-height: auto;
+    padding: 0.2rem 0.55rem;
     border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
     font-size: 0.72rem;
-    line-height: 1;
+    line-height: 1.25;
 }
 
 .p-badge {
@@ -1480,8 +1545,7 @@ body {
     border-color: var(--maniratn-gold) !important;
     color: var(--maniratn-ink) !important;
     background: var(--maniratn-gold-soft) !important;
-    transform: translateY(-1px);
-    box-shadow: var(--maniratn-shadow-card) !important;
+    box-shadow: var(--maniratn-shadow-xs) !important;
 }
 
 .erp-ai-card :where(button, input, textarea)[class~='rounded-none'] {

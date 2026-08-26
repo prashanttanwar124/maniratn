@@ -452,7 +452,7 @@ const submitTransaction = () => {
             </div>
 
             <!-- Table -->
-            <div class="card overflow-hidden !p-0">
+            <div class="erp-panel overflow-hidden !p-0">
                 <div class="border-b border-surface-200 bg-white px-5 py-4">
                     <h3 class="text-base font-semibold text-surface-900">Ledger Entries</h3>
                     <p class="mt-1 text-sm text-surface-500">Latest transactions with running metal and cash balances</p>

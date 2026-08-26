@@ -137,12 +137,12 @@ const copyEndpoint = async () => {
                 </div>
             </div>
 
-            <div class="border border-surface-200 bg-surface-50 px-5 py-4">
+            <div class="erp-subpanel border border-surface-200 bg-surface-50 px-5 py-4">
                 <p class="text-sm font-medium text-surface-900">Public API Endpoint</p>
                 <code class="mt-2 block overflow-x-auto bg-white px-3 py-2 text-sm text-surface-700">{{ endpointUrl }}</code>
             </div>
 
-            <div class="card overflow-hidden !p-0">
+            <div class="erp-panel overflow-hidden !p-0">
                 <div class="border-b border-surface-200 bg-white px-5 py-4">
                     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>

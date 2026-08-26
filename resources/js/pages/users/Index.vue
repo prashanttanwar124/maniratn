@@ -444,7 +444,7 @@ const clearAttendanceCard = (user) => {
             </div>
 
             <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-                <div class="card overflow-hidden !p-0 xl:col-span-2">
+                <div class="erp-panel overflow-hidden !p-0 xl:col-span-2">
                     <div class="border-b border-surface-200 bg-white px-5 py-4">
                         <h3 class="text-base font-semibold text-surface-900">User Accounts</h3>
                         <p class="mt-1 text-sm text-surface-500">Manage who can access the ERP and what they can do.</p>
@@ -497,14 +497,14 @@ const clearAttendanceCard = (user) => {
                     </div>
                 </div>
 
-                <div class="card overflow-hidden !p-0">
+                <div class="erp-panel overflow-hidden !p-0">
                     <div class="border-b border-surface-200 bg-white px-5 py-4">
                         <h3 class="text-base font-semibold text-surface-900">Project Roles</h3>
                         <p class="mt-1 text-sm text-surface-500">Roles stored in the database with their assigned permissions.</p>
                     </div>
 
                     <div class="space-y-4 bg-white p-4">
-                        <div v-for="role in roles" :key="role.id" class="rounded border border-surface-200 p-4">
+                        <div v-for="role in roles" :key="role.id" class="erp-subpanel border border-surface-200 p-4">
                             <div class="flex items-center justify-between gap-3">
                                 <div>
                                     <div class="font-medium text-surface-900">{{ role.label }}</div>
@@ -527,7 +527,7 @@ const clearAttendanceCard = (user) => {
                 </div>
             </div>
 
-            <div class="card overflow-hidden !p-0">
+            <div class="erp-panel overflow-hidden !p-0">
                 <div class="border-b border-surface-200 bg-white px-5 py-4">
                     <h3 class="text-base font-semibold text-surface-900">Available Permissions</h3>
                     <p class="mt-1 text-sm text-surface-500">Permissions used across dashboard, inventory, ledger, finance, and administration.</p>

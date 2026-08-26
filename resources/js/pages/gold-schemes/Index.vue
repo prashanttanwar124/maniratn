@@ -9,8 +9,8 @@ import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
-import InputGroup from 'primevue/inputgroup';
-import InputGroupAddon from 'primevue/inputgroupaddon';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
@@ -432,12 +432,10 @@ const filteredCustomerSchemes = computed(() => {
                         </div>
 
                         <div class="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,20rem)_12rem_auto]">
-                            <InputGroup>
-                                <InputGroupAddon>
-                                    <i class="pi pi-search text-surface-400" />
-                                </InputGroupAddon>
-                                <InputText v-model="searchTerm" placeholder="Search scheme, customer, mobile" />
-                            </InputGroup>
+                            <IconField class="erp-icon-field w-full">
+                                <InputIcon class="pi pi-search text-surface-400" />
+                                <InputText v-model="searchTerm" placeholder="Search scheme, customer, mobile" class="w-full" />
+                            </IconField>
 
                             <Select v-model="statusFilter" :options="statusOptions" optionLabel="label" optionValue="value" />
 

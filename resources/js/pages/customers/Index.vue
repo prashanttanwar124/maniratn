@@ -344,7 +344,7 @@ const deleteCustomer = (customer) => {
             </section>
 
             <section class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-                <div class="card overflow-hidden !p-0 xl:col-span-2">
+                <div class="erp-panel overflow-hidden !p-0 xl:col-span-2">
                     <div class="border-b border-surface-200 bg-white px-5 py-4">
                         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>

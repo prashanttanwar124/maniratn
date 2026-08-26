@@ -769,20 +769,20 @@ const draftFormatCurrency = (val) =>
                             <span class="text-[11px] font-medium text-surface-500">{{ viewInvoice.payments?.length || 0 }} received</span>
                         </div>
 
-                        <div v-if="viewInvoice.payments?.length" class="max-h-40 space-y-2 overflow-y-auto pr-1">
+                        <div v-if="viewInvoice.payments?.length" class="max-h-44 space-y-2 overflow-y-auto py-1 pr-1">
                             <div
                                 v-for="pmt in viewInvoice.payments"
                                 :key="pmt.id"
-                                class="erp-list-item flex items-center justify-between border border-surface-100 bg-surface-50/80 px-2.5 py-1.5 text-xs"
+                                class="erp-list-item flex items-center justify-between border border-surface-200 bg-surface-50/90 px-3 py-2 text-xs"
                             >
                                 <div>
-                                    <div class="flex items-center gap-1.5">
-                                        <Tag :value="pmt.payment_method || 'CASH'" severity="secondary" class="!px-1.5 !py-0.5 !text-[10px]" />
-                                        <span class="text-surface-700">{{ formatDate(pmt.date) }}</span>
+                                    <div class="flex items-center gap-2">
+                                        <Tag :value="pmt.payment_method || 'CASH'" severity="secondary" class="!px-2 !py-0.5 !text-[10px] font-bold" />
+                                        <span class="text-surface-700 font-medium">{{ formatDate(pmt.date) }}</span>
                                     </div>
-                                    <p v-if="pmt.description" class="mt-0.5 max-w-[13rem] truncate text-[11px] text-surface-500">{{ pmt.description }}</p>
+                                    <p v-if="pmt.description" class="mt-1 max-w-[15rem] truncate text-[11px] text-surface-500">{{ pmt.description }}</p>
                                 </div>
-                                <span class="font-mono font-bold text-emerald-700">{{ formatCurrency(pmt.amount) }}</span>
+                                <span class="font-mono font-bold text-emerald-700 text-xs">{{ formatCurrency(pmt.amount) }}</span>
                             </div>
                         </div>
                         <div v-else class="py-5 text-center text-xs text-surface-400">

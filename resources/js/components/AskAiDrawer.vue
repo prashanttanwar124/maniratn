@@ -1116,14 +1116,13 @@ onMounted(() => {
                     <!-- 🎙️ 3. Bottom Command Area: Enterprise Luxury Pinned Footer -->
                     <div class="z-10 shrink-0 space-y-2.5 border-t border-surface-200 bg-white px-3.5 py-3 sm:px-5">
                         <!-- Quick Suggestion Chips (Rounded Luxury Capsule Pills - Click to edit before submit) -->
-                        <div v-if="!isStarterConversation" class="no-scrollbar flex items-center gap-2 overflow-x-auto pb-0.5">
+                        <div v-if="!isStarterConversation" class="no-scrollbar flex items-center gap-2 overflow-x-auto py-1 px-0.5">
                             <button
                                 v-for="(item, idx) in quickSuggestions"
                                 :key="idx"
                                 type="button"
                                 :disabled="isLoading"
-                                title="Click karke prompt edit karein"
-                                class="erp-chip-action flex shrink-0 items-center gap-1.5 border border-surface-200 bg-[#f8f6f0] px-3 py-1.5 text-xs font-medium text-surface-700 transition-colors hover:border-[#c08f34] hover:bg-amber-50 hover:text-[#1c3633] disabled:opacity-50"
+                                class="erp-chip-action flex shrink-0 items-center gap-1.5 border border-surface-200 bg-[#f8f6f0] px-3.5 py-1.5 text-xs font-medium text-surface-700 transition-colors hover:border-[#c08f34] hover:bg-amber-50 hover:text-[#1c3633] disabled:opacity-50"
                                 @click="applyQuickPrompt(item.prompt)"
                             >
                                 <component :is="item.icon" class="h-3.5 w-3.5 text-[#b07b24]" />
@@ -1154,7 +1153,7 @@ onMounted(() => {
                                 :rows="1"
                                 :disabled="isLoading"
                                 placeholder="Jaise: 12g 22K ring ka estimate banao ya stock check karo..."
-                                class="karat-composer !max-h-36 !min-h-12 !w-full !resize-none !border-0 !bg-transparent !px-2.5 !py-2 text-sm sm:text-[15px] !leading-relaxed font-normal text-surface-900 !shadow-none focus:!ring-0 placeholder:!text-slate-400 placeholder:!text-sm placeholder:!font-normal"
+                                class="karat-composer !max-h-36 !min-h-12 !w-full !resize-none !border-0 !bg-transparent !px-2.5 !py-2 !text-[15px] sm:!text-[16px] !leading-relaxed font-normal text-surface-900 !shadow-none focus:!ring-0 placeholder:!text-slate-500 placeholder:!text-[14.5px] sm:placeholder:!text-[15px] placeholder:!font-normal"
                                 aria-label="Ask Karat AI"
                                 @keydown.enter.exact.prevent="sendMessage()"
                             />
@@ -1217,11 +1216,22 @@ onMounted(() => {
     box-shadow: none !important;
     outline: none !important;
 }
+:deep(.karat-composer),
+:deep(textarea.karat-composer),
+:deep(.p-textarea.karat-composer) {
+    font-size: 15.5px !important;
+    line-height: 1.6 !important;
+    font-weight: 400 !important;
+    color: #0f172a !important;
+}
 :deep(.karat-composer::placeholder),
 :deep(textarea.karat-composer::placeholder),
-:deep(.karat-composer textarea::placeholder) {
-    color: #94a3b8 !important;
-    opacity: 0.75 !important;
-    font-weight: 300 !important;
+:deep(.karat-composer textarea::placeholder),
+:deep(.p-textarea.karat-composer::placeholder) {
+    color: #64748b !important;
+    font-size: 14.5px !important;
+    line-height: 1.6 !important;
+    opacity: 0.95 !important;
+    font-weight: 400 !important;
 }
 </style>
