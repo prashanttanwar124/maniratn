@@ -1284,7 +1284,7 @@ const deleteTask = () => {
                 </div>
 
                 <!-- Checklist Builder -->
-                <div class="border border-surface-200 bg-surface-50 p-3">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 p-3">
                     <div class="mb-2 flex items-center justify-between">
                         <span class="text-sm font-medium text-surface-800">Checklist steps</span>
                         <span class="text-[11px] text-surface-500">{{ taskForm.checklist.length }} items</span>
@@ -1292,7 +1292,7 @@ const deleteTask = () => {
 
                     <!-- Existing Checklist Items -->
                     <div v-if="taskForm.checklist.length > 0" class="mb-2.5 space-y-1.5">
-                        <div v-for="(item, idx) in taskForm.checklist" :key="idx" class="flex items-center justify-between gap-2 border border-surface-200 bg-white p-2 text-xs">
+                        <div v-for="(item, idx) in taskForm.checklist" :key="idx" class="flex items-center justify-between gap-2 rounded-md border border-surface-200 bg-white p-2 text-xs shadow-xs">
                             <div class="flex flex-1 items-center gap-2">
                                 <Checkbox v-model="item.is_completed" :binary="true" />
                                 <span :class="[item.is_completed ? 'text-surface-400 line-through' : 'text-surface-800']">
@@ -1332,7 +1332,7 @@ const deleteTask = () => {
         <Drawer v-model:visible="detailDrawer" header="Task details" position="right" class="!w-full sm:!w-[560px]">
             <div v-if="selectedTask" class="space-y-4 pt-1">
                 <!-- Header Card -->
-                <div class="border border-surface-200 bg-surface-50 p-4">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 p-4">
                     <div class="flex items-center justify-between gap-2">
                         <div class="flex items-center gap-2">
                             <Tag :value="getCategoryMeta(selectedTask.category).label" severity="secondary" />
@@ -1388,7 +1388,7 @@ const deleteTask = () => {
                             :key="item.id"
                             type="button"
                             @click="toggleChecklist(selectedTask, item.id)"
-                            class="flex w-full cursor-pointer items-center gap-2.5 border border-surface-100 p-2 text-left transition-colors hover:bg-surface-50"
+                            class="flex w-full cursor-pointer items-center gap-2.5 rounded-md border border-surface-100 bg-white p-2 text-left transition-colors hover:bg-surface-50 shadow-xs"
                         >
                             <Checkbox :modelValue="Boolean(item.is_completed)" :binary="true" class="pointer-events-none" />
                             <span :class="['text-xs', item.is_completed ? 'text-surface-400 line-through' : 'font-medium text-surface-800']">
@@ -1399,7 +1399,7 @@ const deleteTask = () => {
                 </div>
 
                 <!-- Handover Notes -->
-                <div v-if="selectedTask.handover_notes" class="border border-amber-200 bg-amber-50/60 p-3 text-xs">
+                <div v-if="selectedTask.handover_notes" class="rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs shadow-xs">
                     <span class="mb-1 block font-semibold text-amber-900">Handover Notes:</span>
                     <p class="text-amber-800">{{ selectedTask.handover_notes }}</p>
                 </div>

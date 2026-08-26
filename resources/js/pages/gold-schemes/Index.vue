@@ -405,21 +405,25 @@ const filteredCustomerSchemes = computed(() => {
             </section>
 
             <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Active Schemes</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ summary?.active_schemes || 0 }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Active Schemes</span>
+                    <span class="erp-stat-card__value">{{ summary?.active_schemes || 0 }}</span>
+                    <span class="erp-stat-card__meta">Currently running accounts</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Matured Schemes</p>
-                    <p class="mt-2 text-2xl font-semibold text-emerald-700">{{ summary?.matured_schemes || 0 }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Matured Schemes</span>
+                    <span class="erp-stat-card__value text-emerald-700">{{ summary?.matured_schemes || 0 }}</span>
+                    <span class="erp-stat-card__meta">Ready for redemption</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Monthly Commitment</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ formatCurrency(summary?.monthly_commitment) }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Monthly Commitment</span>
+                    <span class="erp-stat-card__value">{{ formatCurrency(summary?.monthly_commitment) }}</span>
+                    <span class="erp-stat-card__meta">Expected monthly intake</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Collected So Far</p>
-                    <p class="mt-2 text-2xl font-semibold text-amber-700">{{ formatCurrency(summary?.scheme_collections) }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Collected So Far</span>
+                    <span class="erp-stat-card__value text-amber-700">{{ formatCurrency(summary?.scheme_collections) }}</span>
+                    <span class="erp-stat-card__meta">Total cumulative deposits</span>
                 </div>
             </section>
 
@@ -589,7 +593,7 @@ const filteredCustomerSchemes = computed(() => {
                     </div>
                 </div>
 
-                <div v-if="!schemeForm.id" class="border border-surface-200 bg-surface-50 px-4 py-4">
+                <div v-if="!schemeForm.id" class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div>
                             <label class="mb-2 block text-sm font-medium text-surface-700">Already Paid Months</label>
@@ -600,7 +604,7 @@ const filteredCustomerSchemes = computed(() => {
 
                         <div>
                             <label class="mb-2 block text-sm font-medium text-surface-700">Imported Paid Value</label>
-                            <div class="border border-surface-200 bg-white px-3 py-3 text-sm">
+                            <div class="rounded-md border border-surface-200 bg-white px-3 py-3 text-sm shadow-xs">
                                 <p class="font-semibold text-surface-900">{{ formatCurrency(importedPaidTotal) }}</p>
                                 <p class="mt-1 text-xs text-surface-500">This will be marked as already collected for the scheme.</p>
                             </div>
@@ -625,7 +629,7 @@ const filteredCustomerSchemes = computed(() => {
                     </div>
                 </div>
 
-                <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
                     <div class="grid grid-cols-2 gap-3 text-sm">
                         <div>
                             <p class="text-surface-500">Customer Contribution</p>
@@ -702,11 +706,11 @@ const filteredCustomerSchemes = computed(() => {
 
         <Dialog v-model:visible="installmentsDialog" :header="selectedScheme ? `${selectedScheme.scheme_number} Installments` : 'Installments'" modal :style="{ width: '56rem' }">
             <div class="space-y-4 pt-2">
-                <div v-if="installmentsLoading" class="border border-surface-200 bg-surface-50 px-4 py-10 text-center text-sm text-surface-500">
+                <div v-if="installmentsLoading" class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-10 text-center text-sm text-surface-500">
                     Loading installment history...
                 </div>
 
-                <div v-if="selectedScheme" class="border border-surface-200 bg-surface-50 px-4 py-4">
+                <div v-if="selectedScheme" class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
                     <div class="grid grid-cols-1 gap-3 md:grid-cols-4 text-sm">
                         <div>
                             <p class="text-surface-500">Customer</p>
@@ -734,142 +738,145 @@ const filteredCustomerSchemes = computed(() => {
 
                     <Column header="Month">
                         <template #body="{ data }">
-                            <span class="font-medium text-surface-900">Month {{ data.installment_no }}</span>
-                        </template>
-                    </Column>
-
-                    <Column header="Due Date">
-                        <template #body="{ data }">
-                            <span class="text-surface-700">{{ formatDate(data.due_date) }}</span>
-                        </template>
-                    </Column>
-
-                    <Column header="Amount">
-                        <template #body="{ data }">
-                            <span class="font-semibold text-surface-900">{{ formatCurrency(data.amount_due) }}</span>
-                        </template>
-                    </Column>
-
-                    <Column header="Paid Info">
-                        <template #body="{ data }">
-                            <div v-if="data.status === 'PAID'" class="space-y-1 text-xs text-surface-500">
-                                <p>Paid {{ formatDate(data.paid_on) }}</p>
-                                <p>{{ data.payment_method || '—' }}</p>
+                            <div>
+                                <p class="font-medium text-surface-900">Month {{ data.month_number }}</p>
+                                <p class="text-xs text-surface-500">Due: {{ data.due_date }}</p>
                             </div>
-                            <span v-else class="text-surface-500">Pending</span>
                         </template>
                     </Column>
 
                     <Column header="Status">
                         <template #body="{ data }">
-                            <Tag :value="data.status" :severity="data.status === 'PAID' ? 'success' : 'warn'" />
+                            <Tag :value="installmentStateLabel[data.status] || data.status" :severity="installmentSeverity[data.status] || 'secondary'" />
                         </template>
                     </Column>
 
-                    <Column header="">
+                    <Column header="Amount">
+                        <template #body="{ data }">
+                            <span class="font-medium text-surface-900">{{ formatCurrency(data.amount) }}</span>
+                        </template>
+                    </Column>
+
+                    <Column header="Paid Details">
+                        <template #body="{ data }">
+                            <div v-if="data.status === 'PAID'">
+                                <p class="font-medium text-surface-900">{{ data.paid_at }}</p>
+                                <p class="text-xs text-surface-500">Method: {{ data.payment_method }}</p>
+                                <p v-if="data.payment_reference" class="text-xs text-surface-500">Ref: {{ data.payment_reference }}</p>
+                            </div>
+                            <div v-else-if="data.status === 'VOID'">
+                                <p class="text-xs text-rose-600">Voided</p>
+                                <p v-if="data.void_reason" class="text-xs text-surface-500">{{ data.void_reason }}</p>
+                            </div>
+                            <span v-else class="text-sm text-surface-400">—</span>
+                        </template>
+                    </Column>
+
+                    <Column header="Action">
                         <template #body="{ data }">
                             <div class="flex justify-end gap-2">
-                                <Button v-if="data.status === 'PAID'" label="Void" size="small" severity="danger" text @click="openVoidDialog(data)" />
-                                <Button v-if="data.status !== 'PAID'" label="Collect" size="small" :disabled="!canCollectInstallment(data)" @click="collectFromSchemeInstallment(data)" />
+                                <Button
+                                    v-if="data.status === 'PENDING' && data.month_number === nextPayableMonthNumber"
+                                    label="Collect"
+                                    size="small"
+                                    severity="success"
+                                    :disabled="!isDayOpen"
+                                    @click="openCollectDialog(data)"
+                                />
+                                <Button
+                                    v-if="data.status === 'PAID'"
+                                    label="Void"
+                                    size="small"
+                                    text
+                                    severity="danger"
+                                    :disabled="!isDayOpen"
+                                    @click="openVoidDialog(data)"
+                                />
                             </div>
                         </template>
                     </Column>
                 </DataTable>
-
-                <div v-if="selectedScheme && selectedScheme.next_pending_installment_id" class="text-xs text-surface-500">
-                    Only the next pending month can be collected. Clear the earlier pending month first.
-                </div>
             </div>
+
+            <template #footer>
+                <div class="flex justify-end">
+                    <Button label="Close" text severity="secondary" @click="installmentsDialog = false" />
+                </div>
+            </template>
         </Dialog>
 
-        <Dialog v-model:visible="collectDialog" header="Collect Installment" modal :style="{ width: '32rem' }">
-            <form class="space-y-4 pt-2" @submit.prevent="submitInstallment">
-                <div class="border border-surface-200 bg-surface-50 px-4 py-4">
-                    <p class="text-sm font-semibold text-surface-900">{{ selectedInstallment?.scheme?.scheme_number }}</p>
-                    <p class="mt-1 text-sm text-surface-500">{{ selectedInstallment?.scheme?.customer_name }}</p>
-                    <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
-                        <div>
-                            <p class="text-surface-500">Installment</p>
-                            <p class="mt-1 font-semibold text-surface-900">Month {{ selectedInstallment?.installment_no }}</p>
-                        </div>
-                        <div>
-                            <p class="text-surface-500">Due Amount</p>
-                            <p class="mt-1 font-semibold text-surface-900">{{ formatCurrency(selectedInstallment?.amount_due) }}</p>
-                        </div>
-                    </div>
+        <Dialog v-model:visible="collectDialog" modal header="Collect Installment" :style="{ width: '32rem' }">
+            <form v-if="selectedInstallment" class="space-y-4 pt-2" @submit.prevent="submitCollect">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
+                    <p class="font-medium text-surface-900">Month {{ selectedInstallment.month_number }} Installment</p>
+                    <p class="mt-1 text-sm text-surface-500">Due Date: {{ selectedInstallment.due_date }}</p>
+                    <p class="mt-2 text-lg font-semibold text-amber-700">{{ formatCurrency(selectedInstallment.amount) }}</p>
                 </div>
 
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-surface-700">Amount Received</label>
-                    <InputNumber v-model="installmentForm.amount_paid" mode="currency" currency="INR" locale="en-IN" class="w-full" />
-                    <small v-if="installmentForm.errors.amount_paid" class="mt-1 block text-xs text-red-500">{{ installmentForm.errors.amount_paid }}</small>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                        <label class="mb-2 block text-sm font-medium text-surface-700">Paid On</label>
-                        <InputText v-model="installmentForm.paid_on" type="date" class="w-full" />
+                        <label class="mb-2 block text-sm font-medium text-surface-700">Paid Date</label>
+                        <InputText v-model="collectForm.paid_at" type="date" class="w-full" />
+                        <small v-if="collectForm.errors.paid_at" class="mt-1 block text-xs text-red-500">{{ collectForm.errors.paid_at }}</small>
                     </div>
+
                     <div>
                         <label class="mb-2 block text-sm font-medium text-surface-700">Payment Method</label>
-                        <Select v-model="installmentForm.payment_method" :options="paymentMethodOptions" class="w-full" />
+                        <Select v-model="collectForm.payment_method" :options="paymentMethodOptions" class="w-full" />
+                        <small v-if="collectForm.errors.payment_method" class="mt-1 block text-xs text-red-500">{{ collectForm.errors.payment_method }}</small>
                     </div>
                 </div>
 
                 <div>
-                    <label class="mb-2 block text-sm font-medium text-surface-700">Note</label>
-                    <Textarea v-model="installmentForm.note" rows="3" class="w-full" placeholder="Optional collection note" />
+                    <label class="mb-2 block text-sm font-medium text-surface-700">Payment Reference</label>
+                    <InputText v-model="collectForm.payment_reference" class="w-full" placeholder="Cheque no, UPI txn id, receipt notes" />
+                    <small v-if="collectForm.errors.payment_reference" class="mt-1 block text-xs text-red-500">{{ collectForm.errors.payment_reference }}</small>
+                </div>
+
+                <div>
+                    <label class="mb-2 block text-sm font-medium text-surface-700">Notes</label>
+                    <Textarea v-model="collectForm.notes" rows="3" class="w-full" placeholder="Optional counter notes" />
+                    <small v-if="collectForm.errors.notes" class="mt-1 block text-xs text-red-500">{{ collectForm.errors.notes }}</small>
                 </div>
 
                 <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">
                     <Button label="Cancel" text severity="secondary" type="button" @click="collectDialog = false" />
-                    <Button label="Collect Installment" type="submit" :loading="installmentForm.processing" />
+                    <Button label="Confirm Collection" severity="success" type="submit" :loading="collectForm.processing" />
                 </div>
             </form>
         </Dialog>
 
-        <Dialog v-model:visible="voidDialog" header="Void Collection" modal :style="{ width: '32rem' }">
-            <form class="space-y-4 pt-2" @submit.prevent="submitVoidInstallment">
-                <div class="border border-surface-200 bg-surface-50 px-4 py-4">
-                    <p class="text-sm font-semibold text-surface-900">{{ selectedInstallment?.scheme?.scheme_number }}</p>
-                    <p class="mt-1 text-sm text-surface-500">{{ selectedInstallment?.scheme?.customer_name }}</p>
-                    <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
-                        <div>
-                            <p class="text-surface-500">Installment</p>
-                            <p class="mt-1 font-semibold text-surface-900">Month {{ selectedInstallment?.installment_no }}</p>
-                        </div>
-                        <div>
-                            <p class="text-surface-500">Paid Amount</p>
-                            <p class="mt-1 font-semibold text-surface-900">{{ formatCurrency(selectedInstallment?.amount_paid) }}</p>
-                        </div>
-                    </div>
+        <Dialog v-model:visible="voidDialog" modal header="Void Installment Payment" :style="{ width: '32rem' }">
+            <form v-if="selectedInstallment" class="space-y-4 pt-2" @submit.prevent="submitVoid">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
+                    <p class="font-medium text-surface-900">Month {{ selectedInstallment.month_number }}</p>
+                    <p class="mt-1 text-sm text-surface-500">Paid On: {{ selectedInstallment.paid_at }} ({{ selectedInstallment.payment_method }})</p>
+                    <p class="mt-2 text-lg font-semibold text-rose-700">{{ formatCurrency(selectedInstallment.amount) }}</p>
+                </div>
+
+                <div class="text-sm text-surface-600">
+                    Voiding removes the collection record and creates an offsetting reversal entry in the vault. A clear reason is required.
                 </div>
 
                 <div>
                     <label class="mb-2 block text-sm font-medium text-surface-700">Void Reason</label>
-                    <Textarea v-model="voidForm.reason" rows="3" class="w-full" placeholder="Why is this collection being voided?" />
+                    <Textarea v-model="voidForm.reason" rows="3" class="w-full" placeholder="Why is this payment being voided?" />
                     <small v-if="voidForm.errors.reason" class="mt-1 block text-xs text-red-500">{{ voidForm.errors.reason }}</small>
-                </div>
-
-                <div class="text-xs text-surface-500">
-                    Voiding will reverse the related vault movement and set this month back to pending.
                 </div>
 
                 <div class="flex justify-end gap-2 border-t border-surface-200 pt-4">
                     <Button label="Cancel" text severity="secondary" type="button" @click="voidDialog = false" />
-                    <Button label="Void Collection" severity="danger" type="submit" :loading="voidForm.processing" />
+                    <Button label="Void Payment" severity="danger" type="submit" :loading="voidForm.processing" />
                 </div>
             </form>
         </Dialog>
 
-        <Dialog v-model:visible="cancelDialog" header="Cancel Scheme" modal :style="{ width: '32rem' }">
-            <form class="space-y-4 pt-2" @submit.prevent="submitCancelScheme">
-                <div class="border border-surface-200 bg-surface-50 px-4 py-4">
-                    <p class="text-sm font-semibold text-surface-900">{{ selectedScheme?.scheme_number }}</p>
-                    <p class="mt-1 text-sm text-surface-500">{{ selectedScheme?.customer?.name }}</p>
-                    <p class="mt-3 text-xs text-surface-500">
-                        This is allowed only when no installments are currently marked as paid.
-                    </p>
+        <Dialog v-model:visible="cancelDialog" modal header="Cancel Gold Scheme" :style="{ width: '32rem' }">
+            <form v-if="selectedScheme" class="space-y-4 pt-2" @submit.prevent="submitCancel">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
+                    <p class="font-medium text-surface-900">{{ selectedScheme.scheme_number }} - {{ selectedScheme.customer?.name }}</p>
+                    <p class="mt-1 text-sm text-surface-500">Total collected: {{ formatCurrency(selectedScheme.total_paid_amount) }}</p>
+                    <p class="mt-2 text-xs text-surface-500">Cancelling stops further collection and marks the scheme inactive.</p>
                 </div>
 
                 <div>
@@ -887,22 +894,22 @@ const filteredCustomerSchemes = computed(() => {
 
         <Dialog v-model:visible="helpDialog" header="How Gold Schemes Work" modal :style="{ width: '32rem' }">
             <div class="space-y-4 pt-2 text-sm leading-6 text-surface-700">
-                <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">
                     <p class="font-medium text-surface-900">1. Add the scheme</p>
                     <p class="mt-1">Choose the customer, monthly amount, number of months, bonus amount, and start date.</p>
                 </div>
 
-                <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">
                     <p class="font-medium text-surface-900">2. Import running schemes if needed</p>
                     <p class="mt-1">If the customer already paid some months before, fill `Already Paid Months`. Use `History Only` when those old payments should not change today’s vault balance.</p>
                 </div>
 
-                <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">
                     <p class="font-medium text-surface-900">3. Collect month by month</p>
                     <p class="mt-1">Open `View Months` and collect only the next pending month. Later months stay locked until earlier dues are cleared.</p>
                 </div>
 
-                <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">
                     <p class="font-medium text-surface-900">4. Correct mistakes safely</p>
                     <p class="mt-1">Schemes can be edited only before any collection. Paid months use `Void` instead of silent edits so the vault trail stays correct.</p>
                 </div>

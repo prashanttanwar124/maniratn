@@ -75,7 +75,7 @@ const role = page.props.auth.role || 'user';
                             </div>
                         </div>
 
-                        <div v-if="mustVerifyEmail && !user.email_verified_at" class="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                        <div v-if="mustVerifyEmail && !user.email_verified_at" class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-xs">
                             <p>
                                 Your email address is not verified.
                                 <Link
@@ -140,10 +140,10 @@ const role = page.props.auth.role || 'user';
                         <HeadingSmall title="Quick Actions" description="Move to related account settings." />
 
                         <div class="mt-6 flex flex-col gap-3">
-                            <Link href="/settings/password" class="erp-action-button border border-surface-200 bg-white px-4 py-3 text-sm font-medium text-surface-900 transition hover:bg-surface-50">
+                            <Link href="/settings/password" class="erp-action-button rounded-lg border border-surface-200 bg-white px-4 py-3 text-sm font-medium text-surface-900 transition hover:bg-surface-50 shadow-xs">
                                 Update password
                             </Link>
-                            <Link href="/settings/two-factor" class="erp-action-button border border-surface-200 bg-white px-4 py-3 text-sm font-medium text-surface-900 transition hover:bg-surface-50">
+                            <Link href="/settings/two-factor" class="erp-action-button rounded-lg border border-surface-200 bg-white px-4 py-3 text-sm font-medium text-surface-900 transition hover:bg-surface-50 shadow-xs">
                                 Manage two-factor authentication
                             </Link>
                         </div>

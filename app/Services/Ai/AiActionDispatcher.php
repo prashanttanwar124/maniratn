@@ -34,6 +34,7 @@ class AiActionDispatcher
         'old_gold_estimate' => OldGoldEstimateAction::class,
         'create_bill' => CreateBillAction::class,
         'create_invoice' => CreateBillAction::class,
+        'create_bill_draft' => CreateBillAction::class,
         'check_stock' => StockCheckAction::class,
         'get_customer_khata' => CustomerKhataAction::class,
         'customer_khata' => CustomerKhataAction::class,

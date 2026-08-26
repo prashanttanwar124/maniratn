@@ -149,7 +149,7 @@ const openStandee = () => {
                             <small v-if="form.errors.google_review_url" class="mt-1 block text-xs text-red-500">{{ form.errors.google_review_url }}</small>
                         </div>
 
-                        <div class="md:col-span-2 border border-emerald-500/30 bg-emerald-50/20 p-4">
+                        <div class="md:col-span-2 rounded-lg border border-emerald-500/30 bg-emerald-50/20 p-4 shadow-xs">
                             <div class="flex items-center justify-between mb-3">
                                 <div class="flex items-center gap-2">
                                     <i class="pi pi-sparkles text-emerald-600 font-bold"></i>
@@ -203,12 +203,12 @@ const openStandee = () => {
 
                         <div class="md:col-span-2">
                             <label class="mb-2 block text-sm font-medium text-surface-700">Logo</label>
-                            <input type="file" accept="image/*" class="block w-full text-sm text-surface-700 file:mr-4 file:border-0 file:bg-surface-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-surface-900" @change="onLogoChange" />
+                            <input type="file" accept="image/*" class="block w-full text-sm text-surface-700 file:mr-4 file:rounded-lg file:border-0 file:bg-surface-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-surface-900" @change="onLogoChange" />
                             <small v-if="form.errors.logo" class="mt-1 block text-xs text-red-500">{{ form.errors.logo }}</small>
 
-                            <div v-if="currentLogoUrl && !form.remove_logo" class="mt-4 border border-surface-200 bg-surface-50 p-4">
+                            <div v-if="currentLogoUrl && !form.remove_logo" class="mt-4 rounded-lg border border-surface-200 bg-surface-50 p-4 shadow-xs">
                                 <p class="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-surface-500">Current logo</p>
-                                <img :src="currentLogoUrl" alt="Business logo" class="max-h-24 max-w-full object-contain" />
+                                <img :src="currentLogoUrl" alt="Business logo" class="max-h-24 max-w-full rounded-md object-contain" />
                                 <Button label="Remove Logo" icon="pi pi-trash" severity="danger" text class="mt-3 !px-0" @click="removeLogo" />
                             </div>
                         </div>

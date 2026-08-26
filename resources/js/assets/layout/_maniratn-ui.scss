@@ -217,6 +217,7 @@ body {
         border-color 170ms ease,
         box-shadow 170ms ease !important;
 
+    > p:first-child:not([class*="text-2xl"]):not([class*="text-xl"]):not([class*="text-3xl"]),
     .erp-stat-card__label {
         display: block !important;
         font-size: 0.72rem !important;
@@ -224,21 +225,26 @@ body {
         text-transform: uppercase !important;
         letter-spacing: 0.08em !important;
         color: var(--maniratn-ink-soft) !important;
+        margin: 0 !important;
     }
 
+    > p:nth-child(2),
     .erp-stat-card__value {
         display: block !important;
         margin-top: 0.35rem !important;
+        margin-bottom: 0 !important;
         font-size: 1.5rem !important;
         font-weight: 700 !important;
         line-height: 1.25 !important;
-        color: var(--maniratn-ink) !important;
+        color: var(--maniratn-ink);
         font-feature-settings: 'tnum' 1;
     }
 
+    > p:nth-child(3),
     .erp-stat-card__meta {
         display: block !important;
         margin-top: 0.35rem !important;
+        margin-bottom: 0 !important;
         font-size: 0.75rem !important;
         color: var(--maniratn-ink-muted) !important;
     }
@@ -251,6 +257,36 @@ body {
 .erp-stat-card:focus-visible {
     outline: none;
     box-shadow: var(--maniratn-focus), var(--maniratn-shadow-sm) !important;
+}
+
+/* Universal luxury rounding for nested callout boxes, modal cards, and notices */
+:where(.layout-main, .p-dialog, .p-drawer) :where(
+    .bg-surface-50,
+    .bg-surface-100,
+    .bg-amber-50,
+    .bg-emerald-50,
+    .bg-rose-50,
+    .bg-red-50,
+    .bg-blue-50,
+    .bg-sky-50,
+    .bg-slate-50,
+    .bg-gray-50
+):where(
+    .border,
+    .border-dashed,
+    [class*="border-surface-"],
+    [class*="border-amber-"],
+    [class*="border-emerald-"],
+    [class*="border-rose-"],
+    [class*="border-red-"],
+    [class*="border-gray-"],
+    [class*="border-slate-"]
+) {
+    border-radius: var(--maniratn-radius-sm);
+}
+
+.erp-media-placeholder {
+    border-radius: var(--maniratn-radius-sm) !important;
 }
 
 .erp-segmented-control {
@@ -381,7 +417,18 @@ body {
 
 .erp-pill,
 .erp-code-pill {
-    border-radius: 999px !important;
+    border-radius: 9999px !important;
+}
+
+.erp-hint-chip {
+    border-radius: var(--maniratn-radius-sm) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    font-size: 0.6875rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.03em !important;
+    line-height: 1.2 !important;
+    padding: 0.25rem 0.65rem !important;
 }
 
 .erp-code-pill {
@@ -453,12 +500,59 @@ body {
 }
 
 .erp-line-items .p-datatable-tbody > tr > td {
+    padding-block: 0.45rem;
     background: var(--maniratn-panel);
+}
+
+.erp-line-items .p-datatable-thead > tr > th {
+    white-space: nowrap;
 }
 
 .erp-line-items .p-inputnumber-input,
 .erp-line-items .p-select {
     min-height: 2.35rem;
+}
+
+.erp-line-items .erp-line-control {
+    min-width: 0;
+}
+
+.erp-line-items .erp-line-rate-control {
+    width: 7.25rem;
+}
+
+.erp-line-items .erp-line-making-control {
+    width: 6.5rem;
+}
+
+.erp-line-items .erp-line-making-type {
+    width: 5.75rem;
+}
+
+.erp-line-items .erp-line-control.p-inputnumber .p-inputnumber-input {
+    width: 100%;
+}
+
+.erp-line-items .erp-line-control.p-inputnumber .p-inputnumber-input,
+.erp-line-items .erp-line-control.p-select {
+    height: 2.25rem;
+    min-height: 2.25rem;
+}
+
+.erp-line-items .erp-line-control.p-select .p-select-label {
+    display: flex;
+    align-items: center;
+    padding-block: 0;
+}
+
+.erp-line-items .erp-th-right .p-datatable-column-header-content {
+    justify-content: flex-end;
+    text-align: right;
+}
+
+.erp-line-items .erp-th-center .p-datatable-column-header-content {
+    justify-content: center;
+    text-align: center;
 }
 
 .erp-entity-selector.p-autocomplete {
@@ -506,14 +600,12 @@ body {
     border-radius: var(--maniratn-radius) !important;
     box-shadow: var(--maniratn-shadow-card) !important;
     transition:
-        transform 160ms ease,
         border-color 160ms ease,
         box-shadow 160ms ease !important;
 }
 
 .erp-task-card:hover {
     box-shadow: var(--maniratn-shadow-sm) !important;
-    transform: translateY(-2px);
 }
 
 .erp-overlay-panel {
@@ -538,7 +630,6 @@ body {
 .erp-overlay-action {
     border-radius: var(--maniratn-radius-sm) !important;
     transition:
-        transform 150ms ease,
         border-color 150ms ease,
         background-color 150ms ease,
         box-shadow 150ms ease !important;
@@ -558,7 +649,6 @@ body {
 
 .erp-overlay-action:hover {
     box-shadow: var(--maniratn-shadow-card);
-    transform: translateY(-2px);
 }
 
 .erp-overlay-footer {
@@ -617,7 +707,6 @@ body {
     box-shadow: var(--maniratn-shadow-xs);
     isolation: isolate;
     transition:
-        transform 170ms ease,
         border-color 170ms ease,
         box-shadow 170ms ease,
         background-color 170ms ease;
@@ -640,7 +729,6 @@ body {
     border-color: color-mix(in srgb, var(--maniratn-gold) 52%, var(--maniratn-border)) !important;
     background: var(--maniratn-panel) !important;
     box-shadow: var(--maniratn-shadow-sm);
-    transform: translateY(-3px);
 }
 
 .erp-quick-link:hover::after {
@@ -677,8 +765,29 @@ body {
     background: linear-gradient(145deg, var(--maniratn-panel) 0%, var(--maniratn-panel-muted) 100%) !important;
     box-shadow: var(--maniratn-shadow-xs) !important;
     transition:
-        transform 170ms ease,
+        border-color 170ms ease,
         box-shadow 170ms ease;
+
+    > p:first-child:not([class*="text-2xl"]):not([class*="text-xl"]):not([class*="text-3xl"]) {
+        display: block !important;
+        font-size: 0.72rem !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.08em !important;
+        color: var(--maniratn-ink-soft) !important;
+        margin: 0 !important;
+    }
+
+    > p:nth-child(2) {
+        display: block !important;
+        margin-top: 0.35rem !important;
+        margin-bottom: 0 !important;
+        font-size: 1.5rem !important;
+        font-weight: 700 !important;
+        line-height: 1.25 !important;
+        color: var(--maniratn-ink);
+        font-feature-settings: 'tnum' 1;
+    }
 }
 
 .inventory-summary-card::before {
@@ -695,7 +804,7 @@ body {
 
 .inventory-summary-card:hover {
     box-shadow: var(--maniratn-shadow-sm) !important;
-    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--maniratn-gold) 45%, var(--maniratn-border)) !important;
 }
 
 .inventory-category-card {
@@ -707,7 +816,6 @@ body {
     background: linear-gradient(145deg, var(--maniratn-panel) 0%, var(--maniratn-panel-muted) 100%) !important;
     box-shadow: var(--maniratn-shadow-xs) !important;
     transition:
-        transform 170ms ease,
         border-color 170ms ease,
         box-shadow 170ms ease;
 }
@@ -727,7 +835,6 @@ body {
 .inventory-category-card:hover {
     border-color: color-mix(in srgb, var(--maniratn-gold) 45%, var(--maniratn-border)) !important;
     box-shadow: var(--maniratn-shadow-sm) !important;
-    transform: translateY(-2px);
 }
 
 .inventory-category-card__icon {

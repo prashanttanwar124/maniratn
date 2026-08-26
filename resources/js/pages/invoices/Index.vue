@@ -274,28 +274,32 @@ const draftFormatCurrency = (val) =>
             </section>
 
             <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Active Sales</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ formatCurrency(totalSales) }}</p>
+                <div class="erp-stat-card p-5">
+                    <span class="erp-stat-card__label">Active Sales</span>
+                    <span class="erp-stat-card__value mt-2 block">{{ formatCurrency(totalSales) }}</span>
+                    <span class="erp-stat-card__meta">Valid billed revenue</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Collected</p>
-                    <p class="mt-2 text-2xl font-semibold text-emerald-700">{{ formatCurrency(totalCollected) }}</p>
+                <div class="erp-stat-card p-5">
+                    <span class="erp-stat-card__label">Collected</span>
+                    <span class="erp-stat-card__value mt-2 block !text-emerald-700">{{ formatCurrency(totalCollected) }}</span>
+                    <span class="erp-stat-card__meta">Cash, card & bank receipts</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Pending</p>
-                    <p class="mt-2 text-2xl font-semibold text-amber-700">{{ formatCurrency(totalPending) }}</p>
+                <div class="erp-stat-card p-5">
+                    <span class="erp-stat-card__label">Pending</span>
+                    <span class="erp-stat-card__value mt-2 block !text-amber-700">{{ formatCurrency(totalPending) }}</span>
+                    <span class="erp-stat-card__meta">Receivable ledger balance</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Voided Bills</p>
-                    <p class="mt-2 text-2xl font-semibold text-red-600">{{ cancelledCount }}</p>
+                <div class="erp-stat-card p-5">
+                    <span class="erp-stat-card__label">Voided Bills</span>
+                    <span class="erp-stat-card__value mt-2 block !text-red-600">{{ cancelledCount }}</span>
+                    <span class="erp-stat-card__meta">Cancelled invoices</span>
                 </div>
             </section>
 
-            <section v-if="props.drafts.length > 0" class="border border-amber-200 bg-amber-50">
+            <section v-if="props.drafts.length > 0" class="rounded-lg border border-amber-200 bg-amber-50 shadow-xs">
                 <div class="flex items-center justify-between border-b border-amber-200 px-5 py-3">
                     <div class="flex items-center gap-2">
                         <i class="pi pi-file-edit text-amber-700"></i>
@@ -307,7 +311,7 @@ const draftFormatCurrency = (val) =>
                     <div
                         v-for="draft in props.drafts"
                         :key="draft.id"
-                        class="flex items-center justify-between gap-4 border border-amber-200 bg-white px-4 py-3"
+                        class="flex items-center justify-between gap-4 rounded-md border border-amber-200 bg-white px-4 py-3 shadow-xs"
                     >
                         <div class="min-w-0 flex-1">
                             <p class="truncate text-sm font-medium text-surface-900">{{ draft.customerName }}</p>
@@ -487,17 +491,17 @@ const draftFormatCurrency = (val) =>
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 p-4 md:grid-cols-3">
-                    <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                    <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4 shadow-xs">
                         <p class="text-xs uppercase tracking-wide text-surface-500">Total Billed</p>
                         <p class="mt-2 text-xl font-semibold text-surface-900">{{ formatCurrency(totalSales) }}</p>
                     </div>
 
-                    <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                    <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4 shadow-xs">
                         <p class="text-xs uppercase tracking-wide text-surface-500">Recovered</p>
                         <p class="mt-2 text-xl font-semibold text-emerald-700">{{ formatCurrency(totalCollected) }}</p>
                     </div>
 
-                    <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                    <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4 shadow-xs">
                         <p class="text-xs uppercase tracking-wide text-surface-500">Outstanding</p>
                         <p class="mt-2 text-xl font-semibold text-amber-700">{{ formatCurrency(totalPending) }}</p>
                     </div>
@@ -508,7 +512,7 @@ const draftFormatCurrency = (val) =>
         <!-- Collect Payment Dialog -->
         <Dialog v-model:visible="showPaymentDialog" header="Collect Invoice Payment" modal :style="{ width: '32rem' }" @hide="closePaymentDialog">
             <form @submit.prevent="submitPayment" class="space-y-4 pt-2">
-                <div class="erp-dialog-banner border border-surface-200 bg-surface-50 p-4">
+                <div class="erp-dialog-banner rounded-lg border border-surface-200 bg-surface-50 p-4">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-xs text-surface-500">Invoice Number</p>
@@ -588,7 +592,7 @@ const draftFormatCurrency = (val) =>
 
         <Dialog v-model:visible="showVoidDialog" header="Void Invoice" modal :style="{ width: '34rem' }" @hide="closeVoidDialog">
             <div class="space-y-5 pt-2">
-                <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
                     <p class="text-sm font-medium text-surface-900">{{ selectedInvoice?.invoice_number }}</p>
                     <p class="mt-1 text-sm text-surface-500">{{ selectedInvoice?.customer?.name || 'Walk-in' }}</p>
                     <div class="mt-3 grid grid-cols-3 gap-3 text-sm">
@@ -608,7 +612,7 @@ const draftFormatCurrency = (val) =>
                 </div>
 
                 <!-- If paid amount is 0 -->
-                <div v-if="Number(selectedInvoice?.paid_amount || 0) <= 0" class="border border-surface-200 bg-surface-50 px-4 py-3 text-xs text-surface-700">
+                <div v-if="Number(selectedInvoice?.paid_amount || 0) <= 0" class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 text-xs text-surface-700">
                     <p class="font-semibold text-surface-900">No Payments Received (Paid: ₹0)</p>
                     <p class="mt-1 text-surface-500">Voiding this invoice will cancel the bill and restore all stock back to active inventory without creating ledger advance or refund entries.</p>
                 </div>
@@ -628,7 +632,7 @@ const draftFormatCurrency = (val) =>
                     <small v-if="voidForm.errors.reason" class="mt-1 block text-xs text-red-500">{{ voidForm.errors.reason }}</small>
                 </div>
 
-                <div class="border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
                     Stock and custom order items will be restored.
                     <span v-if="Number(selectedInvoice?.paid_amount || 0) > 0">
                         If you choose refund, received money will also be reversed from the vault.
@@ -652,7 +656,7 @@ const draftFormatCurrency = (val) =>
         <Dialog v-model:visible="showViewDialog" header="Invoice Details" modal :style="{ width: '52rem', maxWidth: '95vw' }" @hide="closeViewDialog">
             <div v-if="viewInvoice" class="space-y-4 pt-1 text-sm">
                 <!-- Top Banner / Header -->
-                <div class="erp-dialog-banner border border-surface-200 bg-surface-50 p-4">
+                <div class="erp-dialog-banner rounded-lg border border-surface-200 bg-surface-50 p-4">
                     <div class="flex flex-col gap-3 border-b border-surface-200 pb-3 md:flex-row md:items-center md:justify-between">
                         <div>
                             <div class="flex items-center gap-2">
@@ -690,7 +694,7 @@ const draftFormatCurrency = (val) =>
                 </div>
 
                 <!-- Void Alert if Cancelled -->
-                <div v-if="viewInvoice.status === 'CANCELLED'" class="border border-red-200 bg-red-50 p-3.5 text-xs text-red-800">
+                <div v-if="viewInvoice.status === 'CANCELLED'" class="rounded-lg border border-red-200 bg-red-50 p-3.5 text-xs text-red-800">
                     <div class="flex items-start gap-2.5">
                         <i class="pi pi-times-circle mt-0.5 text-base text-red-600"></i>
                         <div>
@@ -712,7 +716,7 @@ const draftFormatCurrency = (val) =>
                     <div class="mb-2 flex items-center justify-between">
                         <p class="text-xs font-bold tracking-wider text-surface-600 uppercase">Billed Items ({{ viewInvoice.items?.length || 0 }})</p>
                     </div>
-                    <div class="erp-native-table">
+                    <div class="erp-native-table overflow-hidden rounded-lg border border-surface-200">
                         <table class="w-full text-left text-xs">
                             <thead class="border-b border-surface-200 bg-surface-50 font-semibold tracking-wider text-surface-600 uppercase">
                                 <tr>
@@ -773,7 +777,7 @@ const draftFormatCurrency = (val) =>
                             <div
                                 v-for="pmt in viewInvoice.payments"
                                 :key="pmt.id"
-                                class="erp-list-item flex items-center justify-between border border-surface-200 bg-surface-50/90 px-3 py-2 text-xs"
+                                class="erp-list-item flex items-center justify-between rounded-md border border-surface-200 bg-surface-50/90 px-3 py-2 text-xs"
                             >
                                 <div>
                                     <div class="flex items-center gap-2">

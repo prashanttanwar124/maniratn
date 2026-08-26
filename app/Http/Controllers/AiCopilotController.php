@@ -2,34 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\VaultType;
 use App\Models\BusinessSetting;
 use App\Models\Category;
-use App\Models\Customer;
 use App\Models\DailyRate;
-use App\Models\Invoice;
-use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\Purity;
 use App\Models\SilverProduct;
 use App\Models\Supplier;
-use App\Models\Transaction;
 use App\Services\Ai\AiActionDispatcher;
-use App\Services\LedgerImpactService;
-use App\Services\VaultService;
+use App\Services\AiInvoiceDraftService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class AiCopilotController extends Controller
 {
     public function __construct(
-        protected AiActionDispatcher $dispatcher
+        protected AiActionDispatcher $dispatcher,
+        protected AiInvoiceDraftService $invoiceDrafts,
+        protected \App\Services\InventoryBarcodeService $inventoryBarcodes,
     ) {}
 
     /**
@@ -60,19 +55,10 @@ class AiCopilotController extends Controller
         }
 
         $matchedProduct = null;
-        if (preg_match('/\b(G\d{5}|S\d{5}|MS-\d{5})\b/i', $message, $matches)) {
-            $b = strtoupper($matches[1]);
-            $prod = Product::with(['category', 'purity'])->where('barcode', $b)->first();
-            if (! $prod && preg_match('/^G(\d{5})$/', $b, $m)) {
-                $prod = Product::with(['category', 'purity'])->find((int) $m[1]);
-            }
-            if (! $prod) {
-                $prod = SilverProduct::with('category')->where('barcode', $b)->first();
-                if (! $prod && preg_match('/^S(\d{5})$/', $b, $m)) {
-                    $prod = SilverProduct::with('category')->find((int) $m[1]);
-                }
-            }
-            if ($prod) {
+        if (preg_match('/\b(G\d+|S\d+|MS-\d+)\b/i', $message, $matches)) {
+            $inventory = $this->inventoryBarcodes->find($matches[1]);
+            if ($inventory) {
+                $prod = $inventory['item'];
                 $matchedProduct = [
                     'barcode' => $prod->barcode,
                     'name' => $prod->name,
@@ -96,9 +82,9 @@ class AiCopilotController extends Controller
                 'silver' => floatval($todayRate->silver_sell),
             ] : null,
             'vault_balance' => [
-                'cash' => '₹' . number_format(\App\Models\Vault::whereIn('type', ['CASH', 'cash'])->sum('balance'), 2),
-                'gold' => number_format(\App\Models\Vault::whereIn('type', ['GOLD', 'gold'])->sum('balance'), 3) . ' g',
-                'silver' => number_format(\App\Models\Vault::whereIn('type', ['SILVER', 'silver'])->sum('balance'), 3) . ' g',
+                'cash' => '₹'.number_format(\App\Models\Vault::whereIn('type', ['CASH', 'cash'])->sum('balance'), 2),
+                'gold' => number_format(\App\Models\Vault::whereIn('type', ['GOLD', 'gold'])->sum('balance'), 3).' g',
+                'silver' => number_format(\App\Models\Vault::whereIn('type', ['SILVER', 'silver'])->sum('balance'), 3).' g',
             ],
             'matched_product' => $matchedProduct,
         ];
@@ -108,7 +94,7 @@ class AiCopilotController extends Controller
                 ->connectTimeout(10)
                 ->withHeaders([
                     'Accept' => 'application/json',
-                    'Authorization' => 'Bearer ' . $apiKey,
+                    'Authorization' => 'Bearer '.$apiKey,
                 ])
                 ->post("{$aiHubUrl}/api/ai/chat", [
                     'message' => $message,
@@ -116,13 +102,13 @@ class AiCopilotController extends Controller
                     'voice' => $voice,
                     'include_audio' => $includeAudio,
                     'store_url' => config('app.url'),
-                    'session_id' => 'erp_user_' . (auth()->id() ?: 'guest'),
+                    'session_id' => 'erp_user_'.(auth()->id() ?: 'guest'),
                     'erp_context' => $erpContext,
                 ]);
 
             if ($response->failed()) {
-                $err = $response->json('error') ?? $response->json('message') ?? 'AI Service returned error ' . $response->status();
-                Log::error('AI Hub Error Response: ' . json_encode($response->json()));
+                $err = $response->json('error') ?? $response->json('message') ?? 'AI Service returned error '.$response->status();
+                Log::error('AI Hub Error Response: '.json_encode($response->json()));
 
                 return response()->json([
                     'reply' => 'Maaf kijiye, AI Server se response milne me vilamb ho raha hai. Kripya ek baar dobara try karein.',
@@ -143,27 +129,18 @@ class AiCopilotController extends Controller
 
                 if (! empty($realData)) {
                     if (isset($realData['found']) && $realData['found'] === false) {
-                        $aiResult['reply'] = "⚠️ " . ($realData['message'] ?? 'Product inventory me uplabdh nahi hai.');
+                        $aiResult['reply'] = '⚠️ '.($realData['message'] ?? 'Product inventory me uplabdh nahi hai.');
                     } else {
                         $aiResult['reply'] = match (true) {
-                            $tool === 'create_bill' || $tool === 'create_invoice' || $tool === 'create_bill_draft'
-                                => ($realData['customer_name'] ?? 'Customer') . " ji ke liye " . ($realData['item_name'] ?? 'item') . " ka bill draft taiyar hai. Kripya niche details verify karke confirm karein.",
-                            $tool === 'calculate_estimate' || $tool === 'calculate_estimation'
-                                => "{$realData['weight']} {$realData['purity']} " . ($realData['item_name'] ?? 'item') . " ka total estimate {$realData['total_estimate']} banega. (Metal Value: {$realData['metal_value']} + Making: {$realData['making_charges']} + GST: {$realData['gst_3_percent']}).",
-                            $tool === 'calculate_old_gold'
-                                => "Old Gold Valuation: Total {$realData['total_estimate']} banega ({$realData['weight']} {$realData['purity']} @ {$realData['rate_per_gm']}).",
-                            $tool === 'get_stock_info' || $tool === 'stock_check'
-                                => "Showroom me total {$realData['total_items']} items uplabdh hain. Gold: {$realData['gold_count']} items ({$realData['gold_weight']}), Silver: {$realData['silver_count']} items ({$realData['silver_weight']}).",
-                            $tool === 'get_customer_khata' || $tool === 'customer_balance_check'
-                                => "{$realData['customer_name']} ji ka khata balance: {$realData['status_text']}. Total Purchases: {$realData['total_purchases']}, Total Paid: {$realData['total_paid']}.",
-                            $tool === 'get_sales_summary' || $tool === 'daily_sales_report'
-                                => "{$realData['period_label']} Showroom Report: Total Revenue {$realData['total_sales']} ({$realData['total_bills']} Bills). Gold: {$realData['gold_weight_sold']}, Silver: {$realData['silver_weight_sold']}.",
-                            $tool === 'search_invoices' || $tool === 'get_customer_invoices'
-                                => "Maine {$realData['count']} pichle purchase bills dhoond liye hain. Niche card me details aur print receipt check karein.",
-                            $tool === 'get_vault_balance' || $tool === 'vault_balance'
-                                => "Showroom Vault Holdings: Cash: {$realData['cash_in_hand']}, Gold: {$realData['gold_in_vault']}, Silver: {$realData['silver_in_vault']}, Bank: {$realData['bank_balance']}.",
-                            $tool === 'get_tasks' || $tool === 'create_task' || $tool === 'tasks'
-                                => $realData['message'] ?? ("Showroom tasks list me total " . ($realData['count'] ?? 0) . " tasks hain. Niche board par details check karein."),
+                            $tool === 'create_bill' || $tool === 'create_invoice' || $tool === 'create_bill_draft' => ($realData['customer_name'] ?? 'Customer').' ji ke liye '.($realData['item_name'] ?? 'item').' regular billing draft me add kiya ja raha hai.',
+                            $tool === 'calculate_estimate' || $tool === 'calculate_estimation' => "{$realData['weight']} {$realData['purity']} ".($realData['item_name'] ?? 'item')." ka total estimate {$realData['total_estimate']} banega. (Metal Value: {$realData['metal_value']} + Making: {$realData['making_charges']} + GST: {$realData['gst_3_percent']}).",
+                            $tool === 'calculate_old_gold' => "Old Gold Valuation: Total {$realData['total_estimate']} banega ({$realData['weight']} {$realData['purity']} @ {$realData['rate_per_gm']}).",
+                            $tool === 'get_stock_info' || $tool === 'stock_check' => "Showroom me total {$realData['total_items']} items uplabdh hain. Gold: {$realData['gold_count']} items ({$realData['gold_weight']}), Silver: {$realData['silver_count']} items ({$realData['silver_weight']}).",
+                            $tool === 'get_customer_khata' || $tool === 'customer_balance_check' => "{$realData['customer_name']} ji ka khata balance: {$realData['status_text']}. Total Purchases: {$realData['total_purchases']}, Total Paid: {$realData['total_paid']}.",
+                            $tool === 'get_sales_summary' || $tool === 'daily_sales_report' => "{$realData['period_label']} Showroom Report: Total Revenue {$realData['total_sales']} ({$realData['total_bills']} Bills). Gold: {$realData['gold_weight_sold']}, Silver: {$realData['silver_weight_sold']}.",
+                            $tool === 'search_invoices' || $tool === 'get_customer_invoices' => "Maine {$realData['count']} pichle purchase bills dhoond liye hain. Niche card me details aur print receipt check karein.",
+                            $tool === 'get_vault_balance' || $tool === 'vault_balance' => "Showroom Vault Holdings: Cash: {$realData['cash_in_hand']}, Gold: {$realData['gold_in_vault']}, Silver: {$realData['silver_in_vault']}, Bank: {$realData['bank_balance']}.",
+                            $tool === 'get_tasks' || $tool === 'create_task' || $tool === 'tasks' => $realData['message'] ?? ('Showroom tasks list me total '.($realData['count'] ?? 0).' tasks hain. Niche board par details check karein.'),
                             default => $aiResult['reply'] ?? 'Done.',
                         };
                     }
@@ -176,13 +153,26 @@ class AiCopilotController extends Controller
                 ];
             }
 
-            $msgId = $aiResult['message_id'] ?? ($aiResult['log_id'] ?? null);
+            $msgId = $aiResult['message_id']
+                ?? ($aiResult['log_id'] ?? 'local_'.substr(hash('sha256', (string) auth()->id().'|'.$message.'|'.json_encode($actions)), 0, 40));
+            if (! empty($executedActions) && ! empty($msgId)) {
+                [$executedActions, $invoiceDraftReply] = $this->persistInvoiceDraftActions(
+                    $request,
+                    $executedActions,
+                    (string) $msgId,
+                );
+
+                if ($invoiceDraftReply !== null) {
+                    $aiResult['reply'] = $invoiceDraftReply;
+                }
+            }
+
             if (! empty($executedActions) && ! empty($msgId)) {
                 try {
                     Http::timeout(5)
                         ->withHeaders([
                             'Accept' => 'application/json',
-                            'Authorization' => 'Bearer ' . $apiKey,
+                            'Authorization' => 'Bearer '.$apiKey,
                         ])
                         ->post("{$aiHubUrl}/api/ai/history/update-action", [
                             'message_id' => $msgId,
@@ -190,7 +180,7 @@ class AiCopilotController extends Controller
                             'reply' => $aiResult['reply'] ?? null,
                         ]);
                 } catch (\Throwable $syncErr) {
-                    Log::warning('Failed to sync executed AI actions to AI Hub: ' . $syncErr->getMessage());
+                    Log::warning('Failed to sync executed AI actions to AI Hub: '.$syncErr->getMessage());
                 }
             }
 
@@ -203,13 +193,76 @@ class AiCopilotController extends Controller
                 'duration' => $aiResult['duration'] ?? null,
             ]);
         } catch (\Throwable $e) {
-            Log::error('ERP AI Copilot Exception: ' . $e->getMessage());
+            Log::error('ERP AI Copilot Exception: '.$e->getMessage());
+
             return response()->json([
                 'reply' => 'Maaf kijiye, AI Server se connect hone me samasya aa rahi hai. Kripya check karein ki AI server chalu hai.',
                 'actions' => [],
                 'audio' => null,
             ]);
         }
+    }
+
+    /**
+     * Persist AI billing commands into the same draft model used by the regular invoice screen.
+     *
+     * @return array{0: array<int, array<string, mixed>>, 1: string|null}
+     */
+    private function persistInvoiceDraftActions(Request $request, array $actions, string $messageId): array
+    {
+        $invoiceTools = ['create_bill', 'create_invoice', 'create_bill_draft'];
+        $reply = null;
+
+        foreach ($actions as $index => $action) {
+            if (! in_array($action['tool'] ?? '', $invoiceTools, true)) {
+                continue;
+            }
+
+            $result = (array) ($action['result'] ?? []);
+            if (($result['found'] ?? false) !== true) {
+                continue;
+            }
+
+            if (! $request->user()?->can('manage_invoices')) {
+                $result = array_merge($result, [
+                    'found' => false,
+                    'status' => 'INVOICE_PERMISSION_REQUIRED',
+                    'message' => 'Invoice draft banane ki permission nahi hai.',
+                ]);
+                $actions[$index]['result'] = $result;
+                $reply = 'Invoice draft banane ki permission nahi hai.';
+
+                continue;
+            }
+
+            $phone = preg_replace('/\D+/', '', (string) ($result['customer_phone'] ?? '')) ?: 'customer';
+            $sourceReference = "{$messageId}:{$phone}";
+
+            try {
+                $draftResult = $this->invoiceDrafts->createOrAppend(
+                    $request->user(),
+                    $result,
+                    $sourceReference,
+                );
+                $actions[$index]['result'] = array_merge($result, $draftResult);
+                $reply = sprintf(
+                    '%s ji ka invoice draft ready hai. %d item billing draft me hai. Regular invoice screen par details aur payment verify karke invoice generate karein.',
+                    $draftResult['customer_name'],
+                    $draftResult['item_count'],
+                );
+            } catch (ValidationException $exception) {
+                $message = collect($exception->errors())->flatten()->first()
+                    ?? 'Invoice draft prepare nahi ho saka.';
+                $actions[$index]['result'] = array_merge($result, [
+                    'found' => false,
+                    'status' => 'INVOICE_DRAFT_FAILED',
+                    'message' => $message,
+                ]);
+                $reply = "Invoice draft prepare nahi hua: {$message}";
+            }
+        }
+
+        return [$actions, $reply];
     }
 
     /**
@@ -225,13 +278,13 @@ class AiCopilotController extends Controller
             $response = Http::timeout(10)
                 ->withHeaders([
                     'Accept' => 'application/json',
-                    'Authorization' => 'Bearer ' . $apiKey,
+                    'Authorization' => 'Bearer '.$apiKey,
                 ])
                 ->get("{$aiHubUrl}/api/ai/history", [
                     'limit' => $request->input('limit', 10),
                     'before_id' => $request->input('before_id'),
                     'store_url' => config('app.url'),
-                    'session_id' => 'erp_user_' . (auth()->id() ?: 'guest'),
+                    'session_id' => 'erp_user_'.(auth()->id() ?: 'guest'),
                 ]);
 
             if ($response->successful()) {
@@ -265,289 +318,17 @@ class AiCopilotController extends Controller
             $response = Http::timeout(10)
                 ->withHeaders([
                     'Accept' => 'application/json',
-                    'Authorization' => 'Bearer ' . $apiKey,
+                    'Authorization' => 'Bearer '.$apiKey,
                 ])
                 ->delete("{$aiHubUrl}/api/ai/history", [
                     'store_url' => config('app.url'),
-                    'session_id' => 'erp_user_' . (auth()->id() ?: 'guest'),
+                    'session_id' => 'erp_user_'.(auth()->id() ?: 'guest'),
                 ]);
 
             return response()->json($response->json());
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()]);
         }
-    }
-
-    /**
-     * Human-in-the-loop: Confirm & Create Real Invoice in Database
-     */
-    public function confirmBill(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'customer_name' => 'required|string|max:255',
-            'customer_phone' => 'required|string|max:50',
-            'barcode' => 'required|string|max:50',
-            'item_name' => 'nullable|string|max:255',
-            'weight' => 'nullable|numeric|gt:0',
-            'metal' => 'nullable|string|in:GOLD,SILVER,Gold,Silver,gold,silver',
-            'purity' => 'nullable|string|max:50',
-            'rate_per_gm' => 'required|numeric|gt:0',
-            'making_type' => 'nullable|string|in:percentage,per_gram,flat,lump_sum',
-            'making_value' => 'nullable|numeric|min:0',
-            'discount_amount' => 'nullable|numeric|min:0',
-            'payment_mode' => 'nullable|string|in:CASH,UPI,CARD,BANK_TRANSFER,ONLINE,BANK,cash,upi,card,bank_transfer,online,bank',
-            'payment_amount' => 'nullable|numeric|min:0',
-            'message_id' => 'nullable|string|max:100',
-            'draft_id' => 'nullable|string|max:100',
-        ]);
-
-        return DB::transaction(function () use ($request, $validated) {
-            $messageId = $validated['message_id'] ?? ($validated['draft_id'] ?? null);
-
-            // Idempotency: Avoid duplicate billing if this message was already confirmed
-            if (! empty($messageId)) {
-                $existingTx = Transaction::where('description', 'LIKE', "%[AI_MSG:{$messageId}]%")->first();
-                if ($existingTx && $existingTx->invoice_id) {
-                    $existingInvoice = Invoice::find($existingTx->invoice_id);
-                    if ($existingInvoice) {
-                        return response()->json([
-                            'success' => true,
-                            'invoice_id' => $existingInvoice->id,
-                            'invoice_number' => $existingInvoice->invoice_number,
-                            'already_confirmed' => true,
-                            'grand_total' => floatval($existingInvoice->total_amount),
-                            'view_url' => "/invoices?view={$existingInvoice->id}",
-                            'print_url' => "/invoices/{$existingInvoice->id}/print",
-                            'message' => "Bill #{$existingInvoice->invoice_number} pehle se confirm ho chuka hai.",
-                        ]);
-                    }
-                }
-            }
-
-            $barcode = strtoupper(trim((string) ($validated['barcode'] ?? $request->input('barcode'))));
-            if (empty($barcode)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Barcode ke bina bill generate nahi kiya ja sakta. Kripya product ka barcode scan ya enter karein.',
-                ], 422);
-            }
-
-            $matchedProduct = Product::where('barcode', $barcode)->first();
-            if (! $matchedProduct && preg_match('/^G(\d{5})$/', $barcode, $m)) {
-                $matchedProduct = Product::find((int) $m[1]);
-            }
-            $matchedSilverProduct = null;
-            if (! $matchedProduct) {
-                $matchedSilverProduct = SilverProduct::where('barcode', $barcode)->first();
-                if (! $matchedSilverProduct && preg_match('/^S(\d{5})$/', $barcode, $m)) {
-                    $matchedSilverProduct = SilverProduct::find((int) $m[1]);
-                }
-            }
-
-            if (! $matchedProduct && ! $matchedSilverProduct) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Barcode '{$barcode}' showroom inventory me nahi mila.",
-                ], 422);
-            }
-
-            $customerName = trim((string) $validated['customer_name']);
-            $customerPhone = trim((string) $validated['customer_phone']);
-
-            if (empty($customerName) || empty($customerPhone)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Bill confirm karne ke liye Customer Name aur Mobile Number zaroori hai.',
-                ], 422);
-            }
-
-            $effectiveRate = floatval($validated['rate_per_gm']);
-            $makingType = (string) ($validated['making_type'] ?? 'percentage');
-            $makingValue = floatval($validated['making_value'] ?? 12);
-            $discountAmount = floatval($validated['discount_amount'] ?? 0);
-            $paymentMode = strtoupper((string) ($validated['payment_mode'] ?? 'CASH'));
-            $paymentAmount = isset($validated['payment_amount']) ? floatval($validated['payment_amount']) : null;
-
-            if ($matchedProduct) {
-                if ($matchedProduct->is_sold) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Product '{$matchedProduct->name}' (Barcode: {$barcode}) pehle se hi bik chuka hai!",
-                    ], 422);
-                }
-                $itemName = $matchedProduct->name;
-                $weight = floatval($matchedProduct->net_weight ?: $matchedProduct->gross_weight);
-                $metal = 'GOLD';
-                $purityStr = $matchedProduct->purity?->name ?? '22K';
-                if (! $request->filled('making_value')) {
-                    $makingValue = floatval($matchedProduct->making_charge);
-                    $makingType = $matchedProduct->making_charge_type ?? 'percentage';
-                }
-            } else {
-                if ($matchedSilverProduct->is_sold || ($matchedSilverProduct->pricing_mode === 'PIECE' && $matchedSilverProduct->quantity <= 0)) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Silver item '{$matchedSilverProduct->name}' (Barcode: {$barcode}) pehle se sold out hai!",
-                    ], 422);
-                }
-                $itemName = $matchedSilverProduct->name;
-                $weight = floatval($matchedSilverProduct->net_weight ?: $matchedSilverProduct->gross_weight);
-                $metal = 'SILVER';
-                $purityStr = 'Silver (92.5)';
-                if (! $request->filled('making_value')) {
-                    $makingValue = floatval($matchedSilverProduct->making_charge);
-                    $makingType = 'per_gram';
-                }
-            }
-
-            $customer = Customer::where('mobile', $customerPhone)->first();
-            if (! $customer) {
-                $customer = Customer::create([
-                    'name' => $customerName,
-                    'mobile' => $customerPhone,
-                    'address' => 'Store Counter Sale',
-                    'city' => 'Local',
-                    'vault_token' => Customer::generateVaultToken(),
-                ]);
-            } else {
-                if ($customer->name === 'Walk-in Customer' && ! empty($customerName)) {
-                    $customer->update(['name' => $customerName]);
-                }
-            }
-
-            $metalValue = round($weight * $effectiveRate, 2);
-            if ($makingType === 'flat' || $makingType === 'lump_sum') {
-                $makingTotal = round($makingValue, 2);
-                $makingLabel = "(₹{$makingValue} Flat)";
-            } elseif ($makingType === 'per_gram') {
-                $makingTotal = round($weight * $makingValue, 2);
-                $makingLabel = "(@ ₹{$makingValue}/g)";
-            } else {
-                $makingType = 'percentage';
-                $makingTotal = round($metalValue * ($makingValue / 100), 2);
-                $makingLabel = "({$makingValue}%)";
-            }
-
-            $subtotal = max(0, $metalValue + $makingTotal - $discountAmount);
-            $gstAmount = round($subtotal * 0.03, 2);
-            $grandTotal = round($subtotal + $gstAmount, 2);
-            $actingUserId = Auth::id() ?: \App\Models\User::first()?->id;
-
-            $todayRate = DailyRate::whereDate('date', Carbon::today())->first() ?? DailyRate::latest('date')->first();
-            $appliedGoldRate = $metal === 'GOLD' ? $effectiveRate : (floatval($todayRate?->gold_sell) ?: 7450.0);
-            $appliedSilverRate = $metal === 'SILVER' ? $effectiveRate : (floatval($todayRate?->silver_sell) ?: 90.0);
-
-            $invoice = Invoice::create([
-                'invoice_number' => 'TMP-' . Str::uuid(),
-                'customer_id' => $customer->id,
-                'gold_rate_applied' => $appliedGoldRate,
-                'silver_rate_applied' => $appliedSilverRate,
-                'tax_amount' => $gstAmount,
-                'discount_type' => $discountAmount > 0 ? 'fixed' : null,
-                'discount_value' => $discountAmount,
-                'discount_amount' => $discountAmount,
-                'date' => Carbon::today()->format('Y-m-d'),
-                'total_amount' => $grandTotal,
-                'user_id' => $actingUserId,
-            ]);
-
-            $invoiceNumber = sprintf('INV-%s-%06d', now()->format('Ymd'), $invoice->id);
-            $invoice->update(['invoice_number' => $invoiceNumber]);
-
-            InvoiceItem::create([
-                'invoice_id' => $invoice->id,
-                'product_id' => $matchedProduct?->id,
-                'silver_product_id' => $matchedSilverProduct?->id,
-                'description' => ! empty($itemName) ? $itemName : "{$purityStr} {$metal} Item ({$weight}g)",
-                'quantity' => 1,
-                'weight' => $weight,
-                'purity' => $purityStr,
-                'rate' => $effectiveRate,
-                'making_charges' => $makingValue,
-                'making_charge_type' => $makingType,
-                'final_price' => $subtotal,
-            ]);
-
-            if ($matchedProduct) {
-                $matchedProduct->update(['is_sold' => true]);
-            }
-            if ($matchedSilverProduct) {
-                if ($matchedSilverProduct->pricing_mode === 'PIECE' && $matchedSilverProduct->quantity > 1) {
-                    $matchedSilverProduct->decrement('quantity', 1);
-                } else {
-                    $matchedSilverProduct->update([
-                        'quantity' => 0,
-                        'is_sold' => true,
-                    ]);
-                }
-            }
-
-            Transaction::create([
-                'transactable_type' => Customer::class,
-                'transactable_id' => $customer->id,
-                'invoice_id' => $invoice->id,
-                'type' => 'SALE',
-                'amount' => $grandTotal,
-                'description' => "Bill #" . $invoiceNumber . ($barcode ? " (Barcode: {$barcode})" : "") . (! empty($messageId) ? " [AI_MSG:{$messageId}]" : ""),
-                'date' => Carbon::today()->format('Y-m-d'),
-                'user_id' => $actingUserId,
-                'entry_type_code' => 'INVOICE_SALE',
-            ]);
-
-            $actualPaid = ($paymentAmount !== null && $paymentAmount >= 0) ? min($grandTotal, $paymentAmount) : $grandTotal;
-            if (in_array($paymentMode, ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'ONLINE', 'BANK']) && $actualPaid > 0) {
-                $paymentTx = Transaction::create([
-                    'transactable_type' => Customer::class,
-                    'transactable_id' => $customer->id,
-                    'invoice_id' => $invoice->id,
-                    'type' => 'PAYMENT',
-                    'amount' => $actualPaid,
-                    'description' => "{$paymentMode} Payment received (Bill #{$invoiceNumber})",
-                    'date' => Carbon::today()->format('Y-m-d'),
-                    'user_id' => $actingUserId,
-                    'payment_method' => $paymentMode,
-                    'entry_type_code' => 'INVOICE_PAYMENT',
-                ]);
-                LedgerImpactService::applyCashTransaction($paymentTx);
-            }
-
-            $billResponseData = [
-                'success' => true,
-                'invoice_id' => $invoice->id,
-                'invoice_number' => $invoiceNumber,
-                'customer_name' => $customer->name,
-                'customer_phone' => $customer->mobile,
-                'item_name' => $itemName,
-                'weight' => round($weight, 3),
-                'metal' => $metal,
-                'purity' => $purityStr,
-                'rate_per_gm' => round($effectiveRate, 2),
-                'metal_value' => round($metalValue, 2),
-                'making_charges' => round($makingTotal, 2),
-                'making_label' => $makingLabel,
-                'subtotal' => round($subtotal, 2),
-                'gst_3_percent' => round($gstAmount, 2),
-                'grand_total' => round($grandTotal, 2),
-                'payment_mode' => $paymentMode,
-                'view_url' => "/invoices?view={$invoice->id}",
-                'print_url' => "/invoices/{$invoice->id}/print",
-                'is_preview' => false,
-                'status' => 'INVOICE_GENERATED_REAL_DB',
-                'message' => "Done! Bill #{$invoiceNumber} database me successfully save ho gaya hai.",
-            ];
-
-            if (! empty($validated['message_id'])) {
-                $this->syncActionToAiHub($validated['message_id'], [
-                    [
-                        'tool' => 'create_bill',
-                        'args' => $validated,
-                        'result' => array_merge($validated, $billResponseData),
-                    ],
-                ], "Done! Customer {$customer->name} ke liye Bill #{$invoiceNumber} successfully create ho gaya hai.");
-            }
-
-            return response()->json($billResponseData);
-        });
     }
 
     /**
@@ -584,7 +365,7 @@ class AiCopilotController extends Controller
                 $code = $baseCode;
                 $suffix = 1;
                 while (Category::where('code', $code)->exists()) {
-                    $code = substr($baseCode, 0, 3) . $suffix;
+                    $code = substr($baseCode, 0, 3).$suffix;
                     $suffix++;
                 }
                 $category = Category::create([
@@ -639,7 +420,7 @@ class AiCopilotController extends Controller
                     'is_preview' => false,
                     'status' => 'IN_STOCK_REAL_DB',
                     'message' => ($quantity > 1)
-                        ? "Done! {$quantity} items '{$name}' (Barcodes: " . implode(', ', $barcodes) . ") silver stock me add ho gaye hain."
+                        ? "Done! {$quantity} items '{$name}' (Barcodes: ".implode(', ', $barcodes).') silver stock me add ho gaye hain.'
                         : "Done! Silver item '{$name}' (Barcode: {$barcodes[0]}) silver stock me add ho gaya hai.",
                 ];
 
@@ -694,7 +475,7 @@ class AiCopilotController extends Controller
                 'is_preview' => false,
                 'status' => 'IN_STOCK_REAL_DB',
                 'message' => ($quantity > 1)
-                    ? "Done! {$quantity} items '{$name}' (Barcodes: " . implode(', ', $barcodes) . ") showroom stock me add ho gaye hain."
+                    ? "Done! {$quantity} items '{$name}' (Barcodes: ".implode(', ', $barcodes).') showroom stock me add ho gaye hain.'
                     : "Done! Product '{$name}' (Barcode: {$barcodes[0]}) showroom stock me add ho gaya hai.",
             ];
 
@@ -746,7 +527,7 @@ class AiCopilotController extends Controller
             'silver_sell' => $silverSell,
             'is_preview' => false,
             'status' => 'UPDATED_IN_DATABASE',
-            'message' => "Done! Aaj ka 24K rate ₹" . number_format($goldSell) . " aur Silver ₹" . number_format($silverSell, 2) . " database me update ho gaya.",
+            'message' => 'Done! Aaj ka 24K rate ₹'.number_format($goldSell).' aur Silver ₹'.number_format($silverSell, 2).' database me update ho gaya.',
         ];
 
         if (! empty($validated['message_id'])) {
@@ -804,7 +585,7 @@ class AiCopilotController extends Controller
             Http::timeout(5)
                 ->withHeaders([
                     'Accept' => 'application/json',
-                    'Authorization' => 'Bearer ' . $apiKey,
+                    'Authorization' => 'Bearer '.$apiKey,
                 ])
                 ->post("{$aiHubUrl}/api/ai/history/update-action", [
                     'message_id' => $messageId,
@@ -812,7 +593,7 @@ class AiCopilotController extends Controller
                     'reply' => $reply,
                 ]);
         } catch (\Throwable $syncErr) {
-            Log::warning('Failed to sync updated action state to AI Hub: ' . $syncErr->getMessage());
+            Log::warning('Failed to sync updated action state to AI Hub: '.$syncErr->getMessage());
         }
     }
 }

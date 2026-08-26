@@ -155,17 +155,20 @@ const deletePurity = () => {
             </section>
 
             <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Total Purities</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ summary.total_purities }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Total Purities</span>
+                    <span class="erp-stat-card__value">{{ summary.total_purities }}</span>
+                    <span class="erp-stat-card__meta">Defined purity standards</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Linked to Products</p>
-                    <p class="mt-2 text-2xl font-semibold text-amber-700">{{ summary.linked_purities }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Linked to Products</span>
+                    <span class="erp-stat-card__value text-amber-700">{{ summary.linked_purities }}</span>
+                    <span class="erp-stat-card__meta">Active inventory purities</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Unused Purities</p>
-                    <p class="mt-2 text-2xl font-semibold text-emerald-700">{{ summary.unused_purities }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Unused Purities</span>
+                    <span class="erp-stat-card__value text-emerald-700">{{ summary.unused_purities }}</span>
+                    <span class="erp-stat-card__meta">Available for assignment</span>
                 </div>
             </section>
 

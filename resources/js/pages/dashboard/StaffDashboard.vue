@@ -68,57 +68,62 @@ const statusSeverity = (status) => {
             </div>
 
             <div class="grid grid-cols-1 gap-4 xl:grid-cols-4">
-                <div class="erp-stat-card border border-surface-200 bg-white p-4">
-                    <p class="text-sm text-surface-500">My Billing Today</p>
-                    <p class="mt-2 text-xl font-semibold text-surface-900">{{ formatCurrency(metrics?.my_sales) }}</p>
-                    <p class="mt-1 text-xs text-surface-400">{{ metrics?.my_invoices || 0 }} invoices posted</p>
+                <div class="erp-stat-card p-4">
+                    <span class="erp-stat-card__label">My Billing Today</span>
+                    <span class="erp-stat-card__value mt-2 block">{{ formatCurrency(metrics?.my_sales) }}</span>
+                    <span class="erp-stat-card__meta">{{ metrics?.my_invoices || 0 }} invoices posted</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white p-4">
-                    <p class="text-sm text-surface-500">My Collections</p>
-                    <p class="mt-2 text-xl font-semibold text-green-700">{{ formatCurrency(metrics?.my_collections) }}</p>
-                    <p class="mt-1 text-xs text-surface-400">Cash and digital receipts handled today</p>
+                <div class="erp-stat-card p-4">
+                    <span class="erp-stat-card__label">My Collections</span>
+                    <span class="erp-stat-card__value mt-2 block !text-emerald-700">{{ formatCurrency(metrics?.my_collections) }}</span>
+                    <span class="erp-stat-card__meta">Cash and digital receipts handled today</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white p-4">
-                    <p class="text-sm text-surface-500">Ready for Billing</p>
-                    <p class="mt-2 text-xl font-semibold text-surface-900">{{ metrics?.ready_items || 0 }}</p>
-                    <p class="mt-1 text-xs text-surface-400">Order items available to convert into bills</p>
+                <div class="erp-stat-card p-4">
+                    <span class="erp-stat-card__label">Ready for Billing</span>
+                    <span class="erp-stat-card__value mt-2 block">{{ metrics?.ready_items || 0 }}</span>
+                    <span class="erp-stat-card__meta">Order items available to convert into bills</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white p-4">
-                    <p class="text-sm text-surface-500">Overdue Orders</p>
-                    <p class="mt-2 text-xl font-semibold" :class="metrics?.overdue_items ? 'text-orange-600' : 'text-surface-900'">
+                <div class="erp-stat-card p-4">
+                    <span class="erp-stat-card__label">Overdue Orders</span>
+                    <span class="erp-stat-card__value mt-2 block" :class="metrics?.overdue_items ? '!text-amber-600' : ''">
                         {{ metrics?.overdue_items || 0 }}
-                    </p>
-                    <p class="mt-1 text-xs text-surface-400">Items that need immediate follow-up</p>
+                    </span>
+                    <span class="erp-stat-card__meta">Items that need immediate follow-up</span>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-                <div class="erp-stat-card border border-surface-200 bg-white p-4">
-                    <p class="text-sm text-surface-500">Gold Sell</p>
-                    <p class="mt-2 text-lg font-semibold text-surface-900">{{ formatCurrency(rates?.gold_sell) }}</p>
+                <div class="erp-stat-card p-4">
+                    <span class="erp-stat-card__label">Gold Sell</span>
+                    <span class="erp-stat-card__value mt-2 block text-lg font-semibold">{{ formatCurrency(rates?.gold_sell) }}</span>
+                    <span class="erp-stat-card__meta">Standard sell benchmark</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white p-4">
-                    <p class="text-sm text-surface-500">Gold Buy</p>
-                    <p class="mt-2 text-lg font-semibold text-surface-900">{{ formatCurrency(rates?.gold_buy) }}</p>
+                <div class="erp-stat-card p-4">
+                    <span class="erp-stat-card__label">Gold Buy</span>
+                    <span class="erp-stat-card__value mt-2 block text-lg font-semibold">{{ formatCurrency(rates?.gold_buy) }}</span>
+                    <span class="erp-stat-card__meta">Purchase exchange rate</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white p-4">
-                    <p class="text-sm text-surface-500">Silver</p>
-                    <p class="mt-2 text-lg font-semibold text-surface-900">{{ formatCurrency(rates?.silver_sell) }}</p>
+                <div class="erp-stat-card p-4">
+                    <span class="erp-stat-card__label">Silver</span>
+                    <span class="erp-stat-card__value mt-2 block text-lg font-semibold">{{ formatCurrency(rates?.silver_sell) }}</span>
+                    <span class="erp-stat-card__meta">Silver metal benchmark</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white p-4">
-                    <p class="text-sm text-surface-500">New Orders</p>
-                    <p class="mt-2 text-lg font-semibold text-surface-900">{{ metrics?.new_orders || 0 }}</p>
+                <div class="erp-stat-card p-4">
+                    <span class="erp-stat-card__label">New Orders</span>
+                    <span class="erp-stat-card__value mt-2 block text-lg font-semibold">{{ metrics?.new_orders || 0 }}</span>
+                    <span class="erp-stat-card__meta">Unassigned custom jobs</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white p-4">
-                    <p class="text-sm text-surface-500">In Production</p>
-                    <p class="mt-2 text-lg font-semibold text-surface-900">{{ metrics?.in_production || 0 }}</p>
+                <div class="erp-stat-card p-4">
+                    <span class="erp-stat-card__label">In Production</span>
+                    <span class="erp-stat-card__value mt-2 block text-lg font-semibold">{{ metrics?.in_production || 0 }}</span>
+                    <span class="erp-stat-card__meta">Currently at karigar workshop</span>
                 </div>
             </div>
 
@@ -216,7 +221,7 @@ const statusSeverity = (status) => {
 
                     <div class="space-y-3 p-4">
                         <template v-if="recent_invoices?.length">
-                            <div v-for="invoice in recent_invoices" :key="invoice.id" class="border border-surface-200 px-4 py-3">
+                            <div v-for="invoice in recent_invoices" :key="invoice.id" class="rounded-lg border border-surface-200 bg-surface-50/50 px-4 py-3 shadow-xs hover:bg-white transition-colors">
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="min-w-0">
                                         <div class="flex items-center gap-2">

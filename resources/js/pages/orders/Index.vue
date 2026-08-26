@@ -528,62 +528,62 @@ watch(
 
             <!-- Stats -->
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-sm text-surface-500">Pending</p>
-                            <p class="mt-2 text-2xl font-semibold text-surface-900">
+                            <span class="erp-stat-card__label">Pending</span>
+                            <span class="erp-stat-card__value">
                                 {{ totalNew }}
-                            </p>
+                            </span>
                         </div>
-                        <div class="flex h-10 w-10 items-center justify-center bg-blue-50 text-blue-600">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shadow-xs">
                             <Clock class="h-4 w-4" />
                         </div>
                     </div>
-                    <p class="mt-3 text-xs text-surface-500">{{ overdueNew }} overdue · {{ dueSoonNew }} due within 3 days</p>
+                    <span class="erp-stat-card__meta">{{ overdueNew }} overdue · {{ dueSoonNew }} due within 3 days</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-sm text-surface-500">In Production</p>
-                            <p class="mt-2 text-2xl font-semibold text-surface-900">
+                            <span class="erp-stat-card__label">In Production</span>
+                            <span class="erp-stat-card__value">
                                 {{ totalInProduction }}
-                            </p>
+                            </span>
                         </div>
-                        <div class="flex h-10 w-10 items-center justify-center bg-orange-50 text-orange-600">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-600 shadow-xs">
                             <Hammer class="h-4 w-4" />
                         </div>
                     </div>
-                    <p class="mt-3 text-xs text-surface-500">Assigned to karigars and suppliers with live metal tracking</p>
+                    <span class="erp-stat-card__meta">Assigned to workshop with live metal tracking</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-sm text-surface-500">Metal Issued</p>
-                            <p class="mt-2 text-2xl font-semibold text-surface-900">{{ formatWeight(totalGoldInPipeline) }} g</p>
+                            <span class="erp-stat-card__label">Metal Issued</span>
+                            <span class="erp-stat-card__value text-amber-700">{{ formatWeight(totalGoldInPipeline) }} g</span>
                         </div>
-                        <div class="flex h-10 w-10 items-center justify-center bg-yellow-50 text-yellow-700">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-yellow-50 text-yellow-700 shadow-xs">
                             <Scale class="h-4 w-4" />
                         </div>
                     </div>
-                    <p class="mt-3 text-xs text-surface-500">Net issued into active workshop jobs</p>
+                    <span class="erp-stat-card__meta">Net issued into active workshop jobs</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
+                <div class="erp-stat-card">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-sm text-surface-500">Ready</p>
-                            <p class="mt-2 text-2xl font-semibold text-surface-900">
+                            <span class="erp-stat-card__label">Ready</span>
+                            <span class="erp-stat-card__value text-emerald-700">
                                 {{ totalReady }}
-                            </p>
+                            </span>
                         </div>
-                        <div class="flex h-10 w-10 items-center justify-center bg-green-50 text-green-600">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-600 shadow-xs">
                             <CheckCircle class="h-4 w-4" />
                         </div>
                     </div>
-                    <p class="mt-3 text-xs text-surface-500">{{ formatWeight(totalReadyWeight) }} g available for invoicing</p>
+                    <span class="erp-stat-card__meta">Finished pieces ready for customer delivery ({{ formatWeight(totalReadyWeight) }} g)</span>
                 </div>
             </div>
 
@@ -850,7 +850,7 @@ watch(
         <!-- Create Order -->
         <Dialog v-model:visible="createDialog" header="Create New Order" modal :style="{ width: '52rem' }" :breakpoints="{ '640px': '95vw' }" @hide="closeCreateDialog">
             <div class="space-y-5 pt-2">
-                <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                             <p class="text-sm font-semibold text-surface-900">Build the order first, then assign item-by-item.</p>
@@ -869,34 +869,44 @@ watch(
 
                     <div>
                         <label class="mb-2 block text-sm font-medium text-surface-700">Due Date</label>
-                        <Calendar v-model="createForm.due_date" showIcon dateFormat="yy-mm-dd" class="w-full" inputClass="w-full" placeholder="Select date" />
+                        <InputText v-model="createForm.due_date" type="date" class="w-full" />
                         <p v-if="formError(createForm, 'due_date')" class="mt-2 text-sm text-red-600">{{ formError(createForm, 'due_date') }}</p>
                     </div>
                 </div>
 
-                <p v-if="formError(createForm, 'items')" class="text-sm text-red-600">{{ formError(createForm, 'items') }}</p>
-
                 <div>
-                    <div class="mb-3 flex items-center justify-between">
-                        <label class="text-sm font-medium text-surface-700">Items</label>
-                        <Button label="Add Item" icon="pi pi-plus" size="small" text @click="addItemRow" />
+                    <label class="mb-2 block text-sm font-medium text-surface-700">Order Level Notes</label>
+                    <Textarea v-model="createForm.notes" rows="2" class="w-full" placeholder="Overall delivery instructions, box notes, packaging remarks..." />
+                    <p v-if="formError(createForm, 'notes')" class="mt-2 text-sm text-red-600">{{ formError(createForm, 'notes') }}</p>
+                </div>
+
+                <div class="erp-subpanel overflow-hidden !p-0">
+                    <div class="border-b border-surface-200 px-4 py-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <h4 class="text-sm font-semibold text-surface-900">Order Items</h4>
+                                <p class="text-xs text-surface-500">Add each piece separately so it can be assigned and tracked independently.</p>
+                            </div>
+                            <Button label="Add Item" icon="pi pi-plus" size="small" outlined @click="addCreateItem" />
+                        </div>
                     </div>
 
-                    <div class="max-h-[360px] space-y-3 overflow-y-auto pr-1">
-                        <div v-for="(item, idx) in createForm.items" :key="idx" class="erp-subpanel p-4">
-                            <div class="mb-3 flex items-center justify-between">
-                                <span class="text-xs font-semibold tracking-wide text-surface-500 uppercase"> Item {{ idx + 1 }} </span>
-
-                                <Button v-if="createForm.items.length > 1" icon="pi pi-trash" text severity="danger" size="small" @click="removeItemRow(idx)" />
+                    <div class="space-y-4 p-4">
+                        <div v-for="(item, index) in createForm.items" :key="index" class="rounded-lg border border-surface-200 bg-surface-50 p-4 shadow-xs">
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="text-xs font-semibold tracking-wide text-surface-500 uppercase">Item #{{ index + 1 }}</span>
+                                <Button v-if="createForm.items.length > 1" icon="pi pi-trash" severity="danger" text size="small" @click="removeCreateItem(index)" />
                             </div>
 
-                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                <div>
-                                    <InputText v-model="item.item_name" class="w-full" placeholder="Item name" />
-                                    <p v-if="itemFieldError(idx, 'item_name')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'item_name') }}</p>
+                            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
+                                <div class="md:col-span-2">
+                                    <label class="mb-1 block text-xs font-medium text-surface-700">Item Name</label>
+                                    <InputText v-model="item.item_name" class="w-full" placeholder="e.g. Bridal Choker, Mens Kada" />
+                                    <p v-if="formError(createForm, `items.${index}.item_name`)" class="mt-1 text-xs text-red-600">{{ formError(createForm, `items.${index}.item_name`) }}</p>
                                 </div>
 
                                 <div>
+                                    <label class="mb-1 block text-xs font-medium text-surface-700">Metal Type</label>
                                     <Select
                                         v-model="item.metal_type"
                                         :options="[
@@ -908,15 +918,17 @@ watch(
                                         class="w-full"
                                         @change="item.purity = defaultPurityForMetal(item.metal_type)"
                                     />
-                                    <p v-if="itemFieldError(idx, 'metal_type')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'metal_type') }}</p>
+                                    <p v-if="formError(createForm, `items.${index}.metal_type`)" class="mt-1 text-xs text-red-600">{{ formError(createForm, `items.${index}.metal_type`) }}</p>
                                 </div>
 
                                 <div>
-                                    <InputNumber v-model="item.target_weight" :minFractionDigits="2" class="w-full" placeholder="Weight (g)" />
-                                    <p v-if="itemFieldError(idx, 'target_weight')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'target_weight') }}</p>
+                                    <label class="mb-1 block text-xs font-medium text-surface-700">Target Weight (g)</label>
+                                    <InputNumber v-model="item.target_weight" :minFractionDigits="3" class="w-full" />
+                                    <p v-if="formError(createForm, `items.${index}.target_weight`)" class="mt-1 text-xs text-red-600">{{ formError(createForm, `items.${index}.target_weight`) }}</p>
                                 </div>
 
                                 <div>
+                                    <label class="mb-1 block text-xs font-medium text-surface-700">Purity</label>
                                     <Select
                                         v-model="item.purity"
                                         :options="
@@ -926,20 +938,21 @@ watch(
                                                       { l: 'Sterling Silver (92.5)', v: 92.5 },
                                                   ]
                                                 : [
-                                                      { l: '22K (91.6)', v: 91.6 },
-                                                      { l: '18K (75.0)', v: 75 },
+                                                      { l: '22K', v: 91.6 },
+                                                      { l: '18K', v: 75 },
                                                   ]
                                         "
                                         optionLabel="l"
                                         optionValue="v"
                                         class="w-full"
                                     />
-                                    <p v-if="itemFieldError(idx, 'purity')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'purity') }}</p>
+                                    <p v-if="formError(createForm, `items.${index}.purity`)" class="mt-1 text-xs text-red-600">{{ formError(createForm, `items.${index}.purity`) }}</p>
                                 </div>
 
-                                <div class="sm:col-span-2">
-                                    <InputText v-model="item.notes" class="w-full" placeholder="Notes, sizes, design code..." />
-                                    <p v-if="itemFieldError(idx, 'notes')" class="mt-2 text-sm text-red-600">{{ itemFieldError(idx, 'notes') }}</p>
+                                <div class="md:col-span-3">
+                                    <label class="mb-1 block text-xs font-medium text-surface-700">Design Instructions</label>
+                                    <InputText v-model="item.notes" class="w-full" placeholder="Specific design cues, stone requirements, sample reference..." />
+                                    <p v-if="formError(createForm, `items.${index}.notes`)" class="mt-1 text-xs text-red-600">{{ formError(createForm, `items.${index}.notes`) }}</p>
                                 </div>
                             </div>
                         </div>
@@ -956,7 +969,7 @@ watch(
         <!-- Edit -->
         <Dialog v-model:visible="editDialog" header="Edit Item" modal :style="{ width: '34rem' }" @hide="closeEditDialog">
             <div class="space-y-4 pt-2">
-                <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <p class="font-semibold text-surface-900">{{ selectedItem?.item_name || editForm.item_name }}</p>
@@ -980,7 +993,7 @@ watch(
                     </div>
                 </div>
 
-                <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">
                     <p class="text-sm font-semibold text-surface-900">Edit this item before workshop processing changes it.</p>
                     <p class="mt-1 text-xs text-surface-500">Use this for naming, target weight, purity, and instruction updates before production moves further.</p>
                 </div>
@@ -1054,7 +1067,7 @@ watch(
         <!-- Assign -->
         <Dialog v-model:visible="assignDialog" header="Assign to Production" modal :style="{ width: '30rem' }" @hide="closeAssignDialog">
             <div class="space-y-4 pt-2">
-                <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <p class="font-semibold text-surface-900">{{ selectedItem?.item_name }}</p>
@@ -1068,11 +1081,11 @@ watch(
                     </div>
                 </div>
 
-                <div class="border border-surface-200 bg-surface-50">
+                <div class="overflow-hidden rounded-lg border border-surface-200 bg-surface-50">
                     <div class="grid grid-cols-2">
                         <button
                             class="border-r border-surface-200 px-4 py-3 text-sm font-medium transition"
-                            :class="assignForm.type === 'Karigar' ? 'bg-white text-surface-900' : 'text-surface-500'"
+                            :class="assignForm.type === 'Karigar' ? 'bg-white text-surface-900 shadow-xs' : 'text-surface-500'"
                             @click="assignForm.type = 'Karigar'"
                         >
                             Karigar
@@ -1080,7 +1093,7 @@ watch(
 
                         <button
                             class="px-4 py-3 text-sm font-medium transition"
-                            :class="assignForm.type === 'Supplier' ? 'bg-white text-surface-900' : 'text-surface-500'"
+                            :class="assignForm.type === 'Supplier' ? 'bg-white text-surface-900 shadow-xs' : 'text-surface-500'"
                             @click="assignForm.type = 'Supplier'"
                         >
                             Supplier
@@ -1097,7 +1110,7 @@ watch(
                     <p v-if="formError(assignForm, 'id')" class="mt-2 text-sm text-red-600">{{ formError(assignForm, 'id') }}</p>
                 </div>
 
-                <div class="border border-surface-200 bg-surface-50 p-4">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 p-4">
                     <label class="mb-2 block text-sm font-medium text-surface-700"> Initial {{ metalLabel(selectedItem?.metal_type) }} Issue (g) </label>
                     <InputNumber v-model="assignForm.issue_gold" :minFractionDigits="3" suffix=" g" class="w-full" />
                     <p class="mt-2 text-xs text-surface-500">Leave this empty or 0 if you are only assigning the item now. Additional {{ metalLabel(selectedItem?.metal_type).toLowerCase() }} can be issued later from transactions.</p>
@@ -1115,14 +1128,14 @@ watch(
         <!-- Transactions -->
         <Dialog
             v-model:visible="transactionDialog"
-            :header="`${metalLabel(selectedItem?.metal_type)} Issue History`"
+            :header="`${selectedItem?.item_name || 'Item'} — Metal Tracking`"
             modal
             :style="{ width: '40rem' }"
             :breakpoints="{ '640px': '95vw' }"
             @hide="closeTransactionDialog"
         >
             <div class="space-y-5 pt-2">
-                <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <div>
                             <p class="font-medium text-surface-900">{{ selectedItem?.item_name }}</p>
@@ -1179,31 +1192,26 @@ watch(
                     </div>
 
                     <div class="space-y-4 p-4">
-                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <div>
-                                <label class="mb-2 block text-sm font-medium text-surface-700">Transaction Date</label>
-                                <Calendar v-model="transactionForm.date" showIcon dateFormat="yy-mm-dd" class="w-full" inputClass="w-full" />
-                                <p v-if="formError(transactionForm, 'date')" class="mt-2 text-sm text-red-600">{{ formError(transactionForm, 'date') }}</p>
-                            </div>
-
-                            <div>
-                                <label class="mb-2 block text-sm font-medium text-surface-700">{{ metalLabel(selectedItem?.metal_type) }} Weight (g)</label>
-                                <InputNumber v-model="transactionForm.metal_weight" :minFractionDigits="3" suffix=" g" placeholder="0.000" class="w-full" />
-                                <p v-if="formError(transactionForm, 'metal_weight')" class="mt-2 text-sm text-red-600">{{ formError(transactionForm, 'metal_weight') }}</p>
-                            </div>
+                        <div>
+                            <label class="mb-2 block text-sm font-medium text-surface-700">Weight (g)</label>
+                            <InputNumber v-model="transactionForm.amount" :minFractionDigits="3" suffix=" g" class="w-full" />
+                            <p v-if="formError(transactionForm, 'amount')" class="mt-2 text-sm text-red-600">{{ formError(transactionForm, 'amount') }}</p>
                         </div>
 
                         <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700">Description</label>
-                            <InputText v-model="transactionForm.description" :placeholder="`Optional note for this ${metalLabel(selectedItem?.metal_type).toLowerCase()} issue`" class="w-full" />
+                            <label class="mb-2 block text-sm font-medium text-surface-700">Description / Remarks</label>
+                            <InputText v-model="transactionForm.description" class="w-full" placeholder="e.g. Extra gold for chain links" />
                             <p v-if="formError(transactionForm, 'description')" class="mt-2 text-sm text-red-600">{{ formError(transactionForm, 'description') }}</p>
-                            <p v-if="formError(transactionForm, 'transaction')" class="mt-2 text-sm text-red-600">{{ formError(transactionForm, 'transaction') }}</p>
                         </div>
 
-                        <div class="flex justify-end border-t border-surface-200 pt-4">
-                            <Button :label="`Save ${metalLabel(selectedItem?.metal_type)} Issue`" icon="pi pi-check" @click="submitTransaction" :loading="transactionForm.processing" />
+                        <div class="flex justify-end">
+                            <Button label="Issue Metal" icon="pi pi-plus" size="small" @click="submitTransaction" :loading="transactionForm.processing" />
                         </div>
                     </div>
+                </div>
+
+                <div class="flex justify-end border-t border-surface-200 pt-4">
+                    <Button label="Close" severity="secondary" text @click="closeTransactionDialog" />
                 </div>
             </div>
         </Dialog>
@@ -1211,7 +1219,7 @@ watch(
         <!-- Receive -->
         <Dialog v-model:visible="completeDialog" header="Receive Finished Item" modal :style="{ width: '26rem' }" @hide="closeCompleteDialog">
             <div class="space-y-4 pt-2">
-                <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <p class="font-semibold text-surface-900">{{ selectedItem?.item_name }}</p>
@@ -1222,17 +1230,17 @@ watch(
                 </div>
 
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <div class="border border-surface-200 bg-surface-50 px-4 py-4 text-center">
+                    <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4 text-center">
                         <p class="text-xs font-medium tracking-wide text-surface-500 uppercase">Target Weight</p>
                         <p class="mt-1 text-xl font-semibold text-surface-900">{{ formatWeight(selectedItem?.target_weight) }} g</p>
                     </div>
 
-                    <div class="border border-surface-200 bg-surface-50 px-4 py-4 text-center">
+                    <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4 text-center">
                         <p class="text-xs font-medium tracking-wide text-surface-500 uppercase">Issued {{ metalLabel(selectedItem?.metal_type) }}</p>
                         <p class="mt-1 text-xl font-semibold text-surface-900">{{ formatWeight(completeIssuedGold) }} g</p>
                     </div>
 
-                    <div class="border border-surface-200 bg-surface-50 px-4 py-4 text-center">
+                    <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4 text-center">
                         <p class="text-xs font-medium tracking-wide text-surface-500 uppercase">Return Total</p>
                         <p class="mt-1 text-xl font-semibold text-surface-900">{{ formatWeight(completeReturnTotal) }} g</p>
                     </div>
@@ -1250,7 +1258,7 @@ watch(
                     <p v-if="formError(completeForm, 'wastage')" class="mt-2 text-sm text-red-600">{{ formError(completeForm, 'wastage') }}</p>
                 </div>
 
-                <div v-if="completeRequiredExtraGold > 0" class="border border-amber-300 bg-amber-50 px-4 py-3">
+                <div v-if="completeRequiredExtraGold > 0" class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
                     <p class="text-sm font-semibold text-amber-900">Weight mismatch detected</p>
                     <p class="mt-1 text-sm text-amber-800">
                         Return total is {{ formatWeight(completeReturnTotal) }} g, but only {{ formatWeight(completeIssuedGold) }} g was issued.

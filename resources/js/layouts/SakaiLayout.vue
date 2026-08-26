@@ -109,7 +109,7 @@ watch(
             <div class="layout-main">
                 <Toast />
                 <ConfirmDialog />
-                <div v-if="!dayStatus.is_open" class="mb-4 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <div v-if="!dayStatus.is_open" class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-xs">
                     Shop day is closed. Enter opening cash, gold, and silver on the dashboard before creating or updating business records.
                 </div>
                 <slot />
@@ -128,20 +128,20 @@ watch(
             class="w-full max-w-md"
         >
             <div class="space-y-4 pt-2">
-                <div class="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-xs">
                     {{ isInitialSetup
                         ? 'This is the first time the software is being opened. Enter the business opening cash, gold, and silver to initialize the system.'
                         : "Record today's counted opening balances before using billing, ledger, order, expense, or recovery actions." }}
                 </div>
 
                 <template v-if="canManageVault">
-                    <div class="border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-700">
+                    <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-700">
                         {{ isInitialSetup
                             ? 'First-time setup will create the initial vault balances from these counted values and store an audit entry.'
                             : 'This does not add funds to the vault. It only records the counted opening snapshot for the day.' }}
                     </div>
 
-                    <div v-if="hasExpectedOpening" class="border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-700">
+                    <div v-if="hasExpectedOpening" class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-700">
                         Expected from last closed day
                         <div class="mt-1 flex items-center justify-between gap-4 text-xs text-surface-500">
                             <span>Cash: {{ expectedOpeningCash.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }) }}</span>
@@ -214,7 +214,7 @@ watch(
                 </template>
 
                 <template v-else>
-                    <div class="border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-700">
+                    <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-700">
                         You do not have permission to open the shop day. Ask an authorized user to record today's counted opening balances.
                     </div>
                 </template>

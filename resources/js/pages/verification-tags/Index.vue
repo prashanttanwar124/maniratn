@@ -104,21 +104,25 @@ const openWriter = (tagId) => {
             </div>
 
             <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
-                <div class="erp-stat-card border border-surface-200 bg-white p-4">
-                    <p class="text-xs uppercase tracking-wide text-surface-500">Public Base URL</p>
+                <div class="erp-stat-card p-4">
+                    <span class="erp-stat-card__label">Public Base URL</span>
                     <p class="mt-2 break-all text-sm font-medium text-surface-900">{{ publicBaseUrl || 'Not set' }}</p>
+                    <span class="erp-stat-card__meta">NFC gateway base</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white p-4">
-                    <p class="text-xs uppercase tracking-wide text-surface-500">Active Tags</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ activeTagsCount }}</p>
+                <div class="erp-stat-card p-4">
+                    <span class="erp-stat-card__label">Active Tags</span>
+                    <span class="erp-stat-card__value">{{ activeTagsCount }}</span>
+                    <span class="erp-stat-card__meta">Live issued certificates</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white p-4">
-                    <p class="text-xs uppercase tracking-wide text-surface-500">Pending Setup</p>
-                    <p class="mt-2 text-2xl font-semibold text-amber-600">{{ pendingTagsCount }}</p>
+                <div class="erp-stat-card p-4">
+                    <span class="erp-stat-card__label">Pending Setup</span>
+                    <span class="erp-stat-card__value !text-amber-600">{{ pendingTagsCount }}</span>
+                    <span class="erp-stat-card__meta">Waiting to write NFC</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white p-4">
-                    <p class="text-xs uppercase tracking-wide text-surface-500">Locked Tags</p>
-                    <p class="mt-2 text-2xl font-semibold text-emerald-600">{{ lockedTagsCount }}</p>
+                <div class="erp-stat-card p-4">
+                    <span class="erp-stat-card__label">Locked Tags</span>
+                    <span class="erp-stat-card__value !text-emerald-600">{{ lockedTagsCount }}</span>
+                    <span class="erp-stat-card__meta">Tamper-proof locked</span>
                 </div>
             </div>
 
@@ -207,7 +211,7 @@ const openWriter = (tagId) => {
 
         <Dialog v-model:visible="showCreateDialog" header="Create Verification Tag" modal class="w-full max-w-2xl">
             <div class="space-y-4 pt-2">
-                <div class="border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-700">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-700">
                     The selected sold item will receive a new `tag_...` token and a public verification URL under
                     <span class="font-semibold text-surface-900">{{ publicBaseUrl }}</span>.
                 </div>
@@ -232,7 +236,7 @@ const openWriter = (tagId) => {
                     <small v-if="createForm.errors.notes" class="mt-1 block text-red-600">{{ createForm.errors.notes }}</small>
                 </div>
 
-                <div class="flex justify-end gap-2 pt-2">
+                <div class="flex justify-end gap-2 border-t border-surface-100 pt-3">
                     <Button label="Cancel" text @click="showCreateDialog = false" />
                     <Button label="Create Tag" icon="pi pi-plus" @click="createTag" :loading="createForm.processing" />
                 </div>

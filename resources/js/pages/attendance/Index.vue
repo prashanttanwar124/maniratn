@@ -257,19 +257,19 @@ const deleteReason = () => {
                         No attendance reasons configured.
                     </div>
 
-                    <div v-else class="flex flex-wrap gap-2">
+                    <div v-else class="flex flex-wrap gap-2.5">
                         <div
                             v-for="reason in reasons"
                             :key="reason.id"
-                            class="inline-flex items-center gap-2 border border-surface-200 bg-surface-50 px-3 py-2"
+                            class="inline-flex items-center gap-2.5 rounded-lg border border-surface-200 bg-surface-50 px-3.5 py-2 shadow-xs"
                         >
                             <span class="text-sm font-medium text-surface-900">{{ reason.label }}</span>
                             <Tag
                                 :value="reason.is_active ? 'Active' : 'Inactive'"
                                 :severity="reason.is_active ? 'success' : 'secondary'"
                             />
-                            <Button icon="pi pi-pencil" text rounded="false" size="small" @click="openReasonDialog(reason)" />
-                            <Button icon="pi pi-trash" text rounded="false" severity="danger" size="small" @click="confirmDeleteReason(reason)" />
+                            <Button icon="pi pi-pencil" text rounded size="small" @click="openReasonDialog(reason)" />
+                            <Button icon="pi pi-trash" text rounded severity="danger" size="small" @click="confirmDeleteReason(reason)" />
                         </div>
                     </div>
 
@@ -361,11 +361,11 @@ const deleteReason = () => {
 
         <Dialog v-model:visible="reopenDialog" modal header="Reopen Checkout" :style="{ width: '34rem' }">
             <div class="space-y-4">
-                <div class="border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+                <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
                     Use this only when checkout was marked by mistake. The original event stays in history, and a correction note is required.
                 </div>
 
-                <div v-if="reopenTarget" class="border border-surface-200 bg-surface-50 px-4 py-4">
+                <div v-if="reopenTarget" class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
                     <p class="font-medium text-surface-900">{{ reopenTarget.staff.name }}</p>
                     <p class="mt-1 text-sm text-surface-500">{{ reopenTarget.staff.designation || 'No designation' }}</p>
                     <p class="mt-2 text-sm text-surface-700">Checked out at {{ reopenTarget.check_out_at || '—' }}</p>
@@ -387,7 +387,7 @@ const deleteReason = () => {
         </Dialog>
 
         <Dialog v-model:visible="reasonDialog" modal :header="editingReason ? 'Edit Attendance Reason' : 'Add Attendance Reason'" :style="{ width: '32rem' }">
-            <div class="space-y-4">
+            <div class="space-y-4 pt-2">
                 <div>
                     <label class="mb-2 block text-sm font-medium text-surface-700">Reason Label</label>
                     <InputText v-model="reasonForm.label" class="w-full" placeholder="Example: Vendor Visit" />
@@ -399,7 +399,7 @@ const deleteReason = () => {
                     <label for="reason_active" class="text-sm text-surface-700">Active reason</label>
                 </div>
 
-                <div class="border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-600">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-600">
                     The internal code is generated automatically from the label. Existing events keep their original stored value.
                 </div>
             </div>

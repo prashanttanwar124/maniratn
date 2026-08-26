@@ -29,8 +29,8 @@ use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\VerificationTagController;
 use App\Http\Controllers\Website\ProductCatalogController;
 use App\Http\Controllers\Website\WebsiteApiController;
-use App\Models\Product;
-use App\Models\SilverProduct;
+use App\Services\InventoryBarcodeService;
+use App\Services\InvoiceRateService;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -64,63 +64,18 @@ Route::get('/api/website/vault/{token}/invoices/{invoice}/print', [WebsiteApiCon
     ->middleware('throttle:60,1')
     ->name('website.vault.invoice-print');
 
-
-
 Route::get('/api/inventory/{barcode}', function ($barcode) {
-    $normalizedBarcode = strtoupper(trim($barcode));
+    $inventory = app(InventoryBarcodeService::class)->find((string) $barcode);
 
-    $goldQuery = function () use ($normalizedBarcode) {
-        $product = Product::with(['category', 'purity'])
-            ->where('barcode', $normalizedBarcode)
-            ->first();
-
-        if (! $product && preg_match('/^G(\d{5})$/', $normalizedBarcode, $matches)) {
-            $product = Product::with(['category', 'purity'])->find((int) $matches[1]);
-        }
-
-        return $product;
-    };
-
-    $silverQuery = function () use ($normalizedBarcode) {
-        $product = SilverProduct::with(['category', 'supplier'])
-            ->where('barcode', $normalizedBarcode)
-            ->first();
-
-        if (! $product && preg_match('/^S(\d{5})$/', $normalizedBarcode, $matches)) {
-            $product = SilverProduct::with(['category', 'supplier'])->find((int) $matches[1]);
-        }
-
-        return $product;
-    };
-
-    $record = null;
-    $type = null;
-
-    if (preg_match('/^S\d{5}$/', $normalizedBarcode)) {
-        $record = $silverQuery();
-        $type = $record ? 'silver_product' : null;
-    } elseif (preg_match('/^G\d{5}$/', $normalizedBarcode)) {
-        $record = $goldQuery();
-        $type = $record ? 'product' : null;
-    }
-
-    if (! $record) {
-        $record = $goldQuery();
-        $type = $record ? 'product' : null;
-    }
-
-    if (! $record) {
-        $record = $silverQuery();
-        $type = $record ? 'silver_product' : null;
-    }
-
-    abort_unless($record && $type, 404);
+    abort_unless($inventory, 404);
+    $billing = app(InvoiceRateService::class)->defaultsFor($inventory['type'], $inventory['item']);
 
     return response()->json([
-        'inventory_type' => $type,
-        'item' => $record,
+        'inventory_type' => $inventory['type'],
+        'item' => $inventory['item'],
+        'billing' => $billing,
     ]);
-});
+})->middleware('auth');
 
 /*
 |--------------------------------------------------------------------------
@@ -378,9 +333,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/api/ai/copilot/chat', [AiCopilotController::class, 'chat'])
         ->middleware('day.open')
         ->name('ai.copilot.chat');
-    Route::post('/api/ai/copilot/confirm-bill', [AiCopilotController::class, 'confirmBill'])
-        ->middleware(['permission:manage_invoices', 'day.open'])
-        ->name('ai.copilot.confirm-bill');
     Route::post('/api/ai/copilot/confirm-product', [AiCopilotController::class, 'confirmProduct'])
         ->middleware(['permission:manage_products', 'day.open'])
         ->name('ai.copilot.confirm-product');

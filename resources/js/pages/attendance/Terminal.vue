@@ -325,15 +325,15 @@ onMounted(() => {
                         </div>
 
                         <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                            <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
                                 <p class="text-xs uppercase tracking-wide text-surface-500">First Tap</p>
                                 <p class="mt-2 text-sm text-surface-700">If staff has not entered today, the terminal checks them in automatically.</p>
                             </div>
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                            <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
                                 <p class="text-xs uppercase tracking-wide text-surface-500">When Going Out</p>
                                 <p class="mt-2 text-sm text-surface-700">Choose Lunch, Karigar, Bank, Delivery, Personal, or Other.</p>
                             </div>
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                            <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
                                 <p class="text-xs uppercase tracking-wide text-surface-500">When Returning</p>
                                 <p class="mt-2 text-sm text-surface-700">Entering the passcode again marks the staff member back in automatically.</p>
                             </div>
@@ -341,15 +341,15 @@ onMounted(() => {
                     </div>
 
                     <div class="space-y-5">
-                        <div v-if="message" class="border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                        <div v-if="message" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
                             {{ message }}
                         </div>
 
-                        <div v-if="error" class="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        <div v-if="error" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                             {{ error }}
                         </div>
 
-                        <div v-if="activeUser" class="overflow-hidden border border-surface-200 bg-surface-50">
+                        <div v-if="activeUser" class="overflow-hidden rounded-xl border border-surface-200 bg-surface-50 shadow-xs">
                             <div class="flex flex-col gap-4 border-b border-surface-200 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
                                 <div class="min-w-0">
                                     <p class="text-xs uppercase tracking-wide text-surface-500">Staff Member</p>
@@ -362,11 +362,11 @@ onMounted(() => {
                                 </div>
 
                                 <div class="grid gap-3 sm:grid-cols-2">
-                                    <div class="border border-surface-200 bg-white px-4 py-3">
+                                    <div class="rounded-lg border border-surface-200 bg-white px-4 py-3 shadow-xs">
                                         <p class="text-xs uppercase tracking-wide text-surface-500">Check In</p>
                                         <p class="mt-2 text-base font-semibold text-surface-900">{{ attendance?.check_in_at || '—' }}</p>
                                     </div>
-                                    <div class="border border-surface-200 bg-white px-4 py-3">
+                                    <div class="rounded-lg border border-surface-200 bg-white px-4 py-3 shadow-xs">
                                         <p class="text-xs uppercase tracking-wide text-surface-500">Latest Activity</p>
                                         <p class="mt-2 text-base font-semibold text-surface-900">{{ latestEventLabel }}</p>
                                         <p v-if="attendance?.latest_event?.event_time" class="mt-1 text-xs text-surface-500">{{ attendance.latest_event.event_time }}</p>

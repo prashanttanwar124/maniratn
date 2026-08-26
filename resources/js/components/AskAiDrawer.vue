@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useProductDraftTray } from '@/composables/useProductDraftTray';
-import { usePage } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { AlertCircle, AlertTriangle, BarChart3, Bot, Calculator, CheckCircle2, Clock, Coins, Info, Layers3, Mic, MicOff, PackagePlus, Receipt, RefreshCw, Send, Sparkles, TrendingUp, UserRound, Volume2, VolumeX, Wallet, X, Zap } from 'lucide-vue-next';
+import { AlertCircle, AlertTriangle, BarChart3, Bot, Calculator, CheckCircle2, Clock, Coins, ExternalLink, FileText, Info, Layers3, Mic, MicOff, PackagePlus, Receipt, RefreshCw, Send, Sparkles, TrendingUp, UserRound, Volume2, VolumeX, Wallet, X, Zap } from 'lucide-vue-next';
 import Drawer from 'primevue/drawer';
 import Textarea from 'primevue/textarea';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
@@ -10,7 +10,6 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 // Subcomponents
 import CustomerKhataCard from './ai/CustomerKhataCard.vue';
 import DailyRatesCard from './ai/DailyRatesCard.vue';
-import InvoiceDraftCard from './ai/InvoiceDraftCard.vue';
 import InvoiceHistoryCard from './ai/InvoiceHistoryCard.vue';
 import OldGoldCard from './ai/OldGoldCard.vue';
 import SalesSummaryCard from './ai/SalesSummaryCard.vue';
@@ -235,6 +234,13 @@ const scrollToBottom = () => {
     });
 };
 
+const completedPreviewStatuses = new Set(['IN_STOCK_REAL_DB', 'UPDATED_IN_DATABASE', 'SUPERSEDED']);
+const isPendingPreview = (action: ActionItem) =>
+    action.result?.is_preview === true
+    && !action.result?.is_discarded
+    && !action.result?.is_superseded
+    && !completedPreviewStatuses.has(action.result?.status);
+
 const sendMessage = async (customText?: string) => {
     const textToSend = customText || inputPrompt.value.trim();
     if (!textToSend || isLoading.value) return;
@@ -259,7 +265,7 @@ const sendMessage = async (customText?: string) => {
     messages.value.forEach((m) => {
         if (m.role === 'assistant' && m.actions) {
             m.actions.forEach((a) => {
-                if (a.result && a.result.is_preview === true && !a.result.is_discarded && a.result.status !== 'INVOICE_GENERATED_REAL_DB' && a.result.status !== 'IN_STOCK_REAL_DB' && a.result.status !== 'UPDATED_IN_DATABASE') {
+                if (isPendingPreview(a)) {
                     a.result.is_superseded = true;
                 }
             });
@@ -331,17 +337,7 @@ const latestActionableMsgId = computed(() => {
     for (let i = messages.value.length - 1; i >= 0; i--) {
         const m = messages.value[i];
         if (m.role === 'assistant' && m.actions && m.actions.length > 0) {
-            const hasPendingDraft = m.actions.some(
-                (a) =>
-                    a.result &&
-                    a.result.is_preview === true &&
-                    !a.result.is_discarded &&
-                    !a.result.is_superseded &&
-                    a.result.status !== 'INVOICE_GENERATED_REAL_DB' &&
-                    a.result.status !== 'IN_STOCK_REAL_DB' &&
-                    a.result.status !== 'UPDATED_IN_DATABASE' &&
-                    a.result.status !== 'SUPERSEDED'
-            );
+            const hasPendingDraft = m.actions.some(isPendingPreview);
             if (hasPendingDraft) {
                 return m.id;
             }
@@ -370,75 +366,6 @@ const dismissToast = (id: string) => {
     activeToasts.value = activeToasts.value.filter((t) => t.id !== id);
 };
 
-const calculateLiveBill = (draft: any) => {
-    const weight = Math.round(parseFloat(draft.weight || 0) * 1000) / 1000;
-    const rate = Math.round(parseFloat(draft.rate_per_gm || 0) * 100) / 100;
-    draft.rate_per_gm = rate;
-    const metalVal = Math.round(weight * rate * 100) / 100;
-    draft.metal_value = metalVal;
-
-    let making = 0;
-    if (draft.making_type === 'flat') {
-        making = parseFloat(draft.making_value || 0);
-    } else if (draft.making_type === 'per_gram') {
-        making = Math.round(weight * parseFloat(draft.making_value || 0) * 100) / 100;
-    } else {
-        making = Math.round(metalVal * (parseFloat(draft.making_value || 12) / 100) * 100) / 100;
-    }
-    draft.making_charges = making;
-
-    const discount = parseFloat(draft.discount_amount || 0);
-    const subtotal = Math.max(0, metalVal + making - discount);
-    draft.subtotal = Math.round(subtotal * 100) / 100;
-
-    const gst = Math.round(subtotal * 0.03 * 100) / 100;
-    draft.gst_3_percent = gst;
-
-    const grandTotal = Math.round((subtotal + gst) * 100) / 100;
-    draft.grand_total = grandTotal;
-    if (!draft.payment_amount || draft.payment_amount === draft.prev_grand_total) {
-        draft.payment_amount = grandTotal;
-    }
-    draft.prev_grand_total = grandTotal;
-};
-
-const confirmBillAction = async (action: ActionItem, msgId: string) => {
-    const key = `bill_${msgId}`;
-    isConfirming.value[key] = true;
-    if (action.result) action.result.error_message = null;
-    try {
-        const payload = { ...action.result, message_id: msgId };
-        const res = await axios.post('/api/ai/copilot/confirm-bill', payload);
-        if (res.data && res.data.success) {
-            action.result = {
-                ...action.result,
-                ...res.data,
-                is_preview: false,
-                found: true,
-                error_message: null,
-                status: 'INVOICE_GENERATED_REAL_DB',
-            };
-            const targetMsg = messages.value.find((m) => m.id === msgId);
-            if (targetMsg) {
-                targetMsg.content = `Done! Customer ${res.data.customer_name} ke liye Bill #${res.data.invoice_number} successfully create ho gaya hai.`;
-            }
-            showToast(`Bill #${res.data.invoice_number} successfully create ho gaya hai!`, 'Bill Generated', 'success');
-            if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
-                speakText(`Done! Bill number ${res.data.invoice_number} successfully create ho gaya hai.`);
-            }
-        }
-    } catch (err: any) {
-        const errorMsg = err.response?.data?.message || (err.response?.data?.error === 'DAY_NOT_OPEN' ? 'Showroom day open nahi hai. Pehle open day karein.' : 'Error creating invoice in database.');
-        if (action.result) action.result.error_message = errorMsg;
-        showToast(errorMsg, 'Bill Creation Failed', 'error');
-        if (isVoiceGloballyEnabled.value && autoVoiceOutput.value) {
-            speakText(errorMsg);
-        }
-    } finally {
-        isConfirming.value[key] = false;
-    }
-};
-
 const productActionsFor = (message: Message) => (message.actions || []).filter((action) => action.tool === 'add_product');
 
 const pendingProductActionsFor = (message: Message) => productActionsFor(message).filter((action) => (
@@ -458,6 +385,11 @@ const openProductDrafts = (message: Message) => {
     if (actions.length === 0) return;
     openProductDraftTray(message.id, actions);
     emit('update:visible', false);
+};
+
+const openInvoiceDraft = (url: string) => {
+    emit('update:visible', false);
+    router.visit(url);
 };
 
 const confirmRatesAction = async (action: ActionItem, msgId: string) => {
@@ -888,17 +820,39 @@ onMounted(() => {
                                     <!-- ⚡ Dedicated Sub-Component Action Cards (Full 100% Width) -->
                                     <div v-if="msg.actions && msg.actions.length > 0" class="w-full space-y-2">
                                         <template v-for="(action, idx) in msg.actions" :key="idx">
-                                        <!-- 1. Invoice / Bill Draft Card -->
-                                        <InvoiceDraftCard
-                                            v-if="action.tool === 'create_bill' || action.tool === 'create_invoice'"
-                                            :action="action"
-                                            :msg-id="msg.id + (msg.actions.length > 1 ? ('_' + idx) : '')"
-                                            :is-confirming="Boolean(isConfirming[`bill_${msg.id}_${idx}`] || isConfirming[`bill_${msg.id}`])"
-                                            :is-superseded="latestActionableMsgId !== msg.id"
-                                            @confirm="confirmBillAction"
-                                            @discard="discardAction"
-                                            @recalculate="calculateLiveBill"
-                                        />
+                                        <!-- 1. Billing uses the regular invoice draft screen with a luxury Nora action card -->
+                                        <section
+                                            v-if="['create_bill', 'create_invoice', 'create_bill_draft'].includes(action.tool) && action.result?.draft_url"
+                                            class="erp-ai-card my-3 overflow-hidden rounded-xl border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-xs"
+                                            style="font-family: 'Poppins', sans-serif !important"
+                                        >
+                                            <div class="flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5">
+                                                <div class="flex items-center gap-2.5 min-w-0">
+                                                    <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#1c3633] text-[#e5c278] shadow-2xs">
+                                                        <FileText class="h-3.5 w-3.5" />
+                                                    </span>
+                                                    <div class="flex flex-col justify-center min-w-0">
+                                                        <p class="!m-0 !p-0 !text-xs font-semibold tracking-wide text-surface-900 !leading-tight truncate">
+                                                            {{ action.result.customer_name || 'Customer' }} &bull; {{ action.result.item_count || 1 }} Item{{ (action.result.item_count || 1) > 1 ? 's' : '' }}
+                                                        </p>
+                                                        <p class="!m-0 !p-0 !text-[10.5px] font-normal text-surface-500 !leading-tight mt-0.5 truncate">
+                                                            {{ action.result.item_name || 'Stock item' }} ({{ action.result.barcode }}) &bull; Est: <strong class="text-[#1c3633]">₹{{ Number(action.result.grand_total || 0).toLocaleString('en-IN') }}</strong>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <span class="ai-status-pill inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 shrink-0">
+                                                    <Clock class="h-3 w-3 text-amber-600" /> Draft Ready
+                                                </span>
+                                            </div>
+                                            <a
+                                                :href="action.result.draft_url"
+                                                class="flex w-full items-center justify-center gap-2 border-t border-amber-200 bg-[#1c3633] hover:bg-[#254642] px-3 py-2.5 text-xs font-semibold text-white transition-colors cursor-pointer"
+                                                @click.prevent="openInvoiceDraft(action.result.draft_url)"
+                                            >
+                                                <ExternalLink class="h-3.5 w-3.5 text-[#e5c278]" />
+                                                <span>Open Invoice Draft</span>
+                                            </a>
+                                        </section>
 
                                         <!-- 2. Product drafts open globally without leaving the current ERP page -->
                                         <section

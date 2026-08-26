@@ -589,7 +589,7 @@ const clearAttendanceCard = (user) => {
                     </small>
                 </div>
 
-                <div class="md:col-span-2 rounded border border-surface-200 bg-surface-50 p-4">
+                <div class="md:col-span-2 rounded-xl border border-surface-200 bg-surface-50 p-4">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-sm font-medium text-surface-900">Attendance Terminal Access</p>
@@ -625,18 +625,18 @@ const clearAttendanceCard = (user) => {
 
                 <div class="md:col-span-2">
                     <div class="mb-2 block text-sm font-medium text-surface-700">Direct Permissions</div>
-                    <div v-if="selectedRole?.permissions?.length" class="mb-3 rounded border border-amber-200 bg-amber-50 px-4 py-3">
+                    <div v-if="selectedRole?.permissions?.length" class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
                         <p class="text-sm font-medium text-amber-900">Inherited From Role</p>
                         <div class="mt-2 flex flex-wrap gap-2">
                             <Tag v-for="permission in selectedRole.permissions" :key="permission + '-inherited'" :value="permission" severity="warn" />
                         </div>
                     </div>
-                    <div class="grid gap-3 rounded border border-surface-200 bg-surface-50 p-4 md:grid-cols-2">
+                    <div class="grid gap-3 rounded-lg border border-surface-200 bg-surface-50 p-4 md:grid-cols-2">
                         <label
                             v-for="permission in permissions"
                             :key="permission.value"
-                            class="flex items-center gap-3 rounded px-2 py-1 text-sm"
-                            :class="isInheritedPermission(permission) ? 'bg-amber-50 text-surface-500' : 'text-surface-700'"
+                            class="flex items-center gap-3 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-surface-100/60"
+                            :class="isInheritedPermission(permission) ? 'bg-amber-50/80 text-surface-500' : 'text-surface-700'"
                         >
                             <Checkbox
                                 v-model="userForm.permissions"
@@ -678,8 +678,8 @@ const clearAttendanceCard = (user) => {
 
                 <div>
                     <div class="mb-2 block text-sm font-medium text-surface-700">Assign Permissions</div>
-                    <div class="grid gap-3 rounded border border-surface-200 bg-surface-50 p-4 md:grid-cols-2">
-                        <label v-for="permission in permissions" :key="permission.value + '-role'" class="flex items-center gap-3 text-sm text-surface-700">
+                    <div class="grid gap-3 rounded-lg border border-surface-200 bg-surface-50 p-4 md:grid-cols-2">
+                        <label v-for="permission in permissions" :key="permission.value + '-role'" class="flex items-center gap-3 rounded-md px-2.5 py-1.5 text-sm text-surface-700 transition-colors hover:bg-surface-100/60">
                             <Checkbox v-model="roleForm.permissions" :inputId="permission.value + '-role'" :value="permission.value" />
                             <span>{{ permission.label }}</span>
                         </label>

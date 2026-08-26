@@ -570,13 +570,13 @@ const handleSvgMouseLeave = () => {
                         <div class="flex flex-wrap items-center gap-3">
                             <h2 class="text-xl font-bold tracking-tight text-surface-900">Admin Dashboard</h2>
                             <span
-                                class="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold"
+                                class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-xs font-semibold"
                                 :class="isDayOpen ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' : 'bg-rose-50 text-rose-700 border border-rose-300'"
                             >
                                 <span class="h-1.5 w-1.5 rounded-full" :class="isDayOpen ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'"></span>
                                 {{ isDayOpen ? 'Store Open' : 'Register Closed' }}
                             </span>
-                            <span v-if="activeAlerts" class="inline-flex items-center gap-1 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 border border-amber-300">
+                            <span v-if="activeAlerts" class="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 border border-amber-300">
                                 <i class="pi pi-bell text-[10px]"></i>
                                 {{ activeAlerts }} Action Required
                             </span>
@@ -613,14 +613,14 @@ const handleSvgMouseLeave = () => {
                         v-for="item in quickLinks"
                         :key="item.label"
                         :href="item.href"
-                        class="erp-quick-link group flex flex-col justify-between border border-surface-200 bg-surface-50/60 p-4 transition"
+                        class="erp-quick-link group flex flex-col justify-between rounded-lg border border-surface-200 bg-surface-50/60 p-4 transition shadow-xs hover:shadow-sm"
                     >
                         <!-- Top Row: Icon Container + Badge -->
                         <div class="flex items-center justify-between">
-                            <div class="erp-quick-link__icon flex h-10 w-10 items-center justify-center text-sm" :class="item.iconBoxClass">
+                            <div class="erp-quick-link__icon flex h-10 w-10 items-center justify-center rounded-lg text-sm" :class="item.iconBoxClass">
                                 <i :class="item.icon"></i>
                             </div>
-                            <span class="erp-quick-link__badge px-2 py-1 text-[10px] font-bold" :class="item.badgeClass">
+                            <span class="erp-quick-link__badge rounded-md px-2 py-1 text-[10px] font-bold" :class="item.badgeClass">
                                 {{ item.badge }}
                             </span>
                         </div>
@@ -648,7 +648,7 @@ const handleSvgMouseLeave = () => {
                     <!-- Metric Cards (4 Grid) with Accent Top Borders -->
                     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
                         <!-- Metric 1: Sales -->
-                        <div class="border border-surface-200 border-t-2 border-t-surface-900 bg-white p-4 shadow-2xs">
+                        <div class="rounded-lg border border-surface-200 border-t-2 border-t-surface-900 bg-white p-4 shadow-xs">
                             <div class="flex items-center justify-between">
                                 <span class="text-xs font-semibold text-surface-500">Today's Sales</span>
                                 <i class="pi pi-receipt text-xs text-surface-400"></i>
@@ -660,7 +660,7 @@ const handleSvgMouseLeave = () => {
                         </div>
 
                         <!-- Metric 2: Collections -->
-                        <div class="border border-surface-200 border-t-2 border-t-emerald-600 bg-white p-4 shadow-2xs">
+                        <div class="rounded-lg border border-surface-200 border-t-2 border-t-emerald-600 bg-white p-4 shadow-xs">
                             <div class="flex items-center justify-between">
                                 <span class="text-xs font-semibold text-surface-500">Collections</span>
                                 <i class="pi pi-check-circle text-xs text-emerald-600"></i>
@@ -672,7 +672,7 @@ const handleSvgMouseLeave = () => {
                         </div>
 
                         <!-- Metric 3: Active Orders -->
-                        <div class="border border-surface-200 border-t-2 border-t-amber-500 bg-white p-4 shadow-2xs">
+                        <div class="rounded-lg border border-surface-200 border-t-2 border-t-amber-500 bg-white p-4 shadow-xs">
                             <div class="flex items-center justify-between">
                                 <span class="text-xs font-semibold text-surface-500">Active Orders</span>
                                 <i class="pi pi-sparkles text-xs text-amber-600"></i>
@@ -684,7 +684,7 @@ const handleSvgMouseLeave = () => {
                         </div>
 
                         <!-- Metric 4: Safe Gold Value -->
-                        <div class="border border-surface-200 border-t-2 border-t-[#c4922a] bg-white p-4 shadow-2xs">
+                        <div class="rounded-lg border border-surface-200 border-t-2 border-t-[#c4922a] bg-white p-4 shadow-xs">
                             <div class="flex items-center justify-between">
                                 <span class="text-xs font-semibold text-surface-500">Safe Gold Stock</span>
                                 <i class="pi pi-box text-xs text-[#c4922a]"></i>
@@ -1038,7 +1038,7 @@ const handleSvgMouseLeave = () => {
                         </div>
 
                         <div class="mt-3 space-y-2 text-xs">
-                            <div v-if="metrics?.overdue_items > 0" class="erp-alert-row flex items-center justify-between border border-rose-200 bg-rose-50/80 p-3 text-rose-900">
+                            <div v-if="metrics?.overdue_items > 0" class="erp-alert-row flex items-center justify-between rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-rose-900 shadow-xs">
                                 <div class="flex items-center gap-2">
                                     <i class="pi pi-clock text-rose-600 text-xs flex-shrink-0"></i>
                                     <span><strong>{{ metrics.overdue_items }} Custom Order{{ metrics.overdue_items > 1 ? 's' : '' }}</strong> are past their promised delivery date.</span>
@@ -1048,7 +1048,7 @@ const handleSvgMouseLeave = () => {
                                 </Link>
                             </div>
 
-                            <div v-if="metrics?.new_orders > 0" class="erp-alert-row flex items-center justify-between border border-surface-200 bg-surface-50 p-3 text-surface-800">
+                            <div v-if="metrics?.new_orders > 0" class="erp-alert-row flex items-center justify-between rounded-lg border border-surface-200 bg-surface-50 p-3 text-surface-800 shadow-xs">
                                 <div class="flex items-center gap-2">
                                     <i class="pi pi-inbox text-surface-600 text-xs flex-shrink-0"></i>
                                     <span><strong>{{ metrics.new_orders }} New Order{{ metrics.new_orders > 1 ? 's' : '' }}</strong> awaiting workshop assignment.</span>
@@ -1058,7 +1058,7 @@ const handleSvgMouseLeave = () => {
                                 </Link>
                             </div>
 
-                            <div v-if="karigars?.length > 0" class="erp-alert-row flex items-center justify-between border border-amber-200 bg-amber-50/70 p-3 text-amber-900">
+                            <div v-if="karigars?.length > 0" class="erp-alert-row flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-amber-900 shadow-xs">
                                 <div class="flex items-center gap-2">
                                     <i class="pi pi-users text-amber-700 text-xs flex-shrink-0"></i>
                                     <span><strong>{{ karigars.length }} Karigar{{ karigars.length > 1 ? 's' : '' }}</strong> holding store bullion.</span>
@@ -1102,7 +1102,7 @@ const handleSvgMouseLeave = () => {
                                     <tr v-for="inv in recent_invoices" :key="inv.id" class="transition hover:bg-surface-50/70">
                                         <!-- Invoice # -->
                                         <td class="px-5 py-3.5">
-                                            <span class="erp-code-pill inline-flex items-center gap-1.5 border border-surface-200 bg-surface-50 px-2 py-0.5 font-mono text-xs font-semibold text-surface-900">
+                                            <span class="erp-code-pill inline-flex items-center gap-1.5 rounded-md border border-surface-200 bg-surface-50 px-2 py-0.5 font-mono text-xs font-semibold text-surface-900">
                                                 {{ inv.invoice_number }}
                                             </span>
                                         </td>
@@ -1110,7 +1110,7 @@ const handleSvgMouseLeave = () => {
                                         <!-- Customer with Avatar -->
                                         <td class="px-5 py-3.5">
                                             <div class="flex items-center gap-2.5">
-                                                <div class="erp-icon-tile flex h-7 w-7 flex-shrink-0 items-center justify-center bg-surface-900 text-[10px] font-bold text-white uppercase">
+                                                <div class="erp-icon-tile flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-surface-900 text-[10px] font-bold text-white uppercase shadow-xs">
                                                     {{ getInitials(inv.customer_name) }}
                                                 </div>
                                                 <div class="min-w-0">
@@ -1127,7 +1127,7 @@ const handleSvgMouseLeave = () => {
 
                                         <!-- Status Badge -->
                                         <td class="px-5 py-3.5">
-                                            <span class="erp-pill inline-flex items-center gap-1 border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                            <span class="erp-pill inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
                                                 <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                                                 PAID
                                             </span>
@@ -1143,7 +1143,7 @@ const handleSvgMouseLeave = () => {
                                             <a
                                                 :href="route('invoices.print', inv.id)"
                                                 target="_blank"
-                                                class="erp-action-button inline-flex items-center gap-1.5 border border-surface-300 bg-white px-3 py-1 text-xs font-medium text-surface-800 shadow-2xs hover:border-surface-900 hover:bg-surface-900 hover:text-white transition"
+                                                class="erp-action-button inline-flex items-center gap-1.5 rounded-md border border-surface-300 bg-white px-3 py-1 text-xs font-medium text-surface-800 shadow-2xs hover:border-surface-900 hover:bg-surface-900 hover:text-white transition"
                                             >
                                                 <i class="pi pi-print text-[11px]"></i>
                                                 <span>Print</span>
@@ -1186,7 +1186,7 @@ const handleSvgMouseLeave = () => {
 
                         <div class="mt-3.5 space-y-2 text-xs">
                             <!-- Gold 24K -->
-                            <div class="erp-list-item flex items-center justify-between border border-surface-200 bg-surface-50 p-3 transition hover:border-[#c4922a]/50">
+                            <div class="erp-list-item flex items-center justify-between rounded-lg border border-surface-200 bg-surface-50 p-3 transition hover:border-[#c4922a]/50 shadow-xs">
                                 <div>
                                     <div class="font-bold text-surface-900">Gold 24K (Fine)</div>
                                     <div class="text-[10px] text-surface-400">99.9% Pure Standard</div>
@@ -1198,7 +1198,7 @@ const handleSvgMouseLeave = () => {
                             </div>
 
                             <!-- Gold 22K (916) -->
-                            <div class="erp-list-item flex items-center justify-between border border-surface-200 bg-surface-50 p-3 transition hover:border-[#c4922a]/50">
+                            <div class="erp-list-item flex items-center justify-between rounded-lg border border-surface-200 bg-surface-50 p-3 transition hover:border-[#c4922a]/50 shadow-xs">
                                 <div>
                                     <div class="font-bold text-surface-900">Gold 22K (916)</div>
                                     <div class="text-[10px] text-surface-400">Hallmark Jewellery</div>
@@ -1210,7 +1210,7 @@ const handleSvgMouseLeave = () => {
                             </div>
 
                             <!-- Silver 925 -->
-                            <div class="erp-list-item flex items-center justify-between border border-surface-200 bg-surface-50 p-3 transition hover:border-slate-400">
+                            <div class="erp-list-item flex items-center justify-between rounded-lg border border-surface-200 bg-surface-50 p-3 transition hover:border-slate-400 shadow-xs">
                                 <div>
                                     <div class="font-bold text-surface-900">Silver 925</div>
                                     <div class="text-[10px] text-surface-400">Sterling Fine</div>
@@ -1242,7 +1242,7 @@ const handleSvgMouseLeave = () => {
 
                         <!-- Multi-Asset Liquidity Progress Bar -->
                         <div class="mt-3.5">
-                            <div class="flex h-2 w-full overflow-hidden bg-surface-100">
+                            <div class="flex h-2 w-full overflow-hidden rounded-full bg-surface-100">
                                 <div class="bg-surface-900" :style="{ width: `${cashPercent}%` }" title="Cash in hand"></div>
                                 <div class="bg-sky-600" :style="{ width: `${bankPercent}%` }" title="Bank Account"></div>
                                 <div class="bg-[#c4922a]" :style="{ width: `${goldPercent}%` }" title="Gold Safe"></div>
@@ -1256,28 +1256,28 @@ const handleSvgMouseLeave = () => {
                         <div class="mt-3.5 space-y-2.5 text-xs">
                             <div class="flex items-center justify-between border-b border-surface-100 pb-2">
                                 <div class="flex items-center gap-1.5">
-                                    <span class="h-2 w-2 bg-surface-900"></span>
+                                    <span class="h-2 w-2 rounded-full bg-surface-900"></span>
                                     <span class="text-surface-600 font-medium">Cash in Hand</span>
                                 </div>
                                 <span class="font-bold text-surface-900">{{ formatCurrency(vaults?.cash) }}</span>
                             </div>
                             <div class="flex items-center justify-between border-b border-surface-100 pb-2">
                                 <div class="flex items-center gap-1.5">
-                                    <span class="h-2 w-2 bg-sky-600"></span>
+                                    <span class="h-2 w-2 rounded-full bg-sky-600"></span>
                                     <span class="text-surface-600 font-medium">Bank Account</span>
                                 </div>
                                 <span class="font-bold text-surface-900">{{ formatCurrency(vaults?.bank) }}</span>
                             </div>
                             <div class="flex items-center justify-between border-b border-surface-100 pb-2">
                                 <div class="flex items-center gap-1.5">
-                                    <span class="h-2 w-2 bg-[#c4922a]"></span>
+                                    <span class="h-2 w-2 rounded-full bg-[#c4922a]"></span>
                                     <span class="text-surface-600 font-medium">Gold Safe</span>
                                 </div>
                                 <span class="font-bold text-amber-800">{{ formatWeight(vaults?.gold) }}</span>
                             </div>
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-1.5">
-                                    <span class="h-2 w-2 bg-slate-400"></span>
+                                    <span class="h-2 w-2 rounded-full bg-slate-400"></span>
                                     <span class="text-surface-600 font-medium">Silver Drawer</span>
                                 </div>
                                 <span class="font-bold text-slate-700">{{ formatWeight(vaults?.silver) }}</span>
@@ -1292,7 +1292,7 @@ const handleSvgMouseLeave = () => {
                                 <i class="pi pi-heart text-rose-500 text-xs flex-shrink-0"></i>
                                 <span class="text-xs font-bold uppercase tracking-wider text-surface-700 leading-none">CRM Celebrations</span>
                             </div>
-                            <span class="erp-pill inline-flex items-center border border-surface-200 bg-surface-50 px-2 py-0.5 text-[10px] font-bold text-surface-700">
+                            <span class="erp-pill inline-flex items-center rounded-md border border-surface-200 bg-surface-50 px-2 py-0.5 text-[10px] font-bold text-surface-700">
                                 {{ customer_reminders?.length || 0 }} upcoming
                             </span>
                         </div>
@@ -1301,7 +1301,7 @@ const handleSvgMouseLeave = () => {
                             <div
                                 v-for="r in (customer_reminders || []).slice(0, 4)"
                                 :key="`${r.customer_id}-${r.type}`"
-                                class="erp-list-item flex items-center justify-between border p-3 text-xs transition"
+                                class="erp-list-item flex items-center justify-between rounded-lg border p-3 text-xs transition shadow-xs"
                                 :class="r.is_today ? 'bg-amber-50/70 border-amber-300' : 'bg-surface-50 border-surface-200'"
                             >
                                 <div class="min-w-0">
@@ -1329,7 +1329,7 @@ const handleSvgMouseLeave = () => {
                     </div>
 
                     <!-- Recent Safe & Drawer Movements -->
-                    <div class="border border-surface-200 bg-white p-5 shadow-2xs">
+                    <div class="erp-panel border border-surface-200 bg-white p-5 shadow-2xs">
                         <div class="flex items-center justify-between border-b border-surface-100 pb-3">
                             <div class="flex items-center gap-2">
                                 <i class="pi pi-history text-surface-500 text-xs flex-shrink-0"></i>
@@ -1348,7 +1348,7 @@ const handleSvgMouseLeave = () => {
                                     <div class="flex items-center gap-1.5">
                                         <span class="font-bold text-surface-900">{{ vaultLabels[m.vault_type] || m.vault_type }}</span>
                                         <span
-                                            class="px-1.5 py-0.2 text-[9px] font-bold"
+                                            class="rounded-md px-1.5 py-0.2 text-[9px] font-bold"
                                             :class="m.direction === 'CREDIT' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'"
                                         >
                                             {{ m.direction === 'CREDIT' ? '+IN' : '-OUT' }}
@@ -1400,7 +1400,7 @@ const handleSvgMouseLeave = () => {
         <!-- 2. Open Day Dialog -->
         <Dialog v-model:visible="showDayDialog" modal header="Open Store Day Register" :style="{ width: '460px' }">
             <div class="space-y-4 pt-2">
-                <div class="border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 shadow-xs">
                     Verify cash and metal in safe drawers before opening the store for billing.
                 </div>
                 <div>

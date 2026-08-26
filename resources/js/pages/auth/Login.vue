@@ -22,7 +22,7 @@ defineProps<{
     <AuthBase title="Secure Login" description="Sign in to access billing, ledger, orders, and daily operations.">
         <Head title="Log in" />
 
-        <div class="border border-surface-200 bg-white">
+        <div class="erp-panel overflow-hidden border border-surface-200 bg-white shadow-sm">
             <div class="border-b border-surface-200 bg-surface-50 px-6 py-4">
                 <div class="flex items-center justify-between gap-4">
                     <div>
@@ -33,7 +33,7 @@ defineProps<{
             </div>
 
             <div class="space-y-5 px-6 py-6">
-                <div v-if="status" class="border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                <div v-if="status" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 shadow-xs">
                     {{ status }}
                 </div>
 
@@ -77,7 +77,7 @@ defineProps<{
                             <InputError :message="errors.password" />
                         </div>
 
-                        <div class="flex items-center justify-between border border-surface-200 bg-surface-50 px-4 py-3">
+                        <div class="flex items-center justify-between rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">
                             <Label for="remember" class="flex items-center gap-3 text-sm font-medium text-surface-700">
                                 <Checkbox id="remember" name="remember" binary :tabindex="3" />
                                 <span>Keep me signed in on this device</span>

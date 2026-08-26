@@ -158,17 +158,20 @@ const deleteCategory = () => {
             </section>
 
             <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Total Categories</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ summary.total_categories }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Total Categories</span>
+                    <span class="erp-stat-card__value">{{ summary.total_categories }}</span>
+                    <span class="erp-stat-card__meta">Catalog groups</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Gold Categories</p>
-                    <p class="mt-2 text-2xl font-semibold text-amber-700">{{ summary.gold_categories }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Gold Categories</span>
+                    <span class="erp-stat-card__value text-amber-700">{{ summary.gold_categories }}</span>
+                    <span class="erp-stat-card__meta">Linked to gold inventory</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Silver Categories</p>
-                    <p class="mt-2 text-2xl font-semibold text-slate-700">{{ summary.silver_categories }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Silver Categories</span>
+                    <span class="erp-stat-card__value text-slate-700">{{ summary.silver_categories }}</span>
+                    <span class="erp-stat-card__meta">Linked to silver inventory</span>
                 </div>
             </section>
 

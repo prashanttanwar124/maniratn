@@ -82,6 +82,7 @@ const form = useForm({
                   weight: parseFloat(item.finished_weight),
                   purity: item.purity,
                   metal_type: String(item.metal_type || 'GOLD').toUpperCase(),
+                  rate_multiplier: 1,
                   rate: String(item.metal_type || 'GOLD').toUpperCase() === 'SILVER' ? Number(props.defaultSilverRate || 0) : Number(props.defaultGoldRate || 0),
                   making_charges: 0,
                   making_charge_type: 'per_gram',
@@ -273,6 +274,7 @@ const fetchProduct = async () => {
         const response = await axios.get(endpoint);
         const product = response.data.item;
         const inventoryType = response.data.inventory_type;
+        const billing = response.data.billing || {};
         draftValidationFailed.value = false;
 
         if (form.items.find((p) => p.type === inventoryType && p.id === product.id)) {
@@ -313,18 +315,21 @@ const fetchProduct = async () => {
                 type: 'silver_product',
                 id: product.id,
                 description: product.name + (product.barcode ? ` (${product.barcode})` : ''),
+                purity: 'Silver 925',
                 weight: silverWeight,
                 quantity,
                 quantity_available: Number(product.quantity || 0),
                 pricing_mode: product.pricing_mode,
+                rate_multiplier: Number(billing.rate_multiplier || 1),
                 rate: product.pricing_mode === 'PIECE' ? piecePrice : silverRate,
                 making_charges: makingCharge,
                 making_charge_type: makingType,
                 final_price: price,
             });
         } else {
-            const currentRate = form.gold_rate || 0;
-            const weight = parseFloat(product.net_weight || 0);
+            const rateMultiplier = Number(billing.rate_multiplier || 1);
+            const currentRate = roundMoney(Number(form.gold_rate || billing.gold_rate || 0) * rateMultiplier);
+            const weight = parseFloat(product.net_weight || product.gross_weight || 0);
             const makingCharge = parseFloat(product.making_charge || 0);
             const makingType = product.making_charge_type || 'percentage';
 
@@ -345,6 +350,8 @@ const fetchProduct = async () => {
                 type: 'product',
                 id: product.id,
                 description: product.name + (product.barcode ? ` (${product.barcode})` : ''),
+                purity: product.purity?.name || 'Gold',
+                rate_multiplier: rateMultiplier,
                 weight,
                 quantity: 1,
                 rate: currentRate,
@@ -361,8 +368,8 @@ const fetchProduct = async () => {
             detail: product.name,
             life: 1200,
         });
-    } catch (error) {
-        toast.add({ severity: 'error', summary: 'Not Found', detail: 'Invalid Barcode', life: 3000 });
+    } catch {
+        toast.add({ severity: 'error', summary: 'Barcode Error', detail: 'Failed to look up scanned item details.', life: 2500 });
     } finally {
         isProcessing.value = false;
         if (barcodeInput.value) barcodeInput.value.$el.focus();
@@ -417,7 +424,7 @@ const calculateRawRowTotal = (item) => {
         } else if (makingType === 'flat' || makingType === 'lump_sum') {
             makingAmount = making;
         } else {
-            makingAmount = weight * making;
+            makingAmount = weight * quantity * making;
         }
         return base + makingAmount;
     }
@@ -450,7 +457,7 @@ const calculateRowMakingAmount = (item) => {
         } else if (makingType === 'flat' || makingType === 'lump_sum') {
             return making;
         } else {
-            return weight * making;
+            return weight * quantity * making;
         }
     }
 
@@ -495,11 +502,35 @@ const paymentState = computed(() => {
 
 const formatCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
 
+const itemIdentity = (item) => {
+    const description = String(item?.description || 'Unnamed item').trim();
+    const match = description.match(/^(.*?)\s*\(([^()]+)\)\s*$/);
+    const barcode = match?.[2]?.trim() || '';
+    let name = match?.[1]?.trim() || description;
+
+    if (barcode && name.toUpperCase().endsWith(barcode.toUpperCase())) {
+        name = name
+            .slice(0, -barcode.length)
+            .replace(/\s*[-–—|:/]\s*$/, '')
+            .trim();
+    }
+
+    return {
+        name: name || description,
+        barcode,
+    };
+};
+
+const itemPurityLabel = (item) => {
+    if (typeof item?.purity === 'object') return item.purity?.name || '';
+    return String(item?.purity || '').trim();
+};
+
 watch(
     () => form.gold_rate,
     (rate) => {
         form.items.filter((item) => !isSilverRateDependentItem(item)).forEach((item) => {
-            item.rate = Number(rate || 0);
+            item.rate = roundMoney(Number(rate || 0) * Number(item.rate_multiplier || 1));
             recalculateRow(item);
         });
     },
@@ -746,7 +777,7 @@ const submitInvoice = () => {
                     </div>
 
                     <!-- Scanner Input -->
-                    <div class="erp-subpanel m-4 flex gap-3 border border-surface-200 bg-surface-50 p-3">
+                    <div class="erp-subpanel m-4 flex gap-3 rounded-lg border border-surface-200 bg-surface-50 p-3">
                         <IconField class="erp-icon-field flex-1">
                             <InputIcon class="pi pi-barcode" />
                             <InputText ref="barcodeInput" v-model="scannedBarcode" @keydown.enter="fetchProduct" placeholder="Scan barcode or enter product code..." class="w-full" />
@@ -755,7 +786,7 @@ const submitInvoice = () => {
                         <Button label="Add Item" icon="pi pi-plus" @click="fetchProduct" :loading="isProcessing" />
                     </div>
 
-                    <div v-if="hasInvalidDraftItems" class="erp-alert-row mx-4 mb-3 border border-red-200 bg-red-50 px-4 py-3">
+                    <div v-if="hasInvalidDraftItems" class="erp-alert-row mx-4 mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-xs">
                         <div class="flex items-start gap-3 text-sm text-red-700">
                             <i class="pi pi-exclamation-triangle mt-0.5"></i>
                             <div>
@@ -765,7 +796,7 @@ const submitInvoice = () => {
                         </div>
                     </div>
 
-                    <div v-if="draftValidationFailed" class="erp-alert-row mx-4 mb-3 border border-amber-200 bg-amber-50 px-4 py-3">
+                    <div v-if="draftValidationFailed" class="erp-alert-row mx-4 mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 shadow-xs">
                         <div class="flex items-start justify-between gap-3 text-sm text-amber-800">
                             <div class="flex items-start gap-3">
                                 <i class="pi pi-exclamation-circle mt-0.5"></i>
@@ -790,32 +821,65 @@ const submitInvoice = () => {
                         </template>
 
                         <!-- Type -->
-                        <Column header="Type" style="width: 90px">
+                        <Column header="Type" style="width: 88px">
                             <template #body="{ data }">
                                 <Tag :value="data.type === 'order_item' ? 'ORDER' : data.type === 'silver_product' ? 'SILVER' : 'STOCK'" :severity="data.type === 'order_item' ? 'info' : data.type === 'silver_product' ? 'warn' : 'success'" />
                             </template>
                         </Column>
 
                         <!-- Item -->
-                        <Column field="description" header="Item" style="min-width: 220px">
+                        <Column field="description" header="Item details" style="min-width: 320px">
                             <template #body="{ data }">
-                                <div class="flex flex-col">
-                                    <span class="font-medium text-surface-900">
-                                        {{ data.description }}
+                                <div class="flex min-w-0 items-start gap-2">
+                                    <span
+                                        class="flex h-8 w-8 shrink-0 items-center justify-center border"
+                                        :class="data.type === 'silver_product' ? 'border-slate-200 bg-slate-50 text-slate-600' : data.type === 'order_item' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-amber-200 bg-amber-50 text-amber-700'"
+                                    >
+                                        <i :class="data.type === 'order_item' ? 'pi pi-wrench' : 'pi pi-tag'" class="text-sm"></i>
                                     </span>
 
-                                    <span v-if="data.type === 'order_item'" class="mt-1 text-xs text-primary"> Custom Work </span>
-                                    <span v-else-if="data.type === 'silver_product'" class="mt-1 text-xs text-amber-700">
-                                        {{ data.pricing_mode === 'PIECE' ? 'Silver Piece Item' : 'Silver Weight Item' }}
-                                    </span>
-                                    <span v-if="data.draft_valid === false" class="mt-1 text-xs font-medium text-red-600">
-                                        {{ data.draft_issue }}
-                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="truncate text-sm font-semibold leading-5 text-surface-900" :title="itemIdentity(data).name">
+                                            {{ itemIdentity(data).name }}
+                                        </div>
+
+                                        <div class="mt-0.5 flex flex-wrap items-center gap-1.5">
+                                            <span
+                                                v-if="itemIdentity(data).barcode"
+                                                class="inline-flex items-center gap-1 border border-surface-200 bg-surface-50 px-1.5 py-0.5 font-mono text-[10.5px] font-semibold tracking-wide text-surface-700"
+                                                title="Product barcode"
+                                            >
+                                                <i class="pi pi-barcode text-[10px] text-surface-500"></i>
+                                                {{ itemIdentity(data).barcode }}
+                                            </span>
+
+                                            <span
+                                                v-if="itemPurityLabel(data)"
+                                                class="inline-flex items-center gap-1 border px-1.5 py-0.5 text-[10.5px] font-semibold"
+                                                :class="data.type === 'silver_product' ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-amber-200 bg-amber-50 text-amber-800'"
+                                                title="Metal purity"
+                                            >
+                                                <span class="h-1.5 w-1.5 rounded-full" :class="data.type === 'silver_product' ? 'bg-slate-400' : 'bg-amber-500'"></span>
+                                                {{ itemPurityLabel(data) }} purity
+                                            </span>
+
+                                            <span v-if="data.type === 'order_item'" class="inline-flex border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                                                Custom work
+                                            </span>
+                                            <span v-else-if="data.type === 'silver_product'" class="text-[11px] font-medium text-surface-500">
+                                                {{ data.pricing_mode === 'PIECE' ? 'Per piece' : 'By weight' }}
+                                            </span>
+                                        </div>
+
+                                        <p v-if="data.draft_valid === false" class="mb-0 mt-1.5 text-xs font-medium text-red-600">
+                                            {{ data.draft_issue }}
+                                        </p>
+                                    </div>
                                 </div>
                             </template>
                         </Column>
 
-                        <Column header="Qty" style="width: 90px">
+                        <Column header="Qty" headerClass="erp-th-right" style="width: 68px">
                             <template #body="{ data }">
                                 <InputNumber
                                     v-if="data.type === 'silver_product' && data.pricing_mode === 'PIECE'"
@@ -831,7 +895,7 @@ const submitInvoice = () => {
                         </Column>
 
                         <!-- Weight -->
-                        <Column header="Wt (g)" style="width: 90px">
+                        <Column header="Wt (g)" headerClass="erp-th-right" style="width: 82px">
                             <template #body="{ data }">
                                 <div class="text-right font-medium">
                                     {{ data.weight }}
@@ -840,12 +904,12 @@ const submitInvoice = () => {
                         </Column>
 
                         <!-- Rate -->
-                        <Column header="Rate" style="width: 130px">
+                        <Column header="Rate" headerClass="erp-th-right" style="width: 132px">
                             <template #body="{ data }">
                                 <InputNumber
                                     v-model="data.rate"
                                     inputClass="w-full text-right"
-                                    class="w-full"
+                                    class="erp-line-control erp-line-rate-control"
                                     mode="decimal"
                                     :minFractionDigits="2"
                                     :maxFractionDigits="2"
@@ -855,13 +919,13 @@ const submitInvoice = () => {
                         </Column>
 
                         <!-- Making -->
-                        <Column header="Making" style="width: 215px">
+                        <Column header="Making" headerClass="erp-th-center" style="width: 218px">
                             <template #body="{ data }">
-                                <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-1.5">
                                     <InputNumber
                                         v-model="data.making_charges"
                                         inputClass="w-full text-right"
-                                        class="w-24 min-w-0"
+                                        class="erp-line-control erp-line-making-control"
                                         mode="decimal"
                                         :max="data.making_charge_type === 'percentage' ? 100 : undefined"
                                         :minFractionDigits="0"
@@ -874,7 +938,7 @@ const submitInvoice = () => {
                                         :options="makingChargeTypeOptions"
                                         optionLabel="label"
                                         optionValue="value"
-                                        class="w-28 shrink-0"
+                                        class="erp-line-control erp-line-making-type shrink-0"
                                         :panelClass="'!min-w-[190px]'"
                                         title="Making charge type: % (Percentage), ₹ Flat (Lump sum), ₹/g (Per gram)"
                                         @change="onMakingTypeChange(data)"
@@ -890,7 +954,7 @@ const submitInvoice = () => {
                         </Column>
 
                         <!-- Total -->
-                        <Column header="Total" style="width: 140px">
+                        <Column header="Total" headerClass="erp-th-right" style="width: 140px">
                             <template #body="{ data }">
                                 <div class="text-right font-semibold text-surface-900">
                                     {{ formatCurrency(data.final_price) }}
@@ -970,11 +1034,11 @@ const submitInvoice = () => {
                         </div>
 
                         <div class="mt-4 grid grid-cols-2 gap-3">
-                            <div class="erp-subpanel border border-surface-200 bg-white p-3.5">
+                            <div class="erp-subpanel rounded-lg border border-surface-200 bg-white p-3.5 shadow-xs">
                                 <span class="block text-[11px] font-bold uppercase tracking-wider text-surface-500">Received</span>
                                 <span class="mt-1 block font-mono text-xl font-bold text-emerald-700">{{ formatCurrency(totalReceived) }}</span>
                             </div>
-                            <div class="erp-subpanel border border-surface-200 bg-white p-3.5">
+                            <div class="erp-subpanel rounded-lg border border-surface-200 bg-white p-3.5 shadow-xs">
                                 <span class="block text-[11px] font-bold uppercase tracking-wider" :class="balanceDue > 0 ? 'text-amber-700' : 'text-emerald-700'">Ledger Due</span>
                                 <span class="mt-1 block font-mono text-xl font-bold" :class="balanceDue > 0 ? 'text-amber-700' : 'text-emerald-700'">{{ formatCurrency(balanceDue) }}</span>
                             </div>
@@ -1042,7 +1106,7 @@ const submitInvoice = () => {
                 <div
                     v-for="draft in draftList"
                     :key="draft.id"
-                    class="flex items-center justify-between gap-4 border border-surface-200 px-4 py-3"
+                    class="flex items-center justify-between gap-4 rounded-lg border border-surface-200 px-4 py-3 shadow-xs"
                     :class="currentDraftId === draft.id ? 'border-primary bg-primary/5' : 'bg-white'"
                 >
                     <div class="min-w-0 flex-1">

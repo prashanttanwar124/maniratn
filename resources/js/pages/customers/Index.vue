@@ -306,7 +306,7 @@ const deleteCustomer = (customer) => {
                             <span class="erp-stat-card__label">Average spend on this page</span>
                             <span class="erp-stat-card__value mt-2 block">{{ formatMoney(averageSpend) }}</span>
                         </div>
-                        <span class="erp-icon-tile flex h-9 w-9 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                        <span class="erp-icon-tile flex h-9 w-9 items-center justify-center rounded-lg border border-surface-200 bg-surface-50 text-surface-600 shadow-xs">
                             <Wallet class="h-4 w-4" />
                         </span>
                     </div>
@@ -318,7 +318,7 @@ const deleteCustomer = (customer) => {
                             <span class="erp-stat-card__label">Visible records</span>
                             <span class="erp-stat-card__value mt-2 block">{{ customers.data.length }}</span>
                         </div>
-                        <span class="erp-icon-tile flex h-9 w-9 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                        <span class="erp-icon-tile flex h-9 w-9 items-center justify-center rounded-lg border border-surface-200 bg-surface-50 text-surface-600 shadow-xs">
                             <Users class="h-4 w-4" />
                         </span>
                     </div>

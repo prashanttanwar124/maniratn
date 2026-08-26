@@ -657,7 +657,7 @@ const copyBarcode = async (barcode) => {
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
-                    <div v-for="entry in category_breakdown" :key="entry.category" class="inventory-category-card border border-surface-200 bg-surface-50 px-5 py-5">
+                    <div v-for="entry in category_breakdown" :key="entry.category" class="inventory-category-card rounded-lg border border-surface-200 bg-surface-50 px-5 py-5 shadow-xs">
                         <div class="flex items-start justify-between gap-3">
                             <div class="flex min-w-0 items-center gap-3">
                                 <span class="inventory-category-card__icon"><i class="pi pi-box"></i></span>
@@ -682,7 +682,7 @@ const copyBarcode = async (barcode) => {
                         </div>
                     </div>
 
-                    <div v-if="!category_breakdown?.length" class="border border-dashed border-surface-300 bg-white px-4 py-8 text-center text-sm text-surface-500">
+                    <div v-if="!category_breakdown?.length" class="rounded-lg border border-dashed border-surface-300 bg-white px-4 py-8 text-center text-sm text-surface-500">
                         No category inventory found for the current filter.
                     </div>
                 </div>
@@ -735,7 +735,7 @@ const copyBarcode = async (barcode) => {
 
                             <div class="erp-subpanel border border-surface-200 bg-white px-4 py-4">
                                 <div class="flex items-start gap-3">
-                                    <div class="erp-icon-tile flex h-10 w-10 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                                    <div class="erp-icon-tile flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-surface-200 bg-surface-50 text-surface-600 shadow-xs">
                                         <ScanLine class="h-5 w-5" />
                                     </div>
                                     <div class="min-w-0 flex-1">
@@ -938,7 +938,7 @@ const copyBarcode = async (barcode) => {
             <!-- Product Dialog -->
             <Dialog v-model:visible="productDialog" :header="isEditing ? 'Edit Product' : 'Add New Product'" modal :style="{ width: '42rem' }">
                 <form @submit.prevent="saveProduct" class="space-y-5 pt-2">
-                    <div v-if="!isEditing" class="border border-surface-200 bg-surface-50 p-4">
+                    <div v-if="!isEditing" class="rounded-lg border border-surface-200 bg-surface-50 p-4">
                         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                             <div>
                                 <p class="text-sm font-medium text-surface-900">Create Multiple Products</p>
@@ -968,7 +968,7 @@ const copyBarcode = async (barcode) => {
                         @update-field="updateProductField"
                     />
 
-                    <div v-if="batchMode && !isEditing" class="space-y-3 border border-surface-200 bg-surface-50 p-4">
+                    <div v-if="batchMode && !isEditing" class="space-y-3 rounded-lg border border-surface-200 bg-surface-50 p-4">
                         <div class="flex items-center justify-between gap-3">
                             <div>
                                 <p class="text-sm font-medium text-surface-900">Weight Rows</p>
@@ -978,7 +978,7 @@ const copyBarcode = async (barcode) => {
                         </div>
 
                         <div class="space-y-3">
-                            <div v-for="(row, index) in batchRows" :key="index" class="grid grid-cols-[2rem_1fr_1fr_auto] items-end gap-3">
+                            <div v-for="(row, index) in batchRows" :key="index" class="grid grid-cols-[2rem_1fr_1fr_auto] items-end gap-3 rounded-md border border-surface-200 bg-white p-3 shadow-xs">
                                 <div class="pb-3 text-sm font-medium text-surface-500">#{{ index + 1 }}</div>
                                 <div>
                                     <label class="mb-2 block text-xs font-medium text-surface-600">Gross Weight</label>
@@ -1004,7 +1004,7 @@ const copyBarcode = async (barcode) => {
 
             <Dialog v-model:visible="bulkActionDialog" header="Bulk Update Products" modal :style="{ width: '34rem' }">
                 <form @submit.prevent="applyBulkUpdate" class="space-y-5 pt-2">
-                    <div class="border border-surface-200 bg-surface-50 p-4">
+                    <div class="rounded-lg border border-surface-200 bg-surface-50 p-4">
                         <p class="text-sm font-medium text-surface-900">{{ selectedProductIds.length }} product{{ selectedProductIds.length === 1 ? '' : 's' }} selected</p>
                         <p class="mt-1 text-xs text-surface-500">Choose only fields you want to change. Empty fields will be ignored.</p>
                     </div>
@@ -1068,7 +1068,7 @@ const copyBarcode = async (barcode) => {
 
             <Dialog v-model:visible="duplicateDialog" header="Duplicate Product" modal :style="{ width: '30rem' }">
                 <div class="space-y-4 pt-2">
-                    <div class="border border-surface-200 bg-surface-50 p-4">
+                    <div class="rounded-lg border border-surface-200 bg-surface-50 p-4">
                         <p class="font-medium text-surface-900">Create copy of this product?</p>
                         <p class="mt-1 text-sm text-surface-500">
                             This will create new stock item from
@@ -1076,7 +1076,7 @@ const copyBarcode = async (barcode) => {
                         </p>
                     </div>
 
-                    <div class="space-y-3 border border-surface-200 bg-white p-4 text-sm">
+                    <div class="space-y-3 rounded-lg border border-surface-200 bg-white p-4 text-sm shadow-xs">
                         <div class="flex items-start gap-3">
                             <i class="pi pi-check-circle mt-0.5 text-emerald-600" />
                             <p class="text-surface-700">New product will get its own new barcode.</p>
@@ -1110,7 +1110,7 @@ const copyBarcode = async (barcode) => {
 
                     <template v-else>
                         <div v-if="historyProduct" class="space-y-4">
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-4">
+                            <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-4">
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
                                         <p class="text-sm font-medium text-surface-900">{{ historyProduct.name }}</p>
@@ -1140,7 +1140,7 @@ const copyBarcode = async (barcode) => {
                             </div>
 
                             <div class="space-y-3">
-                                <div v-for="(event, index) in historyTimeline" :key="`${event.type}-${event.occurred_at}-${index}`" class="erp-list-item bg-white px-4 py-4">
+                                <div v-for="(event, index) in historyTimeline" :key="`${event.type}-${event.occurred_at}-${index}`" class="erp-list-item rounded-lg bg-white px-4 py-4 shadow-xs">
                                     <div class="flex items-start justify-between gap-3">
                                         <div>
                                             <p class="text-sm font-medium text-surface-900">{{ event.title }}</p>
@@ -1157,7 +1157,7 @@ const copyBarcode = async (barcode) => {
                                     </div>
                                 </div>
 
-                                <div v-if="!historyTimeline.length" class="border border-dashed border-surface-300 bg-white px-4 py-8 text-center text-sm text-surface-500">
+                                <div v-if="!historyTimeline.length" class="rounded-lg border border-dashed border-surface-300 bg-white px-4 py-8 text-center text-sm text-surface-500">
                                     No timeline events found for this product.
                                 </div>
                             </div>
@@ -1169,7 +1169,7 @@ const copyBarcode = async (barcode) => {
             <!-- Delete Dialog -->
             <Dialog v-model:visible="deleteDialog" header="Confirm Delete" modal :style="{ width: '28rem' }">
                 <div class="space-y-4 pt-2">
-                    <div v-if="product.is_sold" class="border border-amber-200 bg-amber-50 p-4">
+                    <div v-if="product.is_sold" class="rounded-lg border border-amber-200 bg-amber-50 p-4">
                         <div class="flex items-start gap-3">
                             <i class="pi pi-exclamation-circle mt-0.5 text-lg text-amber-600" />
                             <div>
@@ -1180,7 +1180,7 @@ const copyBarcode = async (barcode) => {
                             </div>
                         </div>
                     </div>
-                    <div v-else class="flex items-start gap-3 border border-surface-200 bg-surface-50 p-4">
+                    <div v-else class="flex items-start gap-3 rounded-lg border border-surface-200 bg-surface-50 p-4">
                         <i class="pi pi-exclamation-triangle mt-0.5 text-xl text-red-500" />
                         <div>
                             <p class="font-medium text-surface-900">Delete product</p>
@@ -1202,7 +1202,7 @@ const copyBarcode = async (barcode) => {
             <Dialog v-model:visible="soldInvoiceDialog" header="Sale Invoice Details" modal :style="{ width: '32rem' }">
                 <div v-if="selectedSoldProduct" class="space-y-4 pt-2">
                     <!-- Product Snapshot -->
-                    <div class="border border-surface-200 bg-surface-50 p-4">
+                    <div class="rounded-lg border border-surface-200 bg-surface-50 p-4">
                         <div class="flex items-start justify-between gap-3">
                             <div>
                                 <p class="font-semibold text-surface-900">{{ selectedSoldProduct.name }}</p>
@@ -1247,7 +1247,7 @@ const copyBarcode = async (barcode) => {
                             </div>
 
                             <div class="grid grid-cols-3 gap-2 pt-3 text-center text-xs">
-                                <div class="border border-surface-100 bg-surface-50 p-2">
+                                <div class="rounded-md border border-surface-100 bg-surface-50 p-2">
                                     <p class="text-surface-500">Gold Rate</p>
                                     <p class="mt-1 font-semibold text-surface-900">₹{{ Number(selectedSoldProduct.sold_invoice.rate || 0).toLocaleString('en-IN') }}/g</p>
                                 </div>

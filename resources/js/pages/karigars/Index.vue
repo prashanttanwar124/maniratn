@@ -137,21 +137,25 @@ const deleteRecord = () => {
             </section>
 
             <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Karigars</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ metrics?.karigar_count || 0 }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Karigars</span>
+                    <span class="erp-stat-card__value">{{ metrics?.karigar_count || 0 }}</span>
+                    <span class="erp-stat-card__meta">Active artisan accounts</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Cash Exposure</p>
-                    <p class="mt-2 text-2xl font-semibold text-red-600">{{ formatCurrency(metrics?.karigar_cash_exposure) }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Cash Exposure</span>
+                    <span class="erp-stat-card__value text-red-600">{{ formatCurrency(metrics?.karigar_cash_exposure) }}</span>
+                    <span class="erp-stat-card__meta">Net labor/cash pending</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Gold With Karigars</p>
-                    <p class="mt-2 text-2xl font-semibold text-amber-700">{{ formatWeight(metrics?.karigar_gold_out) }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Gold With Karigars</span>
+                    <span class="erp-stat-card__value text-amber-700">{{ formatWeight(metrics?.karigar_gold_out) }}</span>
+                    <span class="erp-stat-card__meta">Fine gold issued</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Urgent Accounts</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ metrics?.urgent_accounts || 0 }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Urgent Accounts</span>
+                    <span class="erp-stat-card__value">{{ metrics?.urgent_accounts || 0 }}</span>
+                    <span class="erp-stat-card__meta">High balance attention</span>
                 </div>
             </section>
 
@@ -163,7 +167,7 @@ const deleteRecord = () => {
                     </div>
 
                     <div class="grid grid-cols-1 gap-3 p-4 md:grid-cols-2">
-                        <div v-for="row in recoveryDesk" :key="row.id" class="border border-surface-200 px-4 py-4">
+                        <div v-for="row in recoveryDesk" :key="row.id" class="rounded-lg border border-surface-200 bg-white p-4 shadow-xs">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
                                     <p class="font-medium text-surface-900">{{ row.name }}</p>
@@ -175,11 +179,11 @@ const deleteRecord = () => {
                             </div>
 
                             <div class="mt-4 grid grid-cols-2 gap-3">
-                                <div class="border border-surface-200 bg-surface-50 px-3 py-3">
+                                <div class="rounded-md border border-surface-200 bg-surface-50 p-3">
                                     <p class="text-xs uppercase tracking-wide text-surface-500">Cash</p>
                                     <p class="mt-1 text-sm font-semibold text-surface-900">{{ formatCurrency(row.cash_balance) }}</p>
                                 </div>
-                                <div class="border border-surface-200 bg-surface-50 px-3 py-3">
+                                <div class="rounded-md border border-surface-200 bg-surface-50 p-3">
                                     <p class="text-xs uppercase tracking-wide text-surface-500">Gold</p>
                                     <p class="mt-1 text-sm font-semibold text-surface-900">{{ formatWeight(row.metal_balance) }}</p>
                                 </div>
@@ -196,9 +200,9 @@ const deleteRecord = () => {
                         <p class="mt-1 text-sm text-surface-500">Suggested workshop follow-up actions.</p>
                     </div>
                     <div class="space-y-3 p-4 text-sm text-surface-600">
-                        <div class="border border-surface-200 bg-surface-50 px-4 py-3">Review karigar ledger before issuing more gold.</div>
-                        <div class="border border-surface-200 bg-surface-50 px-4 py-3">Track labor cash separately from metal return status.</div>
-                        <div class="border border-surface-200 bg-surface-50 px-4 py-3">Use ledger entries for gold return and labor settlement to keep history clean.</div>
+                        <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">Review karigar ledger before issuing more gold.</div>
+                        <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">Track labor cash separately from metal return status.</div>
+                        <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">Use ledger entries for gold return and labor settlement to keep history clean.</div>
                     </div>
                 </div>
             </section>

@@ -160,21 +160,25 @@ const deleteStaff = () => {
             </section>
 
             <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Staff Profiles</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ metrics?.staff_count || 0 }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Staff Profiles</span>
+                    <span class="erp-stat-card__value">{{ metrics?.staff_count || 0 }}</span>
+                    <span class="erp-stat-card__meta">Total team records</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Active Staff</p>
-                    <p class="mt-2 text-2xl font-semibold text-emerald-700">{{ metrics?.active_staff || 0 }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Active Staff</span>
+                    <span class="erp-stat-card__value text-emerald-700">{{ metrics?.active_staff || 0 }}</span>
+                    <span class="erp-stat-card__meta">Currently on payroll</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Monthly Salary</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ formatCurrency(metrics?.monthly_salary) }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Monthly Salary</span>
+                    <span class="erp-stat-card__value">{{ formatCurrency(metrics?.monthly_salary) }}</span>
+                    <span class="erp-stat-card__meta">Total base commitments</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Linked Users</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ metrics?.linked_users || 0 }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Linked Users</span>
+                    <span class="erp-stat-card__value">{{ metrics?.linked_users || 0 }}</span>
+                    <span class="erp-stat-card__meta">POS login accounts</span>
                 </div>
             </section>
 

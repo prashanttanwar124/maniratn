@@ -116,30 +116,34 @@ const copyEndpoint = async () => {
             </div>
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Total Products</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ props.summary?.total_items || 0 }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Total Products</span>
+                    <span class="erp-stat-card__value">{{ props.summary?.total_items || 0 }}</span>
+                    <span class="erp-stat-card__meta">Catalog inventory</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Visible on Website</p>
-                    <p class="mt-2 text-2xl font-semibold text-emerald-600">{{ props.summary?.visible_items || 0 }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Visible on Website</span>
+                    <span class="erp-stat-card__value text-emerald-600">{{ props.summary?.visible_items || 0 }}</span>
+                    <span class="erp-stat-card__meta">Live on public showcase</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Hidden from Website</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ props.summary?.hidden_items || 0 }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Hidden from Website</span>
+                    <span class="erp-stat-card__value">{{ props.summary?.hidden_items || 0 }}</span>
+                    <span class="erp-stat-card__meta">In-store exclusive only</span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Sold Products</p>
-                    <p class="mt-2 text-2xl font-semibold text-red-600">{{ props.summary?.sold_items || 0 }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Sold Products</span>
+                    <span class="erp-stat-card__value text-red-600">{{ props.summary?.sold_items || 0 }}</span>
+                    <span class="erp-stat-card__meta">Out of stock items</span>
                 </div>
             </div>
 
             <div class="erp-subpanel border border-surface-200 bg-surface-50 px-5 py-4">
                 <p class="text-sm font-medium text-surface-900">Public API Endpoint</p>
-                <code class="mt-2 block overflow-x-auto bg-white px-3 py-2 text-sm text-surface-700">{{ endpointUrl }}</code>
+                <code class="mt-2 block overflow-x-auto rounded-lg border border-surface-200 bg-white px-3.5 py-2.5 font-mono text-xs text-surface-700 shadow-xs">{{ endpointUrl }}</code>
             </div>
 
             <div class="erp-panel overflow-hidden !p-0">

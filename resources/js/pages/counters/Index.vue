@@ -115,17 +115,20 @@ const deleteCounter = () => {
             </section>
 
             <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Total Counters</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ summary.total_counters }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Total Counters</span>
+                    <span class="erp-stat-card__value">{{ summary.total_counters }}</span>
+                    <span class="erp-stat-card__meta">Active floor locations</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Linked Gold Items</p>
-                    <p class="mt-2 text-2xl font-semibold text-amber-700">{{ summary.gold_items }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Linked Gold Items</span>
+                    <span class="erp-stat-card__value text-amber-700">{{ summary.gold_items }}</span>
+                    <span class="erp-stat-card__meta">Gold pieces assigned</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Linked Silver Items</p>
-                    <p class="mt-2 text-2xl font-semibold text-slate-700">{{ summary.silver_items }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Linked Silver Items</span>
+                    <span class="erp-stat-card__value text-slate-700">{{ summary.silver_items }}</span>
+                    <span class="erp-stat-card__meta">Silver pieces assigned</span>
                 </div>
             </section>
 

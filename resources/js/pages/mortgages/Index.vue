@@ -254,19 +254,19 @@ const tableData = computed(() => props.customers.data);
                             </div>
 
                             <div v-if="previewImage" class="relative">
-                                <img :src="previewImage" class="h-16 w-16 rounded border border-gray-300 object-cover shadow-sm" />
+                                <img :src="previewImage" class="h-16 w-16 rounded-lg border border-surface-200 object-cover shadow-sm" />
                             </div>
 
-                            <div v-else class="erp-media-placeholder flex h-16 w-16 items-center justify-center border border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400">No Img</div>
+                            <div v-else class="erp-media-placeholder flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-surface-300 bg-surface-50 text-xs text-surface-400">No Img</div>
                         </div>
                     </div>
 
                     <div class="flex flex-col gap-1">
-                        <label class="text-sm font-bold">Notes / Bag No</label>
+                        <label class="text-sm font-bold text-surface-700">Notes / Bag No</label>
                         <Textarea v-model="form.notes" rows="2" />
                     </div>
 
-                    <div class="mt-4 flex justify-end gap-2">
+                    <div class="mt-4 flex justify-end gap-2 border-t border-surface-200 pt-4">
                         <Button label="Cancel" text severity="secondary" @click="showCreateModal = false" />
                         <Button label="Save Mortgage" type="submit" :loading="form.processing" />
                     </div>
@@ -274,63 +274,65 @@ const tableData = computed(() => props.customers.data);
             </Dialog>
 
             <Dialog v-model:visible="showViewModal" header="Loan Details" :modal="true" :style="{ width: '600px' }">
-                <div v-if="selectedMortgage" class="flex flex-col gap-6">
-                    <div class="flex gap-4 border-b pb-4">
-                        <div v-if="selectedMortgage.image_url">
-                            <Image :src="selectedMortgage.image_url" alt="Item" width="120" preview />
-                        </div>
+                <div v-if="selectedMortgage" class="flex flex-col gap-6 pt-2">
+                    <div class="rounded-lg border border-surface-200 bg-surface-50 p-4">
+                        <div class="flex gap-4">
+                            <div v-if="selectedMortgage.image_url" class="shrink-0">
+                                <Image :src="selectedMortgage.image_url" alt="Item" width="120" imageClass="rounded-lg border border-surface-200 object-cover" preview />
+                            </div>
 
-                        <div class="grid flex-1 grid-cols-2 gap-y-1 text-sm">
-                            <span class="text-gray-500">Item:</span>
-                            <span class="font-bold">{{ selectedMortgage.item_name }}</span>
+                            <div class="grid flex-1 grid-cols-2 gap-y-2 text-sm">
+                                <span class="text-surface-500">Item:</span>
+                                <span class="font-semibold text-surface-900">{{ selectedMortgage.item_name }}</span>
 
-                            <span class="text-gray-500">Original Loan:</span>
-                            <span class="font-bold">{{ $formatMoney(selectedMortgage.loan_amount) }}</span>
+                                <span class="text-surface-500">Original Loan:</span>
+                                <span class="font-semibold text-surface-900">{{ $formatMoney(selectedMortgage.loan_amount) }}</span>
 
-                            <span class="text-gray-500">Current Balance:</span>
-                            <span class="text-lg font-bold text-red-600">
-                                {{ $formatMoney(selectedMortgage.pending_amount) }}
-                            </span>
+                                <span class="text-surface-500">Current Balance:</span>
+                                <span class="text-lg font-bold text-red-600">
+                                    {{ $formatMoney(selectedMortgage.pending_amount) }}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
                     <div>
-                        <h3 class="mb-2 text-sm font-bold text-gray-700">Payment History</h3>
-                        <div v-if="selectedMortgage.payments.length === 0" class="text-xs text-gray-400 italic">No payments made yet.</div>
-                        <table v-else class="w-full border text-sm">
-                            <thead class="bg-gray-50">
+                        <h3 class="mb-2 text-sm font-bold text-surface-700">Payment History</h3>
+                        <div v-if="selectedMortgage.payments.length === 0" class="rounded-lg border border-dashed border-surface-300 bg-surface-50 p-4 text-center text-xs text-surface-500 italic">No payments made yet.</div>
+                        <table v-else class="w-full overflow-hidden rounded-lg border border-surface-200 text-sm">
+                            <thead class="bg-surface-50">
                                 <tr>
-                                    <th class="p-2 text-left">Date</th>
-                                    <th class="p-2 text-left">Type</th>
-                                    <th class="p-2 text-right">Amount</th>
+                                    <th class="p-2.5 text-left text-xs font-semibold uppercase tracking-wider text-surface-500">Date</th>
+                                    <th class="p-2.5 text-left text-xs font-semibold uppercase tracking-wider text-surface-500">Type</th>
+                                    <th class="p-2.5 text-right text-xs font-semibold uppercase tracking-wider text-surface-500">Amount</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="pay in selectedMortgage.payments" :key="pay.id" class="border-t">
-                                    <td class="p-2">{{ formatIndianDate(pay.date) }}</td>
-                                    <td class="p-2">
+                                <tr v-for="pay in selectedMortgage.payments" :key="pay.id" class="border-t border-surface-200">
+                                    <td class="p-2.5 text-surface-700">{{ formatIndianDate(pay.date) }}</td>
+                                    <td class="p-2.5">
                                         <Tag :severity="pay.type === 'INTEREST' ? 'warning' : 'success'" :value="pay.type" />
                                     </td>
-                                    <td class="p-2 text-right font-mono">{{ $formatMoney(pay.amount) }}</td>
+                                    <td class="p-2.5 text-right font-mono font-medium text-surface-900">{{ $formatMoney(pay.amount) }}</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
 
-                    <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-5">
-                        <h3 class="mb-3 flex items-center gap-2 text-sm font-bold text-slate-800">
+                    <div class="mt-2 rounded-lg border border-surface-200 bg-surface-50 p-5">
+                        <h3 class="mb-3 flex items-center gap-2 text-sm font-bold text-surface-800">
                             <i class="pi pi-wallet text-indigo-600"></i>
                             Receive Payment
                         </h3>
 
                         <div class="grid grid-cols-12 items-end gap-3">
                             <div class="col-span-5">
-                                <label class="mb-1 ml-1 block text-xs font-semibold text-slate-600">Amount</label>
+                                <label class="mb-1 ml-1 block text-xs font-semibold text-surface-600">Amount</label>
                                 <InputNumber v-model="paymentForm.amount" mode="currency" currency="INR" locale="en-IN" placeholder="₹ 0.00" class="w-full" inputClass="w-full" />
                             </div>
 
                             <div class="col-span-4">
-                                <label class="mb-1 ml-1 block text-xs font-semibold text-slate-600">Payment Type</label>
+                                <label class="mb-1 ml-1 block text-xs font-semibold text-surface-600">Payment Type</label>
                                 <Dropdown v-model="paymentForm.type" :options="paymentTypes" optionLabel="label" optionValue="value" placeholder="Select Type" class="w-full" />
                             </div>
 

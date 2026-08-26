@@ -157,7 +157,7 @@ const getSeverity = (type) => {
 
                         <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
                             <div class="erp-stat-card flex items-center gap-3 p-3.5">
-                                <div class="erp-icon-tile flex h-9 w-9 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                                <div class="erp-icon-tile flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-surface-200 bg-surface-50 text-surface-600 shadow-xs">
                                     <MapPin class="h-4 w-4" />
                                 </div>
                                 <div class="min-w-0">
@@ -166,7 +166,7 @@ const getSeverity = (type) => {
                                 </div>
                             </div>
                             <div class="erp-stat-card flex items-center gap-3 p-3.5">
-                                <div class="erp-icon-tile flex h-9 w-9 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                                <div class="erp-icon-tile flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-surface-200 bg-surface-50 text-surface-600 shadow-xs">
                                     <Phone class="h-4 w-4" />
                                 </div>
                                 <div class="min-w-0">
@@ -175,7 +175,7 @@ const getSeverity = (type) => {
                                 </div>
                             </div>
                             <div class="erp-stat-card flex items-center gap-3 p-3.5">
-                                <div class="erp-icon-tile flex h-9 w-9 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                                <div class="erp-icon-tile flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-surface-200 bg-surface-50 text-surface-600 shadow-xs">
                                     <ShieldCheck class="h-4 w-4" />
                                 </div>
                                 <div class="min-w-0">
@@ -199,7 +199,7 @@ const getSeverity = (type) => {
             <section class="erp-panel overflow-hidden !p-0">
                 <div class="flex flex-col gap-3 border-b border-surface-200 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-3">
-                        <span class="erp-icon-tile flex h-9 w-9 shrink-0 items-center justify-center border border-amber-200 bg-amber-50 text-amber-700">
+                        <span class="erp-icon-tile flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-700 shadow-xs">
                             <CreditCard class="h-4 w-4" />
                         </span>
                         <div>
@@ -280,7 +280,7 @@ const getSeverity = (type) => {
                                         type="text"
                                         :value="vault?.vault_url"
                                         readonly
-                                        class="erp-form-control w-full border border-surface-200 bg-white px-3 py-2 text-xs font-mono text-surface-800 focus:outline-none"
+                                        class="erp-form-control w-full rounded-md border border-surface-200 bg-white px-3 py-2 text-xs font-mono text-surface-800 focus:outline-none"
                                     />
                                     <Button
                                         :icon="copied ? 'pi pi-check' : 'pi pi-copy'"
@@ -300,20 +300,20 @@ const getSeverity = (type) => {
 
                         <div class="grid grid-cols-2 gap-3">
                             <div class="erp-stat-card border border-surface-200 bg-white p-3">
-                                <p class="text-xs font-medium text-surface-500">Card Scans / Taps</p>
-                                <p class="mt-1 font-mono text-lg font-bold text-surface-900">{{ vault?.card_access_count || 0 }}</p>
+                                <span class="erp-stat-card__label">Card Scans / Taps</span>
+                                <span class="erp-stat-card__value mt-1 block font-mono text-lg">{{ vault?.card_access_count || 0 }}</span>
                             </div>
                             <div class="erp-stat-card border border-surface-200 bg-white p-3">
-                                <p class="text-xs font-medium text-surface-500">Last Tapped</p>
-                                <p class="mt-1 text-xs font-semibold text-surface-800">{{ vault?.card_last_accessed_at ? formatDate(vault.card_last_accessed_at) : 'Never' }}</p>
+                                <span class="erp-stat-card__label">Last Tapped</span>
+                                <span class="mt-1 block text-xs font-semibold text-surface-800">{{ vault?.card_last_accessed_at ? formatDate(vault.card_last_accessed_at) : 'Never' }}</span>
                             </div>
                             <div class="erp-stat-card border border-surface-200 bg-white p-3">
-                                <p class="text-xs font-medium text-surface-500">Invoices In Vault</p>
-                                <p class="mt-1 font-mono text-lg font-bold text-surface-900">{{ vault?.invoices_count || 0 }}</p>
+                                <span class="erp-stat-card__label">Invoices In Vault</span>
+                                <span class="erp-stat-card__value mt-1 block font-mono text-lg">{{ vault?.invoices_count || 0 }}</span>
                             </div>
                             <div class="erp-stat-card border border-surface-200 bg-white p-3">
-                                <p class="text-xs font-medium text-surface-500">Active Schemes</p>
-                                <p class="mt-1 font-mono text-lg font-bold text-surface-900">{{ vault?.schemes_count || 0 }}</p>
+                                <span class="erp-stat-card__label">Active Schemes</span>
+                                <span class="erp-stat-card__value mt-1 block font-mono text-lg">{{ vault?.schemes_count || 0 }}</span>
                             </div>
                         </div>
                     </div>
@@ -332,7 +332,7 @@ const getSeverity = (type) => {
                             <span class="erp-stat-card__label">Total purchased</span>
                             <span class="erp-stat-card__value mt-2 block">{{ formatMoney(stats.total_sales) }}</span>
                         </div>
-                        <span class="erp-icon-tile flex h-9 w-9 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                        <span class="erp-icon-tile flex h-9 w-9 items-center justify-center rounded-lg border border-surface-200 bg-surface-50 text-surface-600 shadow-xs">
                             <Landmark class="h-4 w-4" />
                         </span>
                     </div>
@@ -344,7 +344,7 @@ const getSeverity = (type) => {
                             <span class="erp-stat-card__label">Total paid</span>
                             <span class="erp-stat-card__value mt-2 block !text-emerald-600">{{ formatMoney(stats.total_paid) }}</span>
                         </div>
-                        <span class="erp-icon-tile flex h-9 w-9 items-center justify-center border border-emerald-200 bg-emerald-50 text-emerald-700">
+                        <span class="erp-icon-tile flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-xs">
                             <WalletCards class="h-4 w-4" />
                         </span>
                     </div>

@@ -132,26 +132,30 @@ const onPageChange = (event: { page: number }) => {
                 </div>
             </section>
 
-            <section v-if="!isDayOpen" class="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <section v-if="!isDayOpen" class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-xs">
                 Day is currently closed. Open the day from dashboard to create or delete expenses.
             </section>
 
             <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Total Entries</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ totalRecords }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Total Entries</span>
+                    <span class="erp-stat-card__value">{{ totalRecords }}</span>
+                    <span class="erp-stat-card__meta">Recorded expenses</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">This Page Spend</p>
-                    <p class="mt-2 text-2xl font-semibold text-red-600">{{ formatCurrency(pageSpend) }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">This Page Spend</span>
+                    <span class="erp-stat-card__value text-red-600">{{ formatCurrency(pageSpend) }}</span>
+                    <span class="erp-stat-card__meta">Current page total</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Cash Payments</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ cashCount }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Cash Payments</span>
+                    <span class="erp-stat-card__value">{{ cashCount }}</span>
+                    <span class="erp-stat-card__meta">From cash counter</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Bank/UPI Payments</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ digitalCount }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Bank/UPI Payments</span>
+                    <span class="erp-stat-card__value">{{ digitalCount }}</span>
+                    <span class="erp-stat-card__meta">Digital settlements</span>
                 </div>
             </section>
 

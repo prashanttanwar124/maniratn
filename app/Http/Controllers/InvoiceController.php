@@ -16,6 +16,7 @@ use App\Models\BusinessSetting;
 use Illuminate\Http\Request;
 use App\Services\VaultService;
 use App\Services\LedgerImpactService;
+use App\Services\InvoiceRateService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Transaction; // <--- The Ledger Model
@@ -25,6 +26,10 @@ use Illuminate\Support\Str;
 
 class InvoiceController extends Controller
 {
+    public function __construct(
+        private readonly InvoiceRateService $invoiceRates,
+    ) {}
+
     private function validateDraftItemsPayload(array $items): array
     {
         return collect($items)->map(function (array $item) {
@@ -34,6 +39,11 @@ class InvoiceController extends Controller
 
             if (($item['type'] ?? null) === 'product') {
                 $product = Product::find($item['id'] ?? 0);
+
+                if ($product) {
+                    $validatedItem['purity'] = $product->purity?->name ?? '22K';
+                    $validatedItem['rate_multiplier'] = $this->invoiceRates->multiplierFor('product', $product);
+                }
 
                 if (! $product) {
                     $validatedItem['draft_valid'] = false;
@@ -52,6 +62,8 @@ class InvoiceController extends Controller
                     $validatedItem['draft_valid'] = false;
                     $validatedItem['draft_issue'] = 'This silver stock item has already been sold.';
                 } else {
+                    $validatedItem['purity'] = $validatedItem['purity'] ?? 'Silver 925';
+                    $validatedItem['rate_multiplier'] = 1;
                     $validatedItem['quantity_available'] = (int) $silverProduct->quantity;
                     $validatedItem['pricing_mode'] = $silverProduct->pricing_mode;
 
@@ -82,6 +94,7 @@ class InvoiceController extends Controller
                 } else {
                     $validatedItem['weight'] = (float) $orderItem->finished_weight;
                     $validatedItem['metal_type'] = strtoupper((string) ($orderItem->metal_type ?? 'GOLD'));
+                    $validatedItem['rate_multiplier'] = 1;
                 }
             }
 
@@ -298,6 +311,7 @@ class InvoiceController extends Controller
             'items.*.pricing_mode' => 'nullable|string|max:20',
             'items.*.purity' => 'nullable',
             'items.*.rate' => 'nullable|numeric|min:0',
+            'items.*.rate_multiplier' => 'nullable|numeric|min:0|max:1',
             'items.*.making_charges' => 'nullable|numeric|min:0',
             'items.*.making_charge_type' => 'nullable|string|in:percentage,flat,lump_sum,per_gram',
             'items.*.final_price' => 'nullable|numeric|min:0',
@@ -377,6 +391,7 @@ class InvoiceController extends Controller
             'items.*.weight' => 'nullable|numeric|min:0',
             'items.*.purity' => 'nullable',
             'items.*.rate' => 'nullable|numeric|min:0',
+            'items.*.rate_multiplier' => 'nullable|numeric|min:0|max:1',
             'items.*.making_charges' => 'nullable|numeric|min:0',
             'items.*.making_charge_type' => 'nullable|string|in:percentage,flat,lump_sum,per_gram',
             'items.*.final_price' => 'nullable|numeric|min:0',
@@ -608,7 +623,7 @@ class InvoiceController extends Controller
 
                 // --- CASE A: IT IS A STOCK PRODUCT (Ring from Showcase) ---
                 if ($row['type'] === 'product') {
-                    $product = Product::findOrFail($row['id']);
+                    $product = Product::query()->lockForUpdate()->findOrFail($row['id']);
                     $rateApplied = (float) ($row['rate'] ?? ($validated['gold_rate'] ?? 0));
                     $makingType = $makingType ?: ($makingValue > 100 ? 'flat' : 'percentage');
 
@@ -650,7 +665,7 @@ class InvoiceController extends Controller
                 }
 
                 elseif ($row['type'] === 'silver_product') {
-                    $silverProduct = SilverProduct::findOrFail($row['id']);
+                    $silverProduct = SilverProduct::query()->lockForUpdate()->findOrFail($row['id']);
 
                     if ($silverProduct->is_sold) {
                         abort(400, "Silver product {$silverProduct->name} is already sold!");
@@ -723,7 +738,7 @@ class InvoiceController extends Controller
 
                 // --- CASE B: IT IS A CUSTOM ORDER (Made by Karigar) ---
                 elseif ($row['type'] === 'order_item') {
-                    $orderItem = OrderItem::findOrFail($row['id']);
+                    $orderItem = OrderItem::query()->lockForUpdate()->findOrFail($row['id']);
 
                     if ($orderItem->status !== 'READY') {
                         throw ValidationException::withMessages([

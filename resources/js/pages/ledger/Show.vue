@@ -420,34 +420,34 @@ const submitTransaction = () => {
 
             <!-- Summary -->
             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <div class="text-xs tracking-wide text-surface-500 uppercase">Gold Balance</div>
-                    <div class="mt-2 text-3xl font-semibold text-surface-900">
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Gold Balance</span>
+                    <span class="erp-stat-card__value text-amber-700">
                         {{ formatWeight(currentGoldBal) }}
-                    </div>
-                    <div class="mt-1 text-sm text-surface-500">
+                    </span>
+                    <span class="erp-stat-card__meta">
                         {{ goldBalanceText }}
-                    </div>
+                    </span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <div class="text-xs tracking-wide text-surface-500 uppercase">Silver Balance</div>
-                    <div class="mt-2 text-3xl font-semibold text-surface-900">
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Silver Balance</span>
+                    <span class="erp-stat-card__value text-slate-700">
                         {{ formatWeight(currentSilverBal) }}
-                    </div>
-                    <div class="mt-1 text-sm text-surface-500">
+                    </span>
+                    <span class="erp-stat-card__meta">
                         {{ silverBalanceText }}
-                    </div>
+                    </span>
                 </div>
 
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <div class="text-xs tracking-wide text-surface-500 uppercase">Cash Balance</div>
-                    <div class="mt-2 text-3xl font-semibold text-surface-900">
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Cash Balance</span>
+                    <span class="erp-stat-card__value">
                         {{ formatCurrency(currentCashBal) }}
-                    </div>
-                    <div class="mt-1 text-sm text-surface-500">
+                    </span>
+                    <span class="erp-stat-card__meta">
                         {{ cashBalanceText }}
-                    </div>
+                    </span>
                 </div>
             </div>
 
@@ -557,14 +557,14 @@ const submitTransaction = () => {
         <!-- Entry Dialog -->
         <Dialog v-model:visible="showDialog" :header="editingRow ? 'Edit Ledger Entry' : 'Add Ledger Entry'" modal class="w-full max-w-md">
             <div class="space-y-5 pt-2">
-                <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">
                     <p class="text-sm font-medium text-surface-900">
                         {{ partyDisplayName }}
                     </p>
                     <p class="mt-1 text-sm text-surface-500">Select the entry type and enter only the fields needed for that action.</p>
                 </div>
 
-                <div v-if="form.errors.entry" class="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                <div v-if="form.errors.entry" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                     {{ form.errors.entry }}
                 </div>
 
@@ -592,7 +592,7 @@ const submitTransaction = () => {
                     </small>
                 </div>
 
-                <div v-if="needsGold" class="border border-surface-200 bg-surface-50 px-4 py-3">
+                <div v-if="needsGold" class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">
                     <p class="text-sm text-surface-500">Fine {{ selectedMetalLabel }}</p>
                     <p class="mt-1 text-lg font-semibold text-surface-900">{{ calculatedFineWeight.toFixed(3) }} g</p>
                 </div>
@@ -641,7 +641,7 @@ const submitTransaction = () => {
                     </small>
                 </div>
 
-                <div v-if="['GOLD_TO_CASH', 'SILVER_TO_CASH'].includes(form.entry_type)" class="border border-surface-200 bg-surface-50 px-4 py-3">
+                <div v-if="['GOLD_TO_CASH', 'SILVER_TO_CASH'].includes(form.entry_type)" class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">
                     <p class="text-sm text-surface-500">Adjustment Value</p>
                     <p class="mt-1 text-lg font-semibold text-surface-900">
                         {{ formatCurrency(calculatedAdjustmentValue) }}
@@ -649,7 +649,7 @@ const submitTransaction = () => {
                     <p class="mt-1 text-xs text-surface-500">{{ selectedMetalLabel }} received will reduce cash balance by this amount.</p>
                 </div>
 
-                <div v-if="['CASH_TO_GOLD', 'CASH_TO_SILVER'].includes(form.entry_type)" class="border border-surface-200 bg-surface-50 px-4 py-3">
+                <div v-if="['CASH_TO_GOLD', 'CASH_TO_SILVER'].includes(form.entry_type)" class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">
                     <p class="text-sm text-surface-500">{{ selectedMetalLabel }} Equivalent</p>
                     <p class="mt-1 text-lg font-semibold text-surface-900">
                         {{ formatWeight(calculatedAdjustmentValue) }}

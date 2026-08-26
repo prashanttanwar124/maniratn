@@ -497,7 +497,7 @@ const markComplete = async () => {
             </div>
 
             <!-- Top Filter Controls Bar with PrimeVue DatePicker -->
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
+            <div class="erp-subpanel border border-surface-200 bg-white px-5 py-4">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div class="flex flex-wrap items-end gap-6">
                         <div class="flex flex-col">
@@ -607,33 +607,37 @@ const markComplete = async () => {
             </div>
 
             <!-- Day Open Warning (if viewing today and day not open) -->
-            <div v-if="isToday && !dayOpen" class="border border-amber-200 bg-amber-50 px-5 py-4">
+            <div v-if="isToday && !dayOpen" class="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 shadow-xs">
                 <p class="text-sm font-medium text-amber-900">Open day required</p>
                 <p class="mt-1 text-sm text-amber-800">Open today’s shop day before scanning gold stock count.</p>
             </div>
 
             <!-- Summary KPI Cards -->
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Expected Items</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ summary?.expected_items || 0 }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Expected Items</span>
+                    <span class="erp-stat-card__value">{{ summary?.expected_items || 0 }}</span>
+                    <span class="erp-stat-card__meta">Active unsold stock</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Counted Items</p>
-                    <p class="mt-2 text-2xl font-semibold text-emerald-600">{{ summary?.counted_items || 0 }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Counted Items</span>
+                    <span class="erp-stat-card__value text-emerald-600">{{ summary?.counted_items || 0 }}</span>
+                    <span class="erp-stat-card__meta">Scanned verified pieces</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Remaining</p>
-                    <p class="mt-2 text-2xl font-semibold text-amber-600">{{ summary?.remaining_items || 0 }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Remaining</span>
+                    <span class="erp-stat-card__value text-amber-600">{{ summary?.remaining_items || 0 }}</span>
+                    <span class="erp-stat-card__meta">Yet to scan</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Match %</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ summary?.match_percentage || 0 }}%</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Match %</span>
+                    <span class="erp-stat-card__value">{{ summary?.match_percentage || 0 }}%</span>
+                    <span class="erp-stat-card__meta">Reconciliation rate</span>
                 </div>
-                <div class="erp-stat-card border border-surface-200 bg-white px-5 py-4">
-                    <p class="text-sm text-surface-500">Counted Net Weight</p>
-                    <p class="mt-2 text-2xl font-semibold text-surface-900">{{ formatWeight(summary?.counted_net_weight) }}</p>
-                    <p class="mt-1 text-xs text-surface-500">Expected: {{ formatWeight(summary?.expected_net_weight) }}</p>
+                <div class="erp-stat-card">
+                    <span class="erp-stat-card__label">Counted Net Weight</span>
+                    <span class="erp-stat-card__value text-amber-700">{{ formatWeight(summary?.counted_net_weight) }}</span>
+                    <span class="erp-stat-card__meta">Exp: {{ formatWeight(summary?.expected_net_weight) }}</span>
                 </div>
             </div>
 
@@ -643,7 +647,7 @@ const markComplete = async () => {
                 <div v-if="session?.status !== 'COMPLETED'" class="erp-panel px-5 py-5">
                     <div class="flex items-start justify-between gap-3">
                         <div class="flex items-start gap-3">
-                            <div class="erp-icon-tile flex h-11 w-11 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                            <div class="erp-icon-tile flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-surface-200 bg-surface-50 text-surface-600 shadow-xs">
                                 <ScanLine class="h-5 w-5" />
                             </div>
                             <div class="min-w-0 flex-1">
@@ -699,7 +703,7 @@ const markComplete = async () => {
 
                 <!-- Completed session archive notice -->
                 <div v-else class="flex items-center gap-4 erp-subpanel p-5">
-                    <div class="erp-icon-tile flex h-11 w-11 shrink-0 items-center justify-center border border-emerald-200 bg-white text-emerald-600">
+                    <div class="erp-icon-tile flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-emerald-200 bg-white text-emerald-600 shadow-xs">
                         <i class="pi pi-check-circle text-lg" />
                     </div>
                     <div class="min-w-0 flex-1">
