@@ -280,64 +280,67 @@ const deleteCustomer = (customer) => {
                     </div>
 
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        <div class="min-w-40 border border-surface-200 bg-surface-0 px-4 py-3">
-                            <p class="text-xs font-medium tracking-wide text-surface-500 uppercase">Customers</p>
-                            <p class="mt-2 text-2xl font-semibold text-surface-900">{{ totalCount }}</p>
+                        <div class="erp-stat-card min-w-40">
+                            <span class="erp-stat-card__label">Customers</span>
+                            <span class="erp-stat-card__value">{{ totalCount }}</span>
+                            <span class="erp-stat-card__meta">Total registered</span>
                         </div>
-                        <div class="min-w-40 border border-emerald-200 bg-emerald-50 px-4 py-3">
-                            <p class="text-xs font-medium tracking-wide text-emerald-700 uppercase">New This Week</p>
-                            <p class="mt-2 text-2xl font-semibold text-emerald-700">{{ newThisWeek }}</p>
+                        <div class="erp-stat-card min-w-40">
+                            <span class="erp-stat-card__label">New This Week</span>
+                            <span class="erp-stat-card__value !text-emerald-700">{{ newThisWeek }}</span>
+                            <span class="erp-stat-card__meta">Recent signups</span>
                         </div>
-                        <div class="min-w-40 border border-amber-200 bg-amber-50 px-4 py-3">
-                            <p class="text-xs font-medium tracking-wide text-amber-700 uppercase">Open Due</p>
-                            <p class="mt-2 text-2xl font-semibold text-amber-700">{{ formatMoney(totalOutstanding) }}</p>
+                        <div class="erp-stat-card min-w-40">
+                            <span class="erp-stat-card__label">Open Due</span>
+                            <span class="erp-stat-card__value !text-amber-700">{{ formatMoney(totalOutstanding) }}</span>
+                            <span class="erp-stat-card__meta">Pending recovery</span>
                         </div>
                     </div>
                 </div>
             </section>
 
             <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="border border-surface-200 bg-white p-5">
+                <div class="erp-stat-card p-5">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-sm text-surface-500">Average spend on this page</p>
-                            <p class="mt-2 text-2xl font-semibold text-surface-900">{{ formatMoney(averageSpend) }}</p>
+                            <span class="erp-stat-card__label">Average spend on this page</span>
+                            <span class="erp-stat-card__value mt-2 block">{{ formatMoney(averageSpend) }}</span>
                         </div>
-                        <span class="rounded-full bg-surface-100 p-2 text-surface-600">
+                        <span class="erp-icon-tile flex h-9 w-9 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
                             <Wallet class="h-4 w-4" />
                         </span>
                     </div>
                 </div>
 
-                <div class="border border-surface-200 bg-white p-5">
+                <div class="erp-stat-card p-5">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-sm text-surface-500">Visible records</p>
-                            <p class="mt-2 text-2xl font-semibold text-surface-900">{{ customers.data.length }}</p>
+                            <span class="erp-stat-card__label">Visible records</span>
+                            <span class="erp-stat-card__value mt-2 block">{{ customers.data.length }}</span>
                         </div>
-                        <span class="rounded-full bg-surface-100 p-2 text-surface-600">
+                        <span class="erp-icon-tile flex h-9 w-9 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
                             <Users class="h-4 w-4" />
                         </span>
                     </div>
                 </div>
 
-                <div class="border border-surface-200 bg-white p-5">
+                <div class="erp-stat-card p-5">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-sm text-surface-500">Birthdays This Week</p>
-                            <p class="mt-2 text-2xl font-semibold text-emerald-700">{{ birthdaysThisWeek || 0 }}</p>
+                            <span class="erp-stat-card__label">Birthdays This Week</span>
+                            <span class="erp-stat-card__value mt-2 block !text-emerald-700">{{ birthdaysThisWeek || 0 }}</span>
                         </div>
-                        <span class="rounded-full bg-emerald-100 px-3 py-2 text-xs font-semibold text-emerald-700">DOB</span>
+                        <span class="ai-status-pill border border-emerald-300 bg-emerald-50 text-emerald-800">DOB</span>
                     </div>
                 </div>
 
-                <div class="border border-surface-200 bg-white p-5">
+                <div class="erp-stat-card p-5">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-sm text-surface-500">Anniversaries This Week</p>
-                            <p class="mt-2 text-2xl font-semibold text-rose-700">{{ anniversariesThisWeek || 0 }}</p>
+                            <span class="erp-stat-card__label">Anniversaries This Week</span>
+                            <span class="erp-stat-card__value mt-2 block !text-rose-700">{{ anniversariesThisWeek || 0 }}</span>
                         </div>
-                        <span class="rounded-full bg-rose-100 px-3 py-2 text-xs font-semibold text-rose-700">ANN</span>
+                        <span class="ai-status-pill border border-rose-300 bg-rose-50 text-rose-800">ANN</span>
                     </div>
                 </div>
 

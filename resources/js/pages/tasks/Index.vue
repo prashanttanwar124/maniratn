@@ -1351,7 +1351,7 @@ const deleteTask = () => {
 
                 <!-- Metadata Grid -->
                 <div class="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
-                    <div class="border border-surface-200 bg-white p-3">
+                    <div class="erp-subpanel p-3">
                         <span class="mb-1 block text-[11px] tracking-wide text-surface-400 uppercase">Assigned Staff</span>
                         <div class="flex items-center gap-2 font-semibold text-surface-800">
                             <Avatar
@@ -1364,7 +1364,7 @@ const deleteTask = () => {
                         </div>
                     </div>
 
-                    <div class="border border-surface-200 bg-white p-3">
+                    <div class="erp-subpanel p-3">
                         <span class="mb-1 block text-[11px] tracking-wide text-surface-400 uppercase">Due Date</span>
                         <span :class="['font-semibold', selectedTask.is_overdue ? 'font-bold text-rose-600' : 'text-surface-800']">
                             {{ getDueMeta(selectedTask).label }}{{ getDueMeta(selectedTask).detail }}
@@ -1373,7 +1373,7 @@ const deleteTask = () => {
                 </div>
 
                 <!-- Live Interactive Checklist -->
-                <div v-if="selectedTask.checklist && selectedTask.checklist.length > 0" class="border border-surface-200 bg-white p-4">
+                <div v-if="selectedTask.checklist && selectedTask.checklist.length > 0" class="erp-subpanel p-4">
                     <div class="mb-2 flex items-center justify-between text-xs font-semibold text-surface-900">
                         <span class="inline-flex items-center gap-1.5">
                             <i class="pi pi-check-square text-xs text-surface-600"></i>

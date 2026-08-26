@@ -618,17 +618,20 @@ const submitInvoice = () => {
                     </div>
 
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        <div class="min-w-40 border border-surface-200 bg-surface-0 px-4 py-3">
-                            <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Items</p>
-                            <p class="mt-2 text-2xl font-semibold text-surface-900">{{ form.items.length }}</p>
+                        <div class="erp-stat-card min-w-40">
+                            <span class="erp-stat-card__label">Items</span>
+                            <span class="erp-stat-card__value">{{ form.items.length }}</span>
+                            <span class="erp-stat-card__meta">In current invoice</span>
                         </div>
-                        <div class="min-w-40 border border-emerald-200 bg-emerald-50 px-4 py-3">
-                            <p class="text-xs font-medium uppercase tracking-wide text-emerald-700">Received</p>
-                            <p class="mt-2 text-2xl font-semibold text-emerald-700">{{ formatCurrency(totalReceived) }}</p>
+                        <div class="erp-stat-card min-w-40">
+                            <span class="erp-stat-card__label">Received</span>
+                            <span class="erp-stat-card__value !text-emerald-700">{{ formatCurrency(totalReceived) }}</span>
+                            <span class="erp-stat-card__meta">Total collected</span>
                         </div>
-                        <div class="min-w-40 border border-amber-200 bg-amber-50 px-4 py-3">
-                            <p class="text-xs font-medium uppercase tracking-wide text-amber-700">Balance Due</p>
-                            <p class="mt-2 text-2xl font-semibold" :class="balanceDue > 0 ? 'text-amber-700' : 'text-emerald-700'">{{ formatCurrency(balanceDue) }}</p>
+                        <div class="erp-stat-card min-w-40">
+                            <span class="erp-stat-card__label">Balance Due</span>
+                            <span class="erp-stat-card__value" :class="balanceDue > 0 ? '!text-amber-700' : '!text-emerald-700'">{{ formatCurrency(balanceDue) }}</span>
+                            <span class="erp-stat-card__meta">{{ balanceDue > 0 ? 'Pending collection' : 'Fully settled' }}</span>
                         </div>
                     </div>
                 </div>
@@ -967,13 +970,13 @@ const submitInvoice = () => {
                         </div>
 
                         <div class="mt-4 grid grid-cols-2 gap-3">
-                            <div class="border border-emerald-200 bg-emerald-50 px-4 py-3">
-                                <p class="text-xs font-medium uppercase tracking-wide text-emerald-700">Received</p>
-                                <p class="mt-2 text-lg font-semibold text-emerald-700">{{ formatCurrency(totalReceived) }}</p>
+                            <div class="erp-subpanel border border-surface-200 bg-white p-3.5">
+                                <span class="block text-[11px] font-bold uppercase tracking-wider text-surface-500">Received</span>
+                                <span class="mt-1 block font-mono text-xl font-bold text-emerald-700">{{ formatCurrency(totalReceived) }}</span>
                             </div>
-                            <div class="border px-4 py-3" :class="balanceDue > 0 ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'">
-                                <p class="text-xs font-medium uppercase tracking-wide" :class="balanceDue > 0 ? 'text-amber-700' : 'text-emerald-700'">Ledger Due</p>
-                                <p class="mt-2 text-lg font-semibold" :class="balanceDue > 0 ? 'text-amber-700' : 'text-emerald-700'">{{ formatCurrency(balanceDue) }}</p>
+                            <div class="erp-subpanel border border-surface-200 bg-white p-3.5">
+                                <span class="block text-[11px] font-bold uppercase tracking-wider" :class="balanceDue > 0 ? 'text-amber-700' : 'text-emerald-700'">Ledger Due</span>
+                                <span class="mt-1 block font-mono text-xl font-bold" :class="balanceDue > 0 ? 'text-amber-700' : 'text-emerald-700'">{{ formatCurrency(balanceDue) }}</span>
                             </div>
                         </div>
                     </div>

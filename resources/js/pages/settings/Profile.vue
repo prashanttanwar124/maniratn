@@ -39,7 +39,7 @@ const role = page.props.auth.role || 'user';
 
         <SettingsLayout>
             <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <div class="border border-surface-200 bg-white p-5">
+                <div class="erp-panel p-6">
                     <HeadingSmall title="Profile Information" description="Update your account name and email address used across the ERP." />
 
                     <Form v-bind="ProfileController.update.form()" class="mt-6 space-y-6" v-slot="{ errors, processing, recentlySuccessful }">
@@ -64,12 +64,12 @@ const role = page.props.auth.role || 'user';
                         </div>
 
                         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                            <div class="erp-subpanel px-4 py-3">
                                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-surface-500">Current role</p>
                                 <p class="mt-1 text-sm font-medium text-surface-900">{{ String(role).charAt(0).toUpperCase() + String(role).slice(1) }}</p>
                             </div>
 
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                            <div class="erp-subpanel px-4 py-3">
                                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-surface-500">Account status</p>
                                 <p class="mt-1 text-sm font-medium text-surface-900">{{ user.email_verified_at ? 'Verified and active' : 'Active, email pending verification' }}</p>
                             </div>
@@ -103,47 +103,47 @@ const role = page.props.auth.role || 'user';
                 </div>
 
                 <div class="space-y-6">
-                    <div class="border border-surface-200 bg-white p-5">
+                    <div class="erp-panel p-5">
                         <HeadingSmall title="Account Snapshot" description="Basic identity details for the current login." />
 
-                        <div class="mt-6 space-y-4">
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                        <div class="mt-6 space-y-3">
+                            <div class="erp-subpanel px-4 py-3">
                                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-surface-500">Name</p>
                                 <p class="mt-1 text-sm font-medium text-surface-900">{{ user.name }}</p>
                             </div>
 
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                            <div class="erp-subpanel px-4 py-3">
                                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-surface-500">Email</p>
                                 <p class="mt-1 text-sm font-medium text-surface-900">{{ user.email }}</p>
                             </div>
 
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                            <div class="erp-subpanel px-4 py-3">
                                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-surface-500">Verification</p>
                                 <p class="mt-1 text-sm font-medium text-surface-900">
                                     {{ user.email_verified_at ? 'Verified' : 'Pending verification' }}
                                 </p>
                             </div>
 
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                            <div class="erp-subpanel px-4 py-3">
                                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-surface-500">Role</p>
                                 <p class="mt-1 text-sm font-medium text-surface-900">{{ String(role).charAt(0).toUpperCase() + String(role).slice(1) }}</p>
                             </div>
 
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                            <div class="erp-subpanel px-4 py-3">
                                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-surface-500">User ID</p>
                                 <p class="mt-1 text-sm font-medium text-surface-900">#{{ user.id }}</p>
                             </div>
                         </div>
                     </div>
 
-                    <div class="border border-surface-200 bg-white p-5">
+                    <div class="erp-panel p-5">
                         <HeadingSmall title="Quick Actions" description="Move to related account settings." />
 
                         <div class="mt-6 flex flex-col gap-3">
-                            <Link href="/settings/password" class="border border-surface-200 px-4 py-3 text-sm font-medium text-surface-900 transition hover:bg-surface-50">
+                            <Link href="/settings/password" class="erp-action-button border border-surface-200 bg-white px-4 py-3 text-sm font-medium text-surface-900 transition hover:bg-surface-50">
                                 Update password
                             </Link>
-                            <Link href="/settings/two-factor" class="border border-surface-200 px-4 py-3 text-sm font-medium text-surface-900 transition hover:bg-surface-50">
+                            <Link href="/settings/two-factor" class="erp-action-button border border-surface-200 bg-white px-4 py-3 text-sm font-medium text-surface-900 transition hover:bg-surface-50">
                                 Manage two-factor authentication
                             </Link>
                         </div>

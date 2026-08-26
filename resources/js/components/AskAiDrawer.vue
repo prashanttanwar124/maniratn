@@ -648,16 +648,16 @@ onMounted(() => {
             <div class="relative flex h-full w-full flex-col bg-white font-sans text-surface-800" style="font-family: 'Poppins', sans-serif !important">
                 <div class="z-10 flex w-full shrink-0 items-center justify-between border-b border-b-[#c08f34] bg-[#1c3633] px-4 py-3.5 text-white sm:px-5">
                     <div class="flex min-w-0 items-center gap-3">
-                        <div class="flex h-10 w-10 shrink-0 items-center justify-center border border-white/10 bg-white/10">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/10">
                             <Bot class="h-5 w-5 text-[#e1b65f]" />
                         </div>
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
                                 <span class="truncate text-sm font-semibold tracking-wide text-white">Karat AI</span>
                                 <span
-                                    class="hidden items-center gap-1 border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-emerald-200 uppercase min-[390px]:inline-flex"
+                                    class="hidden items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[9px] font-semibold tracking-wide text-emerald-200 uppercase min-[390px]:inline-flex"
                                 >
-                                    <span class="h-1.5 w-1.5 bg-emerald-400"></span>
+                                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
                                     ERP live
                                 </span>
                             </div>
@@ -669,7 +669,7 @@ onMounted(() => {
                         <button
                             v-if="isVoiceGloballyEnabled"
                             type="button"
-                            class="inline-flex h-9 items-center gap-1.5 border px-2.5 text-[11px] font-medium transition-colors"
+                            class="inline-flex h-9 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium transition-colors"
                             :class="autoVoiceOutput ? 'border-[#c08f34]/70 bg-[#c08f34] text-[#142926]' : 'border-white/15 bg-white/5 text-white/70 hover:bg-white/10'"
                             :aria-pressed="autoVoiceOutput"
                             :aria-label="autoVoiceOutput ? 'Mute AI voice replies' : 'Enable AI voice replies'"
@@ -755,12 +755,12 @@ onMounted(() => {
                     <div class="flex shrink-0 items-center gap-1.5">
                         <button
                             type="button"
-                            class="border border-transparent px-2.5 py-1.5 text-[10.5px] font-medium text-surface-600 hover:border-surface-300 hover:bg-white"
+                            class="rounded-md border border-transparent px-2.5 py-1.5 text-[10.5px] font-medium text-surface-600 hover:border-surface-300 hover:bg-white"
                             @click="showResetConfirm = false"
                         >
                             Cancel
                         </button>
-                        <button type="button" class="border border-[#1c3633] bg-[#1c3633] px-2.5 py-1.5 text-[10.5px] font-semibold text-white hover:bg-[#254642]" @click="resetChat">
+                        <button type="button" class="rounded-md border border-[#1c3633] bg-[#1c3633] px-2.5 py-1.5 text-[10.5px] font-semibold text-white hover:bg-[#254642]" @click="resetChat">
                             Clear chat
                         </button>
                     </div>
@@ -768,7 +768,7 @@ onMounted(() => {
 
                 <div class="flex shrink-0 items-center justify-between gap-3 border-b border-surface-200 bg-white px-4 py-2 sm:px-5">
                     <p class="text-[10.5px] leading-4 text-surface-500">Live ERP data connected · Save hone se pehle aap review karenge</p>
-                    <span class="shrink-0 border border-emerald-200 bg-emerald-50 px-2 py-1 text-[9.5px] font-semibold text-emerald-700">Secure</span>
+                    <span class="ai-status-pill shrink-0 border border-emerald-300 bg-emerald-50 text-emerald-800">Secure</span>
                 </div>
 
                 <div class="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#f7f9f8]">
@@ -962,13 +962,13 @@ onMounted(() => {
                                         <!-- 6. Daily Rate Inquire Card (Sleek Compact Light Luxury) -->
                                         <div
                                             v-else-if="action.tool === 'get_daily_rates'"
-                                            class="my-3 overflow-hidden border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
+                                            class="my-3 overflow-hidden rounded-lg border border-surface-300 border-l-[3px] border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
                                         >
                                             <div
                                                 class="flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5"
                                             >
                                                 <div class="flex items-center gap-2.5">
-                                                    <span class="flex h-7 w-7 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                                                    <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#1c3633] text-[#e5c278]">
                                                         <Coins class="h-3.5 w-3.5" />
                                                     </span>
                                                     <div class="flex flex-col justify-center">
@@ -978,14 +978,14 @@ onMounted(() => {
                                                 </div>
                                                 <span
                                                     v-if="action.result?.gold_24k_per_gm > 0"
-                                                    class="inline-flex items-center gap-1 border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800 uppercase"
+                                                    class="ai-status-pill inline-flex items-center gap-1 border border-emerald-300 bg-emerald-50 text-[10px] font-medium text-emerald-800 uppercase"
                                                 >
                                                     <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                                                     Live
                                                 </span>
                                                 <span
                                                     v-else
-                                                    class="inline-flex items-center gap-1 border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800 uppercase"
+                                                    class="ai-status-pill inline-flex items-center gap-1 border border-amber-300 bg-amber-50 text-[10px] font-medium text-amber-800 uppercase"
                                                 >
                                                     <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
                                                     Not Set Today
@@ -1026,13 +1026,13 @@ onMounted(() => {
                                         <!-- 7b. Estimate Quotation Card (New Finished Jewellery) -->
                                         <div
                                             v-else-if="action.tool === 'calculate_estimate'"
-                                            class="my-3 overflow-hidden border border-l-[3px] border-surface-300 border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
+                                            class="my-3 overflow-hidden rounded-lg border border-surface-300 border-l-[3px] border-l-[#c08f34] bg-white font-sans shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
                                         >
                                             <div
                                                 class="flex items-center justify-between gap-3 border-b border-surface-200 bg-[#f8f6f0] px-3.5 py-2.5"
                                             >
                                                 <div class="flex items-center gap-2.5">
-                                                    <span class="flex h-7 w-7 shrink-0 items-center justify-center bg-[#1c3633] text-[#e5c278]">
+                                                    <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#1c3633] text-[#e5c278]">
                                                         <Calculator class="h-3.5 w-3.5" />
                                                     </span>
                                                     <div class="flex flex-col justify-center">
@@ -1044,7 +1044,7 @@ onMounted(() => {
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <span class="inline-flex items-center gap-1 border border-amber-300 bg-amber-50 px-2 py-0.5 text-[9.5px] font-semibold tracking-wide text-amber-900 uppercase">
+                                                <span class="ai-status-pill inline-flex items-center gap-1 border border-amber-300 bg-amber-50 text-[9.5px] font-semibold tracking-wide text-amber-900 uppercase">
                                                     Estimate
                                                 </span>
                                             </div>

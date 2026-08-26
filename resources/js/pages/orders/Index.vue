@@ -883,7 +883,7 @@ watch(
                     </div>
 
                     <div class="max-h-[360px] space-y-3 overflow-y-auto pr-1">
-                        <div v-for="(item, idx) in createForm.items" :key="idx" class="border border-surface-200 bg-white p-4">
+                        <div v-for="(item, idx) in createForm.items" :key="idx" class="erp-subpanel p-4">
                             <div class="mb-3 flex items-center justify-between">
                                 <span class="text-xs font-semibold tracking-wide text-surface-500 uppercase"> Item {{ idx + 1 }} </span>
 
@@ -1143,7 +1143,7 @@ watch(
                     </div>
                 </div>
 
-                <div class="border border-surface-200 bg-white">
+                <div class="erp-subpanel overflow-hidden !p-0">
                     <div class="border-b border-surface-200 px-4 py-3">
                         <div class="flex items-center justify-between gap-3">
                             <h4 class="text-sm font-semibold text-surface-900">Transaction History</h4>
@@ -1173,7 +1173,7 @@ watch(
                     </div>
                 </div>
 
-                <div class="border border-surface-200 bg-white">
+                <div class="erp-subpanel overflow-hidden !p-0">
                     <div class="border-b border-surface-200 px-4 py-3">
                         <h4 class="text-sm font-semibold text-surface-900">Issue Additional {{ metalLabel(selectedItem?.metal_type) }}</h4>
                     </div>

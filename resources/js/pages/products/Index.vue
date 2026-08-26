@@ -1120,19 +1120,19 @@ const copyBarcode = async (barcode) => {
                                 </div>
 
                                 <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
-                                    <div class="border border-surface-200 bg-white px-3 py-3">
+                                    <div class="erp-subpanel px-3 py-3">
                                         <p class="text-xs uppercase tracking-wide text-surface-500">Gross</p>
                                         <p class="mt-1 font-medium text-surface-900">{{ formatWeight(historyProduct.gross_weight) }}</p>
                                     </div>
-                                    <div class="border border-surface-200 bg-white px-3 py-3">
+                                    <div class="erp-subpanel px-3 py-3">
                                         <p class="text-xs uppercase tracking-wide text-surface-500">Net</p>
                                         <p class="mt-1 font-medium text-surface-900">{{ formatWeight(historyProduct.net_weight) }}</p>
                                     </div>
-                                    <div class="border border-surface-200 bg-white px-3 py-3">
+                                    <div class="erp-subpanel px-3 py-3">
                                         <p class="text-xs uppercase tracking-wide text-surface-500">Category</p>
                                         <p class="mt-1 font-medium text-surface-900">{{ historyProduct.category || '—' }}</p>
                                     </div>
-                                    <div class="border border-surface-200 bg-white px-3 py-3">
+                                    <div class="erp-subpanel px-3 py-3">
                                         <p class="text-xs uppercase tracking-wide text-surface-500">Purity</p>
                                         <p class="mt-1 font-medium text-surface-900">{{ historyProduct.purity || '—' }}</p>
                                     </div>
@@ -1140,7 +1140,7 @@ const copyBarcode = async (barcode) => {
                             </div>
 
                             <div class="space-y-3">
-                                <div v-for="(event, index) in historyTimeline" :key="`${event.type}-${event.occurred_at}-${index}`" class="border border-surface-200 bg-white px-4 py-4">
+                                <div v-for="(event, index) in historyTimeline" :key="`${event.type}-${event.occurred_at}-${index}`" class="erp-list-item bg-white px-4 py-4">
                                     <div class="flex items-start justify-between gap-3">
                                         <div>
                                             <p class="text-sm font-medium text-surface-900">{{ event.title }}</p>
@@ -1220,7 +1220,7 @@ const copyBarcode = async (barcode) => {
 
                     <!-- Invoice Info Card -->
                     <div v-if="selectedSoldProduct.sold_invoice" class="space-y-3">
-                        <div class="border border-surface-200 bg-white p-4">
+                        <div class="erp-subpanel p-4">
                             <div class="flex items-center justify-between border-b border-surface-100 pb-3">
                                 <div>
                                     <p class="text-xs text-surface-500">Invoice Number</p>

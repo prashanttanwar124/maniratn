@@ -75,8 +75,8 @@ const openStandee = () => {
 
         <SettingsLayout>
             <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <div class="border border-surface-200 bg-white p-5">
-                    <div>
+                <div class="erp-panel p-6">
+                    <div class="border-b border-surface-200 pb-4 mb-6">
                         <h2 class="text-lg font-semibold text-surface-900">Business Profile</h2>
                         <p class="mt-1 text-sm text-surface-500">Store logo and shop details used in invoice print and future customer-facing documents.</p>
                     </div>
@@ -112,7 +112,7 @@ const openStandee = () => {
                             <small v-if="form.errors.gst_number" class="mt-1 block text-xs text-red-500">{{ form.errors.gst_number }}</small>
                         </div>
 
-                        <div class="md:col-span-2 border border-surface-200 bg-surface-50 p-4">
+                        <div class="md:col-span-2 erp-subpanel p-4">
                             <div class="flex items-center justify-between mb-2">
                                 <label class="block text-sm font-semibold text-surface-900">
                                     ⭐ Google Maps Review URL & Counter Display
@@ -221,16 +221,21 @@ const openStandee = () => {
                 </div>
 
                 <div class="space-y-6">
-                    <div class="border border-surface-200 bg-white p-5">
-                        <h3 class="text-base font-semibold text-surface-900">Where this will be used</h3>
-                        <div class="mt-4 space-y-3 text-sm text-surface-600">
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-3">Invoice print header</div>
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-3">Future WhatsApp invoice share</div>
-                            <div class="border border-surface-200 bg-surface-50 px-4 py-3">Customer-facing documents and reports</div>
-                        </div>
+                    <div class="erp-panel p-5">
+                        <h3 class="text-sm font-semibold uppercase tracking-wider text-surface-600">Store Identity</h3>
+                        <p class="mt-2 text-xs leading-5 text-surface-500">
+                            The business name and details entered here will automatically populate headers across customer printouts, receipts, and invoices.
+                        </p>
                     </div>
 
-                    <div class="border border-surface-200 bg-white p-5">
+                    <div class="erp-panel p-5">
+                        <h3 class="text-sm font-semibold uppercase tracking-wider text-surface-600">Tax & Compliance</h3>
+                        <p class="mt-2 text-xs leading-5 text-surface-500">
+                            Valid GST format ensures accurate 3% GST calculation and legally compliant tax invoices for customers.
+                        </p>
+                    </div>
+
+                    <div class="erp-panel p-5">
                         <h3 class="text-base font-semibold text-surface-900">Tips</h3>
                         <ul class="mt-4 space-y-2 text-sm text-surface-600">
                             <li>Use a clean square or horizontal logo for better invoice print clarity.</li>

@@ -26,7 +26,7 @@ const breadcrumbItems: BreadcrumbItem[] = [
 
         <SettingsLayout>
             <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <div class="border border-surface-200 bg-white p-5">
+                <div class="erp-panel p-6">
                     <HeadingSmall title="Update Password" description="Use a strong password to keep your account secure." />
 
                     <Form
@@ -81,16 +81,16 @@ const breadcrumbItems: BreadcrumbItem[] = [
                     </Form>
                 </div>
 
-                <div class="border border-surface-200 bg-white p-5">
+                <div class="erp-panel p-5">
                     <HeadingSmall title="Password Guidance" description="Use a strong secret that is difficult to guess." />
 
                     <div class="mt-6 space-y-4">
-                        <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                        <div class="erp-subpanel px-4 py-3">
                             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-surface-500">Recommended</p>
                             <p class="mt-1 text-sm text-surface-900">Use at least 12 characters with a mix of upper case, lower case, numbers, and symbols.</p>
                         </div>
 
-                        <div class="border border-surface-200 bg-surface-50 px-4 py-3">
+                        <div class="erp-subpanel px-4 py-3">
                             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-surface-500">Avoid</p>
                             <p class="mt-1 text-sm text-surface-900">Do not reuse old passwords or simple names, dates, and mobile numbers.</p>
                         </div>

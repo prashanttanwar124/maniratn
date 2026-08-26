@@ -156,25 +156,31 @@ const getSeverity = (type) => {
                         </p>
 
                         <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                            <div class="flex items-center gap-3 border border-surface-200 bg-surface-0 px-4 py-3">
-                                <MapPin class="h-4 w-4 text-surface-500" />
-                                <div>
-                                    <p class="text-xs uppercase tracking-wide text-surface-500">City</p>
-                                    <p class="mt-1 text-sm font-medium text-surface-900">{{ customer.city || 'Unknown city' }}</p>
+                            <div class="erp-stat-card flex items-center gap-3 p-3.5">
+                                <div class="erp-icon-tile flex h-9 w-9 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                                    <MapPin class="h-4 w-4" />
+                                </div>
+                                <div class="min-w-0">
+                                    <span class="erp-stat-card__label">City</span>
+                                    <p class="mt-0.5 text-sm font-semibold text-surface-900 truncate">{{ customer.city || 'Unknown city' }}</p>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-3 border border-surface-200 bg-surface-0 px-4 py-3">
-                                <Phone class="h-4 w-4 text-surface-500" />
-                                <div>
-                                    <p class="text-xs uppercase tracking-wide text-surface-500">Mobile</p>
-                                    <p class="mt-1 text-sm font-medium text-surface-900">{{ customer.mobile || 'No mobile' }}</p>
+                            <div class="erp-stat-card flex items-center gap-3 p-3.5">
+                                <div class="erp-icon-tile flex h-9 w-9 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                                    <Phone class="h-4 w-4" />
+                                </div>
+                                <div class="min-w-0">
+                                    <span class="erp-stat-card__label">Mobile</span>
+                                    <p class="mt-0.5 font-mono text-sm font-semibold text-surface-900 truncate">{{ customer.mobile || 'No mobile' }}</p>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-3 border border-surface-200 bg-surface-0 px-4 py-3">
-                                <ShieldCheck class="h-4 w-4 text-surface-500" />
-                                <div>
-                                    <p class="text-xs uppercase tracking-wide text-surface-500">PAN</p>
-                                    <p class="mt-1 text-sm font-medium text-surface-900">{{ customer.pan_no || '--' }}</p>
+                            <div class="erp-stat-card flex items-center gap-3 p-3.5">
+                                <div class="erp-icon-tile flex h-9 w-9 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                                    <ShieldCheck class="h-4 w-4" />
+                                </div>
+                                <div class="min-w-0">
+                                    <span class="erp-stat-card__label">PAN</span>
+                                    <p class="mt-0.5 font-mono text-sm font-semibold text-surface-900 truncate">{{ customer.pan_no || '--' }}</p>
                                 </div>
                             </div>
                         </div>
@@ -190,10 +196,10 @@ const getSeverity = (type) => {
             </section>
 
             <!-- Customer Digital Vault & NFC Smart Card Section -->
-            <section class="border border-surface-200 bg-white">
+            <section class="erp-panel overflow-hidden !p-0">
                 <div class="flex flex-col gap-3 border-b border-surface-200 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-3">
-                        <span class="flex h-9 w-9 shrink-0 items-center justify-center border border-amber-200 bg-amber-50 text-amber-600">
+                        <span class="erp-icon-tile flex h-9 w-9 shrink-0 items-center justify-center border border-amber-200 bg-amber-50 text-amber-700">
                             <CreditCard class="h-4 w-4" />
                         </span>
                         <div>
@@ -320,35 +326,35 @@ const getSeverity = (type) => {
             </section>
 
             <section class="grid grid-cols-1 gap-4 xl:grid-cols-4">
-                <div class="border border-surface-200 bg-white p-5">
+                <div class="erp-stat-card p-5">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-sm text-surface-500">Total purchased</p>
-                            <p class="mt-2 text-2xl font-semibold text-surface-900">{{ formatMoney(stats.total_sales) }}</p>
+                            <span class="erp-stat-card__label">Total purchased</span>
+                            <span class="erp-stat-card__value mt-2 block">{{ formatMoney(stats.total_sales) }}</span>
                         </div>
-                        <span class="rounded-full bg-surface-100 p-2 text-surface-600">
+                        <span class="erp-icon-tile flex h-9 w-9 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
                             <Landmark class="h-4 w-4" />
                         </span>
                     </div>
                 </div>
 
-                <div class="border border-surface-200 bg-white p-5">
+                <div class="erp-stat-card p-5">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-sm text-surface-500">Total paid</p>
-                            <p class="mt-2 text-2xl font-semibold text-emerald-600">{{ formatMoney(stats.total_paid) }}</p>
+                            <span class="erp-stat-card__label">Total paid</span>
+                            <span class="erp-stat-card__value mt-2 block !text-emerald-600">{{ formatMoney(stats.total_paid) }}</span>
                         </div>
-                        <span class="rounded-full bg-emerald-100 p-2 text-emerald-700">
+                        <span class="erp-icon-tile flex h-9 w-9 items-center justify-center border border-emerald-200 bg-emerald-50 text-emerald-700">
                             <WalletCards class="h-4 w-4" />
                         </span>
                     </div>
                 </div>
 
-                <div class="border border-surface-200 bg-white p-5 xl:col-span-2">
-                    <p class="text-sm text-surface-500">Current balance</p>
+                <div class="erp-stat-card p-5 xl:col-span-2">
+                    <span class="erp-stat-card__label">Current balance</span>
                     <div class="mt-2 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-                        <p :class="['text-3xl font-semibold', balanceTone]">{{ formatMoney(stats.current_balance) }}</p>
-                        <p class="text-sm text-surface-500">{{ balanceLabel }}</p>
+                        <span :class="['font-mono text-3xl font-bold', balanceTone]">{{ formatMoney(stats.current_balance) }}</span>
+                        <span class="text-sm font-medium text-surface-500">{{ balanceLabel }}</span>
                     </div>
                 </div>
             </section>
@@ -434,7 +440,7 @@ const getSeverity = (type) => {
                         </div>
 
                         <div class="space-y-3 p-5">
-                            <Link :href="route('ledger.show', { type: 'customers', id: customer.id })" class="flex items-center justify-between border border-surface-200 px-4 py-3 transition-colors hover:border-amber-300 hover:bg-amber-50">
+                            <Link :href="route('ledger.show', { type: 'customers', id: customer.id })" class="erp-action-button flex items-center justify-between border border-surface-200 bg-white px-4 py-3">
                                 <div>
                                     <p class="font-medium text-surface-900">Open customer ledger</p>
                                     <p class="mt-1 text-xs text-surface-500">Post manual cash entries or review full balance flow</p>
@@ -442,7 +448,7 @@ const getSeverity = (type) => {
                                 <ArrowRight class="h-4 w-4 text-surface-500" />
                             </Link>
 
-                            <Link :href="route('invoices.create', { customer_id: customer.id })" class="flex items-center justify-between border border-surface-200 px-4 py-3 transition-colors hover:border-surface-300 hover:bg-surface-50">
+                            <Link :href="route('invoices.create', { customer_id: customer.id })" class="erp-action-button flex items-center justify-between border border-surface-200 bg-white px-4 py-3">
                                 <div>
                                     <p class="font-medium text-surface-900">Prepare new bill</p>
                                     <p class="mt-1 text-xs text-surface-500">Start a new invoice for this customer</p>
@@ -459,7 +465,7 @@ const getSeverity = (type) => {
                         </div>
 
                         <div class="p-5">
-                            <div class="rounded border border-surface-200 bg-surface-50 px-4 py-4">
+                            <div class="erp-subpanel px-4 py-4">
                                 <p class="text-sm text-surface-500">Outstanding amount</p>
                                 <p :class="['mt-2 text-2xl font-semibold', balanceTone]">{{ formatMoney(stats.current_balance) }}</p>
                                 <p class="mt-2 text-sm text-surface-500">{{ balanceLabel }}</p>

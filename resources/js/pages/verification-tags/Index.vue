@@ -122,7 +122,7 @@ const openWriter = (tagId) => {
                 </div>
             </div>
 
-            <div class="border border-surface-200 bg-white">
+            <div class="erp-panel overflow-hidden !p-0">
                 <div class="flex flex-col gap-2 border-b border-surface-200 px-5 py-4 md:flex-row md:items-center md:justify-between">
                     <div>
                         <h3 class="text-base font-semibold text-surface-900">Tag Register</h3>

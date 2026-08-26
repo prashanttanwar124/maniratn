@@ -553,7 +553,7 @@ const markComplete = async () => {
             </div>
 
             <!-- All Categories Live Breakdown Grid -->
-            <div v-if="dayOpen || categoryBreakdown.length > 0" class="border border-surface-200 bg-white p-4">
+            <div v-if="dayOpen || categoryBreakdown.length > 0" class="erp-panel p-5">
                 <div class="mb-3 flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-surface-900">Count by Category</h3>
                     <span class="text-xs text-surface-500">Click any category card to filter</span>
@@ -640,18 +640,18 @@ const markComplete = async () => {
             <!-- Scanner & Session Info Grid -->
             <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
                 <!-- Scanner block (active whenever session is open) -->
-                <div v-if="session?.status !== 'COMPLETED'" class="border border-surface-200 bg-white px-5 py-5">
+                <div v-if="session?.status !== 'COMPLETED'" class="erp-panel px-5 py-5">
                     <div class="flex items-start justify-between gap-3">
                         <div class="flex items-start gap-3">
-                            <div class="flex h-11 w-11 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
+                            <div class="erp-icon-tile flex h-11 w-11 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 text-surface-600">
                                 <ScanLine class="h-5 w-5" />
                             </div>
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-center gap-2">
                                     <p class="text-sm font-medium text-surface-900">Scanner ({{ isToday ? 'Today' : formatDate(selectedDate) }})</p>
                                     <span
-                                        class="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors"
-                                        :class="soundEnabled ? 'border border-emerald-200 bg-emerald-50 text-emerald-700' : 'border border-surface-200 bg-surface-100 text-surface-500'"
+                                        class="ai-status-pill inline-flex items-center gap-1 font-medium transition-colors"
+                                        :class="soundEnabled ? 'border border-emerald-300 bg-emerald-50 text-emerald-800' : 'border border-surface-200 bg-surface-100 text-surface-600'"
                                     >
                                         <i :class="soundEnabled ? 'pi pi-volume-up' : 'pi pi-volume-off'" class="text-[10px]" />
                                         {{ soundEnabled ? 'Sound On' : 'Muted' }}
@@ -698,8 +698,8 @@ const markComplete = async () => {
                 </div>
 
                 <!-- Completed session archive notice -->
-                <div v-else class="flex items-center gap-4 border border-surface-200 bg-emerald-50/50 p-5">
-                    <div class="flex h-11 w-11 shrink-0 items-center justify-center border border-emerald-200 bg-white text-emerald-600">
+                <div v-else class="flex items-center gap-4 erp-subpanel p-5">
+                    <div class="erp-icon-tile flex h-11 w-11 shrink-0 items-center justify-center border border-emerald-200 bg-white text-emerald-600">
                         <i class="pi pi-check-circle text-lg" />
                     </div>
                     <div class="min-w-0 flex-1">
@@ -710,7 +710,7 @@ const markComplete = async () => {
                 </div>
 
                 <!-- Session info card -->
-                <div class="border border-surface-200 bg-white px-5 py-5">
+                <div class="erp-panel px-5 py-5">
                     <p class="text-sm font-medium text-surface-900">Count Session</p>
                     <div class="mt-4 space-y-3 text-sm">
                         <div class="flex items-center justify-between gap-3">
@@ -736,8 +736,8 @@ const markComplete = async () => {
             <!-- Tables Grid -->
             <div class="grid gap-4 xl:grid-cols-2">
                 <!-- Recently Counted Table -->
-                <div class="border border-surface-200 bg-white">
-                    <div class="border-b border-surface-200 px-5 py-4">
+                <div class="erp-panel overflow-hidden !p-0">
+                    <div class="border-b border-surface-200 bg-white px-5 py-4">
                         <h3 class="text-base font-semibold text-surface-900">Counted Items</h3>
                         <p class="mt-1 text-sm text-surface-500">Gold items counted for {{ formatDate(selectedDate) }}.</p>
                     </div>
@@ -786,7 +786,7 @@ const markComplete = async () => {
                 </div>
 
                 <!-- Missing Gold Stock Table -->
-                <div class="border border-surface-200 bg-white">
+                <div class="erp-panel overflow-hidden !p-0">
                     <div class="border-b border-surface-200 px-5 py-4">
                         <h3 class="text-base font-semibold text-surface-900">Missing Gold Stock</h3>
                         <p class="mt-1 text-sm text-surface-500">Open stock not counted in this session. Showing first 100 items.</p>

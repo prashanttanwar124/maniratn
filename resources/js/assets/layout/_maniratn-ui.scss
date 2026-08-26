@@ -216,7 +216,6 @@ body {
 
 .erp-stat-card:hover {
     box-shadow: var(--maniratn-shadow-sm) !important;
-    transform: translateY(-2px);
 }
 
 .erp-stat-card:focus-visible {
@@ -803,22 +802,55 @@ body {
         background: var(--maniratn-panel-muted);
     }
 
-    .p-dialog-header,
-    .p-dialog-content,
+    .p-dialog-header {
+        border-top-left-radius: var(--maniratn-radius-lg);
+        border-top-right-radius: var(--maniratn-radius-lg);
+    }
+
     .p-dialog-footer {
-        border-radius: 0;
+        border-bottom-left-radius: var(--maniratn-radius-lg);
+        border-bottom-right-radius: var(--maniratn-radius-lg);
     }
 }
 
+.p-dialog-header-action,
+.p-dialog-close-button,
+.p-dialog-header-icon,
+.p-drawer-header-action,
+.p-drawer-close-button,
+.p-drawer-close-icon,
+.p-dialog-header-actions button,
+.p-drawer-header-actions button,
+.p-dialog .p-dialog-header-action,
+.p-dialog .p-dialog-close-button,
 .p-dialog .p-dialog-header-icon,
-.p-dialog .p-dialog-close-button {
+.p-drawer .p-drawer-close-button,
+.p-drawer .p-drawer-header-action,
+.p-drawer .p-drawer-close-icon {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 2.1rem !important;
+    height: 2.1rem !important;
     border-radius: var(--maniratn-radius-sm) !important;
-}
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    color: var(--maniratn-ink-soft) !important;
+    transition: all 150ms ease !important;
+    cursor: pointer !important;
 
-.p-dialog .p-dialog-header-icon:hover,
-.p-dialog .p-dialog-close-button:hover {
-    background: var(--maniratn-gold-soft) !important;
-    color: var(--maniratn-ink) !important;
+    &:hover {
+        background: var(--maniratn-gold-soft) !important;
+        border-color: rgba(192, 143, 52, 0.3) !important;
+        color: var(--maniratn-ink) !important;
+        border-radius: var(--maniratn-radius-sm) !important;
+    }
+
+    &:focus-visible {
+        outline: none !important;
+        box-shadow: var(--maniratn-focus) !important;
+        border-radius: var(--maniratn-radius-sm) !important;
+    }
 }
 
 .p-drawer {
@@ -1325,17 +1357,8 @@ textarea.karat-composer::placeholder {
     --maniratn-table-padding-y: 0.6rem;
 }
 
-/* Most Sakai list pages wrapped tables in p-4/p-5, creating a second gutter.
-   Keep filters padded while the data surface itself runs edge to edge. */
-.layout-main :where(.p-4, .p-5):has(> .p-datatable) {
-    padding: 0 !important;
-}
-
-.layout-main :where(.p-4, .p-5):has(> .p-datatable) > .p-datatable {
-    border-right: 0;
-    border-left: 0;
-    border-radius: 0;
-    box-shadow: none;
+.layout-main .erp-panel > .p-datatable:only-child {
+    border-radius: inherit;
 }
 
 .p-paginator {

@@ -742,7 +742,7 @@ class InvoiceController extends Controller
                     $itemName = $orderItem->item_name;
                     $orderItemMetalType = strtoupper((string) ($orderItem->metal_type ?? 'GOLD'));
                     $rateApplied = (float) ($row['rate'] ?? ($orderItemMetalType === 'SILVER' ? ($validated['silver_rate'] ?? 0) : ($validated['gold_rate'] ?? 0)));
-                    $makingType = $makingType ?: 'per_gram';
+                    $makingType = $makingType ?: ($makingValue > 100 ? 'flat' : 'per_gram');
 
                     $itemTotal = $this->calculateItemTotalPrice('order_item', $weight, $rateApplied, $makingValue, $makingType, 1);
 
