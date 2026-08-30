@@ -1140,7 +1140,50 @@ it('preserves an existing audited vault when the first day register is opened', 
         ->and(VaultMovement::query()->where('reference', 'Initial Opening Balance')->count())->toBe(0);
 });
 
+it('blocks deleting a customer who has invoices or financial history', function () {
+    openShopDay($this->user, 0, 10);
+
+    $customer = Customer::create([
+        'name' => 'Amit Sharma',
+        'mobile' => '9820011223',
+        'city' => 'Mumbai',
+    ]);
+
+    Invoice::create([
+        'invoice_number' => 'INV-TEST-001',
+        'customer_id' => $customer->id,
+        'user_id' => $this->user->id,
+        'gold_rate_applied' => 7200,
+        'total_amount' => 50000,
+        'tax_amount' => 1500,
+        'date' => today(),
+        'status' => 'PAID',
+    ]);
+
+    delete(route('customers.destroy', $customer->id))
+        ->assertSessionHasErrors('customer');
+
+    expect($customer->fresh())->not->toBeNull();
+});
+
+it('allows deleting an empty customer without any bills or transactions', function () {
+    openShopDay($this->user, 0, 10);
+
+    $customer = Customer::create([
+        'name' => 'Temporary Contact',
+        'mobile' => '9820099887',
+        'city' => 'Mumbai',
+    ]);
+
+    delete(route('customers.destroy', $customer->id))
+        ->assertSessionHasNoErrors();
+
+    expect($customer->fresh())->toBeNull();
+});
+
+
 function openShopDay(User $user, float $cash, float $gold): void
+
 {
     DailyRegister::create([
         'date' => today()->toDateString(),

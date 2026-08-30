@@ -274,9 +274,16 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer)
     {
-        if ($customer->transactions()->exists() || $customer->metalTransactions()->exists() || $customer->mortgages()->exists()) {
+        if (
+            $customer->invoices()->exists() ||
+            $customer->orders()->exists() ||
+            $customer->transactions()->exists() ||
+            $customer->metalTransactions()->exists() ||
+            $customer->mortgages()->exists() ||
+            $customer->goldSchemes()->exists()
+        ) {
             return back()->withErrors([
-                'customer' => 'Customer cannot be deleted because ledger or mortgage records already exist.',
+                'customer' => 'Customer cannot be deleted because linked sales bills/invoices, orders, ledger records, or schemes already exist.',
             ]);
         }
 
@@ -284,6 +291,7 @@ class CustomerController extends Controller
 
         return back()->with('success', 'Customer deleted successfully.');
     }
+
 
     public function quickStore(Request $request)
     {
