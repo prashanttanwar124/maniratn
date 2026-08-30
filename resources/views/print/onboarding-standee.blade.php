@@ -38,37 +38,71 @@
 
         .toolbar {
             width: 100%;
-            max-width: 460px;
+            max-width: 440px;
             margin-bottom: 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: #ffffff;
-            padding: 10px 16px;
-            border-radius: 8px;
+            padding: 12px 18px;
+            border-radius: 10px;
             border: 1px solid var(--surface-200);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            gap: 12px;
+        }
+
+        .toolbar-left {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+
+        .toolbar-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--surface-800);
+            white-space: nowrap;
+        }
+
+        .toolbar-test-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #b45309;
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+
+        .toolbar-test-link:hover {
+            color: #d97706;
+            text-decoration: underline;
         }
 
         .btn-print {
             background: var(--brand-emerald);
             color: #ffffff;
             border: none;
-            padding: 8px 18px;
-            font-size: 13px;
-            font-weight: 600;
-            border-radius: 6px;
+            padding: 9px 18px;
+            font-size: 12.5px;
+            font-weight: 700;
+            border-radius: 7px;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
             gap: 6px;
             font-family: inherit;
+            white-space: nowrap;
+            flex-shrink: 0;
             transition: opacity 0.15s;
         }
 
         .btn-print:hover {
             opacity: 0.90;
         }
+
 
         /* Standee Card (A5 / Tabletop proportions: 148mm x 210mm) */
         .standee-card {
@@ -242,18 +276,17 @@
 
 <body>
     <div class="toolbar">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <div style="font-size: 13px; font-weight: 600; color: var(--surface-700);">
-                Counter VIP Onboarding Standee
-            </div>
-            <a href="{{ $joinUrl }}" target="_blank" style="font-size: 11px; color: #b45309; text-decoration: underline;">
-                🔗 Test Link ({{ Str::limit($joinUrl, 45) }})
+        <div class="toolbar-left">
+            <div class="toolbar-title">VIP Onboarding Standee</div>
+            <a href="{{ $joinUrl }}" target="_blank" class="toolbar-test-link" title="Open registration link">
+                <span>🔗 Test Live Link</span>
             </a>
         </div>
         <button class="btn-print" onclick="window.print()">
             🖨️ Print Standee
         </button>
     </div>
+
 
     <div class="standee-card">
         <div class="card-inner-border"></div>
