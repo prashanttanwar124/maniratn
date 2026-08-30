@@ -38,3 +38,29 @@ test('admin can visit the dashboard with analytics charts and metrics', function
         ->has('analytics.valuations')
     );
 });
+
+test('staff can visit the dashboard with counter tools, tasks, and metrics', function () {
+    $staffRole = \Spatie\Permission\Models\Role::findOrCreate('staff');
+    \Spatie\Permission\Models\Permission::findOrCreate('view_dashboard');
+    $staffRole->givePermissionTo('view_dashboard');
+
+    $staff = User::factory()->create();
+    $staff->assignRole('staff');
+    $this->actingAs($staff);
+
+    $response = $this->get(route('dashboard'));
+    $response->assertStatus(200);
+    $response->assertInertia(fn ($page) => $page
+        ->component('dashboard/StaffDashboard')
+        ->has('metrics')
+        ->has('metrics.my_sales')
+        ->has('metrics.my_collections')
+        ->has('metrics.my_month_sales')
+        ->has('rates')
+        ->has('ready_for_delivery')
+        ->has('attention_items')
+        ->has('customer_reminders')
+        ->has('my_tasks')
+        ->has('my_attendance')
+    );
+});

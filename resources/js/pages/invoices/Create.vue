@@ -1041,7 +1041,7 @@ const submitInvoice = () => {
                             rowHover
                             size="small"
                             dataKey="id"
-                            class="erp-line-items text-xs"
+                            class="erp-flush-table erp-line-items !rounded-none !border-0 !shadow-none text-xs"
                         >
                             <!-- Empty -->
                             <template #empty>
@@ -1244,7 +1244,7 @@ const submitInvoice = () => {
                         </div>
 
                         <!-- DataTable with .erp-line-items -->
-                        <DataTable :value="form.old_golds" scrollable stripedRows rowHover size="small" class="invoice-old-metal-table erp-line-items text-sm">
+                        <DataTable :value="form.old_golds" scrollable stripedRows rowHover size="small" class="erp-flush-table invoice-old-metal-table erp-line-items !rounded-none !border-0 !shadow-none text-sm">
                             <template #empty>
                                 <div class="flex flex-col items-center justify-center py-7 text-center text-surface-400">
                                     <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 mb-1.5 border border-amber-200/50">

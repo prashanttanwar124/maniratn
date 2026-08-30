@@ -431,37 +431,85 @@ class DashboardController extends Controller
                 ->where('status', '!=', 'CANCELLED')
                 ->count();
 
-            $orderAttention = OrderItem::query()
+            // Month-to-date Personal Performance
+            $myMonthSales = Invoice::query()
+                ->where('user_id', $user->id)
+                ->whereYear('date', $today->year)
+                ->whereMonth('date', $today->month)
+                ->where('status', '!=', 'CANCELLED')
+                ->sum('total_amount');
+
+            $myMonthInvoicesCount = Invoice::query()
+                ->where('user_id', $user->id)
+                ->whereYear('date', $today->year)
+                ->whereMonth('date', $today->month)
+                ->where('status', '!=', 'CANCELLED')
+                ->count();
+
+            // Store-wide today sales
+            $storeTodaySales = Invoice::query()
+                ->whereDate('date', $today)
+                ->where('status', '!=', 'CANCELLED')
+                ->sum('total_amount');
+
+            // Ready for Customer Delivery (Pickup Alert Desk)
+            $readyForDelivery = OrderItem::query()
                 ->with(['order.customer'])
-                ->whereIn('status', ['NEW', 'ASSIGNED', 'READY'])
-                ->orderByRaw("CASE status WHEN 'READY' THEN 1 WHEN 'ASSIGNED' THEN 2 ELSE 3 END")
+                ->where('status', 'READY')
+                ->latest('updated_at')
                 ->take(6)
                 ->get()
                 ->map(function (OrderItem $item) {
+                    return [
+                        'id' => $item->id,
+                        'order_id' => $item->order_id,
+                        'status' => $item->status,
+                        'customer_name' => $item->order?->customer?->name ?? 'Walk-in Customer',
+                        'customer_phone' => $item->order?->customer?->mobile ?? null,
+                        'design_name' => $item->item_name,
+                        'target_weight' => (float) ($item->target_weight ?? 0),
+                        'finished_weight' => (float) ($item->finished_weight ?? 0),
+                        'due_date' => $item->order?->due_date ? Carbon::parse($item->order->due_date)->toDateString() : null,
+                    ];
+                });
+
+            // Workshop / In-Production Attention Items (New, Assigned, Overdue)
+            $orderAttention = OrderItem::query()
+                ->with(['order.customer'])
+                ->whereIn('status', ['NEW', 'ASSIGNED'])
+                ->orderByRaw("CASE WHEN status = 'ASSIGNED' THEN 1 ELSE 2 END")
+                ->take(6)
+                ->get()
+                ->map(function (OrderItem $item) use ($today) {
                     $dueDate = $item->order?->due_date;
 
                     return [
                         'id' => $item->id,
+                        'order_id' => $item->order_id,
                         'status' => $item->status,
                         'customer_name' => $item->order?->customer?->name ?? 'Walk-in',
+                        'customer_phone' => $item->order?->customer?->mobile ?? null,
                         'design_name' => $item->item_name,
+                        'target_weight' => (float) ($item->target_weight ?? 0),
                         'due_date' => $dueDate ? Carbon::parse($dueDate)->toDateString() : null,
                         'is_overdue' => $dueDate
-                            ? Carbon::parse($dueDate)->lt($today) && $item->status !== 'READY'
+                            ? Carbon::parse($dueDate)->lt($today)
                             : false,
                     ];
                 });
 
+            // Recent Invoices by this user (or latest store invoices if staff hasn't billed yet)
             $recentInvoices = Invoice::query()
                 ->with('customer')
                 ->where('user_id', $user->id)
-                ->latest('date')
-                ->take(5)
+                ->latest('id')
+                ->take(6)
                 ->get()
                 ->map(fn (Invoice $invoice) => [
                     'id' => $invoice->id,
                     'invoice_number' => $invoice->invoice_number,
                     'customer_name' => $invoice->customer?->name ?? 'Walk-in',
+                    'customer_phone' => $invoice->customer?->mobile ?? null,
                     'date' => $invoice->date,
                     'total_amount' => (float) $invoice->total_amount,
                     'status' => $invoice->status,
@@ -477,6 +525,44 @@ class DashboardController extends Controller
                     ->count(),
             ];
 
+            // Assigned / Showroom Tasks for Staff
+            $myTasks = \App\Models\Task::query()
+                ->where(function ($q) use ($user) {
+                    $q->where('assigned_to', $user->id)
+                      ->orWhereNull('assigned_to');
+                })
+                ->whereIn('status', ['TODO', 'IN_PROGRESS'])
+                ->orderByDesc('is_pinned')
+                ->orderBy('due_date')
+                ->take(5)
+                ->get()
+                ->map(fn (\App\Models\Task $t) => [
+                    'id' => $t->id,
+                    'title' => $t->title,
+                    'description' => $t->description,
+                    'priority' => $t->priority,
+                    'category' => $t->category,
+                    'status' => $t->status,
+                    'due_date' => $t->due_date ? Carbon::parse($t->due_date)->toDateString() : null,
+                    'is_overdue' => $t->is_overdue,
+                    'checklist' => $t->checklist ?? [],
+                    'checklist_progress' => $t->checklist_progress,
+                    'total_subtasks' => $t->total_subtasks,
+                    'completed_subtasks' => $t->completed_subtasks,
+                ]);
+
+            // Staff Attendance for today
+            $myAttendance = \App\Models\StaffAttendance::query()
+                ->where('user_id', $user->id)
+                ->whereDate('date', $today)
+                ->first();
+
+            $attendanceData = [
+                'status' => $myAttendance ? $myAttendance->status : 'NOT_MARKED',
+                'check_in_at' => $myAttendance?->check_in_at ? Carbon::parse($myAttendance->check_in_at)->format('h:i A') : null,
+                'check_out_at' => $myAttendance?->check_out_at ? Carbon::parse($myAttendance->check_out_at)->format('h:i A') : null,
+            ];
+
             return Inertia::render('dashboard/StaffDashboard', [
                 'user' => $user,
                 'rates' => $rates,
@@ -488,14 +574,20 @@ class DashboardController extends Controller
                     'my_sales' => (float) $mySales,
                     'my_collections' => (float) $myCollections,
                     'my_invoices' => $myInvoicesCount,
+                    'my_month_sales' => (float) $myMonthSales,
+                    'my_month_invoices' => $myMonthInvoicesCount,
+                    'store_today_sales' => (float) $storeTodaySales,
                     'new_orders' => $orderMetrics['new'],
                     'in_production' => $orderMetrics['assigned'],
                     'ready_items' => $orderMetrics['ready'],
                     'overdue_items' => $orderMetrics['overdue'],
                 ],
                 'recent_invoices' => $recentInvoices,
+                'ready_for_delivery' => $readyForDelivery,
                 'attention_items' => $orderAttention,
                 'customer_reminders' => $customerReminders,
+                'my_tasks' => $myTasks,
+                'my_attendance' => $attendanceData,
             ]);
         }
     }

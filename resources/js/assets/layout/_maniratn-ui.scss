@@ -197,6 +197,42 @@ body {
     box-shadow: none !important;
 }
 
+.erp-panel .p-datatable,
+.erp-panel .p-datatable-table-container,
+.erp-panel .p-datatable-table,
+.erp-panel .p-datatable-thead,
+.erp-panel .p-datatable-thead > tr,
+.erp-panel .p-datatable-thead > tr > th:first-child,
+.erp-panel .p-datatable-thead > tr > th:last-child,
+.erp-flush-table,
+.erp-flush-table .p-datatable-table-container,
+.erp-flush-table .p-datatable-table,
+.erp-flush-table .p-datatable-thead,
+.erp-flush-table .p-datatable-thead > tr,
+.erp-flush-table .p-datatable-thead > tr > th:first-child,
+.erp-flush-table .p-datatable-thead > tr > th:last-child,
+.erp-table-shell > .erp-native-table {
+    border-radius: 0 !important;
+}
+
+.erp-flush-table,
+.erp-flush-table .p-datatable-table-container,
+.erp-flush-table .p-datatable-table {
+    border-top: 0 !important;
+    box-shadow: none !important;
+    outline: 0 !important;
+}
+
+.erp-flush-table .p-datatable-table {
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
+}
+
+.erp-table-shell > .erp-native-table {
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
 .erp-page-header {
     background: linear-gradient(135deg, color-mix(in srgb, var(--maniratn-gold-soft) 26%, var(--maniratn-panel)) 0%, var(--maniratn-panel) 48%), var(--maniratn-panel) !important;
 }

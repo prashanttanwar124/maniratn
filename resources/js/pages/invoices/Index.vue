@@ -842,7 +842,7 @@ const draftFormatCurrency = (val) =>
                 </div>
 
                 <!-- Old Metal Exchange Table -->
-                <div v-if="viewInvoice.old_golds?.length" class="mt-3 overflow-hidden rounded-xl border border-amber-200 bg-white">
+                <div v-if="viewInvoice.old_golds?.length" class="erp-table-shell mt-3 overflow-hidden rounded-xl border border-amber-200 bg-white">
                     <div class="flex items-center justify-between border-b border-amber-200 bg-amber-50/70 px-3 py-2.5">
                         <p class="text-xs font-bold tracking-wider text-surface-700 uppercase flex items-center gap-1.5">
                             <Coins class="w-3.5 h-3.5 text-amber-600" />
