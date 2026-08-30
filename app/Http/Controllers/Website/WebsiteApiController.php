@@ -387,4 +387,141 @@ class WebsiteApiController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Public API for maniratn-web to onboard/register walk-in customers via QR code.
+     */
+    public function registerCustomer(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $business = BusinessSetting::first();
+
+        // 1. Verify that QR Onboarding is enabled
+        if ($business && ! $business->qr_onboarding_enabled) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Online customer registration is currently disabled by the store.',
+            ], 403);
+        }
+
+        // 2. Validate Secret Token & optional PIN
+        $providedToken = $request->input('token') ?: $request->input('code');
+        $expectedToken = $business?->qr_onboarding_token;
+
+        if (! $expectedToken || ! $providedToken || ! hash_equals((string) $expectedToken, (string) $providedToken)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired counter registration token.',
+            ], 401);
+        }
+
+        if (! empty($business->qr_onboarding_pin)) {
+            $providedPin = (string) $request->input('pin');
+            if (! hash_equals((string) $business->qr_onboarding_pin, $providedPin)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Incorrect store counter PIN provided.',
+                ], 401);
+            }
+        }
+
+        // 3. Validate customer inputs
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'mobile' => ['required', 'string', 'max:20'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'dob' => ['nullable', 'date'],
+            'anniversary_date' => ['nullable', 'date'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'pan_no' => ['nullable', 'string', 'max:20'],
+            'aadhaar_no' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        // Normalize mobile
+        $cleanMobile = preg_replace('/\D/', '', (string) $validated['mobile']);
+        if (strlen($cleanMobile) > 10 && str_starts_with($cleanMobile, '91')) {
+            $cleanMobile = substr($cleanMobile, 2);
+        }
+
+        if (strlen($cleanMobile) < 10) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide a valid 10-digit mobile number.',
+            ], 422);
+        }
+
+        $validated['mobile'] = $cleanMobile;
+
+        // 4. Create or Update Customer
+        $customer = Customer::query()->where('mobile', $cleanMobile)->first();
+
+        if ($customer) {
+            $updateData = [];
+            if (empty($customer->dob) && ! empty($validated['dob'])) {
+                $updateData['dob'] = $validated['dob'];
+            }
+            if (empty($customer->anniversary_date) && ! empty($validated['anniversary_date'])) {
+                $updateData['anniversary_date'] = $validated['anniversary_date'];
+            }
+            if (empty($customer->email) && ! empty($validated['email'])) {
+                $updateData['email'] = $validated['email'];
+            }
+            if (empty($customer->city) && ! empty($validated['city'])) {
+                $updateData['city'] = $validated['city'];
+            }
+            if (empty($customer->address) && ! empty($validated['address'])) {
+                $updateData['address'] = $validated['address'];
+            }
+            if (empty($customer->pan_no) && ! empty($validated['pan_no'])) {
+                $updateData['pan_no'] = $validated['pan_no'];
+            }
+            if (empty($customer->aadhaar_no) && ! empty($validated['aadhaar_no'])) {
+                $updateData['aadhaar_no'] = $validated['aadhaar_no'];
+            }
+
+            if (! empty($updateData)) {
+                $customer->update($updateData);
+            }
+        } else {
+            $validated['card_status'] = 'ISSUED';
+            $validated['card_issued_at'] = now();
+            $validated['vault_token'] = Customer::generateVaultToken();
+            $customer = Customer::create($validated);
+        }
+
+        if (! $customer->vault_token) {
+            $customer->vault_token = Customer::generateVaultToken();
+            $customer->card_status = 'ISSUED';
+            $customer->card_issued_at = now();
+            $customer->save();
+        }
+
+        // 5. Generate Customer Vault URL
+        $websiteUrl = trim((string) ($business?->website ?? config('app.url')));
+        $websiteUrl = rtrim($websiteUrl !== '' ? $websiteUrl : 'http://localhost:8000', '/');
+        $vaultUrl = "{$websiteUrl}/vault/{$customer->vault_token}";
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Customer registered successfully.',
+            'customer' => [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'mobile' => $customer->mobile,
+                'city' => $customer->city,
+                'dob' => $customer->dob,
+                'anniversary_date' => $customer->anniversary_date,
+                'vault_token' => $customer->vault_token,
+                'vault_url' => $vaultUrl,
+            ],
+            'store' => [
+                'name' => $business?->store_name ?? 'Maniratn Jewellers',
+                'phone' => $business?->phone,
+                'address' => $business?->address,
+                'website' => $business?->website,
+                'google_review_url' => $business?->google_review_url,
+            ],
+        ], 201);
+    }
 }
+

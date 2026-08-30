@@ -27,6 +27,10 @@ const form = useForm({
     website: props.businessSetting?.website || '',
     google_review_url: props.businessSetting?.google_review_url || '',
     gst_number: props.businessSetting?.gst_number || '',
+    qr_onboarding_enabled: props.businessSetting?.qr_onboarding_enabled ?? true,
+    qr_onboarding_token: props.businessSetting?.qr_onboarding_token || '',
+    qr_onboarding_pin: props.businessSetting?.qr_onboarding_pin || '',
+    regenerate_qr_token: false,
     ai_enabled: props.businessSetting?.ai_enabled ?? true,
     ai_hub_url: props.businessSetting?.ai_hub_url || 'http://127.0.0.1:8001',
     ai_api_key: props.businessSetting?.ai_api_key || '',
@@ -55,18 +59,40 @@ const removeLogo = () => {
     form.remove_logo = true;
 };
 
+const regenerateToken = () => {
+    if (confirm('Regenerating will invalidate previously printed QR codes. Are you sure?')) {
+        form.regenerate_qr_token = true;
+        saveBusinessProfile();
+    }
+};
+
+const copyJoinUrl = () => {
+    if (props.businessSetting?.qr_onboarding_url) {
+        navigator.clipboard.writeText(props.businessSetting.qr_onboarding_url);
+        alert('VIP Onboarding Link copied to clipboard!');
+    }
+};
+
 const saveBusinessProfile = () => {
     form.transform((data) => ({
         ...data,
         _method: 'patch',
     })).post(route('business-settings.update'), {
         forceFormData: true,
+        onSuccess: () => {
+            form.regenerate_qr_token = false;
+        },
     });
 };
 
 const openStandee = () => {
     window.open(route('business-settings.standee.print'), '_blank', 'noopener');
 };
+
+const openOnboardingStandee = () => {
+    window.open(route('business-settings.onboarding-standee.print'), '_blank', 'noopener');
+};
+
 </script>
 
 <template>
@@ -149,7 +175,61 @@ const openStandee = () => {
                             <small v-if="form.errors.google_review_url" class="mt-1 block text-xs text-red-500">{{ form.errors.google_review_url }}</small>
                         </div>
 
+                        <!-- VIP Customer QR Self-Registration & Standee -->
+                        <div class="md:col-span-2 rounded-xl border border-amber-500/30 bg-amber-50/20 p-5 shadow-xs">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <i class="pi pi-qrcode text-amber-600 font-bold text-base"></i>
+                                    <div>
+                                        <label class="block text-sm font-bold text-surface-900">
+                                            VIP Customer QR Self-Registration (Walk-in Standee)
+                                        </label>
+                                        <p class="text-xs text-surface-500">Allow showroom walk-in customers to scan QR and register themselves securely via website.</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs text-surface-600 font-medium">Enable QR Onboarding</label>
+                                    <input type="checkbox" v-model="form.qr_onboarding_enabled" class="h-4 w-4 rounded text-amber-600 focus:ring-amber-500" />
+                                </div>
+                            </div>
+
+                            <div v-if="form.qr_onboarding_enabled" class="grid gap-4 sm:grid-cols-2 pt-3 border-t border-amber-500/20">
+                                <div>
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <label class="block text-xs font-semibold text-surface-700">Counter QR Secret Token</label>
+                                        <button type="button" class="text-[11px] text-amber-700 hover:text-amber-800 font-medium underline" @click="regenerateToken">
+                                            Regenerate
+                                        </button>
+                                    </div>
+                                    <InputText v-model="form.qr_onboarding_token" readonly class="w-full bg-surface-100 font-mono text-xs text-surface-700" />
+                                    <small class="text-[10px] text-surface-500">Embedded in standee QR code to authorize genuine submissions without exposing your ERP.</small>
+                                </div>
+
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Optional Store Counter PIN</label>
+                                    <InputText v-model="form.qr_onboarding_pin" class="w-full bg-white font-mono text-xs" placeholder="e.g. 4123 (Leave empty for direct scan)" />
+                                    <small class="text-[10px] text-surface-500">Optional 4-digit code. If entered, customers will be prompted for this counter code.</small>
+                                </div>
+
+                                <div class="sm:col-span-2 rounded-lg border border-amber-200 bg-white p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-xs font-semibold text-surface-900 flex items-center gap-1.5">
+                                            <i class="pi pi-link text-amber-600 text-xs"></i> Walk-in Customer Registration Link:
+                                        </p>
+                                        <p class="mt-1 text-xs font-mono text-surface-600 truncate">
+                                            {{ props.businessSetting?.qr_onboarding_url || 'https://maniratnjewellers.com/join?code=...' }}
+                                        </p>
+                                    </div>
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <Button label="Copy Link" icon="pi pi-copy" severity="secondary" size="small" type="button" @click="copyJoinUrl" />
+                                        <Button label="Print VIP Standee" icon="pi pi-print" severity="warning" size="small" type="button" @click="openOnboardingStandee" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="md:col-span-2 rounded-lg border border-emerald-500/30 bg-emerald-50/20 p-4 shadow-xs">
+
                             <div class="flex items-center justify-between mb-3">
                                 <div class="flex items-center gap-2">
                                     <i class="pi pi-sparkles text-emerald-600 font-bold"></i>

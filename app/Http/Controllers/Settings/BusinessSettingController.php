@@ -24,8 +24,23 @@ class BusinessSettingController extends Controller
                 'website' => '',
                 'google_review_url' => '',
                 'gst_number' => '',
+                'qr_onboarding_enabled' => true,
+                'qr_onboarding_token' => BusinessSetting::generateQrOnboardingToken(),
+                'qr_onboarding_pin' => '',
             ]
         );
+
+        if (! $businessSetting->qr_onboarding_token) {
+            $businessSetting->qr_onboarding_token = BusinessSetting::generateQrOnboardingToken();
+            $businessSetting->save();
+        }
+
+        $websiteUrl = trim((string) ($businessSetting->website ?: config('app.url')));
+        $websiteUrl = rtrim($websiteUrl !== '' ? $websiteUrl : 'http://localhost:8000', '/');
+        $qrOnboardingUrl = "{$websiteUrl}/join?code=" . urlencode((string) $businessSetting->qr_onboarding_token);
+        if ($businessSetting->qr_onboarding_pin) {
+            $qrOnboardingUrl .= '&pin=' . urlencode((string) $businessSetting->qr_onboarding_pin);
+        }
 
         return Inertia::render('settings/BusinessProfile', [
             'businessSetting' => [
@@ -43,6 +58,10 @@ class BusinessSettingController extends Controller
                 'ai_api_key' => $businessSetting->ai_api_key,
                 'ai_voice_enabled' => (bool) $businessSetting->ai_voice_enabled,
                 'ai_voice_name' => $businessSetting->ai_voice_name ?? 'Aoede',
+                'qr_onboarding_enabled' => (bool) $businessSetting->qr_onboarding_enabled,
+                'qr_onboarding_token' => $businessSetting->qr_onboarding_token,
+                'qr_onboarding_pin' => $businessSetting->qr_onboarding_pin,
+                'qr_onboarding_url' => $qrOnboardingUrl,
             ],
         ]);
     }
@@ -66,7 +85,15 @@ class BusinessSettingController extends Controller
             'ai_api_key' => ['nullable', 'string', 'max:255'],
             'ai_voice_enabled' => ['nullable', 'boolean'],
             'ai_voice_name' => ['nullable', 'string', 'max:50'],
+            'qr_onboarding_enabled' => ['nullable', 'boolean'],
+            'qr_onboarding_token' => ['nullable', 'string', 'max:64'],
+            'qr_onboarding_pin' => ['nullable', 'string', 'max:10'],
+            'regenerate_qr_token' => ['nullable', 'boolean'],
         ]);
+
+        if ($request->boolean('regenerate_qr_token')) {
+            $validated['qr_onboarding_token'] = BusinessSetting::generateQrOnboardingToken();
+        }
 
         if ($request->boolean('remove_logo') && $businessSetting->logo_path) {
             Storage::disk('public')->delete($businessSetting->logo_path);
@@ -81,7 +108,7 @@ class BusinessSettingController extends Controller
             $validated['logo_path'] = $request->file('logo')->store('business-settings', 'public');
         }
 
-        unset($validated['logo'], $validated['remove_logo']);
+        unset($validated['logo'], $validated['remove_logo'], $validated['regenerate_qr_token']);
 
         $businessSetting->update($validated);
 
@@ -119,4 +146,47 @@ class BusinessSettingController extends Controller
             'qrSvg' => $qrSvg,
         ]);
     }
+
+    public function printOnboardingStandee()
+    {
+        $businessSetting = BusinessSetting::firstOrCreate(['id' => 1]);
+        if (! $businessSetting->qr_onboarding_token) {
+            $businessSetting->qr_onboarding_token = BusinessSetting::generateQrOnboardingToken();
+            $businessSetting->save();
+        }
+
+        $websiteUrl = trim((string) ($businessSetting->website ?: config('app.url')));
+        $websiteUrl = rtrim($websiteUrl !== '' ? $websiteUrl : 'http://localhost:8000', '/');
+        $joinUrl = "{$websiteUrl}/join?code=" . urlencode((string) $businessSetting->qr_onboarding_token);
+        if ($businessSetting->qr_onboarding_pin) {
+            $joinUrl .= '&pin=' . urlencode((string) $businessSetting->qr_onboarding_pin);
+        }
+
+        $qrCodeBase64 = null;
+        $qrSvg = null;
+
+        try {
+            if (class_exists(\TCPDF2DBarcode::class)) {
+                $barcode = new \TCPDF2DBarcode($joinUrl, 'QRCODE,H');
+                $rawSvg = $barcode->getBarcodeSVGcode(4.5, 4.5, 'black');
+                $qrSvg = preg_replace('/^<\?xml[^>]*\?>\s*(<!DOCTYPE[^>]*>)?\s*/i', '', (string) $rawSvg);
+                $qrSvg = preg_replace('/(<svg[^>]*>)/i', '$1<rect width="100%" height="100%" fill="#ffffff"/>', (string) $qrSvg);
+
+                $pngData = $barcode->getBarcodePngData(8, 8);
+                if ($pngData) {
+                    $qrCodeBase64 = 'data:image/png;base64,' . base64_encode($pngData);
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed generating Onboarding Standee QR code: ' . $e->getMessage());
+        }
+
+        return view('print.onboarding-standee', [
+            'business' => $businessSetting,
+            'joinUrl' => $joinUrl,
+            'qrCodeBase64' => $qrCodeBase64,
+            'qrSvg' => $qrSvg,
+        ]);
+    }
 }
+

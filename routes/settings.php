@@ -18,7 +18,11 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/business-profile/standee', [BusinessSettingController::class, 'printStandee'])
         ->middleware('permission:manage_users')
         ->name('business-settings.standee.print');
+    Route::get('settings/business-profile/onboarding-standee', [BusinessSettingController::class, 'printOnboardingStandee'])
+        ->middleware('permission:manage_users')
+        ->name('business-settings.onboarding-standee.print');
     Route::match(['put', 'patch'], 'settings/business-profile', [BusinessSettingController::class, 'update'])
+
         ->middleware('permission:manage_users')
         ->name('business-settings.update');
 

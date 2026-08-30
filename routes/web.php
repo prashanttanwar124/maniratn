@@ -64,6 +64,11 @@ Route::get('/api/website/vault/{token}/invoices/{invoice}/print', [WebsiteApiCon
     ->middleware('throttle:60,1')
     ->name('website.vault.invoice-print');
 
+Route::post('/api/website/customers/register', [WebsiteApiController::class, 'registerCustomer'])
+    ->middleware('throttle:30,1')
+    ->name('website.customers.register');
+
+
 Route::get('/api/inventory/{barcode}', function ($barcode) {
     $inventory = app(InventoryBarcodeService::class)->find((string) $barcode);
 

@@ -21,7 +21,25 @@ class BusinessSetting extends Model
         'ai_api_key',
         'ai_voice_enabled',
         'ai_voice_name',
+        'qr_onboarding_enabled',
+        'qr_onboarding_token',
+        'qr_onboarding_pin',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'ai_enabled' => 'boolean',
+            'ai_voice_enabled' => 'boolean',
+            'qr_onboarding_enabled' => 'boolean',
+        ];
+    }
+
+    public static function generateQrOnboardingToken(): string
+    {
+        return 'mani_join_' . bin2hex(random_bytes(16));
+    }
+
 
     protected $appends = [
         'logo_url',
