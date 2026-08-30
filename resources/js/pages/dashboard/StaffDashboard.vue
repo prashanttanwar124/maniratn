@@ -1,13 +1,12 @@
 <script setup>
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Link, usePage, router } from '@inertiajs/vue3';
-import { computed, ref, reactive } from 'vue';
+import { Link, useForm, usePage, router } from '@inertiajs/vue3';
+import { computed, ref, reactive, watch } from 'vue';
 import axios from 'axios';
 
 import Button from 'primevue/button';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
-import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
 import { formatIndianDate } from '@/utils/indiaTime';
@@ -69,7 +68,26 @@ const silverSellRate = computed(() => Number(props.rates?.silver_sell || 0));
 const gold22kRate = computed(() => (goldSellRate.value > 0 ? Math.round(goldSellRate.value * (22 / 24)) : 0));
 const gold18kRate = computed(() => (goldSellRate.value > 0 ? Math.round(goldSellRate.value * (18 / 24)) : 0));
 
-// Quick Launchpad Items for Counter Staff
+const hasZeroRates = computed(() => goldSellRate.value <= 0 && silverSellRate.value <= 0);
+
+// Rate Update Dialog & Form
+const showRateDialog = ref(false);
+const rateForm = useForm({
+    gold_sell: parseFloat(props.rates?.gold_sell || 0),
+    gold_buy: parseFloat(props.rates?.gold_buy || 0),
+    silver_sell: parseFloat(props.rates?.silver_sell || 0),
+});
+
+const saveRates = () => {
+    rateForm.post(route('dashboard.update-rates'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showRateDialog.value = false;
+        },
+    });
+};
+
+// Quick Launchpad Items for Counter Staff (6 Balanced Symmetrical Cards)
 const quickLinks = computed(() => [
     {
         label: 'New Retail Bill',
@@ -79,57 +97,33 @@ const quickLinks = computed(() => [
         badgeClass: 'bg-surface-900 text-white',
         iconBoxClass: 'bg-surface-900 text-white',
         desc: 'Fast billing & tax invoice',
-        permission: can.value.manage_invoices,
     },
     {
-        label: 'Gold Inventory',
-        href: route('products.index'),
-        icon: 'pi pi-box',
-        badge: 'Stock',
-        badgeClass: 'bg-amber-50 text-amber-800 border border-amber-200',
-        iconBoxClass: 'bg-amber-50 text-amber-700 border border-amber-200',
-        desc: 'Browse jewellery catalog',
-        permission: can.value.manage_products,
-    },
-    {
-        label: 'Silver Products',
-        href: route('silver-products.index'),
-        icon: 'pi pi-sparkles',
-        badge: 'Silver',
-        badgeClass: 'bg-slate-100 text-slate-700 border border-slate-300',
-        iconBoxClass: 'bg-slate-100 text-slate-700 border border-slate-300',
-        desc: 'Articles & silver ornaments',
-        permission: can.value.manage_products,
+        label: 'Sales Invoices',
+        href: route('invoices.index'),
+        icon: 'pi pi-file-check',
+        badge: `${props.metrics?.my_invoices || 0} today`,
+        badgeClass: 'bg-sky-50 text-sky-700 border border-sky-200',
+        iconBoxClass: 'bg-sky-50 text-sky-700 border border-sky-200',
+        desc: 'Browse & print bills',
     },
     {
         label: 'Custom Orders',
         href: route('orders.index'),
         icon: 'pi pi-wrench',
         badge: `${props.metrics?.ready_items || 0} Ready`,
-        badgeClass: props.metrics?.ready_items > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' : 'bg-surface-100 text-surface-700 border border-surface-200',
+        badgeClass: props.metrics?.ready_items > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-bold' : 'bg-surface-100 text-surface-700 border border-surface-200',
         iconBoxClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-        desc: 'Customer orders & workshop',
-        permission: can.value.create_order || can.value.manage_orders,
+        desc: 'Pickup & karigar status',
     },
     {
         label: 'Customer Khata',
         href: route('customers.index'),
         icon: 'pi pi-users',
         badge: 'CRM',
-        badgeClass: 'bg-sky-50 text-sky-700 border border-sky-200',
-        iconBoxClass: 'bg-sky-50 text-sky-700 border border-sky-200',
-        desc: 'Balances & customer phonebook',
-        permission: can.value.manage_customers,
-    },
-    {
-        label: 'Gold Bachat Scheme',
-        href: route('gold-schemes.index'),
-        icon: 'pi pi-wallet',
-        badge: 'Bachat',
-        badgeClass: 'bg-purple-50 text-purple-700 border border-purple-200',
-        iconBoxClass: 'bg-purple-50 text-purple-700 border border-purple-200',
-        desc: 'Monthly installments & savings',
-        permission: can.value.manage_gold_schemes,
+        badgeClass: 'bg-amber-50 text-amber-800 border border-amber-200',
+        iconBoxClass: 'bg-amber-50 text-amber-700 border border-amber-200',
+        desc: 'Phonebook & balances',
     },
     {
         label: 'Showroom Tasks',
@@ -138,18 +132,16 @@ const quickLinks = computed(() => [
         badge: `${props.my_tasks?.length || 0} Open`,
         badgeClass: props.my_tasks?.length > 0 ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-surface-100 text-surface-700 border border-surface-200',
         iconBoxClass: 'bg-rose-50 text-rose-700 border border-rose-200',
-        desc: 'Daily duties & checklist',
-        permission: true,
+        desc: 'Daily store checklist',
     },
     {
         label: 'Attendance Terminal',
         href: route('attendance-terminal.show'),
         icon: 'pi pi-clock',
-        badge: props.my_attendance?.status === 'PRESENT' ? 'Punch OK' : 'Shift',
-        badgeClass: props.my_attendance?.status === 'PRESENT' ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' : 'bg-amber-50 text-amber-700 border border-amber-300',
+        badge: props.my_attendance?.status === 'PRESENT' ? 'In' : 'Shift',
+        badgeClass: props.my_attendance?.status === 'PRESENT' ? 'bg-teal-50 text-teal-700 border border-teal-300 font-bold' : 'bg-amber-50 text-amber-700 border border-amber-300',
         iconBoxClass: 'bg-teal-50 text-teal-700 border border-teal-200',
-        desc: 'Shift check-in / check-out',
-        permission: true,
+        desc: 'Shift check-in / out',
     },
 ]);
 
@@ -157,21 +149,24 @@ const quickLinks = computed(() => [
 // 🧮 LIVE COUNTER PRICE & QUOTE ESTIMATOR
 // ----------------------------------------------------
 const estimatorPurities = [
-    { label: 'Gold 22K (916 Hallmark)', value: '22K', rate: gold22kRate },
-    { label: 'Gold 24K (999 Fine)', value: '24K', rate: goldSellRate },
-    { label: 'Gold 18K (750 Hallmark)', value: '18K', rate: gold18kRate },
-    { label: 'Silver 925 (Sterling)', value: 'SILVER', rate: silverSellRate },
+    { label: 'Gold 22K (916 Hallmark)', value: '22K', defaultRate: 7200 },
+    { label: 'Gold 24K (999 Fine)', value: '24K', defaultRate: 7850 },
+    { label: 'Gold 18K (750 Hallmark)', value: '18K', defaultRate: 5900 },
+    { label: 'Silver 925 (Sterling)', value: 'SILVER', defaultRate: 95 },
 ];
 
 const estimator = reactive({
     selectedPurity: '22K',
     grossWeight: 10.0,
+    customRate: null,
+    useCustomRate: false,
     makingChargeType: 'PERCENT', // 'PERCENT' | 'PER_GRAM'
     makingChargeValue: 12, // 12% or ₹450/g
     includeGst: true,
 });
 
-const currentEstimatorRate = computed(() => {
+// Calculate official benchmark rate for chosen purity
+const systemRateForPurity = computed(() => {
     if (estimator.selectedPurity === '24K') return goldSellRate.value;
     if (estimator.selectedPurity === '22K') return gold22kRate.value;
     if (estimator.selectedPurity === '18K') return gold18kRate.value;
@@ -179,9 +174,25 @@ const currentEstimatorRate = computed(() => {
     return gold22kRate.value;
 });
 
+// Effective rate: uses official rate if > 0, otherwise custom rate or fallback
+const effectiveEstimatorRate = computed(() => {
+    if (estimator.useCustomRate && Number(estimator.customRate || 0) > 0) {
+        return Number(estimator.customRate);
+    }
+    if (systemRateForPurity.value > 0) {
+        return systemRateForPurity.value;
+    }
+    if (Number(estimator.customRate || 0) > 0) {
+        return Number(estimator.customRate);
+    }
+    // Default fallback if system rate is 0
+    const fallback = estimatorPurities.find((p) => p.value === estimator.selectedPurity)?.defaultRate || 7200;
+    return fallback;
+});
+
 const estimatedMetalAmount = computed(() => {
     const wt = Number(estimator.grossWeight || 0);
-    return Math.round(wt * currentEstimatorRate.value);
+    return Math.round(wt * effectiveEstimatorRate.value);
 });
 
 const estimatedMakingAmount = computed(() => {
@@ -205,10 +216,15 @@ const estimatedGstAmount = computed(() => {
 
 const estimatedTotalQuote = computed(() => estimatedSubtotal.value + estimatedGstAmount.value);
 
+const setMakingPreset = (type, val) => {
+    estimator.makingChargeType = type;
+    estimator.makingChargeValue = val;
+};
+
 const quoteCopied = ref(false);
 const copyQuoteToClipboard = () => {
     const purityLabel = estimatorPurities.find((p) => p.value === estimator.selectedPurity)?.label || estimator.selectedPurity;
-    const text = `*MANIRATN JEWELLERS - INSTANT QUOTE*\n✨ Metal: ${purityLabel}\n⚖️ Weight: ${Number(estimator.grossWeight || 0).toFixed(3)} g\n💰 Metal Rate: ₹${currentEstimatorRate.value.toLocaleString('en-IN')}/g\n💵 Metal Cost: ₹${estimatedMetalAmount.value.toLocaleString('en-IN')}\n🔨 Making Charges: ₹${estimatedMakingAmount.value.toLocaleString('en-IN')}\n🧾 GST (3%): ₹${estimatedGstAmount.value.toLocaleString('en-IN')}\n\n*⭐ Total Estimate: ₹${estimatedTotalQuote.value.toLocaleString('en-IN')}* \n\n_Note: Rate valid for today only._`;
+    const text = `*MANIRATN JEWELLERS - INSTANT QUOTE*\n✨ Metal: ${purityLabel}\n⚖️ Weight: ${Number(estimator.grossWeight || 0).toFixed(3)} g\n💰 Metal Rate: ₹${effectiveEstimatorRate.value.toLocaleString('en-IN')}/g\n💵 Metal Cost: ₹${estimatedMetalAmount.value.toLocaleString('en-IN')}\n🔨 Making Charges (${estimator.makingChargeType === 'PERCENT' ? `${estimator.makingChargeValue}%` : `₹${estimator.makingChargeValue}/g`}): ₹${estimatedMakingAmount.value.toLocaleString('en-IN')}\n🧾 GST (3%): ₹${estimatedGstAmount.value.toLocaleString('en-IN')}\n\n*⭐ Estimated Total: ₹${estimatedTotalQuote.value.toLocaleString('en-IN')}*\n\n_Note: Rate subject to market daily revision._`;
 
     navigator.clipboard.writeText(text).then(() => {
         quoteCopied.value = true;
@@ -225,7 +241,6 @@ const scanQuery = ref('');
 const isSearchingBarcode = ref(false);
 const scannedItem = ref(null);
 const scanError = ref('');
-const showScanModal = ref(false);
 
 const performBarcodeSearch = async (barcodeOverride = null) => {
     const code = (barcodeOverride || scanQuery.value || '').trim();
@@ -245,11 +260,10 @@ const performBarcodeSearch = async (barcodeOverride = null) => {
     }
 };
 
-const openBarcodeModal = () => {
+const clearScan = () => {
     scanQuery.value = '';
     scannedItem.value = null;
     scanError.value = '';
-    showScanModal.value = true;
 };
 
 // ----------------------------------------------------
@@ -262,9 +276,9 @@ const sendWhatsAppWish = (reminder) => {
         return;
     }
     const phone = cleanMobile.startsWith('91') ? cleanMobile : `91${cleanMobile}`;
-    const greeting = reminder.type === 'Birthday' ? 'Happy Birthday' : 'Happy Anniversary';
+    const greetingText = reminder.type === 'Birthday' ? 'Happy Birthday' : 'Happy Anniversary';
     const text = encodeURIComponent(
-        `Dear ${reminder.customer_name},\n\nWarmest wishes on your ${greeting} from all of us at Maniratn Jewellers! ✨🎂\n\nMay this special day bring you abundant happiness and prosperity.\n\nVisit us to explore our latest fine jewellery collection!\n\nWarm regards,\nManiratn Jewellers`
+        `Dear ${reminder.customer_name},\n\nWarmest wishes on your ${greetingText} from all of us at Maniratn Jewellers! ✨🎂\n\nMay this special day bring you abundant happiness, health, and prosperity.\n\nVisit us to explore our latest fine jewellery collection!\n\nWarm regards,\nManiratn Jewellers`
     );
     window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
 };
@@ -370,13 +384,14 @@ const taskPriorityClass = (priority) => {
                     <!-- Header Action Buttons -->
                     <div class="flex flex-wrap items-center gap-2">
                         <Button
-                            label="Scan Barcode"
-                            icon="pi pi-qrcode"
+                            v-if="can.manage_daily_rates"
+                            label="Market Rates"
+                            icon="pi pi-pencil"
                             size="small"
                             outlined
                             severity="secondary"
                             class="!border-surface-300 hover:!border-surface-900"
-                            @click="openBarcodeModal"
+                            @click="showRateDialog = true"
                         />
 
                         <Link v-if="can.manage_invoices" :href="route('invoices.create')">
@@ -384,6 +399,26 @@ const taskPriorityClass = (priority) => {
                         </Link>
                     </div>
                 </div>
+            </div>
+
+            <!-- Zero Rates Warning Banner -->
+            <div v-if="hasZeroRates" class="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50/90 px-4 py-3 text-xs text-amber-900 shadow-xs">
+                <div class="flex items-center gap-2.5">
+                    <i class="pi pi-exclamation-triangle text-amber-700 text-sm flex-shrink-0"></i>
+                    <span>
+                        <strong>Market Rates Not Set:</strong> Today's live gold & silver benchmark rates are currently ₹0.
+                        <span v-if="can.manage_daily_rates">Click <strong>Update Rates</strong> to publish today's gold rates.</span>
+                        <span v-else>Estimator will use standard benchmark estimates until updated.</span>
+                    </span>
+                </div>
+                <Button
+                    v-if="can.manage_daily_rates"
+                    label="Update Rates"
+                    icon="pi pi-pencil"
+                    size="small"
+                    class="!h-7 !text-xs !bg-amber-800 !text-white !border-amber-800 hover:!bg-amber-900 flex-shrink-0"
+                    @click="showRateDialog = true"
+                />
             </div>
 
             <!-- ========================================== -->
@@ -397,10 +432,10 @@ const taskPriorityClass = (priority) => {
                         <span class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200">Standard</span>
                     </div>
                     <div class="mt-2 text-xl font-bold tracking-tight text-amber-800">
-                        ₹{{ goldSellRate.toLocaleString('en-IN') }}<span class="text-xs font-normal text-surface-400">/g</span>
+                        ₹{{ goldSellRate > 0 ? goldSellRate.toLocaleString('en-IN') : '7,850*' }}<span class="text-xs font-normal text-surface-400">/g</span>
                     </div>
                     <div class="mt-1 text-[11px] text-surface-400">
-                        Buy (Old Gold): <strong class="text-surface-700">₹{{ goldBuyRate.toLocaleString('en-IN') }}/g</strong>
+                        Buy (Old Gold): <strong class="text-surface-700">₹{{ goldBuyRate > 0 ? goldBuyRate.toLocaleString('en-IN') : '7,690*' }}/g</strong>
                     </div>
                 </div>
 
@@ -411,10 +446,10 @@ const taskPriorityClass = (priority) => {
                         <span class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200">Hallmark</span>
                     </div>
                     <div class="mt-2 text-xl font-bold tracking-tight text-amber-700">
-                        ₹{{ gold22kRate.toLocaleString('en-IN') }}<span class="text-xs font-normal text-surface-400">/g</span>
+                        ₹{{ gold22kRate > 0 ? gold22kRate.toLocaleString('en-IN') : '7,195*' }}<span class="text-xs font-normal text-surface-400">/g</span>
                     </div>
                     <div class="mt-1 text-[11px] text-surface-400">
-                        Daily retail standard rate
+                        Daily retail hallmark standard
                     </div>
                 </div>
 
@@ -425,7 +460,7 @@ const taskPriorityClass = (priority) => {
                         <span class="rounded bg-surface-100 px-1.5 py-0.5 text-[10px] font-bold text-surface-700">Diamonds</span>
                     </div>
                     <div class="mt-2 text-xl font-bold tracking-tight text-surface-900">
-                        ₹{{ gold18kRate.toLocaleString('en-IN') }}<span class="text-xs font-normal text-surface-400">/g</span>
+                        ₹{{ gold18kRate > 0 ? gold18kRate.toLocaleString('en-IN') : '5,888*' }}<span class="text-xs font-normal text-surface-400">/g</span>
                     </div>
                     <div class="mt-1 text-[11px] text-surface-400">
                         Fine studded ornaments
@@ -439,10 +474,10 @@ const taskPriorityClass = (priority) => {
                         <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700">Sterling</span>
                     </div>
                     <div class="mt-2 text-xl font-bold tracking-tight text-slate-800">
-                        ₹{{ silverSellRate.toLocaleString('en-IN') }}<span class="text-xs font-normal text-surface-400">/g</span>
+                        ₹{{ silverSellRate > 0 ? silverSellRate.toLocaleString('en-IN') : '95*' }}<span class="text-xs font-normal text-surface-400">/g</span>
                     </div>
                     <div class="mt-1 text-[11px] text-surface-400">
-                        ₹{{ (silverSellRate * 1000).toLocaleString('en-IN') }}/kg
+                        ₹{{ (silverSellRate > 0 ? silverSellRate * 1000 : 95000).toLocaleString('en-IN') }}/kg
                     </div>
                 </div>
             </div>
@@ -459,33 +494,33 @@ const taskPriorityClass = (priority) => {
                     <span class="text-[11px] text-surface-400 font-medium">Daily Counter Operations</span>
                 </div>
 
-                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
-                    <template v-for="item in quickLinks" :key="item.label">
-                        <Link
-                            v-if="item.permission"
-                            :href="item.href"
-                            class="erp-quick-link group flex flex-col justify-between rounded-lg border border-surface-200 bg-surface-50/60 p-3.5 transition shadow-xs hover:shadow-sm"
-                        >
-                            <!-- Top Row: Icon Container + Badge -->
-                            <div class="flex items-center justify-between">
-                                <div class="erp-quick-link__icon flex h-9 w-9 items-center justify-center rounded-lg text-xs" :class="item.iconBoxClass">
-                                    <i :class="item.icon"></i>
-                                </div>
-                                <span class="erp-quick-link__badge rounded-md px-1.5 py-0.5 text-[9.5px] font-bold" :class="item.badgeClass">
-                                    {{ item.badge }}
-                                </span>
+                <!-- Symmetrical 6-Column Grid: Always 100% full width with zero gaps -->
+                <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                    <Link
+                        v-for="item in quickLinks"
+                        :key="item.label"
+                        :href="item.href"
+                        class="erp-quick-link group flex flex-col justify-between rounded-lg border border-surface-200 bg-surface-50/60 p-3.5 transition shadow-xs hover:shadow-sm"
+                    >
+                        <!-- Top Row: Icon Container + Badge -->
+                        <div class="flex items-center justify-between">
+                            <div class="erp-quick-link__icon flex h-9 w-9 items-center justify-center rounded-lg text-xs" :class="item.iconBoxClass">
+                                <i :class="item.icon"></i>
                             </div>
+                            <span class="erp-quick-link__badge rounded-md px-1.5 py-0.5 text-[9.5px] font-bold" :class="item.badgeClass">
+                                {{ item.badge }}
+                            </span>
+                        </div>
 
-                            <!-- Bottom Row: Title + Description -->
-                            <div class="mt-3">
-                                <div class="flex items-center justify-between">
-                                    <div class="text-xs font-bold text-surface-900 truncate">{{ item.label }}</div>
-                                    <i class="pi pi-arrow-right text-[8px] text-surface-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"></i>
-                                </div>
-                                <div class="mt-0.5 truncate text-[10.5px] text-surface-500">{{ item.desc }}</div>
+                        <!-- Bottom Row: Title + Description -->
+                        <div class="mt-3">
+                            <div class="flex items-center justify-between">
+                                <div class="text-xs font-bold text-surface-900 truncate">{{ item.label }}</div>
+                                <i class="pi pi-arrow-right text-[8px] text-surface-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"></i>
                             </div>
-                        </Link>
-                    </template>
+                            <div class="mt-0.5 truncate text-[10.5px] text-surface-500">{{ item.desc }}</div>
+                        </div>
+                    </Link>
                 </div>
             </div>
 
@@ -543,140 +578,216 @@ const taskPriorityClass = (priority) => {
             </div>
 
             <!-- ========================================== -->
-            <!-- 5. INTERACTIVE LIVE COUNTER CALCULATOR     -->
+            <!-- 5. INSTANT COUNTER QUOTE ESTIMATOR         -->
             <!-- ========================================== -->
             <div class="erp-panel border border-surface-200 bg-white p-5 shadow-2xs">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-surface-100 pb-3">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-surface-100 pb-3">
                     <div class="flex items-center gap-2">
-                        <i class="pi pi-calculator text-amber-600 text-xs flex-shrink-0"></i>
-                        <span class="text-xs font-bold uppercase tracking-wider text-surface-700 leading-none">Instant Counter Quote Estimator</span>
+                        <div class="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500 text-white text-xs">
+                            <i class="pi pi-calculator"></i>
+                        </div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-surface-800">Instant Counter Quote Estimator</span>
                     </div>
-                    <div class="flex items-center gap-2 text-xs text-surface-500">
-                        <span>Give live price quotes to walk-in customers in seconds.</span>
+                    <div class="text-[11.5px] text-surface-500">
+                        Instant walk-in customer pricing &bull; Auto-calculates metal, making & GST
                     </div>
                 </div>
 
-                <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-12">
-                    <!-- Left: Input Controls (7 cols) -->
-                    <div class="space-y-3.5 md:col-span-7">
-                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <!-- Metal & Purity Selector -->
-                            <div>
-                                <label class="mb-1 block text-xs font-semibold text-surface-700">Metal & Purity</label>
-                                <select
-                                    v-model="estimator.selectedPurity"
-                                    class="w-full rounded-md border border-surface-300 bg-white px-3 py-2 text-xs font-semibold text-surface-900 shadow-2xs focus:border-surface-900 focus:outline-none"
+                <div class="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-12">
+                    <!-- Left Column: Input Form (7 cols) -->
+                    <div class="space-y-4 lg:col-span-7">
+                        <!-- 1. Purity Selector (Segmented Cards) -->
+                        <div>
+                            <label class="mb-1.5 block text-xs font-semibold text-surface-700">Select Metal & Purity</label>
+                            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                <button
+                                    v-for="p in estimatorPurities"
+                                    :key="p.value"
+                                    type="button"
+                                    class="flex flex-col items-start rounded-lg border p-2.5 text-left transition cursor-pointer"
+                                    :class="estimator.selectedPurity === p.value ? 'border-surface-900 bg-surface-900 text-white shadow-xs' : 'border-surface-200 bg-surface-50/70 hover:border-surface-300 text-surface-800'"
+                                    @click="estimator.selectedPurity = p.value"
                                 >
-                                    <option v-for="p in estimatorPurities" :key="p.value" :value="p.value">
-                                        {{ p.label }} (₹{{ p.rate.value.toLocaleString('en-IN') }}/g)
-                                    </option>
-                                </select>
+                                    <span class="text-xs font-bold">{{ p.value === 'SILVER' ? 'Silver 925' : p.value }}</span>
+                                    <span class="text-[10px] mt-0.5" :class="estimator.selectedPurity === p.value ? 'text-amber-300' : 'text-amber-800 font-semibold'">
+                                        ₹{{ (systemRateForPurity > 0 && estimator.selectedPurity === p.value ? systemRateForPurity : p.defaultRate).toLocaleString('en-IN') }}/g
+                                    </span>
+                                </button>
                             </div>
+                        </div>
 
-                            <!-- Gross Weight in Grams -->
+                        <!-- 2. Gross Weight & Custom Rate -->
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <div>
-                                <label class="mb-1 block text-xs font-semibold text-surface-700">Gross Weight (grams)</label>
+                                <label class="mb-1.5 block text-xs font-semibold text-surface-700">Gross Weight</label>
                                 <InputNumber
                                     v-model="estimator.grossWeight"
                                     :minFractionDigits="3"
                                     :maxFractionDigits="3"
                                     :min="0.001"
                                     suffix=" g"
-                                    class="w-full"
-                                    placeholder="e.g. 10.500"
+                                    class="w-full text-xs font-semibold"
+                                    placeholder="e.g. 10.000 g"
                                 />
+                            </div>
+
+                            <div>
+                                <div class="mb-1.5 flex items-center justify-between">
+                                    <label class="text-xs font-semibold text-surface-700">Effective Rate per Gram</label>
+                                    <button
+                                        type="button"
+                                        class="text-[10px] font-bold text-amber-800 hover:underline cursor-pointer"
+                                        @click="estimator.useCustomRate = !estimator.useCustomRate"
+                                    >
+                                        {{ estimator.useCustomRate ? 'Use Official' : 'Edit Rate' }}
+                                    </button>
+                                </div>
+                                <div v-if="estimator.useCustomRate">
+                                    <InputNumber
+                                        v-model="estimator.customRate"
+                                        mode="currency"
+                                        currency="INR"
+                                        locale="en-IN"
+                                        class="w-full text-xs font-semibold"
+                                        placeholder="Enter custom rate/g"
+                                    />
+                                </div>
+                                <div v-else class="flex h-[42px] items-center justify-between rounded-lg border border-surface-200 bg-surface-50 px-3 text-xs font-bold text-surface-900">
+                                    <span>₹{{ effectiveEstimatorRate.toLocaleString('en-IN') }}/g</span>
+                                    <span class="text-[10px] text-surface-400 font-normal">
+                                        {{ systemRateForPurity > 0 ? 'Live Daily' : 'Standard Ref' }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <!-- Making Charge -->
-                            <div>
-                                <div class="mb-1 flex items-center justify-between">
-                                    <label class="text-xs font-semibold text-surface-700">Making Charges</label>
-                                    <div class="flex items-center gap-1.5 text-[10px]">
-                                        <button
-                                            type="button"
-                                            class="rounded px-1.5 py-0.5 font-bold transition cursor-pointer"
-                                            :class="estimator.makingChargeType === 'PERCENT' ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-600'"
-                                            @click="estimator.makingChargeType = 'PERCENT'"
-                                        >
-                                            % Rate
-                                        </button>
-                                        <button
-                                            type="button"
-                                            class="rounded px-1.5 py-0.5 font-bold transition cursor-pointer"
-                                            :class="estimator.makingChargeType === 'PER_GRAM' ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-600'"
-                                            @click="estimator.makingChargeType = 'PER_GRAM'"
-                                        >
-                                            ₹/gram
-                                        </button>
-                                    </div>
+                        <!-- 3. Making Charges & Quick Presets -->
+                        <div>
+                            <div class="mb-1.5 flex items-center justify-between">
+                                <label class="text-xs font-semibold text-surface-700">Making Charges</label>
+                                <div class="erp-segmented-control !h-6">
+                                    <button
+                                        type="button"
+                                        :class="{ active: estimator.makingChargeType === 'PERCENT' }"
+                                        class="!px-2 !py-0 !text-[10px]"
+                                        @click="estimator.makingChargeType = 'PERCENT'"
+                                    >
+                                        % of Metal
+                                    </button>
+                                    <button
+                                        type="button"
+                                        :class="{ active: estimator.makingChargeType === 'PER_GRAM' }"
+                                        class="!px-2 !py-0 !text-[10px]"
+                                        @click="estimator.makingChargeType = 'PER_GRAM'"
+                                    >
+                                        ₹/gram
+                                    </button>
                                 </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                 <InputNumber
                                     v-model="estimator.makingChargeValue"
                                     :suffix="estimator.makingChargeType === 'PERCENT' ? ' %' : ' ₹/g'"
                                     :min="0"
-                                    class="w-full"
+                                    class="w-full text-xs font-semibold"
                                 />
-                            </div>
 
-                            <!-- GST Toggle -->
-                            <div>
-                                <label class="mb-1 block text-xs font-semibold text-surface-700">Tax Breakdown</label>
-                                <div class="flex h-[38px] items-center justify-between rounded-md border border-surface-300 bg-surface-50 px-3">
-                                    <span class="text-xs font-medium text-surface-700">Include GST (3%)</span>
-                                    <input
-                                        v-model="estimator.includeGst"
-                                        type="checkbox"
-                                        class="h-4 w-4 rounded border-surface-300 text-surface-900 focus:ring-surface-900 cursor-pointer"
-                                    />
+                                <!-- Quick Presets -->
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <template v-if="estimator.makingChargeType === 'PERCENT'">
+                                        <button
+                                            v-for="pct in [8, 10, 12, 15]"
+                                            :key="pct"
+                                            type="button"
+                                            class="rounded-md border border-surface-200 bg-surface-50 px-2 py-1.5 text-[11px] font-semibold text-surface-700 hover:border-surface-900 hover:bg-surface-900 hover:text-white transition cursor-pointer"
+                                            :class="estimator.makingChargeValue === pct ? '!bg-surface-900 !text-white !border-surface-900' : ''"
+                                            @click="setMakingPreset('PERCENT', pct)"
+                                        >
+                                            {{ pct }}%
+                                        </button>
+                                    </template>
+                                    <template v-else>
+                                        <button
+                                            v-for="amt in [350, 450, 550, 650]"
+                                            :key="amt"
+                                            type="button"
+                                            class="rounded-md border border-surface-200 bg-surface-50 px-2 py-1.5 text-[11px] font-semibold text-surface-700 hover:border-surface-900 hover:bg-surface-900 hover:text-white transition cursor-pointer"
+                                            :class="estimator.makingChargeValue === amt ? '!bg-surface-900 !text-white !border-surface-900' : ''"
+                                            @click="setMakingPreset('PER_GRAM', amt)"
+                                        >
+                                            ₹{{ amt }}
+                                        </button>
+                                    </template>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- 4. Tax / GST Toggle -->
+                        <div class="flex items-center justify-between rounded-lg border border-surface-200 bg-surface-50/70 p-3">
+                            <div>
+                                <span class="text-xs font-bold text-surface-900">Include GST (3%)</span>
+                                <span class="text-[10px] text-surface-500 block">Standard precious jewellery tax breakdown</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input v-model="estimator.includeGst" type="checkbox" class="sr-only peer" />
+                                <div class="w-9 h-5 bg-surface-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-surface-900"></div>
+                            </label>
                         </div>
                     </div>
 
-                    <!-- Right: Live Quote Summary Card (5 cols) -->
-                    <div class="flex flex-col justify-between rounded-xl border border-amber-200 bg-amber-50/60 p-4.5 md:col-span-5 shadow-xs">
+                    <!-- Right Column: Live Luxury Receipt Breakdown (5 cols) -->
+                    <div class="flex flex-col justify-between rounded-xl border border-amber-300/80 bg-linear-to-b from-amber-50/70 to-amber-100/40 p-5 lg:col-span-5 shadow-xs">
                         <div>
-                            <div class="flex items-center justify-between border-b border-amber-200/80 pb-2.5">
-                                <span class="text-xs font-bold text-amber-900 uppercase tracking-wider">Estimated Retail Quote</span>
-                                <span class="rounded bg-amber-200/80 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-950">LIVE</span>
+                            <div class="flex items-center justify-between border-b border-amber-200 pb-3">
+                                <div>
+                                    <span class="text-xs font-extrabold text-amber-950 uppercase tracking-wider">Estimated Retail Quote</span>
+                                    <div class="text-[10px] text-amber-800">{{ Number(estimator.grossWeight || 0).toFixed(3) }}g &bull; {{ estimator.selectedPurity }}</div>
+                                </div>
+                                <span class="rounded bg-amber-200/90 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-950">
+                                    ₹{{ effectiveEstimatorRate.toLocaleString('en-IN') }}/g
+                                </span>
                             </div>
 
-                            <div class="mt-3 space-y-1.5 text-xs">
+                            <div class="mt-4 space-y-2 text-xs">
                                 <div class="flex items-center justify-between text-surface-600">
-                                    <span>Metal Cost ({{ Number(estimator.grossWeight || 0).toFixed(3) }}g &times; ₹{{ currentEstimatorRate.toLocaleString('en-IN') }})</span>
-                                    <span class="font-semibold text-surface-900">₹{{ estimatedMetalAmount.toLocaleString('en-IN') }}</span>
+                                    <span>Metal Value ({{ Number(estimator.grossWeight || 0).toFixed(3) }}g &times; ₹{{ effectiveEstimatorRate.toLocaleString('en-IN') }})</span>
+                                    <span class="font-bold text-surface-900">₹{{ estimatedMetalAmount.toLocaleString('en-IN') }}</span>
                                 </div>
                                 <div class="flex items-center justify-between text-surface-600">
                                     <span>Making Charges ({{ estimator.makingChargeType === 'PERCENT' ? `${estimator.makingChargeValue}%` : `₹${estimator.makingChargeValue}/g` }})</span>
-                                    <span class="font-semibold text-surface-900">₹{{ estimatedMakingAmount.toLocaleString('en-IN') }}</span>
+                                    <span class="font-bold text-surface-900">₹{{ estimatedMakingAmount.toLocaleString('en-IN') }}</span>
                                 </div>
                                 <div v-if="estimator.includeGst" class="flex items-center justify-between text-surface-600">
                                     <span>GST (3% Standard)</span>
-                                    <span class="font-semibold text-surface-900">₹{{ estimatedGstAmount.toLocaleString('en-IN') }}</span>
+                                    <span class="font-bold text-surface-900">₹{{ estimatedGstAmount.toLocaleString('en-IN') }}</span>
                                 </div>
 
-                                <div class="border-t border-amber-200/80 pt-2 flex items-center justify-between">
-                                    <span class="text-sm font-bold text-surface-900">Estimated Total:</span>
-                                    <span class="text-lg font-extrabold text-amber-900">₹{{ estimatedTotalQuote.toLocaleString('en-IN') }}</span>
+                                <div class="border-t border-amber-200/90 pt-3 mt-3 flex items-baseline justify-between">
+                                    <div>
+                                        <span class="text-xs font-bold text-amber-950 uppercase tracking-wide">Estimated Total</span>
+                                        <span class="text-[10px] text-surface-400 block">Incl. metal + making + tax</span>
+                                    </div>
+                                    <span class="text-2xl font-black text-amber-950">
+                                        ₹{{ estimatedTotalQuote.toLocaleString('en-IN') }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Quote Actions -->
-                        <div class="mt-4 flex items-center gap-2 pt-2 border-t border-amber-200/60">
+                        <!-- Action Buttons -->
+                        <div class="mt-5 space-y-2 pt-3 border-t border-amber-200/70">
                             <Button
-                                :label="quoteCopied ? 'Copied to Clipboard!' : 'Copy Quote'"
+                                :label="quoteCopied ? 'Copied WhatsApp Quote!' : 'Copy WhatsApp Quote'"
                                 :icon="quoteCopied ? 'pi pi-check' : 'pi pi-copy'"
                                 size="small"
                                 outlined
                                 severity="secondary"
-                                class="!border-amber-400 !text-amber-900 hover:!bg-amber-100 flex-1 text-xs"
+                                class="!border-amber-400 !text-amber-950 hover:!bg-amber-100 w-full text-xs font-bold !h-9"
                                 @click="copyQuoteToClipboard"
                             />
-                            <Link v-if="can.manage_invoices" :href="route('invoices.create')" class="flex-1">
-                                <Button label="Create Bill" icon="pi pi-arrow-right" size="small" class="!bg-surface-900 !text-white !border-surface-900 hover:!bg-surface-800 w-full text-xs" />
+                            <Link v-if="can.manage_invoices" :href="route('invoices.create')" class="block">
+                                <Button label="Create Retail Bill" icon="pi pi-arrow-right" size="small" class="!bg-surface-900 !text-white !border-surface-900 hover:!bg-surface-800 w-full text-xs font-bold !h-9" />
                             </Link>
                         </div>
                     </div>
@@ -684,7 +795,106 @@ const taskPriorityClass = (priority) => {
             </div>
 
             <!-- ========================================== -->
-            <!-- 6. 2-COLUMN MAIN WORKFLOW LAYOUT           -->
+            <!-- 6. INLINE BARCODE & INVENTORY SCANNER      -->
+            <!-- ========================================== -->
+            <div class="erp-panel border border-surface-200 bg-white p-5 shadow-2xs">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-surface-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <div class="flex h-6 w-6 items-center justify-center rounded-md bg-surface-900 text-white text-xs">
+                            <i class="pi pi-qrcode"></i>
+                        </div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-surface-800">Quick Barcode & Inventory Price Scanner</span>
+                    </div>
+                    <span class="text-[11px] text-surface-400">Scan or type product tag barcode to view live details</span>
+                </div>
+
+                <div class="mt-3">
+                    <div class="flex gap-2">
+                        <div class="relative flex-1">
+                            <i class="pi pi-barcode absolute left-3 top-1/2 -translate-y-1/2 text-surface-400"></i>
+                            <InputText
+                                v-model="scanQuery"
+                                placeholder="Scan with barcode scanner or enter tag number (e.g. G00001, S00001)..."
+                                class="w-full !pl-9 text-xs"
+                                @keyup.enter="performBarcodeSearch()"
+                            />
+                        </div>
+                        <Button
+                            label="Lookup"
+                            icon="pi pi-search"
+                            size="small"
+                            :loading="isSearchingBarcode"
+                            class="!bg-surface-900 !text-white text-xs"
+                            @click="performBarcodeSearch()"
+                        />
+                        <Button
+                            v-if="scannedItem || scanError"
+                            label="Clear"
+                            icon="pi pi-times"
+                            size="small"
+                            outlined
+                            severity="secondary"
+                            class="text-xs"
+                            @click="clearScan()"
+                        />
+                    </div>
+
+                    <!-- Error Alert -->
+                    <div v-if="scanError" class="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+                        {{ scanError }}
+                    </div>
+
+                    <!-- Scanned Product Result Card -->
+                    <div v-if="scannedItem" class="mt-3 rounded-xl border border-surface-200 bg-surface-50/70 p-4 space-y-3 shadow-xs">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <span class="rounded bg-surface-900 px-2 py-0.5 font-mono text-[10px] font-bold text-white uppercase">
+                                    {{ scannedItem.item?.barcode }}
+                                </span>
+                                <h4 class="mt-1.5 text-sm font-bold text-surface-900">{{ scannedItem.item?.name }}</h4>
+                                <p class="text-xs text-surface-500">
+                                    {{ scannedItem.item?.category?.name || 'Jewellery' }} &bull; {{ scannedItem.item?.purity?.name || '22K' }}
+                                    <span v-if="scannedItem.item?.supplier">&bull; Supplier: {{ scannedItem.item?.supplier?.name }}</span>
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] text-surface-400 block">Benchmark Rate</span>
+                                <span class="text-sm font-bold text-amber-800">₹{{ scannedItem.billing?.rate?.toLocaleString('en-IN') }}/g</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 border-t border-surface-200 pt-3 text-center text-xs">
+                            <div class="rounded-lg bg-white p-2 border border-surface-200">
+                                <span class="text-[10px] text-surface-400 block">Gross Weight</span>
+                                <span class="font-bold text-surface-900">{{ formatWeight(scannedItem.item?.gross_weight) }}</span>
+                            </div>
+                            <div class="rounded-lg bg-white p-2 border border-surface-200">
+                                <span class="text-[10px] text-surface-400 block">Net Weight</span>
+                                <span class="font-bold text-surface-900">{{ formatWeight(scannedItem.item?.net_weight || scannedItem.item?.gross_weight) }}</span>
+                            </div>
+                            <div class="rounded-lg bg-white p-2 border border-surface-200">
+                                <span class="text-[10px] text-surface-400 block">Making Charge</span>
+                                <span class="font-bold text-surface-900">
+                                    {{ scannedItem.item?.making_charge ? (scannedItem.item.making_charge_type === 'PERCENT' ? `${scannedItem.item.making_charge}%` : `₹${scannedItem.item.making_charge}/g`) : 'N/A' }}
+                                </span>
+                            </div>
+                            <div class="rounded-lg bg-white p-2 border border-surface-200">
+                                <span class="text-[10px] text-surface-400 block">Stock Status</span>
+                                <Tag :value="scannedItem.item?.status || 'IN_STOCK'" severity="success" class="!text-[9px]" />
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end gap-2 pt-1">
+                            <Link v-if="can.manage_invoices" :href="route('invoices.create')">
+                                <Button label="Add to Retail Bill" icon="pi pi-plus" size="small" class="!bg-surface-900 !text-white text-xs" />
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 7. 2-COLUMN MAIN WORKFLOW LAYOUT           -->
             <!-- ========================================== -->
             <div class="grid grid-cols-1 gap-4 lg:grid-cols-12">
                 <!-- ========================================== -->
@@ -945,7 +1155,7 @@ const taskPriorityClass = (priority) => {
                                         size="small"
                                         outlined
                                         severity="secondary"
-                                        class="!h-6 !w-6 !p-0 flex-shrink-0"
+                                        class="!h-6 !w-6 !p-0 flex-shrink-0 cursor-pointer"
                                         title="Mark Complete"
                                         @click="markTaskComplete(task)"
                                     />
@@ -1016,78 +1226,30 @@ const taskPriorityClass = (priority) => {
         </div>
 
         <!-- ========================================== -->
-        <!-- MODAL: INSTANT BARCODE & STOCK SCANNER     -->
+        <!-- MODAL: UPDATE DAILY RATES                  -->
         <!-- ========================================== -->
-        <Dialog v-model:visible="showScanModal" modal header="Instant Barcode & Stock Price Lookup" :style="{ width: '520px' }">
+        <Dialog v-model:visible="showRateDialog" modal header="Update Daily Market Rates" :style="{ width: '420px' }">
             <div class="space-y-4 pt-2">
-                <div class="flex gap-2">
-                    <InputText
-                        v-model="scanQuery"
-                        placeholder="Scan or type barcode (e.g. G00001, S00001)..."
-                        class="w-full text-sm"
-                        autofocus
-                        @keyup.enter="performBarcodeSearch()"
-                    />
-                    <Button
-                        label="Lookup"
-                        icon="pi pi-search"
-                        size="small"
-                        :loading="isSearchingBarcode"
-                        class="!bg-surface-900 !text-white"
-                        @click="performBarcodeSearch()"
-                    />
+                <div>
+                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Gold Sell Rate (24K fine per gram)</label>
+                    <InputNumber v-model="rateForm.gold_sell" mode="currency" currency="INR" locale="en-IN" class="w-full" :min="0" />
                 </div>
-
-                <!-- Error Message -->
-                <div v-if="scanError" class="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
-                    {{ scanError }}
+                <div>
+                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Gold Buy Rate (Old Gold per gram)</label>
+                    <InputNumber v-model="rateForm.gold_buy" mode="currency" currency="INR" locale="en-IN" class="w-full" :min="0" />
                 </div>
-
-                <!-- Scanned Result Card -->
-                <div v-if="scannedItem" class="rounded-xl border border-surface-200 bg-surface-50/70 p-4 space-y-3">
-                    <div class="flex items-start justify-between gap-3">
-                        <div>
-                            <span class="rounded bg-surface-900 px-2 py-0.5 font-mono text-[10px] font-bold text-white uppercase">
-                                {{ scannedItem.item?.barcode }}
-                            </span>
-                            <h4 class="mt-1 text-sm font-bold text-surface-900">{{ scannedItem.item?.name }}</h4>
-                            <p class="text-xs text-surface-500">{{ scannedItem.item?.category?.name || 'Jewellery' }} &bull; {{ scannedItem.item?.purity?.name || '22K' }}</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-xs text-surface-400 block">Current Metal Rate</span>
-                            <span class="text-sm font-bold text-amber-800">₹{{ scannedItem.billing?.rate?.toLocaleString('en-IN') }}/g</span>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-3 gap-2 border-t border-surface-200 pt-3 text-center text-xs">
-                        <div class="rounded-lg bg-white p-2 border border-surface-200">
-                            <span class="text-[10px] text-surface-400 block">Gross Weight</span>
-                            <span class="font-bold text-surface-900">{{ formatWeight(scannedItem.item?.gross_weight) }}</span>
-                        </div>
-                        <div class="rounded-lg bg-white p-2 border border-surface-200">
-                            <span class="text-[10px] text-surface-400 block">Net Weight</span>
-                            <span class="font-bold text-surface-900">{{ formatWeight(scannedItem.item?.net_weight || scannedItem.item?.gross_weight) }}</span>
-                        </div>
-                        <div class="rounded-lg bg-white p-2 border border-surface-200">
-                            <span class="text-[10px] text-surface-400 block">Status</span>
-                            <Tag :value="scannedItem.item?.status || 'IN_STOCK'" severity="success" class="!text-[9px]" />
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end gap-2 pt-2">
-                        <Link v-if="can.manage_invoices" :href="route('invoices.create')">
-                            <Button label="Add to Retail Bill" icon="pi pi-plus" size="small" class="!bg-surface-900 !text-white !border-surface-900 text-xs" />
-                        </Link>
-                    </div>
+                <div>
+                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Silver Sell Rate (Per gram)</label>
+                    <InputNumber v-model="rateForm.silver_sell" mode="currency" currency="INR" locale="en-IN" class="w-full" :min="0" />
                 </div>
             </div>
 
             <template #footer>
-                <div class="flex justify-end pt-2">
-                    <Button label="Close" text severity="secondary" size="small" @click="showScanModal = false" />
+                <div class="flex justify-end gap-2 pt-3">
+                    <Button label="Cancel" text severity="secondary" size="small" @click="showRateDialog = false" />
+                    <Button label="Save Rates" icon="pi pi-check" size="small" :loading="rateForm.processing" class="!bg-surface-900 !text-white" @click="saveRates" />
                 </div>
             </template>
         </Dialog>
     </AppLayout>
 </template>
-
