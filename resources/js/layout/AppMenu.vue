@@ -67,8 +67,8 @@ const model = [
             { label: 'Website Product Catalog', icon: 'pi pi-fw pi-globe', to: '/website-products', visible: Boolean(can.manage_products) },
             { label: 'Business Profile', icon: 'pi pi-fw pi-building', to: '/settings/business-profile', visible: Boolean(can.manage_users) },
             { label: 'Profile', icon: 'pi pi-fw pi-user', to: '/settings/profile' },
-            { label: 'Password', icon: 'pi pi-fw pi-key', to: '/settings/password' },
-            { label: 'Two-Factor Auth', icon: 'pi pi-fw pi-shield', to: '/settings/two-factor' },
+            { label: 'Password', icon: 'pi pi-fw pi-key', to: '/settings/password', visible: Boolean(can.manage_users || page.props.auth?.role === 'admin') },
+            { label: 'Two-Factor Auth', icon: 'pi pi-fw pi-shield', to: '/settings/two-factor', visible: Boolean(can.manage_users || page.props.auth?.role === 'admin') },
         ],
     },
 ];

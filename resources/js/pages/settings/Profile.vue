@@ -13,6 +13,7 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { type BreadcrumbItem } from '@/types';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
+import { computed } from 'vue';
 
 interface Props {
     mustVerifyEmail: boolean;
@@ -31,6 +32,7 @@ const breadcrumbItems: BreadcrumbItem[] = [
 const page = usePage();
 const user = page.props.auth.user;
 const role = page.props.auth.role || 'user';
+const isAdmin = computed(() => role === 'admin' || Boolean((page.props.auth?.can as any)?.manage_users));
 </script>
 
 <template>
@@ -38,7 +40,7 @@ const role = page.props.auth.role || 'user';
         <Head title="Profile settings" />
 
         <SettingsLayout>
-            <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div class="grid grid-cols-1 gap-6" :class="isAdmin ? 'xl:grid-cols-[minmax(0,1fr)_320px]' : 'max-w-4xl'">
                 <div class="erp-panel p-6">
                     <HeadingSmall title="Profile Information" description="Update your account name and email address used across the ERP." />
 
@@ -136,7 +138,8 @@ const role = page.props.auth.role || 'user';
                         </div>
                     </div>
 
-                    <div class="erp-panel p-5">
+                    <!-- Quick Actions (Admin Only) -->
+                    <div v-if="isAdmin" class="erp-panel p-5">
                         <HeadingSmall title="Quick Actions" description="Move to related account settings." />
 
                         <div class="mt-6 flex flex-col gap-3">
@@ -148,9 +151,12 @@ const role = page.props.auth.role || 'user';
                             </Link>
                         </div>
                     </div>
-                    <DeleteUser />
+
+                    <!-- Delete account (Admin Only) -->
+                    <DeleteUser v-if="isAdmin" />
                 </div>
             </div>
         </SettingsLayout>
     </AppLayout>
 </template>
+

@@ -309,14 +309,15 @@ const submitLogout = () => {
                             <i class="pi pi-user text-xs text-surface-400"></i>
                             <span>My Profile</span>
                         </Link>
-                        <Link href="/settings/business-profile" class="flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-xs text-surface-700 hover:bg-surface-50 mx-1">
+                        <Link v-if="role === 'admin' || page.props.auth?.can?.manage_users" href="/settings/business-profile" class="flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-xs text-surface-700 hover:bg-surface-50 mx-1">
                             <i class="pi pi-building text-xs text-surface-400"></i>
                             <span>Store & GST Settings</span>
                         </Link>
-                        <Link href="/settings/password" class="flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-xs text-surface-700 hover:bg-surface-50 mx-1">
+                        <Link v-if="role === 'admin' || page.props.auth?.can?.manage_users" href="/settings/password" class="flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-xs text-surface-700 hover:bg-surface-50 mx-1">
                             <i class="pi pi-shield text-xs text-surface-400"></i>
                             <span>Security & Password</span>
                         </Link>
+
                     </div>
 
                     <div class="py-1">

@@ -50,11 +50,13 @@ test('email verification status is unchanged when the email address is unchanged
     expect($user->refresh()->email_verified_at)->not->toBeNull();
 });
 
-test('user can delete their account', function () {
-    $user = User::factory()->create();
+test('admin can delete their account', function () {
+    $role = \Spatie\Permission\Models\Role::findOrCreate('admin');
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
 
     $response = $this
-        ->actingAs($user)
+        ->actingAs($admin)
         ->delete(route('profile.destroy'), [
             'password' => 'password',
         ]);
@@ -64,14 +66,31 @@ test('user can delete their account', function () {
         ->assertRedirect(route('home'));
 
     $this->assertGuest();
-    expect($user->fresh())->toBeNull();
+    expect($admin->fresh())->toBeNull();
 });
 
-test('correct password must be provided to delete account', function () {
-    $user = User::factory()->create();
+test('non-admin staff cannot delete their account', function () {
+    $role = \Spatie\Permission\Models\Role::findOrCreate('staff');
+    $staff = User::factory()->create();
+    $staff->assignRole('staff');
 
     $response = $this
-        ->actingAs($user)
+        ->actingAs($staff)
+        ->delete(route('profile.destroy'), [
+            'password' => 'password',
+        ]);
+
+    $response->assertForbidden();
+    expect($staff->fresh())->not->toBeNull();
+});
+
+test('correct password must be provided by admin to delete account', function () {
+    $role = \Spatie\Permission\Models\Role::findOrCreate('admin');
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $response = $this
+        ->actingAs($admin)
         ->from(route('profile.edit'))
         ->delete(route('profile.destroy'), [
             'password' => 'wrong-password',
@@ -81,5 +100,5 @@ test('correct password must be provided to delete account', function () {
         ->assertSessionHasErrors('password')
         ->assertRedirect(route('profile.edit'));
 
-    expect($user->fresh())->not->toBeNull();
+    expect($admin->fresh())->not->toBeNull();
 });

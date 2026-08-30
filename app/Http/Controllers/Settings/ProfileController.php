@@ -45,11 +45,16 @@ class ProfileController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $user = $request->user();
+
+        // Strictly restrict self-account deletion to admin
+        if (! $user->hasRole('admin') && ! $user->can('manage_users')) {
+            abort(403, 'Only administrators are authorized to delete accounts.');
+        }
+
         $request->validate([
             'password' => ['required', 'current_password'],
         ]);
-
-        $user = $request->user();
 
         Auth::logout();
 
@@ -61,3 +66,4 @@ class ProfileController extends Controller
         return redirect('/');
     }
 }
+
