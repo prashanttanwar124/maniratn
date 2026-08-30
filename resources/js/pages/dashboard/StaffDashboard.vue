@@ -9,6 +9,8 @@ import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
+import Toast from 'primevue/toast';
+import { useToast } from 'primevue/usetoast';
 import { formatIndianDate } from '@/utils/indiaTime';
 
 const props = defineProps({
@@ -26,7 +28,9 @@ const props = defineProps({
 });
 
 const page = usePage();
+const toast = useToast();
 const can = computed(() => page.props.auth?.can || {});
+
 
 // Currency and Weight Formatters
 const formatCurrency = (val) =>
@@ -272,7 +276,12 @@ const clearScan = () => {
 const sendWhatsAppWish = (reminder) => {
     const cleanMobile = String(reminder.mobile || '').replace(/\D/g, '');
     if (!cleanMobile) {
-        alert('Customer does not have a valid mobile number.');
+        toast.add({
+            severity: 'warn',
+            summary: 'Missing Mobile Number',
+            detail: 'Customer does not have a valid mobile number for WhatsApp messaging.',
+            life: 3000,
+        });
         return;
     }
     const phone = cleanMobile.startsWith('91') ? cleanMobile : `91${cleanMobile}`;
@@ -286,7 +295,12 @@ const sendWhatsAppWish = (reminder) => {
 const sendOrderReadyWhatsApp = (item) => {
     const cleanMobile = String(item.customer_phone || '').replace(/\D/g, '');
     if (!cleanMobile) {
-        alert('Customer mobile number is missing.');
+        toast.add({
+            severity: 'warn',
+            summary: 'Missing Mobile Number',
+            detail: 'Customer mobile number is missing for this custom order.',
+            life: 3000,
+        });
         return;
     }
     const phone = cleanMobile.startsWith('91') ? cleanMobile : `91${cleanMobile}`;
@@ -295,6 +309,7 @@ const sendOrderReadyWhatsApp = (item) => {
     );
     window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
 };
+
 
 // ----------------------------------------------------
 // 📋 TASK CHECKLIST TOGGLING
@@ -1251,5 +1266,8 @@ const taskPriorityClass = (priority) => {
                 </div>
             </template>
         </Dialog>
+
+        <Toast position="top-right" />
     </AppLayout>
 </template>
+

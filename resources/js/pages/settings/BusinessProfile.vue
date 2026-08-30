@@ -3,13 +3,20 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import Button from 'primevue/button';
+import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
+import Toast from 'primevue/toast';
+import { useToast } from 'primevue/usetoast';
+import { ref } from 'vue';
 
 const props = defineProps({
     businessSetting: Object,
 });
+
+const toast = useToast();
+const showRegenerateModal = ref(false);
 
 const voiceOptions = [
     { label: 'Aoede (Warm Female)', value: 'Aoede' },
@@ -60,16 +67,30 @@ const removeLogo = () => {
 };
 
 const regenerateToken = () => {
-    if (confirm('Regenerating will invalidate previously printed QR codes. Are you sure?')) {
-        form.regenerate_qr_token = true;
-        saveBusinessProfile();
-    }
+    showRegenerateModal.value = true;
+};
+
+const confirmRegenerate = () => {
+    showRegenerateModal.value = false;
+    form.regenerate_qr_token = true;
+    saveBusinessProfile();
+    toast.add({
+        severity: 'info',
+        summary: 'Regenerating Token',
+        detail: 'Creating a new QR onboarding token...',
+        life: 2500,
+    });
 };
 
 const copyJoinUrl = () => {
     if (props.businessSetting?.qr_onboarding_url) {
         navigator.clipboard.writeText(props.businessSetting.qr_onboarding_url);
-        alert('VIP Onboarding Link copied to clipboard!');
+        toast.add({
+            severity: 'success',
+            summary: 'Link Copied',
+            detail: 'VIP Onboarding Link copied to clipboard.',
+            life: 2500,
+        });
     }
 };
 
@@ -92,6 +113,7 @@ const openStandee = () => {
 const openOnboardingStandee = () => {
     window.open(route('business-settings.onboarding-standee.print'), '_blank', 'noopener');
 };
+
 
 </script>
 
@@ -325,6 +347,36 @@ const openOnboardingStandee = () => {
                     </div>
                 </div>
             </div>
+
+            <!-- Sleek PrimeVue Confirmation Modal for Token Regeneration -->
+            <Dialog
+                v-model:visible="showRegenerateModal"
+                modal
+                header="Regenerate QR Secret Token?"
+                :style="{ width: '440px' }"
+                :closable="true"
+            >
+                <div class="space-y-3 pt-1">
+                    <div class="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50/50 p-3.5 text-amber-900">
+                        <i class="pi pi-exclamation-triangle text-amber-600 text-lg shrink-0 mt-0.5"></i>
+                        <div class="text-xs leading-relaxed">
+                            <p class="font-bold text-amber-900 mb-1">Important Notice</p>
+                            <p>Regenerating this token will immediately invalidate all previously printed tabletop standees and QR codes. Customers scanning old QR codes will not be able to register until you reprint the standees.</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-surface-600">Are you sure you want to proceed and generate a new token?</p>
+                </div>
+
+                <template #footer>
+                    <div class="flex items-center justify-end gap-2 pt-2">
+                        <Button label="Cancel" severity="secondary" text size="small" @click="showRegenerateModal = false" />
+                        <Button label="Yes, Regenerate Token" severity="warn" size="small" icon="pi pi-refresh" @click="confirmRegenerate" />
+                    </div>
+                </template>
+            </Dialog>
+
+            <Toast position="top-right" />
         </SettingsLayout>
     </AppLayout>
 </template>
+
