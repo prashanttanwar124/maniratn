@@ -37,8 +37,9 @@ class BusinessSetting extends Model
 
     public static function generateQrOnboardingToken(): string
     {
-        return 'mani_join_' . bin2hex(random_bytes(16));
+        return 'karatsetu_' . bin2hex(random_bytes(16));
     }
+
 
 
     protected $appends = [

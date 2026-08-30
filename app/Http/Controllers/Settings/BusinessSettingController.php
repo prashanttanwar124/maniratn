@@ -30,10 +30,11 @@ class BusinessSettingController extends Controller
             ]
         );
 
-        if (! $businessSetting->qr_onboarding_token) {
+        if (! $businessSetting->qr_onboarding_token || str_starts_with((string) $businessSetting->qr_onboarding_token, 'mani_join_')) {
             $businessSetting->qr_onboarding_token = BusinessSetting::generateQrOnboardingToken();
             $businessSetting->save();
         }
+
 
         $websiteUrl = trim((string) ($businessSetting->website ?: config('app.url')));
         $websiteUrl = rtrim($websiteUrl !== '' ? $websiteUrl : 'http://localhost:8000', '/');
@@ -150,10 +151,11 @@ class BusinessSettingController extends Controller
     public function printOnboardingStandee()
     {
         $businessSetting = BusinessSetting::firstOrCreate(['id' => 1]);
-        if (! $businessSetting->qr_onboarding_token) {
+        if (! $businessSetting->qr_onboarding_token || str_starts_with((string) $businessSetting->qr_onboarding_token, 'mani_join_')) {
             $businessSetting->qr_onboarding_token = BusinessSetting::generateQrOnboardingToken();
             $businessSetting->save();
         }
+
 
         $websiteUrl = trim((string) ($businessSetting->website ?: config('app.url')));
         $websiteUrl = rtrim($websiteUrl !== '' ? $websiteUrl : 'http://localhost:8000', '/');

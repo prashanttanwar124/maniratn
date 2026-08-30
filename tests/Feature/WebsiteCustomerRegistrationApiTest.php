@@ -138,3 +138,9 @@ test('admin can render printable onboarding standee with qr code', function () {
         ->assertSee('Join Our Customer Club')
         ->assertSee('Counter Code:');
 });
+
+test('it generates tokens with karatsetu_ prefix', function () {
+    $token = BusinessSetting::generateQrOnboardingToken();
+    expect($token)->toStartWith('karatsetu_');
+});
+
