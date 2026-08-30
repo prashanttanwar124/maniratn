@@ -120,31 +120,13 @@ class BusinessSettingController extends Controller
     {
         $businessSetting = BusinessSetting::firstOrCreate(['id' => 1]);
         $googleReviewUrl = $businessSetting->google_review_url;
-
-        $qrCodeBase64 = null;
-        $qrSvg = null;
-
-        if ($googleReviewUrl) {
-            try {
-                $reviewBarcode = new \TCPDF2DBarcode($googleReviewUrl, 'QRCODE,H');
-                $rawReviewSvg = $reviewBarcode->getBarcodeSVGcode(4.5, 4.5, 'black');
-                $qrSvg = preg_replace('/^<\?xml[^>]*\?>\s*(<!DOCTYPE[^>]*>)?\s*/i', '', (string) $rawReviewSvg);
-                $qrSvg = preg_replace('/(<svg[^>]*>)/i', '$1<rect width="100%" height="100%" fill="#ffffff"/>', (string) $qrSvg);
-
-                $reviewPngData = $reviewBarcode->getBarcodePngData(8, 8);
-                if ($reviewPngData) {
-                    $qrCodeBase64 = 'data:image/png;base64,' . base64_encode($reviewPngData);
-                }
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Failed generating Google Review Standee QR code: ' . $e->getMessage());
-            }
-        }
+        $qrCodeBase64 = $googleReviewUrl ? $this->generatePaddedQrCode($googleReviewUrl) : null;
 
         return view('print.standee', [
             'business' => $businessSetting,
             'googleReviewUrl' => $googleReviewUrl,
             'qrCodeBase64' => $qrCodeBase64,
-            'qrSvg' => $qrSvg,
+            'qrSvg' => null,
         ]);
     }
 
@@ -156,7 +138,6 @@ class BusinessSettingController extends Controller
             $businessSetting->save();
         }
 
-
         $websiteUrl = trim((string) ($businessSetting->website ?: config('app.url')));
         $websiteUrl = rtrim($websiteUrl !== '' ? $websiteUrl : 'http://localhost:8000', '/');
         $joinUrl = "{$websiteUrl}/join?code=" . urlencode((string) $businessSetting->qr_onboarding_token);
@@ -164,31 +145,59 @@ class BusinessSettingController extends Controller
             $joinUrl .= '&pin=' . urlencode((string) $businessSetting->qr_onboarding_pin);
         }
 
-        $qrCodeBase64 = null;
-        $qrSvg = null;
-
-        try {
-            if (class_exists(\TCPDF2DBarcode::class)) {
-                $barcode = new \TCPDF2DBarcode($joinUrl, 'QRCODE,H');
-                $rawSvg = $barcode->getBarcodeSVGcode(4.5, 4.5, 'black');
-                $qrSvg = preg_replace('/^<\?xml[^>]*\?>\s*(<!DOCTYPE[^>]*>)?\s*/i', '', (string) $rawSvg);
-                $qrSvg = preg_replace('/(<svg[^>]*>)/i', '$1<rect width="100%" height="100%" fill="#ffffff"/>', (string) $qrSvg);
-
-                $pngData = $barcode->getBarcodePngData(8, 8);
-                if ($pngData) {
-                    $qrCodeBase64 = 'data:image/png;base64,' . base64_encode($pngData);
-                }
-            }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Failed generating Onboarding Standee QR code: ' . $e->getMessage());
-        }
+        $qrCodeBase64 = $this->generatePaddedQrCode($joinUrl);
 
         return view('print.onboarding-standee', [
             'business' => $businessSetting,
             'joinUrl' => $joinUrl,
             'qrCodeBase64' => $qrCodeBase64,
-            'qrSvg' => $qrSvg,
+            'qrSvg' => null,
         ]);
     }
+
+    /**
+     * Generate high-contrast, camera-scannable QR code with standard white quiet-zone padding.
+     */
+    private function generatePaddedQrCode(string $url): ?string
+    {
+        if (! class_exists(\TCPDF2DBarcode::class)) {
+            return null;
+        }
+
+        try {
+            $barcode = new \TCPDF2DBarcode($url, 'QRCODE,M');
+            $pngData = $barcode->getBarcodePngData(8, 8);
+
+            if ($pngData && extension_loaded('gd')) {
+                $srcImg = @imagecreatefromstring($pngData);
+                if ($srcImg) {
+                    $w = imagesx($srcImg);
+                    $h = imagesy($srcImg);
+                    $margin = 32; // Standard 4-module white quiet zone
+                    $newW = $w + ($margin * 2);
+                    $newH = $h + ($margin * 2);
+
+                    $destImg = imagecreatetruecolor($newW, $newH);
+                    $white = imagecolorallocate($destImg, 255, 255, 255);
+                    imagefilledrectangle($destImg, 0, 0, $newW, $newH, $white);
+                    imagecopy($destImg, $srcImg, $margin, $margin, 0, 0, $w, $h);
+
+                    ob_start();
+                    imagepng($destImg, null, 9);
+                    $finalPng = ob_get_clean();
+                    imagedestroy($srcImg);
+                    imagedestroy($destImg);
+
+                    return 'data:image/png;base64,' . base64_encode($finalPng);
+                }
+            }
+
+            return $pngData ? ('data:image/png;base64,' . base64_encode($pngData)) : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed generating QR code: ' . $e->getMessage());
+            return null;
+        }
+    }
 }
+
 

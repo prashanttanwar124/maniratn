@@ -158,19 +158,20 @@
 
         .qr-container {
             background: #ffffff;
-            padding: 12px;
+            padding: 10px;
             border: 2px solid var(--brand-gold);
-            border-radius: 10px;
+            border-radius: 12px;
             display: inline-block;
             margin-bottom: 16px;
             box-shadow: 0 4px 16px rgba(196, 146, 42, 0.16);
         }
 
-        .qr-container svg,
         .qr-container img {
-            width: 175px;
-            height: 175px;
+            width: 190px;
+            height: 190px;
             display: block;
+            margin: 0 auto;
+            image-rendering: -webkit-optimize-contrast;
         }
 
         .steps-box {
@@ -241,8 +242,13 @@
 
 <body>
     <div class="toolbar">
-        <div style="font-size: 13px; font-weight: 600; color: var(--surface-700);">
-            Counter Onboarding Standee
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 13px; font-weight: 600; color: var(--surface-700);">
+                Counter VIP Onboarding Standee
+            </div>
+            <a href="{{ $joinUrl }}" target="_blank" style="font-size: 11px; color: #b45309; text-decoration: underline;">
+                🔗 Test Link ({{ Str::limit($joinUrl, 45) }})
+            </a>
         </div>
         <button class="btn-print" onclick="window.print()">
             🖨️ Print Standee
@@ -266,14 +272,15 @@
         <p class="subheadline">Instant Digital Gold Vault & Exclusive Birthday Privileges</p>
 
         <div class="qr-container">
-            @if (!empty($qrSvg))
+            @if (!empty($qrCodeBase64))
+                <img src="{{ $qrCodeBase64 }}" alt="VIP Registration QR Code" />
+            @elseif (!empty($qrSvg))
                 {!! $qrSvg !!}
-            @elseif (!empty($qrCodeBase64))
-                <img src="{{ $qrCodeBase64 }}" alt="Registration QR Code" />
             @else
                 <p style="font-size: 12px; color: red; padding: 20px;">QR Token not configured in Settings.</p>
             @endif
         </div>
+
 
         <div class="steps-box">
             <p><strong>1.</strong> Scan QR code with your phone camera</p>
