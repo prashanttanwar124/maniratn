@@ -508,42 +508,14 @@ class InvoiceController extends Controller
             }
 
             $vaultUrl = $this->publicBaseUrl() . '/vault/' . $customer->vault_token;
-
-            try {
-                $barcode = new \TCPDF2DBarcode($vaultUrl, 'QRCODE,M');
-                $rawSvg = $barcode->getBarcodeSVGcode(2.1, 2.1, 'black');
-                $qrSvg = preg_replace('/^<\?xml[^>]*\?>\s*(<!DOCTYPE[^>]*>)?\s*/i', '', (string) $rawSvg);
-                $qrSvg = preg_replace('/(<svg[^>]*>)/i', '$1<rect width="100%" height="100%" fill="#ffffff"/>', (string) $qrSvg);
-
-                $pngData = $barcode->getBarcodePngData(4, 4);
-                if ($pngData) {
-                    $qrCodeBase64 = 'data:image/png;base64,' . base64_encode($pngData);
-                }
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Failed generating invoice QR code: ' . $e->getMessage());
-            }
+            $qrCodeBase64 = \App\Services\QrCodeService::generatePngDataUri($vaultUrl, 4, 16);
         }
 
         $business = BusinessSetting::first();
         $googleReviewUrl = $business?->google_review_url;
-        $googleReviewQrBase64 = null;
+        $googleReviewQrBase64 = $googleReviewUrl ? \App\Services\QrCodeService::generatePngDataUri($googleReviewUrl, 4, 16) : null;
         $googleReviewQrSvg = null;
 
-        if ($googleReviewUrl) {
-            try {
-                $reviewBarcode = new \TCPDF2DBarcode($googleReviewUrl, 'QRCODE,M');
-                $rawReviewSvg = $reviewBarcode->getBarcodeSVGcode(1.8, 1.8, 'black');
-                $googleReviewQrSvg = preg_replace('/^<\?xml[^>]*\?>\s*(<!DOCTYPE[^>]*>)?\s*/i', '', (string) $rawReviewSvg);
-                $googleReviewQrSvg = preg_replace('/(<svg[^>]*>)/i', '$1<rect width="100%" height="100%" fill="#ffffff"/>', (string) $googleReviewQrSvg);
-
-                $reviewPngData = $reviewBarcode->getBarcodePngData(4, 4);
-                if ($reviewPngData) {
-                    $googleReviewQrBase64 = 'data:image/png;base64,' . base64_encode($reviewPngData);
-                }
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Failed generating Google Review QR code: ' . $e->getMessage());
-            }
-        }
 
         return view('print.invoice', [
             'invoice' => $invoice,

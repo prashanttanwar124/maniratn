@@ -55,8 +55,9 @@ test('invoice print page includes customer digital vault qrcode on top right', f
 
     $response->assertOk();
     $response->assertSee('Retail Invoice');
-    $response->assertSee('<svg', false);
+    $response->assertSee('Customer Digital Vault QR Code');
 });
+
 
 test('invoice print generates vault token for customer if missing', function () {
     BusinessSetting::create([

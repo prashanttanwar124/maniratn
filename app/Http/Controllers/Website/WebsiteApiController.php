@@ -261,35 +261,11 @@ class WebsiteApiController extends Controller
         $websiteUrl = trim((string) ($business?->website ?? config('app.url')));
         $websiteUrl = rtrim($websiteUrl !== '' ? $websiteUrl : 'http://localhost:8000', '/');
         $vaultUrl = "{$websiteUrl}/vault/{$token}";
-
-        $qrCodeBase64 = null;
-        try {
-            if (class_exists(\TCPDF2DBarcode::class)) {
-                $barcode = new \TCPDF2DBarcode($vaultUrl, 'QRCODE,M');
-                $pngData = $barcode->getBarcodePngData(4, 4);
-                if ($pngData) {
-                    $qrCodeBase64 = 'data:image/png;base64,' . base64_encode($pngData);
-                }
-            }
-        } catch (\Throwable $e) {
-            // Non-critical fallback
-        }
+        $qrCodeBase64 = \App\Services\QrCodeService::generatePngDataUri($vaultUrl, 4, 16);
 
         $googleReviewUrl = $business?->google_review_url;
-        $googleReviewQrBase64 = null;
-        if ($googleReviewUrl) {
-            try {
-                if (class_exists(\TCPDF2DBarcode::class)) {
-                    $reviewBarcode = new \TCPDF2DBarcode($googleReviewUrl, 'QRCODE,M');
-                    $reviewPngData = $reviewBarcode->getBarcodePngData(4, 4);
-                    if ($reviewPngData) {
-                        $googleReviewQrBase64 = 'data:image/png;base64,' . base64_encode($reviewPngData);
-                    }
-                }
-            } catch (\Throwable $e) {
-                // Non-critical fallback
-            }
-        }
+        $googleReviewQrBase64 = $googleReviewUrl ? \App\Services\QrCodeService::generatePngDataUri($googleReviewUrl, 4, 16) : null;
+
 
         $subTotal = (float) $invoice->items->sum('final_price');
         $paymentTxns = $invoice->transactions->where('type', 'PAYMENT');
