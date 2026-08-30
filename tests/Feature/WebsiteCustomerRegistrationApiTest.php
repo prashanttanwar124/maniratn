@@ -61,6 +61,7 @@ test('public website api rejects registration with invalid token', function () {
         'pin' => '4123',
         'name' => 'Aarav Mehta',
         'mobile' => '9820012345',
+        'dob' => '1995-05-15',
     ]);
 
     $response->assertStatus(401)
@@ -78,6 +79,7 @@ test('public website api rejects registration with incorrect counter pin', funct
         'pin' => '9999',
         'name' => 'Aarav Mehta',
         'mobile' => '9820012345',
+        'dob' => '1995-05-15',
     ]);
 
     $response->assertStatus(401)
@@ -95,7 +97,9 @@ test('public website api rejects registration when onboarding is disabled', func
         'pin' => '4123',
         'name' => 'Aarav Mehta',
         'mobile' => '9820012345',
+        'dob' => '1995-05-15',
     ]);
+
 
     $response->assertStatus(403)
         ->assertJson([

@@ -404,14 +404,15 @@ class WebsiteApiController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'mobile' => ['required', 'string', 'max:20'],
+            'dob' => ['required', 'date'],
             'email' => ['nullable', 'email', 'max:255'],
-            'dob' => ['nullable', 'date'],
             'anniversary_date' => ['nullable', 'date'],
             'address' => ['nullable', 'string', 'max:500'],
             'city' => ['nullable', 'string', 'max:100'],
             'pan_no' => ['nullable', 'string', 'max:20'],
             'aadhaar_no' => ['nullable', 'string', 'max:20'],
         ]);
+
 
         // Normalize mobile
         $cleanMobile = preg_replace('/\D/', '', (string) $validated['mobile']);
