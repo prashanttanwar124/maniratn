@@ -138,9 +138,10 @@ test('admin can render printable onboarding standee with qr code', function () {
 
     $response = get(route('business-settings.onboarding-standee.print'));
     $response->assertOk()
-        ->assertSee('VIP Privé Club')
+        ->assertSee('VIP Gold Club')
         ->assertSee('Join Our Customer Club')
         ->assertSee('Counter Code:');
+
 });
 
 test('it generates tokens with karatsetu_ prefix', function () {

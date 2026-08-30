@@ -267,8 +267,9 @@
 
         <div class="divider"></div>
 
-        <div class="vip-badge">✨ VIP Privé Club</div>
+        <div class="vip-badge">✨ VIP Gold Club</div>
         <h2 class="headline">Join Our Customer Club</h2>
+
         <p class="subheadline">Instant Digital Gold Vault & Exclusive Birthday Privileges</p>
 
         <div class="qr-container">
