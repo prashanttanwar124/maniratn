@@ -24,7 +24,7 @@ withDefaults(defineProps<Props>(), {
     breadcrumbs: () => [],
 });
 
-const { layoutConfig, layoutState, isDesktop } = useLayout();
+const { layoutConfig, layoutState, isDesktop, hideMobileMenu } = useLayout();
 const askAiVisible = ref(false);
 
 const containerClass = computed(() => ({
@@ -117,7 +117,7 @@ watch(
         </div>
         <AskAiDrawer v-model:visible="askAiVisible" />
         <ProductDraftTray />
-        <div class="layout-mask animate-fadein" />
+        <div class="layout-mask animate-fadein" @click="hideMobileMenu" />
         <Dialog
             :visible="showOpenDayModal"
             modal

@@ -715,7 +715,7 @@ it('rejects old metal item with non-positive gross weight, rate, or excessive wa
     $response->assertSessionHasErrors('old_golds');
 });
 
-it('rejects old metal trade-in when total old metal value exceeds invoice total', function () {
+it('allows old metal trade-in exceeding invoice total and credits excess as customer advance', function () {
     $customer = Customer::create([
         'name' => 'Excess Metal Customer',
         'mobile' => '9876543221',
@@ -738,7 +738,7 @@ it('rejects old metal trade-in when total old metal value exceeds invoice total'
     ]);
 
     // Item: 2g @ 7000 = 14,000 + 3% GST (420) = 14,420 Grand Total
-    // Old Gold: 10g @ 6000 = 60,000 (Exceeds 14,420 bill total)
+    // Old Gold: 10g @ 6000 = 60,000 (Exceeds 14,420 bill total by 45,580)
     $response = post(route('invoices.store'), [
         'customer_id' => $customer->id,
         'date' => '2026-08-26',
@@ -762,5 +762,12 @@ it('rejects old metal trade-in when total old metal value exceeds invoice total'
         ],
     ]);
 
-    $response->assertSessionHasErrors('old_golds');
+    $response->assertSessionHasNoErrors();
+    $invoice = Invoice::latest('id')->first();
+    expect($invoice)->not->toBeNull();
+    expect((float) $invoice->total_amount)->toEqual(14420.00);
+    expect((float) $invoice->old_gold_amount)->toEqual(60000.00);
+
+    // Customer balance: Sale (+14,420) - Payment (-60,000) = -45,580 (negative means shop owes customer advance)
+    expect((float) $customer->fresh()->balance)->toEqual(-45580.00);
 });

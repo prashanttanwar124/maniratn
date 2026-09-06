@@ -1,18 +1,18 @@
 <script setup>
 import { useLayout } from '@/layout/composables/layout';
 import { usePage } from '@inertiajs/vue3';
-import { onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import AppMenu from './AppMenu.vue';
 
-const { layoutState, isDesktop, hasOpenOverlay } = useLayout();
+const { layoutState, isDesktop } = useLayout();
 const page = usePage();
 
 const sidebarRef = ref(null);
 let outsideClickListener = null;
 
 watch(
-    () => route.path,
+    () => page.url,
     (newPath) => {
         if (isDesktop()) layoutState.activePath = null;
         else layoutState.activePath = newPath;
@@ -24,11 +24,11 @@ watch(
     { immediate: true },
 );
 
-watch(hasOpenOverlay, (newVal) => {
-    if (isDesktop()) {
-        if (newVal) bindOutsideClickListener();
-        else unbindOutsideClickListener();
-    }
+const isMenuOpen = computed(() => Boolean(layoutState.mobileMenuActive || (isDesktop() && layoutState.overlayMenuActive)));
+
+watch(isMenuOpen, (newVal) => {
+    if (newVal) bindOutsideClickListener();
+    else unbindOutsideClickListener();
 });
 
 const bindOutsideClickListener = () => {
@@ -36,24 +36,35 @@ const bindOutsideClickListener = () => {
         outsideClickListener = (event) => {
             if (isOutsideClicked(event)) {
                 layoutState.overlayMenuActive = false;
+                layoutState.mobileMenuActive = false;
             }
         };
 
         document.addEventListener('click', outsideClickListener);
+        document.addEventListener('touchstart', outsideClickListener, { passive: true });
     }
 };
 
 const unbindOutsideClickListener = () => {
     if (outsideClickListener) {
         document.removeEventListener('click', outsideClickListener);
+        document.removeEventListener('touchstart', outsideClickListener);
         outsideClickListener = null;
     }
 };
 
 const isOutsideClicked = (event) => {
+    const sidebarEl = sidebarRef.value?.closest('.layout-sidebar') || sidebarRef.value;
     const topbarButtonEl = document.querySelector('.layout-menu-button');
 
-    return !(sidebarRef.value.isSameNode(event.target) || sidebarRef.value.contains(event.target) || topbarButtonEl?.isSameNode(event.target) || topbarButtonEl?.contains(event.target));
+    if (!sidebarEl) return false;
+
+    return !(
+        sidebarEl.isSameNode(event.target) ||
+        sidebarEl.contains(event.target) ||
+        topbarButtonEl?.isSameNode(event.target) ||
+        topbarButtonEl?.contains(event.target)
+    );
 };
 
 onBeforeUnmount(() => {

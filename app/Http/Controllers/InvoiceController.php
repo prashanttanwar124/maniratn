@@ -892,13 +892,6 @@ class InvoiceController extends Controller
             }
 
             $totalOldGoldAmount = round($totalOldGoldAmount, 2);
-
-            if ($totalOldGoldAmount > $finalTotal) {
-                throw ValidationException::withMessages([
-                    'old_golds' => 'Total Old Metal exchange value (₹' . number_format($totalOldGoldAmount, 2) . ') cannot exceed the invoice total of ₹' . number_format($finalTotal, 2) . '.',
-                ]);
-            }
-
             $netPayable = max(0, round($finalTotal - $totalOldGoldAmount, 2));
             $totalCashCardPaid = round((float) ($validated['payment_cash'] ?? 0) + (float) ($validated['payment_card'] ?? 0), 2);
 
@@ -993,13 +986,19 @@ class InvoiceController extends Controller
 
             // B. CREDIT THE CUSTOMER (Old Gold Exchange Payment)
             if ($totalOldGoldAmount > 0) {
+                $excessAdvance = max(0, round($totalOldGoldAmount - $finalTotal, 2));
+                $description = "Old Metal Exchange (" . number_format($totalOldGoldGrossWeight + $totalOldSilverGrossWeight, 3) . "g)";
+                if ($excessAdvance > 0) {
+                    $description .= " [Includes ₹" . number_format($excessAdvance, 2) . " customer advance]";
+                }
+
                 Transaction::create([
                     'transactable_type' => Customer::class,
                     'transactable_id'   => $validated['customer_id'],
                     'invoice_id'        => $invoice->id,
                     'type'              => 'PAYMENT',
                     'amount'            => $totalOldGoldAmount,
-                    'description'       => "Old Metal Exchange (" . number_format($totalOldGoldGrossWeight + $totalOldSilverGrossWeight, 3) . "g)",
+                    'description'       => $description,
                     'date'              => $validated['date'],
                     'user_id'           => Auth::id(),
                     'payment_method'    => 'OLD_GOLD',

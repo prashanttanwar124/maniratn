@@ -688,6 +688,12 @@
                                 <td>Net Payable:</td>
                                 <td class="align-right mono font-bold">Rs {{ number_format($netPayable, 2) }}</td>
                             </tr>
+                            @if ($oldGoldTotal > (float) $invoice->total_amount)
+                                <tr style="color: #15803d;">
+                                    <td class="meta-key" style="color: #15803d; font-weight: 600;">Excess to Advance Ledger:</td>
+                                    <td class="align-right mono font-bold" style="color: #15803d;">+ Rs {{ number_format($oldGoldTotal - (float) $invoice->total_amount, 2) }}</td>
+                                </tr>
+                            @endif
                         @else
                             <tr class="grand-row">
                                 <td>Total Amount:</td>

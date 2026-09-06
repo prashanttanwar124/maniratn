@@ -221,6 +221,7 @@ const hydrateDraft = async (draft) => {
         rate: Number(og.rate || 0),
         final_price: Number(og.final_price || 0),
     }));
+    form.old_golds.forEach(onOldGoldInput);
     form.payment_cash = Number(d.payment_cash || 0);
     form.payment_card = Number(d.payment_card || 0);
     form.card_note = d.card_note || '';
@@ -606,13 +607,14 @@ const taxableTotal = computed(() => roundMoney(Math.max(subTotal.value - discoun
 const gstAmount = computed(() => roundMoney(taxableTotal.value * 0.03));
 const grandTotal = computed(() => roundMoney(taxableTotal.value + gstAmount.value));
 const netPayable = computed(() => roundMoney(Math.max(0, grandTotal.value - totalOldGoldValue.value)));
+const excessAdvance = computed(() => roundMoney(Math.max(0, totalOldGoldValue.value - grandTotal.value)));
 const totalCashCardReceived = computed(() => roundMoney(Number(form.payment_cash || 0) + Number(form.payment_card || 0)));
 const totalReceived = computed(() => roundMoney(totalCashCardReceived.value + totalOldGoldValue.value));
-const balanceDue = computed(() => roundMoney(grandTotal.value - totalReceived.value));
+const balanceDue = computed(() => roundMoney(Math.max(0, netPayable.value - totalCashCardReceived.value)));
 const paymentState = computed(() => {
     if (grandTotal.value <= 0) return 'empty';
-    if (balanceDue.value <= 0) return 'paid';
-    if (totalReceived.value > 0) return 'partial';
+    if (excessAdvance.value > 0 || balanceDue.value <= 0) return 'paid';
+    if (totalCashCardReceived.value > 0) return 'partial';
     return 'unpaid';
 });
 
@@ -639,6 +641,13 @@ const canGenerateInvoice = computed(() => !checkoutBlocker.value && !form.proces
 const setCashToNetPayable = () => {
     form.payment_cash = netPayable.value;
     form.payment_card = 0;
+};
+
+const scrollToPayment = () => {
+    const el = document.getElementById('payment-section');
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+    }
 };
 
 const formatCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
@@ -674,6 +683,16 @@ watch(
             item.rate = roundMoney(Number(rate || 0) * Number(item.rate_multiplier || 1));
             recalculateRow(item);
         });
+        // Auto-update gold trade-in rows that don't have a custom rate or where rate was 0
+        form.old_golds
+            .filter((og) => og.metal_type === 'GOLD' && og.purity !== 'Custom' && Number(og.rate || 0) <= 0)
+            .forEach((og) => {
+                const option = oldGoldPurityOptions.find((p) => p.value === og.purity);
+                const mult = option?.multiplier ?? 1;
+                const baseBuyRate = Number(props.defaultGoldBuyRate || rate || 0);
+                og.rate = roundMoney(baseBuyRate * mult);
+                onOldGoldInput(og);
+            });
     },
 );
 
@@ -685,6 +704,16 @@ watch(
             .forEach((item) => {
                 item.rate = Number(rate || 0);
                 recalculateRow(item);
+            });
+        // Auto-update silver trade-in rows that don't have a custom rate or where rate was 0
+        form.old_golds
+            .filter((og) => og.metal_type === 'SILVER' && og.purity !== 'Custom' && Number(og.rate || 0) <= 0)
+            .forEach((og) => {
+                const option = oldGoldPurityOptions.find((p) => p.value === og.purity);
+                const mult = option?.multiplier ?? 1;
+                const baseBuyRate = Number(props.defaultSilverBuyRate || rate || 0);
+                og.rate = roundMoney(baseBuyRate * mult);
+                onOldGoldInput(og);
             });
     },
 );
@@ -730,16 +759,12 @@ const submitInvoice = () => {
         toast.add({ severity: 'error', summary: 'Invalid Old Metal', detail: 'Gross weight and buy rate are required for all old metal rows.', life: 3000 });
         return;
     }
-    if (form.old_golds.some((og) => Number(og.net_weight || 0) > Number(og.gross_weight || 0))) {
-        toast.add({ severity: 'error', summary: 'Invalid Old Metal Weight', detail: 'Net weight cannot be greater than gross weight.', life: 3000 });
+    if (form.old_golds.some((og) => Number(og.wastage_weight || 0) < 0 || Number(og.wastage_weight || 0) > Number(og.gross_weight || 0))) {
+        toast.add({ severity: 'error', summary: 'Invalid Old Metal Deduction', detail: 'Old metal deduction cannot be negative or exceed gross weight.', life: 3000 });
         return;
     }
     if (totalCashCardReceived.value > netPayable.value) {
         toast.add({ severity: 'error', summary: 'Overpayment', detail: `Received cash/card (${formatCurrency(totalCashCardReceived.value)}) cannot exceed net payable of ${formatCurrency(netPayable.value)} after Old Gold deduction.`, life: 3500 });
-        return;
-    }
-    if (balanceDue.value < 0) {
-        toast.add({ severity: 'error', summary: 'Overpayment', detail: 'Received amount cannot exceed invoice total', life: 3000 });
         return;
     }
 
@@ -772,7 +797,9 @@ const submitInvoice = () => {
         },
         onError: (errors) => {
             console.error(errors);
-            toast.add({ severity: 'error', summary: 'Error', detail: 'Please check form inputs', life: 3000 });
+            const firstError = Object.values(errors || {})[0];
+            const detailMsg = Array.isArray(firstError) ? firstError[0] : (typeof firstError === 'string' ? firstError : 'Please check form inputs');
+            toast.add({ severity: 'error', summary: 'Invoice Error', detail: detailMsg, life: 4000 });
         },
     });
 };
@@ -780,69 +807,72 @@ const submitInvoice = () => {
 
 <template>
     <AppLayout>
-        <div class="space-y-6">
+        <div class="space-y-5 sm:space-y-6 pb-20 lg:pb-0">
             <!-- Header follows the shared ERP page pattern. -->
-            <section class="erp-page-header border border-surface-200 bg-white px-5 py-6">
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <section class="erp-page-header border border-surface-200 bg-white px-3.5 py-4 sm:px-5 sm:py-6">
+                <div class="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div class="max-w-3xl">
-                        <div class="flex flex-wrap items-center gap-3">
-                            <h1 class="text-2xl font-semibold tracking-tight text-surface-900">New Invoice</h1>
-                            <Tag value="Sales POS" severity="secondary" />
+                        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <h1 class="text-xl sm:text-2xl font-semibold tracking-tight text-surface-900">New Invoice</h1>
+                            <Tag value="Sales POS" severity="secondary" class="!text-[10px] sm:!text-xs" />
                             <Tag
                                 :value="paymentState === 'paid' ? 'Fully Paid' : paymentState === 'partial' ? 'Partially Paid' : paymentState === 'unpaid' ? 'Payment Pending' : 'Draft'"
                                 :severity="paymentState === 'paid' ? 'success' : paymentState === 'partial' ? 'warn' : paymentState === 'unpaid' ? 'danger' : 'secondary'"
+                                class="!text-[10px] sm:!text-xs"
                             />
-                            <Tag v-if="currentDraftId" value="Editing Draft" severity="warn" />
+                            <Tag v-if="currentDraftId" value="Editing Draft" severity="warn" class="!text-[10px] sm:!text-xs" />
                         </div>
-                        <p class="mt-2 text-sm leading-6 text-surface-600">Select a customer, add jewellery, collect payment, and generate the final bill.</p>
+                        <p class="mt-1.5 text-xs sm:text-sm leading-relaxed text-surface-600">Select a customer, add jewellery, collect payment, and generate the final bill.</p>
                     </div>
 
-                    <div class="flex shrink-0 flex-wrap items-center gap-2">
-                        <Button label="Save Draft" icon="pi pi-save" severity="secondary" outlined @click="saveCurrentDraft" />
+                    <div class="flex shrink-0 flex-wrap items-center gap-2 pt-1 sm:pt-0">
+                        <Button label="Save Draft" icon="pi pi-save" severity="secondary" outlined size="small" class="!text-xs sm:!text-sm" @click="saveCurrentDraft" />
                         <Button
                             v-if="draftList.length > 0"
-                            :label="`Saved Drafts (${draftList.length})`"
+                            :label="`Drafts (${draftList.length})`"
                             icon="pi pi-folder-open"
                             severity="secondary"
                             text
+                            size="small"
+                            class="!text-xs sm:!text-sm"
                             @click="showDraftsDialog = true"
                         />
                     </div>
                 </div>
             </section>
 
-            <section class="grid grid-cols-1 gap-4 sm:grid-cols-2" :class="totalOldGoldValue > 0 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'">
-                <div class="erp-stat-card">
-                    <span class="erp-stat-card__label">Items</span>
-                    <span class="erp-stat-card__value">{{ form.items.length }}</span>
-                    <span class="erp-stat-card__meta">In current bill</span>
+            <section class="grid grid-cols-2 gap-2.5 sm:gap-4" :class="totalOldGoldValue > 0 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'">
+                <div class="erp-stat-card !p-3 sm:!p-4">
+                    <span class="erp-stat-card__label !text-[11px] sm:!text-xs">Items</span>
+                    <span class="erp-stat-card__value !text-lg sm:!text-2xl">{{ form.items.length }}</span>
+                    <span class="erp-stat-card__meta !text-[10px] sm:!text-xs">In current bill</span>
                 </div>
 
-                <div class="erp-stat-card">
-                    <span class="erp-stat-card__label">Gross Bill</span>
-                    <span class="erp-stat-card__value">{{ formatCurrency(grandTotal) }}</span>
-                    <span class="erp-stat-card__meta">Including 3% GST</span>
+                <div class="erp-stat-card !p-3 sm:!p-4">
+                    <span class="erp-stat-card__label !text-[11px] sm:!text-xs">Gross Bill</span>
+                    <span class="erp-stat-card__value !text-base sm:!text-2xl truncate">{{ formatCurrency(grandTotal) }}</span>
+                    <span class="erp-stat-card__meta !text-[10px] sm:!text-xs">Incl. 3% GST</span>
                 </div>
 
-                <div v-if="totalOldGoldValue > 0" class="erp-stat-card">
-                    <span class="erp-stat-card__label flex items-center gap-1 !text-amber-800">
+                <div v-if="totalOldGoldValue > 0" class="erp-stat-card !p-3 sm:!p-4">
+                    <span class="erp-stat-card__label flex items-center gap-1 !text-amber-800 !text-[11px] sm:!text-xs">
                         <Coins class="h-3 w-3 text-amber-600" />
-                        Trade-in Credit
+                        Trade-in
                     </span>
-                    <span class="erp-stat-card__value !text-amber-800">{{ formatCurrency(totalOldGoldValue) }}</span>
-                    <span class="erp-stat-card__meta !text-amber-700">{{ totalOldGoldGrossWeight.toFixed(3) }} g old metal</span>
+                    <span class="erp-stat-card__value !text-amber-800 !text-base sm:!text-2xl truncate">{{ formatCurrency(totalOldGoldValue) }}</span>
+                    <span class="erp-stat-card__meta !text-amber-700 !text-[10px] sm:!text-xs">{{ totalOldGoldGrossWeight.toFixed(3) }} g old metal</span>
                 </div>
 
-                <div class="erp-stat-card">
-                    <span class="erp-stat-card__label">Balance Due</span>
-                    <span class="erp-stat-card__value" :class="balanceDue <= 0 && grandTotal > 0 ? '!text-emerald-700' : ''">{{ formatCurrency(balanceDue) }}</span>
-                    <span class="erp-stat-card__meta" :class="balanceDue <= 0 && grandTotal > 0 ? '!text-emerald-700' : ''">
-                        {{ balanceDue <= 0 && grandTotal > 0 ? 'Fully settled' : 'Pending collection' }}
+                <div class="erp-stat-card !p-3 sm:!p-4">
+                    <span class="erp-stat-card__label !text-[11px] sm:!text-xs">Balance Due</span>
+                    <span class="erp-stat-card__value !text-base sm:!text-2xl truncate" :class="balanceDue <= 0 && grandTotal > 0 ? '!text-emerald-700' : ''">{{ formatCurrency(balanceDue) }}</span>
+                    <span class="erp-stat-card__meta !text-[10px] sm:!text-xs" :class="balanceDue <= 0 && grandTotal > 0 ? '!text-emerald-700' : ''">
+                        {{ balanceDue <= 0 && grandTotal > 0 ? 'Fully settled' : 'Pending' }}
                     </span>
                 </div>
             </section>
 
-            <div v-if="!isDayOpen" class="erp-alert-row flex flex-col gap-3 border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+            <div v-if="!isDayOpen" class="erp-alert-row flex flex-col gap-3 border border-amber-200 bg-amber-50 px-3.5 py-3 text-amber-900 sm:flex-row sm:items-center sm:justify-between rounded-xl">
                 <div class="flex items-start gap-2.5">
                     <i class="pi pi-lock mt-0.5 text-sm text-amber-700"></i>
                     <div>
@@ -855,15 +885,15 @@ const submitInvoice = () => {
 
             <!-- TOP ROW: Customer, Rate, Date, Discount Toolbar -->
             <div class="erp-panel overflow-hidden !p-0 border border-surface-200 bg-white shadow-xs rounded-xl">
-                <div class="border-b border-surface-200 px-5 py-4">
-                    <h2 class="text-lg font-semibold text-surface-900">Invoice Details</h2>
-                    <p class="mt-1 text-sm text-surface-500">Choose the customer and confirm live metal rates before adding items.</p>
+                <div class="border-b border-surface-200 px-3.5 py-3 sm:px-5 sm:py-4">
+                    <h2 class="text-base sm:text-lg font-semibold text-surface-900">Invoice Details</h2>
+                    <p class="mt-0.5 text-xs sm:text-sm text-surface-500">Choose the customer and confirm live metal rates before adding items.</p>
                 </div>
-                <div class="p-4 sm:p-5">
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
-                        <!-- Customer (2 cols) -->
-                        <div class="sm:col-span-2 lg:col-span-2">
-                            <label class="mb-1.5 block text-sm font-medium text-surface-700">
+                <div class="p-3.5 sm:p-5">
+                    <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-6">
+                        <!-- Customer (2 cols on mobile, 2 cols on lg) -->
+                        <div class="col-span-2 lg:col-span-2">
+                            <label class="mb-1.5 block text-xs sm:text-sm font-medium text-surface-700">
                                 Customer <span class="text-red-500">*</span>
                             </label>
 
@@ -887,9 +917,9 @@ const submitInvoice = () => {
                             </div>
                         </div>
 
-                        <!-- Gold Rate (22K) -->
-                        <div class="lg:col-span-1">
-                            <label class="mb-1.5 block text-sm font-medium text-surface-700">
+                        <!-- Gold Rate (22K) (1 col on mobile, 1 col on lg) -->
+                        <div class="col-span-1 lg:col-span-1">
+                            <label class="mb-1.5 block text-xs sm:text-sm font-medium text-surface-700">
                                 Gold Rate (22K) <span class="text-red-500">*</span>
                             </label>
                             <InputNumber
@@ -899,13 +929,13 @@ const submitInvoice = () => {
                                 locale="en-IN"
                                 placeholder="₹0.00"
                                 class="w-full"
-                                inputClass="w-full !text-sm font-medium"
+                                inputClass="w-full !text-xs sm:!text-sm font-medium"
                             />
                         </div>
 
-                        <!-- Silver Rate -->
-                        <div class="lg:col-span-1">
-                            <label class="mb-1.5 block text-sm font-medium text-surface-700">
+                        <!-- Silver Rate (1 col on mobile, 1 col on lg) -->
+                        <div class="col-span-1 lg:col-span-1">
+                            <label class="mb-1.5 block text-xs sm:text-sm font-medium text-surface-700">
                                 Silver Rate
                             </label>
                             <InputNumber
@@ -915,21 +945,21 @@ const submitInvoice = () => {
                                 locale="en-IN"
                                 placeholder="₹0.00"
                                 class="w-full"
-                                inputClass="w-full !text-sm font-medium"
+                                inputClass="w-full !text-xs sm:!text-sm font-medium"
                             />
                         </div>
 
-                        <!-- Invoice Date -->
-                        <div class="lg:col-span-1">
-                            <label class="mb-1.5 block text-sm font-medium text-surface-700">
+                        <!-- Invoice Date (1 col on mobile, 1 col on lg) -->
+                        <div class="col-span-1 lg:col-span-1">
+                            <label class="mb-1.5 block text-xs sm:text-sm font-medium text-surface-700">
                                 Invoice Date
                             </label>
-                            <InputText type="date" v-model="form.date" class="w-full !text-sm font-medium" />
+                            <InputText type="date" v-model="form.date" class="w-full !text-xs sm:!text-sm font-medium" />
                         </div>
 
                         <!-- Discount: the mode switch stays inside the input so it shares the date field baseline. -->
-                        <div class="lg:col-span-1">
-                            <label class="mb-1.5 block text-sm font-medium text-surface-700">Discount</label>
+                        <div class="col-span-1 lg:col-span-1">
+                            <label class="mb-1.5 block text-xs sm:text-sm font-medium text-surface-700">Discount</label>
                             <div class="invoice-discount-field relative">
                                 <InputNumber
                                     v-model="form.discount_value"
@@ -939,19 +969,19 @@ const submitInvoice = () => {
                                     :maxFractionDigits="2"
                                     placeholder="0"
                                     class="w-full"
-                                    inputClass="w-full !pr-[4.75rem] !text-sm font-medium"
+                                    inputClass="w-full !pr-16 sm:!pr-[4.75rem] !text-xs sm:!text-sm font-medium"
                                 />
                                 <div class="absolute inset-y-1 right-1 z-10 inline-flex items-center rounded-md border border-surface-200 bg-surface-50 p-0.5" role="group" aria-label="Discount type">
                                     <button
                                         type="button"
-                                        class="h-6 min-w-6 rounded px-1.5 text-[10px] font-bold transition-colors cursor-pointer"
+                                        class="h-6 min-w-6 rounded px-1 sm:px-1.5 text-[10px] font-bold transition-colors cursor-pointer"
                                         :class="form.discount_type === 'percentage' ? 'bg-primary text-white shadow-2xs' : 'text-surface-600 hover:text-surface-900'"
                                         :aria-pressed="form.discount_type === 'percentage'"
                                         @click="form.discount_type = 'percentage'"
                                     >%</button>
                                     <button
                                         type="button"
-                                        class="h-6 min-w-6 rounded px-1.5 text-[10px] font-bold transition-colors cursor-pointer"
+                                        class="h-6 min-w-6 rounded px-1 sm:px-1.5 text-[10px] font-bold transition-colors cursor-pointer"
                                         :class="form.discount_type === 'amount' ? 'bg-primary text-white shadow-2xs' : 'text-surface-600 hover:text-surface-900'"
                                         :aria-pressed="form.discount_type === 'amount'"
                                         @click="form.discount_type = 'amount'"
@@ -971,17 +1001,17 @@ const submitInvoice = () => {
                     <!-- ITEMS TABLE -->
                     <div class="erp-panel flex flex-col overflow-hidden !p-0 border border-surface-200 bg-white shadow-xs rounded-xl">
                         <!-- Header -->
-                        <div class="flex items-center justify-between border-b border-surface-200 bg-white px-5 py-3.5">
-                            <div>
-                                <h3 class="text-base font-semibold text-surface-900">Sale Jewellery Items</h3>
-                                <p class="mt-1 text-sm text-surface-500">Add jewellery from stock or a custom order.</p>
+                        <div class="flex items-center justify-between border-b border-surface-200 bg-white px-3.5 py-3 sm:px-5 sm:py-3.5 gap-2">
+                            <div class="min-w-0">
+                                <h3 class="text-base font-semibold text-surface-900 leading-tight">Sale Jewellery Items</h3>
+                                <p class="mt-0.5 text-xs text-surface-500">Add jewellery from stock or a custom order.</p>
                             </div>
 
-                            <Tag :value="`${form.items?.length || 0} Item${form.items?.length === 1 ? '' : 's'}`" severity="secondary" class="!text-xs font-semibold" />
+                            <Tag :value="`${form.items?.length || 0} Item${form.items?.length === 1 ? '' : 's'}`" severity="secondary" class="!text-xs font-semibold shrink-0" />
                         </div>
 
                         <!-- Fast scanner / manual SKU entry -->
-                        <div class="scanner-entry border-b border-surface-200 bg-surface-50 px-5 py-4">
+                        <div class="scanner-entry border-b border-surface-200 bg-surface-50 px-3.5 py-3 sm:px-5 sm:py-4">
                             <div class="mb-2 flex items-center justify-between gap-3">
                                 <label for="invoice-barcode" class="text-sm font-medium text-surface-700">Scan barcode or SKU</label>
                                 <span class="text-xs text-surface-500">Press <kbd class="rounded border border-surface-200 bg-white px-1.5 py-0.5 font-mono text-[11px] text-surface-700">Enter</kbd> to add</span>
@@ -1032,7 +1062,7 @@ const submitInvoice = () => {
                             </div>
                         </div>
 
-                        <!-- Table -->
+                        <!-- Table (Desktop / Tablet) -->
                         <DataTable
                             :value="form.items"
                             scrollable
@@ -1041,7 +1071,7 @@ const submitInvoice = () => {
                             rowHover
                             size="small"
                             dataKey="id"
-                            class="erp-flush-table erp-line-items !rounded-none !border-0 !shadow-none text-xs"
+                            class="erp-flush-table erp-line-items !rounded-none !border-0 !shadow-none text-xs hidden md:block"
                         >
                             <!-- Empty -->
                             <template #empty>
@@ -1156,13 +1186,13 @@ const submitInvoice = () => {
                             </Column>
 
                             <!-- Making Charges -->
-                            <Column header="Making Charges" headerClass="erp-th-center" style="width: 215px">
+                            <Column header="Making Charges" headerClass="erp-th-center" style="min-width: 200px; width: 215px">
                                 <template #body="{ data }">
-                                    <div class="flex items-center gap-1.5">
+                                    <div class="flex items-center gap-1.5 w-full min-w-[180px]">
                                         <InputNumber
                                             v-model="data.making_charges"
                                             inputClass="w-full text-right font-medium"
-                                            class="erp-line-control w-full"
+                                            class="erp-line-control erp-line-making-control flex-1 min-w-[75px]"
                                             mode="decimal"
                                             :max="data.making_charge_type === 'percentage' ? 100 : undefined"
                                             :minFractionDigits="0"
@@ -1175,8 +1205,8 @@ const submitInvoice = () => {
                                             :options="makingChargeTypeOptions"
                                             optionLabel="label"
                                             optionValue="value"
-                                            class="erp-line-control shrink-0"
-                                            style="width: 5.75rem"
+                                            class="erp-line-control erp-line-making-type shrink-0"
+                                            style="width: 5.25rem"
                                             :panelClass="'!min-w-[190px]'"
                                             @change="onMakingTypeChange(data)"
                                         >
@@ -1208,24 +1238,199 @@ const submitInvoice = () => {
                                 </template>
                             </Column>
                         </DataTable>
+
+                        <!-- Mobile Item Cards (Touch Friendly for Phones) -->
+                        <div class="block md:hidden divide-y divide-surface-150">
+                            <!-- Empty Mobile State -->
+                            <div v-if="form.items.length === 0" class="flex flex-col items-center justify-center py-8 px-4 text-center text-surface-400">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-100 text-surface-400 mb-2">
+                                    <i class="pi pi-barcode text-xl"></i>
+                                </div>
+                                <p class="font-semibold text-surface-800 text-sm">No items in bill yet</p>
+                                <span class="text-xs text-surface-500 mt-0.5">Scan a barcode or type a SKU above to start</span>
+                            </div>
+
+                            <div
+                                v-for="(item, index) in form.items"
+                                :key="item.id || index"
+                                class="p-3.5 space-y-3 bg-white"
+                                :class="{ 'bg-red-50/40 border-l-4 border-l-red-500': item.draft_valid === false }"
+                            >
+                                <!-- Card Header: Metal icon, item name, tags, delete button -->
+                                <div class="flex items-start justify-between gap-2.5">
+                                    <div class="flex items-start gap-2.5 min-w-0 flex-1">
+                                        <div
+                                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-xs mt-0.5"
+                                            :class="item.type === 'silver_product' ? 'border-slate-200 bg-slate-50 text-slate-600' : item.type === 'order_item' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-amber-200 bg-amber-50 text-amber-700'"
+                                        >
+                                            <i :class="item.type === 'order_item' ? 'pi pi-wrench' : 'pi pi-tag'"></i>
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <div class="text-sm font-semibold leading-tight text-surface-900 break-words">
+                                                {{ itemIdentity(item).name }}
+                                            </div>
+
+                                            <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                                                <Tag
+                                                    :value="item.type === 'order_item' ? 'ORDER' : item.type === 'silver_product' ? 'SILVER' : 'STOCK'"
+                                                    :severity="item.type === 'order_item' ? 'info' : item.type === 'silver_product' ? 'warn' : 'success'"
+                                                    class="!text-[9px] !font-bold !py-0.5 !px-1.5"
+                                                />
+
+                                                <span
+                                                    v-if="itemIdentity(item).barcode"
+                                                    class="inline-flex items-center gap-1 rounded border border-surface-200 bg-surface-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-surface-700"
+                                                >
+                                                    <i class="pi pi-barcode text-[9px] text-surface-400"></i>
+                                                    {{ itemIdentity(item).barcode }}
+                                                </span>
+
+                                                <span
+                                                    v-if="itemPurityLabel(item)"
+                                                    class="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold"
+                                                    :class="item.type === 'silver_product' ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-amber-200 bg-amber-50 text-amber-800'"
+                                                >
+                                                    <span class="h-1.5 w-1.5 rounded-full" :class="item.type === 'silver_product' ? 'bg-slate-400' : 'bg-amber-500'"></span>
+                                                    {{ itemPurityLabel(item) }}
+                                                </span>
+
+                                                <span v-if="item.type === 'order_item'" class="inline-flex rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                                                    Custom Order
+                                                </span>
+                                                <span v-else-if="item.type === 'silver_product'" class="text-[10px] font-medium text-surface-500">
+                                                    {{ item.pricing_mode === 'PIECE' ? 'Per piece' : 'By weight' }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-red-500 hover:bg-red-50 active:bg-red-100 transition-colors cursor-pointer"
+                                        title="Remove item"
+                                        @click="removeItem(index)"
+                                    >
+                                        <Trash2 class="h-4 w-4" />
+                                    </button>
+                                </div>
+
+                                <p v-if="item.draft_valid === false" class="text-xs font-medium text-red-600 bg-red-50 p-2 rounded-md">
+                                    {{ item.draft_issue }}
+                                </p>
+
+                                <!-- Mobile Inputs Grid -->
+                                <div class="grid grid-cols-2 gap-2.5 rounded-lg border border-surface-200 bg-surface-50/70 p-2.5">
+                                    <!-- Weight or Quantity -->
+                                    <div>
+                                        <label class="block text-[11px] font-medium text-surface-600 mb-1">
+                                            {{ item.type === 'silver_product' && item.pricing_mode === 'PIECE' ? 'Quantity' : 'Weight' }}
+                                        </label>
+                                        <div v-if="item.type === 'silver_product' && item.pricing_mode === 'PIECE'">
+                                            <InputNumber
+                                                v-model="item.quantity"
+                                                inputClass="w-full text-center font-bold !text-sm"
+                                                class="w-full"
+                                                :min="1"
+                                                :max="item.quantity_available || 1"
+                                                @input="onRowInput($event, item, 'quantity')"
+                                            />
+                                        </div>
+                                        <div v-else>
+                                            <InputNumber
+                                                :modelValue="Number(item.weight || 0)"
+                                                mode="decimal"
+                                                :minFractionDigits="item.type === 'silver_product' ? 2 : 3"
+                                                :maxFractionDigits="3"
+                                                suffix=" g"
+                                                disabled
+                                                class="w-full"
+                                                inputClass="w-full font-bold text-center !text-sm !bg-surface-100/90 !text-surface-900 !opacity-100"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <!-- Rate -->
+                                    <div>
+                                        <label class="block text-[11px] font-medium text-surface-600 mb-1">
+                                            {{ item.type === 'silver_product' && item.pricing_mode === 'PIECE' ? 'Piece Rate' : 'Rate (₹/g)' }}
+                                        </label>
+                                        <InputNumber
+                                            v-model="item.rate"
+                                            prefix="₹ "
+                                            inputClass="w-full text-right font-semibold !text-sm"
+                                            class="w-full"
+                                            mode="decimal"
+                                            :minFractionDigits="2"
+                                            :maxFractionDigits="2"
+                                            @input="onRowInput($event, item, 'rate')"
+                                        />
+                                    </div>
+
+                                    <!-- Making Charges -->
+                                    <div class="col-span-2">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label class="text-[11px] font-medium text-surface-600">Making Charges</label>
+                                            <span v-if="calculateRowMakingAmount(item) > 0" class="text-[11px] font-mono font-medium text-surface-600">
+                                                = {{ formatCurrency(calculateRowMakingAmount(item)) }}
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <InputNumber
+                                                v-model="item.making_charges"
+                                                inputClass="w-full text-right font-semibold !text-sm"
+                                                class="flex-1 min-w-0"
+                                                mode="decimal"
+                                                :max="item.making_charge_type === 'percentage' ? 100 : undefined"
+                                                :minFractionDigits="0"
+                                                :maxFractionDigits="2"
+                                                placeholder="0"
+                                                @input="onRowInput($event, item, 'making_charges')"
+                                            />
+                                            <Select
+                                                v-model="item.making_charge_type"
+                                                :options="makingChargeTypeOptions"
+                                                optionLabel="label"
+                                                optionValue="value"
+                                                class="w-28 shrink-0"
+                                                @change="onMakingTypeChange(item)"
+                                            >
+                                                <template #value="slotProps">
+                                                    <span class="text-xs font-semibold text-surface-800">
+                                                        {{ slotProps.value === 'percentage' ? '%' : slotProps.value === 'flat' ? '₹ Flat' : '₹/g' }}
+                                                    </span>
+                                                </template>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Card Total -->
+                                <div class="flex items-center justify-between pt-1 border-t border-surface-100">
+                                    <span class="text-xs font-semibold text-surface-600">Item Total</span>
+                                    <span class="font-mono text-base font-bold text-emerald-700">
+                                        {{ formatCurrency(item.final_price) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- OLD METAL & GOLD EXCHANGE PANEL -->
                     <div class="erp-panel flex flex-col overflow-hidden !p-0 border border-surface-200 bg-white shadow-xs rounded-xl">
                         <!-- Header -->
-                        <div class="flex items-center justify-between border-b border-surface-200 bg-white px-5 py-3.5">
-                            <div>
-                                <h3 class="text-base font-semibold text-surface-900">Old Metal & Gold Exchange</h3>
-                                <p class="text-xs text-surface-500">Customer trade-in credited to Vault and deducted from net payable</p>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-surface-200 bg-white px-3.5 py-3 sm:px-5 sm:py-3.5">
+                            <div class="min-w-0">
+                                <h3 class="text-base font-semibold text-surface-900 leading-tight">Old Metal & Gold Exchange</h3>
+                                <p class="mt-0.5 text-xs text-surface-500">Customer trade-in credited to Vault and deducted from net payable</p>
                             </div>
 
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2 self-start sm:self-center shrink-0">
                                 <Tag v-if="form.old_golds.length > 0" :value="`${form.old_golds.length} Item${form.old_golds.length === 1 ? '' : 's'}`" severity="secondary" class="!text-xs font-semibold" />
-                                <Button label="Add Old Metal" icon="pi pi-plus" size="small" outlined severity="primary" class="!text-xs !py-1 !px-2.5" @click="addOldGoldRow" />
+                                <Button label="Add Old Metal" icon="pi pi-plus" size="small" outlined severity="primary" class="!text-xs !py-1.5 !px-3" @click="addOldGoldRow" />
                             </div>
                         </div>
 
-                        <div v-if="form.old_golds.length > 0" class="border-b border-surface-200 bg-surface-50/80 px-5 py-2.5">
+                        <div v-if="form.old_golds.length > 0" class="border-b border-surface-200 bg-surface-50/80 px-3.5 sm:px-5 py-2.5">
                             <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-surface-600">
                                 <span class="inline-flex items-center gap-1.5 font-semibold text-surface-800">
                                     <i class="pi pi-info-circle text-primary-600"></i>
@@ -1243,8 +1448,8 @@ const submitInvoice = () => {
                             </div>
                         </div>
 
-                        <!-- DataTable with .erp-line-items -->
-                        <DataTable :value="form.old_golds" scrollable stripedRows rowHover size="small" class="erp-flush-table invoice-old-metal-table erp-line-items !rounded-none !border-0 !shadow-none text-sm">
+                        <!-- DataTable with .erp-line-items (Desktop / Tablet) -->
+                        <DataTable :value="form.old_golds" scrollable stripedRows rowHover size="small" class="erp-flush-table invoice-old-metal-table erp-line-items !rounded-none !border-0 !shadow-none text-sm hidden md:block">
                             <template #empty>
                                 <div class="flex flex-col items-center justify-center py-7 text-center text-surface-400">
                                     <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 mb-1.5 border border-amber-200/50">
@@ -1373,9 +1578,134 @@ const submitInvoice = () => {
                             </Column>
                         </DataTable>
 
+                        <!-- Mobile Old Metal Cards (Touch Friendly for Phones) -->
+                        <div class="block md:hidden divide-y divide-surface-150">
+                            <!-- Empty Mobile State -->
+                            <div v-if="form.old_golds.length === 0" class="flex flex-col items-center justify-center py-6 px-4 text-center text-surface-400">
+                                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 mb-1.5 border border-amber-200/50">
+                                    <Coins class="h-5 w-5" />
+                                </div>
+                                <p class="font-semibold text-surface-700 text-xs">No old metal trade-in</p>
+                                <p class="text-[11px] text-surface-400 mt-0.5">Tap "+ Add Old Metal" above if customer is trading in old jewellery</p>
+                            </div>
+
+                            <div
+                                v-for="(data, index) in form.old_golds"
+                                :key="index"
+                                class="p-3.5 space-y-3 bg-white"
+                            >
+                                <!-- Card Header: Metal Type, Description, Delete -->
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="flex items-center gap-2 flex-1">
+                                        <Select
+                                            v-model="data.metal_type"
+                                            :options="metalTypeOptions"
+                                            optionLabel="label"
+                                            optionValue="value"
+                                            class="w-28 shrink-0 !text-xs font-semibold"
+                                            @change="onOldGoldMetalChange(data)"
+                                        />
+                                        <InputText
+                                            v-model="data.description"
+                                            placeholder="Description (e.g. Ring)"
+                                            class="w-full !text-xs"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-red-500 hover:bg-red-50 active:bg-red-100 transition-colors cursor-pointer"
+                                        title="Remove row"
+                                        @click="removeOldGoldRow(index)"
+                                    >
+                                        <Trash2 class="h-4 w-4" />
+                                    </button>
+                                </div>
+
+                                <!-- Inputs Grid -->
+                                <div class="grid grid-cols-3 gap-2 rounded-lg border border-surface-200 bg-surface-50/70 p-2.5">
+                                    <div>
+                                        <label class="block text-[10.5px] font-medium text-surface-600 mb-1">Gross (g)</label>
+                                        <InputNumber
+                                            v-model="data.gross_weight"
+                                            mode="decimal"
+                                            :min="0"
+                                            :minFractionDigits="3"
+                                            :maxFractionDigits="3"
+                                            placeholder="0.000"
+                                            class="w-full"
+                                            inputClass="w-full text-right font-medium !text-xs"
+                                            @update:modelValue="updateOldGoldNumber(data, 'gross_weight', $event)"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10.5px] font-medium text-surface-600 mb-1">Deduct (g)</label>
+                                        <InputNumber
+                                            v-model="data.wastage_weight"
+                                            mode="decimal"
+                                            :min="0"
+                                            :max="Number(data.gross_weight || 0)"
+                                            :minFractionDigits="3"
+                                            :maxFractionDigits="3"
+                                            placeholder="0.000"
+                                            class="w-full"
+                                            inputClass="w-full text-right text-surface-500 !text-xs"
+                                            @update:modelValue="updateOldGoldNumber(data, 'wastage_weight', $event)"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10.5px] font-medium text-surface-600 mb-1">Net (g)</label>
+                                        <InputNumber
+                                            :modelValue="Number(data.net_weight || 0)"
+                                            mode="decimal"
+                                            :minFractionDigits="3"
+                                            :maxFractionDigits="3"
+                                            readonly
+                                            class="w-full"
+                                            inputClass="w-full text-right font-bold !text-xs !bg-surface-100/90 !text-surface-900 cursor-default"
+                                        />
+                                    </div>
+
+                                    <!-- Purity (2 cols) & Rate (1 col) -->
+                                    <div class="col-span-2">
+                                        <label class="block text-[10.5px] font-medium text-surface-600 mb-1">Purity</label>
+                                        <Select
+                                            v-model="data.purity"
+                                            :options="oldGoldPurityOptions.filter(p => p.metal === 'ANY' || p.metal === data.metal_type)"
+                                            optionLabel="label"
+                                            optionValue="value"
+                                            class="w-full !text-xs"
+                                            @change="onOldGoldPurityChange(data)"
+                                        />
+                                    </div>
+                                    <div class="col-span-1">
+                                        <label class="block text-[10.5px] font-medium text-surface-600 mb-1">Rate (₹/g)</label>
+                                        <InputNumber
+                                            v-model="data.rate"
+                                            prefix="₹ "
+                                            mode="decimal"
+                                            :min="0"
+                                            :minFractionDigits="2"
+                                            :maxFractionDigits="2"
+                                            class="w-full"
+                                            inputClass="w-full text-right font-medium !text-xs"
+                                            @update:modelValue="updateOldGoldNumber(data, 'rate', $event)"
+                                        />
+                                    </div>
+                                </div>
+
+                                <!-- Footer: Credit Value -->
+                                <div class="flex items-center justify-between pt-1 border-t border-surface-100">
+                                    <span class="text-xs font-semibold text-surface-600">Trade-in Credit</span>
+                                    <span class="font-mono text-base font-bold text-emerald-700">
+                                        {{ formatCurrency(data.final_price) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Footer Summary Bar -->
-                        <div v-if="form.old_golds.length > 0" class="flex flex-wrap items-center justify-between gap-4 border-t border-surface-200 bg-surface-50 px-5 py-2.5 text-xs">
-                            <div class="flex items-center gap-6">
+                        <div v-if="form.old_golds.length > 0" class="flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-t border-surface-200 bg-surface-50 px-3.5 sm:px-5 py-2.5 text-xs">
+                            <div class="flex items-center gap-4 sm:gap-6">
                                 <div class="flex items-center gap-1.5">
                                     <span class="text-surface-500">Gross Wt:</span>
                                     <span class="font-mono font-bold text-surface-900">{{ totalOldGoldGrossWeight.toFixed(3) }} g</span>
@@ -1388,7 +1718,7 @@ const submitInvoice = () => {
                                 </div>
                             </div>
                             <div class="flex items-center gap-2">
-                                <span class="font-semibold text-surface-700">Total Trade-In Credit:</span>
+                                <span class="font-semibold text-surface-700">Trade-In Credit:</span>
                                 <span class="font-mono text-sm font-bold text-emerald-700">{{ formatCurrency(totalOldGoldValue) }}</span>
                             </div>
                         </div>
@@ -1396,7 +1726,7 @@ const submitInvoice = () => {
                 </div>
 
                 <!-- RIGHT COLUMN: BILL SUMMARY & PAYMENT -->
-                <div class="invoice-checkout-panel erp-panel flex flex-col justify-between overflow-hidden !p-0 sticky top-4 border border-surface-200 bg-white shadow-xs rounded-xl">
+                <div id="payment-section" class="invoice-checkout-panel erp-panel flex flex-col justify-between overflow-hidden !p-0 sticky top-4 border border-surface-200 bg-white shadow-xs rounded-xl">
                     <!-- Summary -->
                     <div class="p-4 sm:p-5">
                         <div class="mb-3.5 flex items-center justify-between border-b border-surface-100 pb-3">
@@ -1463,6 +1793,17 @@ const submitInvoice = () => {
                                     - {{ formatCurrency(totalOldGoldValue) }}
                                 </span>
                             </div>
+
+                            <!-- Advance to Customer Ledger Card -->
+                            <div v-if="excessAdvance > 0" class="flex items-center justify-between rounded-lg border border-emerald-300 bg-emerald-50/90 p-2 text-xs text-emerald-950">
+                                <div class="flex items-center gap-1.5 font-semibold">
+                                    <i class="pi pi-wallet text-emerald-600"></i>
+                                    <span>Advance to Customer Ledger</span>
+                                </div>
+                                <span class="font-mono font-bold text-emerald-800">
+                                    + {{ formatCurrency(excessAdvance) }}
+                                </span>
+                            </div>
                         </div>
 
                         <Divider class="!my-3" />
@@ -1472,7 +1813,9 @@ const submitInvoice = () => {
                             <div class="flex items-center justify-between">
                                 <div>
                                     <span class="text-[10px] font-bold uppercase tracking-wider text-surface-500">Net Payable</span>
-                                    <p class="text-[10px] text-surface-400">After trade-in deduction</p>
+                                    <p class="text-[10px]" :class="excessAdvance > 0 ? 'text-emerald-700 font-semibold' : 'text-surface-400'">
+                                        {{ excessAdvance > 0 ? `Fully paid (₹${formatCurrency(excessAdvance)} advance)` : 'After trade-in deduction' }}
+                                    </p>
                                 </div>
                                 <span class="font-mono text-xl font-bold tracking-tight text-surface-900">
                                     {{ formatCurrency(netPayable) }}
@@ -1486,7 +1829,11 @@ const submitInvoice = () => {
                                 <span class="block text-[10px] font-bold uppercase tracking-wider text-surface-400">Total Settled</span>
                                 <span class="mt-0.5 block font-mono text-sm font-bold text-emerald-700">{{ formatCurrency(totalReceived) }}</span>
                             </div>
-                            <div class="rounded-lg border border-surface-200/70 bg-white p-2 text-center">
+                            <div v-if="excessAdvance > 0" class="rounded-lg border border-emerald-200 bg-emerald-50/50 p-2 text-center">
+                                <span class="block text-[10px] font-bold uppercase tracking-wider text-emerald-700">Store Advance</span>
+                                <span class="mt-0.5 block font-mono text-sm font-bold text-emerald-700">+ {{ formatCurrency(excessAdvance) }}</span>
+                            </div>
+                            <div v-else class="rounded-lg border border-surface-200/70 bg-white p-2 text-center">
                                 <span class="block text-[10px] font-bold uppercase tracking-wider" :class="balanceDue > 0 ? 'text-amber-700' : 'text-emerald-700'">Ledger Due</span>
                                 <span class="mt-0.5 block font-mono text-sm font-bold" :class="balanceDue > 0 ? 'text-amber-700' : 'text-emerald-700'">{{ formatCurrency(balanceDue) }}</span>
                             </div>
@@ -1556,8 +1903,53 @@ const submitInvoice = () => {
             </div>
         </div>
 
+        <!-- Mobile Sticky Floating Summary & Action Bar -->
+        <div
+            v-if="form.items.length > 0"
+            class="fixed bottom-0 left-0 right-0 z-40 block lg:hidden border-t border-surface-200 bg-white/95 px-4 py-2.5 shadow-lg backdrop-blur-md"
+        >
+            <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-surface-500">
+                        <span>Net Payable</span>
+                        <span>&middot;</span>
+                        <span>{{ form.items.length }} {{ form.items.length === 1 ? 'item' : 'items' }}</span>
+                    </div>
+                    <div class="font-mono text-lg font-bold text-surface-900 truncate">
+                        {{ formatCurrency(netPayable) }}
+                        <span v-if="excessAdvance > 0" class="text-xs font-semibold text-emerald-600 ml-1">
+                            (+{{ formatCurrency(excessAdvance) }} adv)
+                        </span>
+                    </div>
+                </div>
+
+                <div class="flex shrink-0 items-center gap-2">
+                    <Button
+                        v-if="!canGenerateInvoice"
+                        label="Review & Pay"
+                        icon="pi pi-arrow-down"
+                        size="small"
+                        outlined
+                        severity="primary"
+                        class="!text-xs !font-bold shrink-0"
+                        @click="scrollToPayment"
+                    />
+                    <Button
+                        v-else
+                        label="Print Invoice"
+                        icon="pi pi-print"
+                        size="small"
+                        severity="success"
+                        class="!text-xs !font-bold shrink-0 shadow-xs"
+                        :loading="form.processing || isValidatingDraftItems"
+                        @click="submitInvoice"
+                    />
+                </div>
+            </div>
+        </div>
+
         <!-- Saved Drafts Dialog -->
-        <Dialog v-model:visible="showDraftsDialog" header="Saved Drafts" modal :style="{ width: '36rem' }">
+        <Dialog v-model:visible="showDraftsDialog" header="Saved Drafts" modal :style="{ width: '36rem', maxWidth: '94vw' }">
             <div v-if="draftList.length === 0" class="py-8 text-center text-sm text-surface-500">
                 No saved drafts.
             </div>
@@ -1600,6 +1992,12 @@ const submitInvoice = () => {
 <style>
 .invoice-discount-field .p-inputnumber-input {
     padding-right: 4.75rem !important;
+}
+
+@media (max-width: 640px) {
+    .invoice-discount-field .p-inputnumber-input {
+        padding-right: 4.25rem !important;
+    }
 }
 
 #invoice-barcode {
