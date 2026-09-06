@@ -917,10 +917,10 @@ const submitInvoice = () => {
                             </div>
                         </div>
 
-                        <!-- Gold Rate (22K) (1 col on mobile, 1 col on lg) -->
+                        <!-- Gold Rate (24K) (1 col on mobile, 1 col on lg) -->
                         <div class="col-span-1 lg:col-span-1">
                             <label class="mb-1.5 block text-xs sm:text-sm font-medium text-surface-700">
-                                Gold Rate (22K) <span class="text-red-500">*</span>
+                                Gold Rate (24K) <span class="text-red-500">*</span>
                             </label>
                             <InputNumber
                                 v-model="form.gold_rate"
