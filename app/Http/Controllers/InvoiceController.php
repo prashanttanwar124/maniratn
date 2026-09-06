@@ -219,6 +219,7 @@ class InvoiceController extends Controller
                             'wastage_weight' => (float) $og->wastage_weight,
                             'net_weight' => (float) $og->net_weight,
                             'purity' => $og->purity,
+                            'fine_weight' => MetalWeightService::fineWeight((float) $og->net_weight, $og->purity),
                             'rate' => (float) $og->rate,
                             'final_price' => (float) $og->final_price,
                         ];
@@ -342,6 +343,7 @@ class InvoiceController extends Controller
             'old_golds.*.wastage_weight' => 'nullable|numeric|min:0',
             'old_golds.*.net_weight' => 'nullable|numeric|min:0',
             'old_golds.*.purity' => 'nullable|string',
+            'old_golds.*.custom_purity' => 'nullable|numeric|min:0.01|max:100',
             'old_golds.*.rate' => 'nullable|numeric|min:0',
             'old_golds.*.final_price' => 'nullable|numeric|min:0',
             'payment_cash' => 'nullable|numeric|min:0',
@@ -560,6 +562,7 @@ class InvoiceController extends Controller
             'old_golds.*.wastage_weight' => 'nullable|numeric|min:0',
             'old_golds.*.net_weight' => 'nullable|numeric|min:0',
             'old_golds.*.purity' => 'nullable|string|max:50',
+            'old_golds.*.custom_purity' => 'nullable|numeric|min:0.01|max:100',
             'old_golds.*.rate' => 'required_with:old_golds|numeric|min:0.01',
             'old_golds.*.final_price' => 'nullable|numeric|min:0',
 
@@ -850,6 +853,10 @@ class InvoiceController extends Controller
                 $grossWt = round((float) ($ogRow['gross_weight'] ?? 0), 3);
                 $wastageWt = round((float) ($ogRow['wastage_weight'] ?? 0), 3);
                 $purity = trim((string) ($ogRow['purity'] ?? '22K'));
+                $customPurity = isset($ogRow['custom_purity']) && is_numeric($ogRow['custom_purity']) ? (float) $ogRow['custom_purity'] : null;
+                if (($purity === 'Custom' || str_starts_with($purity, 'Custom')) && $customPurity !== null) {
+                    $purity = "Custom ({$customPurity}%)";
+                }
                 $rate = round((float) ($ogRow['rate'] ?? 0), 2);
 
                 if ($grossWt <= 0 || $rate <= 0) {

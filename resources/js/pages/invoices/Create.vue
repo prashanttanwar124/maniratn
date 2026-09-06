@@ -19,7 +19,7 @@ import Textarea from 'primevue/textarea';
 import { computed, onMounted, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
 import { formatIndianDateTime, toIndianDateInput, todayIndianDate } from '@/utils/indiaTime';
-import { Coins, Plus, Scale, Sparkles, Trash2, ArrowLeftRight, Check, Zap } from 'lucide-vue-next';
+import { Coins, Plus, Scale, Sparkles, Trash2, ArrowLeftRight, Check, Zap, RotateCcw } from 'lucide-vue-next';
 
 const props = defineProps({
     prefilledItems: {
@@ -81,14 +81,14 @@ const metalTypeOptions = [
 ];
 
 const oldGoldPurityOptions = [
-    { label: '24K (99.9%)', value: '24K', multiplier: 1.0, metal: 'GOLD' },
+    { label: '24K (99.9%)', value: '24K', multiplier: 0.999, metal: 'GOLD' },
     { label: '22K (91.6%)', value: '22K', multiplier: 0.916, metal: 'GOLD' },
     { label: '18K (75.0%)', value: '18K', multiplier: 0.750, metal: 'GOLD' },
     { label: '14K (58.5%)', value: '14K', multiplier: 0.585, metal: 'GOLD' },
-    { label: 'Silver 999 (99.9%)', value: 'Silver 999', multiplier: 1.0, metal: 'SILVER' },
+    { label: 'Silver 999 (99.9%)', value: 'Silver 999', multiplier: 0.999, metal: 'SILVER' },
     { label: 'Silver 925 (92.5%)', value: 'Silver 925', multiplier: 0.925, metal: 'SILVER' },
     { label: 'Silver 800 (80.0%)', value: 'Silver 800', multiplier: 0.800, metal: 'SILVER' },
-    { label: 'Custom Purity', value: 'Custom', multiplier: 1.0, metal: 'ANY' },
+    { label: '✏️ Custom Touch (%)', value: 'Custom', multiplier: 1.0, metal: 'ANY' },
 ];
 
 const form = useForm({
@@ -218,6 +218,7 @@ const hydrateDraft = async (draft) => {
         wastage_weight: Number(og.wastage_weight || 0),
         net_weight: Number(og.net_weight || 0),
         purity: og.purity || '22K',
+        custom_purity: og.custom_purity !== undefined && og.custom_purity !== null ? Number(og.custom_purity) : null,
         rate: Number(og.rate || 0),
         final_price: Number(og.final_price || 0),
     }));
@@ -532,6 +533,7 @@ const addOldGoldRow = () => {
         wastage_weight: 0,
         net_weight: 0,
         purity: purity,
+        custom_purity: null,
         rate: rate,
         final_price: 0,
     });
@@ -558,11 +560,13 @@ const onOldGoldMetalChange = (item) => {
     if (item.metal_type === 'SILVER') {
         item.description = 'Old Silver';
         item.purity = 'Silver 925';
+        item.custom_purity = null;
         const baseBuyRate = Number(props.defaultSilverBuyRate || form.silver_rate || 0);
         item.rate = roundMoney(baseBuyRate * 0.925);
     } else {
         item.description = 'Old Gold';
         item.purity = '22K';
+        item.custom_purity = null;
         const baseBuyRate = Number(props.defaultGoldBuyRate || form.gold_rate || 0);
         item.rate = roundMoney(baseBuyRate * 0.916);
     }
@@ -577,10 +581,65 @@ const onOldGoldPurityChange = (item) => {
         : Number(props.defaultGoldBuyRate || form.gold_rate || 0);
     const mult = option?.multiplier ?? 1;
     if (item.purity !== 'Custom') {
+        item.custom_purity = null;
         item.rate = roundMoney(baseBuyRate * mult);
+    } else {
+        if (!item.custom_purity) {
+            item.custom_purity = isSilver ? 92.5 : 91.6;
+        }
+        item.rate = roundMoney(baseBuyRate * (Number(item.custom_purity) / 100));
     }
     onOldGoldInput(item);
 };
+
+const onOldGoldCustomPurityInput = (item) => {
+    const isSilver = item.metal_type === 'SILVER';
+    const baseBuyRate = isSilver
+        ? Number(props.defaultSilverBuyRate || form.silver_rate || 0)
+        : Number(props.defaultGoldBuyRate || form.gold_rate || 0);
+    const pct = Number(item.custom_purity || 0);
+    if (pct > 0 && baseBuyRate > 0) {
+        item.rate = roundMoney(baseBuyRate * (pct / 100));
+    }
+    onOldGoldInput(item);
+};
+
+const resetOldGoldPurityToStandard = (item) => {
+    item.purity = item.metal_type === 'SILVER' ? 'Silver 925' : '22K';
+    item.custom_purity = null;
+    onOldGoldPurityChange(item);
+};
+
+const calculateOldGoldFineWeight = (item) => {
+    const net = Number(item.net_weight || 0);
+    if (net <= 0) return 0;
+    let pct = 0;
+    if (item.purity === 'Custom') {
+        pct = Number(item.custom_purity || 0);
+    } else {
+        const option = oldGoldPurityOptions.find((p) => p.value === item.purity);
+        pct = (option?.multiplier ?? 1) * 100;
+    }
+    return Number(((net * pct) / 100).toFixed(3));
+};
+
+const totalOldGoldFineWeight = computed(() =>
+    Number(
+        form.old_golds
+            .filter((og) => og.metal_type !== 'SILVER')
+            .reduce((acc, og) => acc + calculateOldGoldFineWeight(og), 0)
+            .toFixed(3)
+    )
+);
+
+const totalOldSilverFineWeight = computed(() =>
+    Number(
+        form.old_golds
+            .filter((og) => og.metal_type === 'SILVER')
+            .reduce((acc, og) => acc + calculateOldGoldFineWeight(og), 0)
+            .toFixed(3)
+    )
+);
 
 const totalOldGoldValue = computed(() =>
     roundMoney(form.old_golds.reduce((acc, og) => acc + (parseFloat(og.final_price) || 0), 0))
@@ -631,6 +690,7 @@ const checkoutBlocker = computed(() => {
     if (hasInvalidDraftItems.value) return 'Fix or remove the flagged draft items.';
     if (form.discount_type === 'percentage' && Number(form.discount_value || 0) > 100) return 'Discount percentage cannot be greater than 100.';
     if (form.old_golds.some((item) => Number(item.gross_weight || 0) <= 0 || Number(item.rate || 0) <= 0)) return 'Enter gross weight and buy rate for every old-metal item.';
+    if (form.old_golds.some((item) => item.purity === 'Custom' && (Number(item.custom_purity || 0) <= 0 || Number(item.custom_purity || 0) > 100))) return 'Enter a valid custom purity percentage (0.01 - 100%) for old metal.';
     if (form.old_golds.some((item) => Number(item.wastage_weight || 0) > Number(item.gross_weight || 0))) return 'Old-metal deduction cannot be greater than gross weight.';
     if (totalCashCardReceived.value > netPayable.value) return 'Cash and digital payment cannot be more than the net payable.';
     return '';
@@ -759,6 +819,10 @@ const submitInvoice = () => {
         toast.add({ severity: 'error', summary: 'Invalid Old Metal', detail: 'Gross weight and buy rate are required for all old metal rows.', life: 3000 });
         return;
     }
+    if (form.old_golds.some((og) => og.purity === 'Custom' && (Number(og.custom_purity || 0) <= 0 || Number(og.custom_purity || 0) > 100))) {
+        toast.add({ severity: 'warn', summary: 'Invalid Custom Purity', detail: 'Enter a valid custom purity % (0.01 - 100%) for old metal exchange.', life: 3000 });
+        return;
+    }
     if (form.old_golds.some((og) => Number(og.wastage_weight || 0) < 0 || Number(og.wastage_weight || 0) > Number(og.gross_weight || 0))) {
         toast.add({ severity: 'error', summary: 'Invalid Old Metal Deduction', detail: 'Old metal deduction cannot be negative or exceed gross weight.', life: 3000 });
         return;
@@ -788,6 +852,7 @@ const submitInvoice = () => {
             wastage_weight: Number(og.wastage_weight || 0),
             net_weight: Number(og.net_weight || 0),
             purity: og.purity || '22K',
+            custom_purity: og.purity === 'Custom' ? Number(og.custom_purity || 0) : null,
             rate: Number(og.rate || 0),
             final_price: Number(og.final_price || 0),
         })),
@@ -1449,7 +1514,7 @@ const submitInvoice = () => {
                         </div>
 
                         <!-- DataTable with .erp-line-items (Desktop / Tablet) -->
-                        <DataTable :value="form.old_golds" scrollable stripedRows rowHover size="small" class="erp-flush-table invoice-old-metal-table erp-line-items !rounded-none !border-0 !shadow-none text-sm hidden md:block">
+                        <DataTable :value="form.old_golds" scrollable stripedRows rowHover size="small" tableStyle="min-width: 68rem" class="erp-flush-table invoice-old-metal-table erp-line-items !rounded-none !border-0 !shadow-none text-sm hidden md:block">
                             <template #empty>
                                 <div class="flex flex-col items-center justify-center py-7 text-center text-surface-400">
                                     <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 mb-1.5 border border-amber-200/50">
@@ -1461,7 +1526,7 @@ const submitInvoice = () => {
                             </template>
 
                             <!-- Metal -->
-                            <Column header="Metal" style="width: 105px">
+                            <Column header="Metal" style="width: 100px; min-width: 100px">
                                 <template #body="{ data }">
                                     <Select
                                         v-model="data.metal_type"
@@ -1475,7 +1540,7 @@ const submitInvoice = () => {
                             </Column>
 
                             <!-- Description -->
-                            <Column header="Description" style="min-width: 150px">
+                            <Column header="Description" style="min-width: 140px">
                                 <template #body="{ data }">
                                     <InputText
                                         v-model="data.description"
@@ -1486,7 +1551,7 @@ const submitInvoice = () => {
                             </Column>
 
                             <!-- Gross Weight -->
-                            <Column header="Gross Wt (g)" headerClass="erp-th-right" style="width: 110px">
+                            <Column header="Gross Wt (g)" headerClass="erp-th-right" style="width: 105px; min-width: 105px">
                                 <template #body="{ data }">
                                     <InputNumber
                                         v-model="data.gross_weight"
@@ -1503,7 +1568,7 @@ const submitInvoice = () => {
                             </Column>
 
                             <!-- Deduction -->
-                            <Column header="Deduction (g)" headerClass="erp-th-right" style="width: 110px">
+                            <Column header="Deduction (g)" headerClass="erp-th-right" style="width: 105px; min-width: 105px">
                                 <template #body="{ data }">
                                     <InputNumber
                                         v-model="data.wastage_weight"
@@ -1521,7 +1586,7 @@ const submitInvoice = () => {
                             </Column>
 
                             <!-- Net Weight -->
-                            <Column header="Net Wt (g)" headerClass="erp-th-right" style="width: 90px">
+                            <Column header="Net Wt (g)" headerClass="erp-th-right" style="width: 90px; min-width: 90px">
                                 <template #body="{ data }">
                                     <div class="text-right font-mono font-bold text-surface-900">
                                         {{ Number(data.net_weight || 0).toFixed(3) }}
@@ -1530,21 +1595,66 @@ const submitInvoice = () => {
                             </Column>
 
                             <!-- Purity -->
-                            <Column header="Purity" style="width: 140px">
+                            <Column header="Purity / Touch" style="width: 185px; min-width: 185px">
                                 <template #body="{ data }">
-                                    <Select
-                                        v-model="data.purity"
-                                        :options="oldGoldPurityOptions.filter(p => p.metal === 'ANY' || p.metal === data.metal_type)"
-                                        optionLabel="label"
-                                        optionValue="value"
-                                        class="erp-line-control w-full"
-                                        @change="onOldGoldPurityChange(data)"
-                                    />
+                                    <!-- Preset Dropdown -->
+                                    <div v-if="data.purity !== 'Custom'">
+                                        <Select
+                                            v-model="data.purity"
+                                            :options="oldGoldPurityOptions.filter(p => p.metal === 'ANY' || p.metal === data.metal_type)"
+                                            optionLabel="label"
+                                            optionValue="value"
+                                            class="erp-line-control w-full"
+                                            @change="onOldGoldPurityChange(data)"
+                                        />
+                                    </div>
+
+                                    <!-- Custom Purity: Clean Touch Input + Presets Revert button -->
+                                    <div v-else class="flex items-center gap-1.5 w-full">
+                                        <div class="min-w-0 flex-1">
+                                            <InputNumber
+                                                v-model="data.custom_purity"
+                                                mode="decimal"
+                                                :min="0.01"
+                                                :max="100"
+                                                :minFractionDigits="1"
+                                                :maxFractionDigits="2"
+                                                suffix=" %"
+                                                placeholder="Touch %"
+                                                fluid
+                                                class="erp-line-control w-full"
+                                                inputClass="w-full text-right font-semibold text-amber-950"
+                                                @update:modelValue="onOldGoldCustomPurityInput(data)"
+                                            />
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            label="Presets"
+                                            icon="pi pi-undo"
+                                            severity="secondary"
+                                            outlined
+                                            size="small"
+                                            class="!h-[2.25rem] !py-0 !px-2.5 !text-xs shrink-0 font-medium"
+                                            v-tooltip.top="'Return to standard purity presets (22K, 18K...)'"
+                                            @click="resetOldGoldPurityToStandard(data)"
+                                        />
+                                    </div>
+                                </template>
+                            </Column>
+
+                            <!-- Fine Weight -->
+                            <Column header="Fine Wt (g)" headerClass="erp-th-right" style="width: 105px; min-width: 105px">
+                                <template #body="{ data }">
+                                    <div class="text-right">
+                                        <span class="inline-block font-mono font-bold text-xs text-amber-900 bg-amber-50/80 px-2 py-0.5 rounded border border-amber-200/60">
+                                            {{ calculateOldGoldFineWeight(data).toFixed(3) }} g
+                                        </span>
+                                    </div>
                                 </template>
                             </Column>
 
                             <!-- Buy Rate -->
-                            <Column header="Rate (₹/g)" headerClass="erp-th-right" style="width: 120px">
+                            <Column header="Rate (₹/g)" headerClass="erp-th-right" style="width: 115px; min-width: 115px">
                                 <template #body="{ data }">
                                     <InputNumber
                                         v-model="data.rate"
@@ -1560,7 +1670,7 @@ const submitInvoice = () => {
                             </Column>
 
                             <!-- Credit Value -->
-                            <Column header="Credit (₹)" headerClass="erp-th-right" style="width: 125px">
+                            <Column header="Credit (₹)" headerClass="erp-th-right" style="width: 125px; min-width: 125px">
                                 <template #body="{ data }">
                                     <div class="text-right font-mono font-bold text-emerald-700">
                                         {{ formatCurrency(data.final_price) }}
@@ -1569,7 +1679,7 @@ const submitInvoice = () => {
                             </Column>
 
                             <!-- Delete Action -->
-                            <Column style="width: 48px">
+                            <Column style="width: 48px; min-width: 48px">
                                 <template #body="{ index }">
                                     <div class="flex justify-center">
                                         <Button icon="pi pi-trash" text severity="danger" rounded size="small" @click="removeOldGoldRow(index)" />
@@ -1663,19 +1773,51 @@ const submitInvoice = () => {
                                             class="w-full"
                                             inputClass="w-full text-right font-bold !text-xs !bg-surface-100/90 !text-surface-900 cursor-default"
                                         />
+                                        <span class="block text-right text-[10px] font-semibold text-amber-700 mt-0.5">
+                                            Fine: {{ calculateOldGoldFineWeight(data).toFixed(3) }}g
+                                        </span>
                                     </div>
 
                                     <!-- Purity (2 cols) & Rate (1 col) -->
                                     <div class="col-span-2">
-                                        <label class="block text-[10.5px] font-medium text-surface-600 mb-1">Purity</label>
-                                        <Select
-                                            v-model="data.purity"
-                                            :options="oldGoldPurityOptions.filter(p => p.metal === 'ANY' || p.metal === data.metal_type)"
-                                            optionLabel="label"
-                                            optionValue="value"
-                                            class="w-full !text-xs"
-                                            @change="onOldGoldPurityChange(data)"
-                                        />
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label class="block text-[10.5px] font-medium text-surface-600">Purity</label>
+                                            <button
+                                                v-if="data.purity === 'Custom'"
+                                                type="button"
+                                                class="text-[10.5px] text-primary-700 hover:text-primary-800 font-semibold flex items-center gap-1 cursor-pointer bg-primary-50 px-1.5 py-0.5 rounded border border-primary-200/60"
+                                                @click="resetOldGoldPurityToStandard(data)"
+                                            >
+                                                <RotateCcw class="h-2.5 w-2.5" />
+                                                <span>Presets</span>
+                                            </button>
+                                        </div>
+                                        <div v-if="data.purity !== 'Custom'">
+                                            <Select
+                                                v-model="data.purity"
+                                                :options="oldGoldPurityOptions.filter(p => p.metal === 'ANY' || p.metal === data.metal_type)"
+                                                optionLabel="label"
+                                                optionValue="value"
+                                                class="w-full !text-xs"
+                                                @change="onOldGoldPurityChange(data)"
+                                            />
+                                        </div>
+                                        <div v-else>
+                                            <InputNumber
+                                                v-model="data.custom_purity"
+                                                mode="decimal"
+                                                :min="0.01"
+                                                :max="100"
+                                                :minFractionDigits="1"
+                                                :maxFractionDigits="2"
+                                                suffix=" %"
+                                                placeholder="Touch % (e.g. 84.5)"
+                                                fluid
+                                                class="w-full"
+                                                inputClass="w-full text-right font-semibold text-amber-950"
+                                                @update:modelValue="onOldGoldCustomPurityInput(data)"
+                                            />
+                                        </div>
                                     </div>
                                     <div class="col-span-1">
                                         <label class="block text-[10.5px] font-medium text-surface-600 mb-1">Rate (₹/g)</label>
@@ -1705,7 +1847,7 @@ const submitInvoice = () => {
 
                         <!-- Footer Summary Bar -->
                         <div v-if="form.old_golds.length > 0" class="flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-t border-surface-200 bg-surface-50 px-3.5 sm:px-5 py-2.5 text-xs">
-                            <div class="flex items-center gap-4 sm:gap-6">
+                            <div class="flex flex-wrap items-center gap-3 sm:gap-5 text-surface-600">
                                 <div class="flex items-center gap-1.5">
                                     <span class="text-surface-500">Gross Wt:</span>
                                     <span class="font-mono font-bold text-surface-900">{{ totalOldGoldGrossWeight.toFixed(3) }} g</span>
@@ -1715,6 +1857,14 @@ const submitInvoice = () => {
                                     <span class="font-mono font-bold text-surface-900">
                                         {{ form.old_golds.reduce((acc, r) => acc + Number(r.net_weight || 0), 0).toFixed(3) }} g
                                     </span>
+                                </div>
+                                <div v-if="totalOldGoldFineWeight > 0" class="flex items-center gap-1.5 text-amber-800">
+                                    <span class="text-amber-700 font-medium">Fine Gold:</span>
+                                    <span class="font-mono font-bold text-amber-950">{{ totalOldGoldFineWeight.toFixed(3) }} g</span>
+                                </div>
+                                <div v-if="totalOldSilverFineWeight > 0" class="flex items-center gap-1.5 text-slate-700">
+                                    <span class="text-slate-600 font-medium">Fine Silver:</span>
+                                    <span class="font-mono font-bold text-slate-900">{{ totalOldSilverFineWeight.toFixed(3) }} g</span>
                                 </div>
                             </div>
                             <div class="flex items-center gap-2">

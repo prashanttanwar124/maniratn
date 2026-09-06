@@ -1181,6 +1181,142 @@ it('allows deleting an empty customer without any bills or transactions', functi
     expect($customer->fresh())->toBeNull();
 });
 
+it('settles negative gold balance by paying cash without mutating physical gold vault', function () {
+    openShopDay($this->user, 200000, 10);
+
+    $karigar = Karigar::create([
+        'name' => 'Gold Settle Karigar',
+        'mobile' => '9999988881',
+        'work_type' => 'casting',
+        'city' => 'Jaipur',
+    ]);
+
+    // Initial state: karigar delivered 20g gold ornaments to shop (shop owes 20g gold => balance -20g)
+    MetalTransaction::create([
+        'party_type' => Karigar::class,
+        'party_id' => $karigar->id,
+        'type' => 'RECEIPT',
+        'metal_type' => 'GOLD',
+        'gross_weight' => 20.000,
+        'fine_weight' => 18.320,
+        'description' => 'Received ornaments from karigar',
+        'date' => today()->toDateString(),
+        'entry_source' => 'MANUAL',
+        'entry_type_code' => 'RECEIVE_GOLD',
+    ]);
+
+    expect((float) $karigar->fresh()->metal_balance)->toBe(-20.0);
+
+    // Now shop pays cash for 15g @ 7000 (Rs 1,05,000) to settle 15g of gold liability
+    post(route('ledger.store-entry'), [
+        'party_type' => Karigar::class,
+        'party_id' => $karigar->id,
+        'entry_type' => 'SETTLE_GOLD_PAY_CASH',
+        'gold_weight' => 15.000,
+        'rate' => 7000,
+        'purity' => 91.6,
+        'payment_method' => 'CASH',
+        'cash_amount' => 105000,
+        'description' => 'Settled 15g gold via cash',
+        'date' => today()->toDateString(),
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    // 1. Karigar gold balance should now be -5g (-20 + 15 = -5)
+    expect((float) $karigar->fresh()->metal_balance)->toBe(-5.0)
+        // 2. Cash vault should be debited by 105,000 (200,000 - 105,000 = 95,000)
+        ->and((float) Vault::where('type', VaultType::CASH->value)->value('balance'))->toBe(95000.0)
+        // 3. Gold vault safe balance should remain untouched at 10.0
+        ->and((float) Vault::where('type', VaultType::GOLD->value)->value('balance'))->toBe(10.0);
+});
+
+it('settles positive gold balance when party pays cash to clear metal debt', function () {
+    openShopDay($this->user, 50000, 10);
+
+    Vault::updateOrCreate(
+        ['type' => VaultType::BANK->value],
+        ['name' => VaultType::BANK->value, 'balance' => 10000]
+    );
+
+    $supplier = Supplier::create([
+        'company_name' => 'Gold Settle Supplier',
+        'contact_person' => 'Ramesh',
+        'mobile' => '9999988882',
+        'type' => 'GOLD',
+    ]);
+
+    // Initial state: supplier was issued 20g gold (supplier owes shop 20g => balance +20g)
+    MetalTransaction::create([
+        'party_type' => Supplier::class,
+        'party_id' => $supplier->id,
+        'type' => 'ISSUE',
+        'metal_type' => 'GOLD',
+        'gross_weight' => 20.000,
+        'fine_weight' => 18.320,
+        'description' => 'Issued gold to supplier',
+        'date' => today()->toDateString(),
+        'entry_source' => 'MANUAL',
+        'entry_type_code' => 'ISSUE_GOLD',
+    ]);
+
+    expect((float) $supplier->fresh()->metal_balance)->toBe(20.0);
+
+    // Supplier pays cash via Bank for 15g @ 7000 (Rs 1,05,000) to settle 15g of gold debt
+    post(route('ledger.store-entry'), [
+        'party_type' => Supplier::class,
+        'party_id' => $supplier->id,
+        'entry_type' => 'SETTLE_GOLD_RECEIVE_CASH',
+        'gold_weight' => 15.000,
+        'rate' => 7000,
+        'purity' => 91.6,
+        'payment_method' => 'BANK',
+        'cash_amount' => 105000,
+        'description' => 'Supplier cleared 15g gold via bank receipt',
+        'date' => today()->toDateString(),
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    // 1. Supplier gold balance should now be +5g (20 - 15 = 5)
+    expect((float) $supplier->fresh()->metal_balance)->toBe(5.0)
+        // 2. Bank vault should be credited by 105,000 (10,000 + 105,000 = 115,000)
+        ->and((float) Vault::where('type', VaultType::BANK->value)->value('balance'))->toBe(115000.0)
+        // 3. Gold vault safe balance should remain untouched at 10.0
+        ->and((float) Vault::where('type', VaultType::GOLD->value)->value('balance'))->toBe(10.0);
+});
+
+it('supports custom purity percentages in ledger metal entries and calculates fine weight accurately', function () {
+    openShopDay($this->user, 100000, 50.0);
+
+    $karigar = Karigar::create([
+        'name' => 'Custom Purity Karigar',
+        'mobile' => '9888888888',
+        'work_type' => 'gold',
+        'city' => 'Jaipur',
+    ]);
+
+    // Issue gold with custom 84.5% purity
+    $response = post(route('ledger.store-entry'), [
+        'party_type' => Karigar::class,
+        'party_id' => $karigar->id,
+        'entry_type' => 'ISSUE_GOLD',
+        'gold_weight' => 10.0,
+        'purity' => 84.5,
+        'date' => today()->toDateString(),
+    ]);
+
+    $response->assertRedirect();
+
+    $metalTxn = MetalTransaction::where('party_type', Karigar::class)
+        ->where('party_id', $karigar->id)
+        ->latest('id')
+        ->first();
+
+    expect($metalTxn)->not->toBeNull()
+        ->and((float) $metalTxn->gross_weight)->toBe(10.0)
+        ->and((float) $metalTxn->fine_weight)->toBe(8.45) // (10 * 84.5) / 100 = 8.45
+        ->and($metalTxn->description)->toContain('84.5%');
+});
+
+
+
 
 function openShopDay(User $user, float $cash, float $gold): void
 

@@ -69,8 +69,8 @@ const goldSellRate = computed(() => Number(props.rates?.gold_sell || 0));
 const goldBuyRate = computed(() => Number(props.rates?.gold_buy || 0));
 const silverSellRate = computed(() => Number(props.rates?.silver_sell || 0));
 
-const gold22kRate = computed(() => (goldSellRate.value > 0 ? Math.round(goldSellRate.value * (22 / 24)) : 0));
-const gold18kRate = computed(() => (goldSellRate.value > 0 ? Math.round(goldSellRate.value * (18 / 24)) : 0));
+const gold22kRate = computed(() => (goldSellRate.value > 0 ? Math.round(goldSellRate.value * 0.916) : 0));
+const gold18kRate = computed(() => (goldSellRate.value > 0 ? Math.round(goldSellRate.value * 0.750) : 0));
 
 const hasZeroRates = computed(() => goldSellRate.value <= 0 && silverSellRate.value <= 0);
 

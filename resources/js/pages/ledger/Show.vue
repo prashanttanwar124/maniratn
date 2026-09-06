@@ -40,6 +40,10 @@ const entryOptions = [
     { label: 'Receive Silver', value: 'RECEIVE_SILVER' },
     { label: 'Pay Cash', value: 'PAY_CASH' },
     { label: 'Receive Cash', value: 'RECEIVE_CASH' },
+    { label: 'Pay Cash to Settle Gold (Bhav-Kat)', value: 'SETTLE_GOLD_PAY_CASH' },
+    { label: 'Pay Cash to Settle Silver (Bhav-Kat)', value: 'SETTLE_SILVER_PAY_CASH' },
+    { label: 'Receive Cash to Settle Gold (Bhav-Kat)', value: 'SETTLE_GOLD_RECEIVE_CASH' },
+    { label: 'Receive Cash to Settle Silver (Bhav-Kat)', value: 'SETTLE_SILVER_RECEIVE_CASH' },
     { label: 'Gold → Cash Adjustment', value: 'GOLD_TO_CASH' },
     { label: 'Cash → Gold Adjustment', value: 'CASH_TO_GOLD' },
     { label: 'Silver → Cash Adjustment', value: 'SILVER_TO_CASH' },
@@ -87,17 +91,69 @@ const onInvoiceSelected = (event) => {
     }
 };
 
+const isSettlementPay = computed(() => ['SETTLE_GOLD_PAY_CASH', 'SETTLE_SILVER_PAY_CASH'].includes(form.entry_type));
+const isSettlementReceive = computed(() => ['SETTLE_GOLD_RECEIVE_CASH', 'SETTLE_SILVER_RECEIVE_CASH'].includes(form.entry_type));
+const isSettlement = computed(() => isSettlementPay.value || isSettlementReceive.value);
+
+const isBhavKat = (code) =>
+    ['SETTLE_GOLD_PAY_CASH', 'SETTLE_SILVER_PAY_CASH', 'SETTLE_GOLD_RECEIVE_CASH', 'SETTLE_SILVER_RECEIVE_CASH'].includes(code);
+
+const formatTableDate = (val) => {
+    if (!val) return '—';
+    return String(val).substring(0, 10);
+};
+
 const needsGold = computed(() =>
-    ['ISSUE_GOLD', 'RECEIVE_GOLD', 'ISSUE_SILVER', 'RECEIVE_SILVER', 'GOLD_TO_CASH', 'SILVER_TO_CASH'].includes(form.entry_type),
+    [
+        'ISSUE_GOLD',
+        'RECEIVE_GOLD',
+        'ISSUE_SILVER',
+        'RECEIVE_SILVER',
+        'GOLD_TO_CASH',
+        'SILVER_TO_CASH',
+        'SETTLE_GOLD_PAY_CASH',
+        'SETTLE_SILVER_PAY_CASH',
+        'SETTLE_GOLD_RECEIVE_CASH',
+        'SETTLE_SILVER_RECEIVE_CASH',
+    ].includes(form.entry_type),
 );
 
 const needsCash = computed(() => ['PAY_CASH', 'RECEIVE_CASH', 'CASH_TO_GOLD', 'CASH_TO_SILVER'].includes(form.entry_type));
-const needsPaymentMethod = computed(() => ['PAY_CASH', 'RECEIVE_CASH'].includes(form.entry_type));
+const needsPaymentMethod = computed(() =>
+    [
+        'PAY_CASH',
+        'RECEIVE_CASH',
+        'SETTLE_GOLD_PAY_CASH',
+        'SETTLE_SILVER_PAY_CASH',
+        'SETTLE_GOLD_RECEIVE_CASH',
+        'SETTLE_SILVER_RECEIVE_CASH',
+    ].includes(form.entry_type),
+);
 
-const needsRate = computed(() => ['GOLD_TO_CASH', 'CASH_TO_GOLD', 'SILVER_TO_CASH', 'CASH_TO_SILVER'].includes(form.entry_type));
+const needsRate = computed(() =>
+    [
+        'GOLD_TO_CASH',
+        'CASH_TO_GOLD',
+        'SILVER_TO_CASH',
+        'CASH_TO_SILVER',
+        'SETTLE_GOLD_PAY_CASH',
+        'SETTLE_SILVER_PAY_CASH',
+        'SETTLE_GOLD_RECEIVE_CASH',
+        'SETTLE_SILVER_RECEIVE_CASH',
+    ].includes(form.entry_type),
+);
 
 const calculatedAdjustmentValue = computed(() => {
-    if (['GOLD_TO_CASH', 'SILVER_TO_CASH'].includes(form.entry_type)) {
+    if (
+        [
+            'GOLD_TO_CASH',
+            'SILVER_TO_CASH',
+            'SETTLE_GOLD_PAY_CASH',
+            'SETTLE_SILVER_PAY_CASH',
+            'SETTLE_GOLD_RECEIVE_CASH',
+            'SETTLE_SILVER_RECEIVE_CASH',
+        ].includes(form.entry_type)
+    ) {
         const weight = Number(form.gold_weight || 0);
         const rate = Number(form.rate || 0);
         return weight * rate;
@@ -129,9 +185,11 @@ const openEntryModal = () => {
     editingRow.value = null;
     form.reset();
     form.clearErrors();
+    isCustomPurity.value = false;
     form.party_type = props.party_type_class;
     form.party_id = props.party?.id;
     form.entry_type = 'ISSUE_GOLD';
+    form.purity = 91.6;
     form.payment_method = 'CASH';
     form.invoice_id = null;
     form.date = todayIndianDate();
@@ -146,7 +204,12 @@ const openEditModal = (row) => {
     form.party_id = props.party?.id;
     form.entry_type = row.entry_type_code;
     form.gold_weight = row.category === 'METAL' ? Number(row.amount || 0) : null;
-    form.purity = row.category === 'METAL' ? Number(row.purity || 91.6) : 91.6;
+    const initialPurity = row.category === 'METAL' ? Number(row.purity || 91.6) : 91.6;
+    form.purity = initialPurity;
+    const standardPurities = String(row.entry_type_code).includes('SILVER')
+        ? [99.9, 92.5, 80.0]
+        : [99.9, 91.6, 75.0, 58.5];
+    isCustomPurity.value = !standardPurities.includes(initialPurity);
     form.cash_amount = row.category === 'CASH' ? Number(row.amount || 0) : null;
     form.payment_method = row.payment_method || 'CASH';
     form.invoice_id = null;
@@ -158,18 +221,41 @@ const openEditModal = (row) => {
 
 const defaultPurityForEntryType = (entryType) => (String(entryType).includes('SILVER') ? 92.5 : 91.6);
 
+const isCustomPurity = ref(false);
+
 const purityOptions = computed(() =>
     String(form.entry_type).includes('SILVER')
         ? [
-              { label: 'Pure Silver (99.9)', value: 99.9 },
-              { label: 'Sterling Silver (92.5)', value: 92.5 },
+              { label: 'Pure Silver (99.9%)', value: 99.9 },
+              { label: 'Sterling Silver (92.5%)', value: 92.5 },
+              { label: 'Silver 800 (80.0%)', value: 80.0 },
+              { label: 'Custom Purity (%)', value: 'CUSTOM' },
           ]
         : [
-              { label: '24K (99.9)', value: 99.9 },
-              { label: '22K (91.6)', value: 91.6 },
-              { label: '18K (75.0)', value: 75.0 },
+              { label: '24K (99.9%)', value: 99.9 },
+              { label: '22K (91.6%)', value: 91.6 },
+              { label: '18K (75.0%)', value: 75.0 },
+              { label: '14K (58.5%)', value: 58.5 },
+              { label: 'Custom Purity (%)', value: 'CUSTOM' },
           ],
 );
+
+const selectedPurityDropdown = computed({
+    get() {
+        if (isCustomPurity.value) return 'CUSTOM';
+        const currentPurity = Number(form.purity);
+        const match = purityOptions.value.find((opt) => opt.value !== 'CUSTOM' && opt.value === currentPurity);
+        return match ? match.value : 'CUSTOM';
+    },
+    set(val) {
+        if (val === 'CUSTOM') {
+            isCustomPurity.value = true;
+        } else {
+            isCustomPurity.value = false;
+            form.purity = Number(val);
+        }
+    },
+});
 
 const paymentMethodOptions = [
     { label: 'Cash', value: 'CASH' },
@@ -185,10 +271,11 @@ const selectedMetalLabel = computed(() => (String(form.entry_type).includes('SIL
 
 watch(
     () => form.entry_type,
-    (entryType) => {
-        const allowedPurities = purityOptions.value.map((option) => option.value);
-        if (!allowedPurities.includes(Number(form.purity))) {
-            form.purity = defaultPurityForEntryType(entryType);
+    (newType, oldType) => {
+        const wasSilver = String(oldType || '').includes('SILVER');
+        const isSilver = String(newType || '').includes('SILVER');
+        if (wasSilver !== isSilver && !isCustomPurity.value) {
+            form.purity = defaultPurityForEntryType(newType);
         }
     },
 );
@@ -260,7 +347,11 @@ const ledgerData = computed(() => {
                 };
             }
 
-            if (partyTypeName.value === 'Customer') {
+            if (['SETTLE_GOLD_PAY_CASH', 'SETTLE_SILVER_PAY_CASH'].includes(txn.entry_type_code)) {
+                cashOut = amount;
+            } else if (['SETTLE_GOLD_RECEIVE_CASH', 'SETTLE_SILVER_RECEIVE_CASH'].includes(txn.entry_type_code)) {
+                cashIn = amount;
+            } else if (partyTypeName.value === 'Customer') {
                 if (txn.type === 'SALE') {
                     cashOut = amount;
                     cashBalance += amount;
@@ -347,6 +438,7 @@ const submitTransaction = () => {
 
     form.transform((data) => ({
         ...data,
+        cash_amount: isSettlement.value ? calculatedAdjustmentValue.value : data.cash_amount,
         _method: isEditing ? 'patch' : 'post',
     })).post(endpoint, {
         preserveScroll: true,
@@ -367,6 +459,7 @@ const submitTransaction = () => {
             form.party_id = props.party?.id;
             form.entry_type = 'ISSUE_GOLD';
             form.purity = 91.6;
+            isCustomPurity.value = false;
             form.payment_method = 'CASH';
             form.date = todayIndianDate();
 
@@ -464,14 +557,26 @@ const submitTransaction = () => {
                             <div class="py-12 text-center text-surface-500">No transactions found</div>
                         </template>
 
-                        <Column field="date" header="Date" style="width: 120px" />
-
-                        <Column field="description" header="Particulars" style="min-width: 240px">
+                        <Column field="date" header="Date" style="width: 120px">
                             <template #body="{ data }">
-                                <div>
-                                    <span class="text-surface-900">{{ data.description || '—' }}</span>
-                                    <div v-if="data.category === 'CASH' && data.payment_method" class="mt-1 text-xs text-surface-500">
-                                        {{ data.payment_method }}
+                                <span class="font-medium text-surface-800">{{ formatTableDate(data.date) }}</span>
+                            </template>
+                        </Column>
+
+                        <Column field="description" header="Particulars" style="min-width: 260px">
+                            <template #body="{ data }">
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <Tag
+                                            v-if="isBhavKat(data.entry_type_code)"
+                                            value="BHAV-KAT"
+                                            severity="warn"
+                                            class="!text-[10px] !py-0.5 !px-1.5 font-bold"
+                                        />
+                                        <span class="text-surface-900 font-medium">{{ data.description || '—' }}</span>
+                                    </div>
+                                    <div v-if="data.category === 'CASH' && data.payment_method" class="text-xs text-surface-500">
+                                        Payment Mode: <span class="font-medium text-surface-700">{{ data.payment_method }}</span>
                                     </div>
                                 </div>
                             </template>
@@ -483,19 +588,29 @@ const submitTransaction = () => {
                             </template>
                         </Column>
 
-                        <Column header="Metal In" style="width: 120px">
+                        <Column header="Metal In" style="width: 130px">
                             <template #body="{ data }">
-                                <span v-if="data.metal_in" class="font-medium text-green-600">
-                                    {{ Number(data.metal_in).toFixed(3) }}
-                                </span>
+                                <div v-if="data.metal_in" class="flex items-center gap-1">
+                                    <span class="font-medium text-green-600">
+                                        {{ Number(data.metal_in).toFixed(3) }}
+                                    </span>
+                                    <span v-if="isBhavKat(data.entry_type_code)" class="rounded bg-amber-50 px-1 py-0.5 text-[11px] font-semibold text-amber-700 border border-amber-200">
+                                        Cut
+                                    </span>
+                                </div>
                             </template>
                         </Column>
 
-                        <Column header="Metal Out" style="width: 120px">
+                        <Column header="Metal Out" style="width: 130px">
                             <template #body="{ data }">
-                                <span v-if="data.metal_out" class="font-medium text-red-600">
-                                    {{ Number(data.metal_out).toFixed(3) }}
-                                </span>
+                                <div v-if="data.metal_out" class="flex items-center gap-1">
+                                    <span class="font-medium text-red-600">
+                                        {{ Number(data.metal_out).toFixed(3) }}
+                                    </span>
+                                    <span v-if="isBhavKat(data.entry_type_code)" class="rounded bg-amber-50 px-1 py-0.5 text-[11px] font-semibold text-amber-700 border border-amber-200">
+                                        Cut
+                                    </span>
+                                </div>
                             </template>
                         </Column>
 
@@ -531,9 +646,19 @@ const submitTransaction = () => {
                             </template>
                         </Column>
 
-                        <Column field="category" header="Type" style="width: 100px">
+                        <Column field="category" header="Type" style="width: 110px">
                             <template #body="{ data }">
-                                <Tag :value="data.category === 'CASH' ? data.type : data.category" severity="secondary" />
+                                <Tag
+                                    v-if="isBhavKat(data.entry_type_code)"
+                                    value="BHAV-KAT"
+                                    severity="warn"
+                                    class="font-bold tracking-wide"
+                                />
+                                <Tag
+                                    v-else
+                                    :value="data.category === 'CASH' ? data.type : data.category"
+                                    severity="secondary"
+                                />
                             </template>
                         </Column>
 
@@ -586,7 +711,26 @@ const submitTransaction = () => {
 
                 <div v-if="needsGold || ['CASH_TO_GOLD', 'CASH_TO_SILVER'].includes(form.entry_type)">
                     <label class="mb-2 block text-sm font-medium text-surface-700"> Purity </label>
-                    <Select v-model="form.purity" :options="purityOptions" optionLabel="label" optionValue="value" class="w-full" />
+                    <Select v-model="selectedPurityDropdown" :options="purityOptions" optionLabel="label" optionValue="value" class="w-full" />
+
+                    <!-- Custom Purity Input if 'Custom Purity (%)' is chosen -->
+                    <div v-if="selectedPurityDropdown === 'CUSTOM'" class="mt-2.5 rounded-lg border border-amber-200 bg-amber-50/60 p-2.5">
+                        <label class="mb-1 block text-xs font-semibold text-amber-900">Custom Purity Percentage (%)</label>
+                        <InputNumber
+                            v-model="form.purity"
+                            :min="0.01"
+                            :max="100"
+                            :minFractionDigits="1"
+                            :maxFractionDigits="3"
+                            suffix=" %"
+                            placeholder="e.g. 84.50"
+                            class="w-full"
+                        />
+                        <span class="mt-1 block text-[11px] text-amber-700">
+                            Enter exact hallmark/touch purity (e.g. 84.50, 88.00). Fine weight will calculate automatically.
+                        </span>
+                    </div>
+
                     <small v-if="form.errors.purity" class="mt-1 block text-xs text-red-500">
                         {{ form.errors.purity }}
                     </small>
@@ -655,6 +799,28 @@ const submitTransaction = () => {
                         {{ formatWeight(calculatedAdjustmentValue) }}
                     </p>
                     <p class="mt-1 text-xs text-surface-500">Cash paid will be converted into this {{ selectedMetalLabel.toLowerCase() }} quantity.</p>
+                </div>
+
+                <div v-if="isSettlementPay" class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-amber-800">Bhav-Kat Settlement Summary</p>
+                    <div class="mt-2 flex items-baseline justify-between">
+                        <span class="text-sm text-surface-600">Total Cash Payable:</span>
+                        <span class="text-lg font-bold text-amber-900">{{ formatCurrency(calculatedAdjustmentValue) }}</span>
+                    </div>
+                    <p class="mt-1 text-xs text-surface-600">
+                        Paying this cash will clear {{ Number(form.gold_weight || 0).toFixed(3) }} g of {{ selectedMetalLabel }} liability (brings negative balance up towards 0). Physical store safe is unchanged.
+                    </p>
+                </div>
+
+                <div v-if="isSettlementReceive" class="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-green-800">Bhav-Kat Settlement Summary</p>
+                    <div class="mt-2 flex items-baseline justify-between">
+                        <span class="text-sm text-surface-600">Total Cash Receivable:</span>
+                        <span class="text-lg font-bold text-green-900">{{ formatCurrency(calculatedAdjustmentValue) }}</span>
+                    </div>
+                    <p class="mt-1 text-xs text-surface-600">
+                        Receiving this cash will clear {{ Number(form.gold_weight || 0).toFixed(3) }} g of {{ selectedMetalLabel }} owed by the party. Physical store safe is unchanged.
+                    </p>
                 </div>
 
                 <div>

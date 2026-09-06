@@ -583,10 +583,17 @@ body {
     height: 2.25rem !important;
     min-height: 2.25rem !important;
     font-size: 0.825rem !important;
+    border-radius: var(--maniratn-radius-sm) !important;
+}
+
+.erp-line-items .erp-line-control.p-inputnumber {
+    width: 100%;
+    display: inline-flex;
 }
 
 .erp-line-items .erp-line-control.p-inputnumber .p-inputnumber-input {
     width: 100%;
+    min-width: 0;
     padding-inline: 0.5rem;
 }
 

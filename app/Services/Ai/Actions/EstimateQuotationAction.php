@@ -103,17 +103,11 @@ class EstimateQuotationAction implements AiActionInterface
         $resolvedPurity = trim((string) ($args['purity_label'] ?? ($purity ?? '22K (916 Hallmark)')));
 
         if ($purityMultiplier <= 0) {
-            if (preg_match('/(\d+(?:\.\d+)?)\s*K/i', $resolvedPurity, $m)) {
-                $karat = floatval($m[1]);
-                $purityMultiplier = round($karat / 24, 4);
-                $resolvedPurity = "{$karat}K (" . round(($karat / 24) * 100, 2) . '%)';
-            } elseif (preg_match('/(\d+(?:\.\d+)?)\s*%/i', $resolvedPurity, $m)) {
-                $pct = floatval($m[1]);
-                $purityMultiplier = round($pct / 100, 4);
-                $resolvedPurity = "{$pct}% (" . round(($pct / 100) * 24, 1) . 'K)';
-            } elseif (preg_match('/\b(999|916|750|585)\b/', $resolvedPurity, $m)) {
-                $purityMultiplier = round(floatval($m[1]) / 1000, 4);
-                $resolvedPurity = "{$m[1]} Hallmark";
+            $purityPercent = \App\Services\MetalWeightService::purityPercent($resolvedPurity);
+            if ($purityPercent !== null) {
+                $purityMultiplier = round($purityPercent / 100, 4);
+                $purityLabel = strtoupper(trim($resolvedPurity));
+                $resolvedPurity = "{$purityLabel} (" . round($purityPercent, 2) . '%)';
             } else {
                 $purityMultiplier = 0.916;
                 $resolvedPurity = '22K (916 Hallmark)';

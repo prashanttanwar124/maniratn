@@ -193,7 +193,7 @@ const formatVaultMovementAmount = (movement) => {
 const goldSellRate = computed(() => Number(props.rates?.gold_sell || 0));
 const goldBuyRate = computed(() => Number(props.rates?.gold_buy || 0));
 const silverSellRate = computed(() => Number(props.rates?.silver_sell || 0));
-const gold22kRate = computed(() => Math.round(goldSellRate.value * (22 / 24)));
+const gold22kRate = computed(() => Math.round(goldSellRate.value * 0.916));
 
 const goldValuation = computed(() => props.analytics?.valuations?.gold_value || (Number(props.vaults?.gold || 0) * goldSellRate.value));
 const silverValuation = computed(() => props.analytics?.valuations?.silver_value || (Number(props.vaults?.silver || 0) * silverSellRate.value));

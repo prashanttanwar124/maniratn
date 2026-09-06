@@ -24,9 +24,14 @@ class MetalWeightService
 
     public static function purityPercent(mixed $purity): ?float
     {
+        if ($purity === null || $purity === '') {
+            return null;
+        }
+
         if (is_numeric($purity)) {
             $number = (float) $purity;
 
+            // 3-digit millesimal fineness (e.g. 999, 995, 925, 916, 800, 750, 585, 375)
             if ($number > 100 && $number <= 1000) {
                 return round($number / 10, 4);
             }
@@ -39,16 +44,33 @@ class MetalWeightService
             return null;
         }
 
-        if (preg_match('/(\d+(?:\.\d+)?)\s*K/i', $label, $matches)) {
-            return round(((float) $matches[1] / 24) * 100, 4);
-        }
-
+        // 1. Explicit percentage in label: e.g. "24K (99.9%)", "22K (91.6%)", "Custom (84.5%)", "84.5%"
         if (preg_match('/(\d+(?:\.\d+)?)\s*%/', $label, $matches)) {
             return round((float) $matches[1], 4);
         }
 
-        if (preg_match('/\b(999|916|750|585)\b/', $label, $matches)) {
+        // 2. Standard Indian Hallmark millesimal numbers (999, 995, 925, 916, 800, 750, 585, 375)
+        // e.g. "Silver 925", "Silver 800", "Gold 916", "999 Pure"
+        if (preg_match('/\b(999|995|925|916|800|750|585|375)\b/', $label, $matches)) {
             return round((float) $matches[1] / 10, 4);
+        }
+
+        // 3. Standard BIS Karats (e.g. 24K, 22K, 18K, 14K, 9K)
+        if (preg_match('/(\d+(?:\.\d+)?)\s*K/i', $label, $matches)) {
+            $k = (int) round((float) $matches[1]);
+            $standardKarats = [
+                24 => 99.9,
+                22 => 91.6,
+                18 => 75.0,
+                14 => 58.5,
+                9  => 37.5,
+            ];
+            if (isset($standardKarats[$k])) {
+                return $standardKarats[$k];
+            }
+
+            // Fallback for non-standard Karats (e.g. 21K, 20K, 10K)
+            return round(((float) $matches[1] / 24) * 100, 4);
         }
 
         return null;

@@ -72,7 +72,7 @@ class LedgerController extends Controller
                 return [
                     'id' => 'cash-' . $txn->id,
                     'row_id' => $txn->id,
-                    'date' => $txn->date,
+                    'date' => is_string($txn->date) ? substr($txn->date, 0, 10) : ($txn->date ? \Carbon\Carbon::parse($txn->date)->format('Y-m-d') : null),
                     'description' => $txn->description,
                     'category' => 'CASH',
                     'type' => $txn->type, // PAYMENT / RECEIPT
@@ -98,7 +98,7 @@ class LedgerController extends Controller
                 return [
                     'id' => 'metal-' . $txn->id,
                     'row_id' => $txn->id,
-                    'date' => $txn->date,
+                    'date' => is_string($txn->date) ? substr($txn->date, 0, 10) : ($txn->date ? \Carbon\Carbon::parse($txn->date)->format('Y-m-d') : null),
                     'description' => $txn->description,
                     'category' => 'METAL',
                     'metal_type' => $txn->metal_type ?? 'GOLD',
@@ -295,6 +295,10 @@ class LedgerController extends Controller
                     'CASH_TO_GOLD',
                     'SILVER_TO_CASH',
                     'CASH_TO_SILVER',
+                    'SETTLE_GOLD_PAY_CASH',
+                    'SETTLE_SILVER_PAY_CASH',
+                    'SETTLE_GOLD_RECEIVE_CASH',
+                    'SETTLE_SILVER_RECEIVE_CASH',
                 ]),
             ],
             'gold_weight' => ['nullable', 'numeric', 'min:0.001'],
@@ -326,7 +330,7 @@ class LedgerController extends Controller
         $description = trim($validated['description'] ?? '');
         $date = $validated['date'];
 
-        if (in_array($entryType, ['ISSUE_GOLD', 'RECEIVE_GOLD', 'ISSUE_SILVER', 'RECEIVE_SILVER', 'GOLD_TO_CASH', 'SILVER_TO_CASH'], true) && ! $goldWeight) {
+        if (in_array($entryType, ['ISSUE_GOLD', 'RECEIVE_GOLD', 'ISSUE_SILVER', 'RECEIVE_SILVER', 'GOLD_TO_CASH', 'SILVER_TO_CASH', 'SETTLE_GOLD_PAY_CASH', 'SETTLE_SILVER_PAY_CASH', 'SETTLE_GOLD_RECEIVE_CASH', 'SETTLE_SILVER_RECEIVE_CASH'], true) && ! $goldWeight) {
             return back()->withErrors([
                 'gold_weight' => 'Metal weight is required for this entry type.',
             ]);
@@ -338,15 +342,21 @@ class LedgerController extends Controller
             ]);
         }
 
-        if (in_array($entryType, ['PAY_CASH', 'RECEIVE_CASH'], true) && empty($validated['payment_method'])) {
+        if (in_array($entryType, ['PAY_CASH', 'RECEIVE_CASH', 'SETTLE_GOLD_PAY_CASH', 'SETTLE_SILVER_PAY_CASH', 'SETTLE_GOLD_RECEIVE_CASH', 'SETTLE_SILVER_RECEIVE_CASH'], true) && empty($validated['payment_method'])) {
             return back()->withErrors([
                 'payment_method' => 'Payment method is required for this entry type.',
             ]);
         }
 
-        if (in_array($entryType, ['ISSUE_GOLD', 'RECEIVE_GOLD', 'ISSUE_SILVER', 'RECEIVE_SILVER', 'GOLD_TO_CASH', 'CASH_TO_GOLD', 'SILVER_TO_CASH', 'CASH_TO_SILVER'], true) && ! $purity) {
+        if (in_array($entryType, ['ISSUE_GOLD', 'RECEIVE_GOLD', 'ISSUE_SILVER', 'RECEIVE_SILVER', 'GOLD_TO_CASH', 'CASH_TO_GOLD', 'SILVER_TO_CASH', 'CASH_TO_SILVER', 'SETTLE_GOLD_PAY_CASH', 'SETTLE_SILVER_PAY_CASH', 'SETTLE_GOLD_RECEIVE_CASH', 'SETTLE_SILVER_RECEIVE_CASH'], true) && ! $purity) {
             return back()->withErrors([
                 'purity' => 'Purity is required for metal entries.',
+            ]);
+        }
+
+        if (in_array($entryType, ['SETTLE_GOLD_PAY_CASH', 'SETTLE_SILVER_PAY_CASH', 'SETTLE_GOLD_RECEIVE_CASH', 'SETTLE_SILVER_RECEIVE_CASH'], true) && (! $rate || ! $goldWeight)) {
+            return back()->withErrors([
+                'rate' => 'Rate is required for metal settlement.',
             ]);
         }
 
@@ -598,6 +608,78 @@ class LedgerController extends Controller
                     ]);
                     LedgerImpactService::applyMetalTransaction($metalTransaction);
                     break;
+
+                case 'SETTLE_GOLD_PAY_CASH':
+                case 'SETTLE_SILVER_PAY_CASH':
+                    $metalType = str_contains($entryType, 'SILVER') ? 'SILVER' : 'GOLD';
+                    $calculatedCash = $cashAmount ?: round($goldWeight * $rate, 2);
+                    $method = $validated['payment_method'] ?? 'CASH';
+                    $userNote = $description !== '' ? " (Note: {$description})" : '';
+
+                    $cashTransaction = Transaction::create([
+                        'user_id' => auth()->id(),
+                        'transactable_type' => $partyType,
+                        'transactable_id' => $partyId,
+                        'type' => 'PAYMENT',
+                        'amount' => $calculatedCash,
+                        'payment_method' => $method,
+                        'description' => "Bhav-Kat: Cash paid to settle {$goldWeight}g {$metalType} @ ₹{$rate}{$userNote}",
+                        'date' => $date,
+                        'entry_source' => 'MANUAL',
+                        'entry_type_code' => $entryType,
+                    ]);
+                    LedgerImpactService::applyCashTransaction($cashTransaction);
+
+                    $metalTransaction = MetalTransaction::create([
+                        'party_type' => $partyType,
+                        'party_id' => $partyId,
+                        'type' => 'ISSUE',
+                        'metal_type' => $metalType,
+                        'gross_weight' => $goldWeight,
+                        'fine_weight' => $makeFineWeight($goldWeight, $purity),
+                        'description' => "Bhav-Kat: Settled {$goldWeight}g {$metalType} via {$method} @ ₹{$rate} ({$purity}%){$userNote}",
+                        'date' => $date,
+                        'entry_source' => 'MANUAL',
+                        'entry_type_code' => $entryType,
+                    ]);
+                    LedgerImpactService::applyMetalTransaction($metalTransaction);
+                    break;
+
+                case 'SETTLE_GOLD_RECEIVE_CASH':
+                case 'SETTLE_SILVER_RECEIVE_CASH':
+                    $metalType = str_contains($entryType, 'SILVER') ? 'SILVER' : 'GOLD';
+                    $calculatedCash = $cashAmount ?: round($goldWeight * $rate, 2);
+                    $method = $validated['payment_method'] ?? 'CASH';
+                    $userNote = $description !== '' ? " (Note: {$description})" : '';
+
+                    $cashTransaction = Transaction::create([
+                        'user_id' => auth()->id(),
+                        'transactable_type' => $partyType,
+                        'transactable_id' => $partyId,
+                        'type' => 'RECEIPT',
+                        'amount' => $calculatedCash,
+                        'payment_method' => $method,
+                        'description' => "Bhav-Kat: Cash received to settle {$goldWeight}g {$metalType} @ ₹{$rate}{$userNote}",
+                        'date' => $date,
+                        'entry_source' => 'MANUAL',
+                        'entry_type_code' => $entryType,
+                    ]);
+                    LedgerImpactService::applyCashTransaction($cashTransaction);
+
+                    $metalTransaction = MetalTransaction::create([
+                        'party_type' => $partyType,
+                        'party_id' => $partyId,
+                        'type' => 'RECEIPT',
+                        'metal_type' => $metalType,
+                        'gross_weight' => $goldWeight,
+                        'fine_weight' => $makeFineWeight($goldWeight, $purity),
+                        'description' => "Bhav-Kat: Settled {$goldWeight}g {$metalType} from {$method} receipt @ ₹{$rate} ({$purity}%){$userNote}",
+                        'date' => $date,
+                        'entry_source' => 'MANUAL',
+                        'entry_type_code' => $entryType,
+                    ]);
+                    LedgerImpactService::applyMetalTransaction($metalTransaction);
+                    break;
                 }
             });
         } catch (\Throwable $e) {
@@ -661,6 +743,10 @@ class LedgerController extends Controller
             'RECEIVE_SILVER' => "Silver received ({$purity}%)",
             'PAY_CASH' => 'Cash paid',
             'RECEIVE_CASH' => 'Cash received',
+            'SETTLE_GOLD_PAY_CASH' => "Settled gold via cash ({$purity}%)",
+            'SETTLE_SILVER_PAY_CASH' => "Settled silver via cash ({$purity}%)",
+            'SETTLE_GOLD_RECEIVE_CASH' => "Settled gold via cash receipt ({$purity}%)",
+            'SETTLE_SILVER_RECEIVE_CASH' => "Settled silver via cash receipt ({$purity}%)",
             default => 'Ledger entry',
         };
     }

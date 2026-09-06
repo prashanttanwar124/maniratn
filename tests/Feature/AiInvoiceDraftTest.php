@@ -128,7 +128,7 @@ test('AI billing creates a regular persistent invoice draft without posting a sa
         ->and($item['type'])->toBe('product')
         ->and($item['id'])->toBe($product->id)
         ->and($item['description'])->toContain($product->barcode)
-        ->and((float) $item['rate'])->toBe(6875.25)
+        ->and((float) $item['rate'])->toBe(6870.0)
         ->and((bool) $product->fresh()->is_sold)->toBeFalse();
 });
 
@@ -256,8 +256,8 @@ test('purity multiplier resolution correctly calculates rates for various karat 
     $product18k->purity()->associate(Purity::firstOrCreate(['name' => '18K (750 Hallmark)']))->save();
 
     // 7500 gold sell rate
-    // 22K (22/24 = 0.9167) -> 7500 * 0.9167 = 6875.25
-    expect($rateService->rateFor('product', $product22k, 7500, 90))->toBe(6875.25);
+    // 22K (Hallmark 916 -> 0.916) -> 7500 * 0.916 = 6870.0
+    expect($rateService->rateFor('product', $product22k, 7500, 90))->toBe(6870.0);
 
     // 18K (18/24 = 0.75) -> 7500 * 0.75 = 5625.0
     expect($rateService->rateFor('product', $product18k, 7500, 90))->toBe(5625.0);

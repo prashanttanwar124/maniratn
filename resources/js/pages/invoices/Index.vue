@@ -863,6 +863,7 @@ const draftFormatCurrency = (val) =>
                                     <th class="px-3 py-2.5 text-right">Deduction</th>
                                     <th class="px-3 py-2.5 text-right">Net Wt</th>
                                     <th class="px-3 py-2.5">Purity</th>
+                                    <th class="px-3 py-2.5 text-right">Fine Wt</th>
                                     <th class="px-3 py-2.5 text-right">Buy Rate</th>
                                     <th class="px-3 py-2.5 text-right">Credit Value</th>
                                 </tr>
@@ -878,6 +879,7 @@ const draftFormatCurrency = (val) =>
                                     <td class="px-3 py-2 text-right font-mono text-surface-500">{{ Number(og.wastage_weight).toFixed(3) }} g</td>
                                     <td class="px-3 py-2 text-right font-mono font-semibold text-surface-800">{{ Number(og.net_weight).toFixed(3) }} g</td>
                                     <td class="px-3 py-2 font-semibold">{{ og.purity }}</td>
+                                    <td class="px-3 py-2 text-right font-mono font-semibold text-amber-900">{{ Number(og.fine_weight || 0).toFixed(3) }} g</td>
                                     <td class="px-3 py-2 text-right font-mono text-surface-700">{{ formatCurrency(og.rate) }}</td>
                                     <td class="px-3 py-2 text-right font-mono font-bold text-amber-900">{{ formatCurrency(og.final_price) }}</td>
                                 </tr>

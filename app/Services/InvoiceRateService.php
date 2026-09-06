@@ -56,16 +56,9 @@ class InvoiceRateService
 
     private function purityMultiplier(string $purity): float
     {
-        if (preg_match('/(\d+(?:\.\d+)?)\s*(?:K|KT|CT|CARAT|KARAT)\b/i', $purity, $matches)) {
-            return round((float) $matches[1] / 24, 4);
-        }
-
-        if (preg_match('/(\d+(?:\.\d+)?)\s*%/i', $purity, $matches)) {
-            return round((float) $matches[1] / 100, 4);
-        }
-
-        if (preg_match('/\b(999|916|750|585)\b/', $purity, $matches)) {
-            return round((float) $matches[1] / 1000, 4);
+        $percent = MetalWeightService::purityPercent($purity);
+        if ($percent !== null) {
+            return round($percent / 100, 4);
         }
 
         return 0.916;

@@ -771,3 +771,70 @@ it('allows old metal trade-in exceeding invoice total and credits excess as cust
     // Customer balance: Sale (+14,420) - Payment (-60,000) = -45,580 (negative means shop owes customer advance)
     expect((float) $customer->fresh()->balance)->toEqual(-45580.00);
 });
+
+it('correctly calculates and stores fine gold in vault movements when custom purity is used in old metal exchange', function () {
+    $category = Category::firstOrCreate(['name' => 'Ring', 'code' => 'RNG']);
+    $purity = Purity::firstOrCreate(['name' => '22K']);
+    $customer = Customer::create(['name' => 'Custom Purity Customer', 'mobile' => '9888123456']);
+
+    $product = Product::create([
+        'barcode' => 'G-CP-01',
+        'category_id' => $category->id,
+        'purity_id' => $purity->id,
+        'supplier_id' => $this->supplier->id,
+        'name' => 'Gold Ring',
+        'gross_weight' => 2.000,
+        'net_weight' => 2.000,
+        'making_charge' => 0,
+        'making_charge_type' => 'flat',
+        'is_sold' => false,
+    ]);
+
+    // Customer trades in 10g old gold with Custom purity 84.5%
+    $response = post(route('invoices.store'), [
+        'customer_id' => $customer->id,
+        'date' => '2026-08-26',
+        'gold_rate' => 7000,
+        'items' => [
+            [
+                'type' => 'product',
+                'id' => $product->id,
+                'rate' => 7000,
+                'making_charges' => 0,
+                'quantity' => 1,
+            ],
+        ],
+        'old_golds' => [
+            [
+                'metal_type' => 'GOLD',
+                'gross_weight' => 10.000,
+                'wastage_weight' => 0,
+                'purity' => 'Custom',
+                'custom_purity' => 84.5,
+                'rate' => 5000,
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $invoice = Invoice::latest('id')->first();
+    expect($invoice)->not->toBeNull();
+
+    // Check InvoiceOldGold record
+    $og = InvoiceOldGold::where('invoice_id', $invoice->id)->first();
+    expect($og)->not->toBeNull()
+        ->and($og->purity)->toBe('Custom (84.5%)')
+        ->and((float) $og->gross_weight)->toBe(10.0)
+        ->and((float) $og->net_weight)->toBe(10.0);
+
+    // Check VaultMovement record
+    $movement = \App\Models\VaultMovement::where('source_type', Invoice::class)
+        ->where('source_id', $invoice->id)
+        ->where('direction', 'CREDIT')
+        ->latest('id')
+        ->first();
+
+    expect($movement)->not->toBeNull()
+        ->and((float) $movement->gross_weight)->toBe(10.0)
+        ->and((float) $movement->fine_weight)->toBe(8.45); // (10g * 84.5%) = 8.450g fine gold
+});

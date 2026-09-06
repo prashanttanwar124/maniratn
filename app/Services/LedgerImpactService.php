@@ -81,8 +81,8 @@ class LedgerImpactService
         $vaultType = self::cashVaultType($paymentMethod);
 
         return match ($code) {
-            'PAY_CASH', 'CASH_TO_GOLD', 'CASH_TO_SILVER', 'ORDER_CASH_PAYMENT', 'INVOICE_REFUND' => ['debit', $vaultType],
-            'RECEIVE_CASH', 'INVOICE_PAYMENT' => ['credit', $vaultType],
+            'PAY_CASH', 'CASH_TO_GOLD', 'CASH_TO_SILVER', 'ORDER_CASH_PAYMENT', 'INVOICE_REFUND', 'SETTLE_GOLD_PAY_CASH', 'SETTLE_SILVER_PAY_CASH' => ['debit', $vaultType],
+            'RECEIVE_CASH', 'INVOICE_PAYMENT', 'SETTLE_GOLD_RECEIVE_CASH', 'SETTLE_SILVER_RECEIVE_CASH' => ['credit', $vaultType],
             'GOLD_TO_CASH', 'SILVER_TO_CASH', 'INVOICE_SALE', 'VOID_INVOICE_SALE', 'INVOICE_OLD_GOLD' => [null, null],
             default => self::cashEffectFromLegacyFields($transaction, $vaultType),
         };
@@ -116,6 +116,7 @@ class LedgerImpactService
     private static function metalEffect(MetalTransaction $transaction): ?string
     {
         return match ($transaction->entry_type_code) {
+            'SETTLE_GOLD_PAY_CASH', 'SETTLE_SILVER_PAY_CASH', 'SETTLE_GOLD_RECEIVE_CASH', 'SETTLE_SILVER_RECEIVE_CASH' => null,
             'ISSUE_GOLD', 'ORDER_ISSUE_GOLD' => 'debit',
             'RECEIVE_GOLD', 'GOLD_TO_CASH', 'CASH_TO_GOLD', 'ORDER_RECEIVE_GOLD' => 'credit',
             'ISSUE_SILVER', 'ORDER_ISSUE_SILVER' => 'debit',
