@@ -6,6 +6,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\Request;
 use App\Models\BusinessSetting;
+use App\Services\BarcodeLabelPdfService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\RedirectResponse;
 use App\Http\Controllers\Controller;
@@ -63,6 +64,7 @@ class BusinessSettingController extends Controller
                 'qr_onboarding_token' => $businessSetting->qr_onboarding_token,
                 'qr_onboarding_pin' => $businessSetting->qr_onboarding_pin,
                 'qr_onboarding_url' => $qrOnboardingUrl,
+                'barcode_settings' => $businessSetting->getBarcodeSettingsOrDefault(),
             ],
         ]);
     }
@@ -90,6 +92,14 @@ class BusinessSettingController extends Controller
             'qr_onboarding_token' => ['nullable', 'string', 'max:64'],
             'qr_onboarding_pin' => ['nullable', 'string', 'max:10'],
             'regenerate_qr_token' => ['nullable', 'boolean'],
+            'barcode_settings' => ['nullable', 'array'],
+            'barcode_settings.preset' => ['nullable', 'string', 'max:50'],
+            'barcode_settings.paper_width' => ['nullable', 'numeric', 'min:20', 'max:200'],
+            'barcode_settings.paper_height' => ['nullable', 'numeric', 'min:8', 'max:100'],
+            'barcode_settings.barcode_width' => ['nullable', 'numeric', 'min:10', 'max:150'],
+            'barcode_settings.barcode_height' => ['nullable', 'numeric', 'min:4', 'max:50'],
+            'barcode_settings.store_suffix' => ['nullable', 'string', 'max:20'],
+            'barcode_settings.show_guides' => ['nullable', 'boolean'],
         ]);
 
         if ($request->boolean('regenerate_qr_token')) {
@@ -153,6 +163,13 @@ class BusinessSettingController extends Controller
             'qrCodeBase64' => $qrCodeBase64,
             'qrSvg' => null,
         ]);
+    }
+
+    public function printTestBarcode(BarcodeLabelPdfService $barcodeLabelPdfService)
+    {
+        $samples = $barcodeLabelPdfService->getSampleLabels();
+
+        return $barcodeLabelPdfService->stream($samples, 'sample-barcode-label.pdf');
     }
 }
 

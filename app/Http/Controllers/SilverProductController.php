@@ -420,7 +420,9 @@ class SilverProductController extends Controller
             ];
         }
 
-        return $barcodeLabelPdfService->stream($labels, 'silver-product-barcodes.pdf');
+        $options = $request->only(['paper_width', 'paper_height', 'barcode_width', 'barcode_height', 'store_suffix', 'show_guides']);
+
+        return $barcodeLabelPdfService->stream($labels, 'silver-product-barcodes.pdf', $options);
     }
 
     protected function validatePayload(Request $request): array

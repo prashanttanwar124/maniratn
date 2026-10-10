@@ -4,6 +4,7 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
+import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
@@ -38,6 +39,15 @@ const form = useForm({
     qr_onboarding_token: props.businessSetting?.qr_onboarding_token || '',
     qr_onboarding_pin: props.businessSetting?.qr_onboarding_pin || '',
     regenerate_qr_token: false,
+    barcode_settings: {
+        preset: props.businessSetting?.barcode_settings?.preset || 'dumbbell_100_15',
+        paper_width: Number(props.businessSetting?.barcode_settings?.paper_width ?? 100),
+        paper_height: Number(props.businessSetting?.barcode_settings?.paper_height ?? 15),
+        barcode_width: Number(props.businessSetting?.barcode_settings?.barcode_width ?? 49),
+        barcode_height: Number(props.businessSetting?.barcode_settings?.barcode_height ?? 8.6),
+        store_suffix: props.businessSetting?.barcode_settings?.store_suffix !== undefined ? props.businessSetting.barcode_settings.store_suffix : 'MRTN',
+        show_guides: props.businessSetting?.barcode_settings?.show_guides ?? true,
+    },
     ai_enabled: props.businessSetting?.ai_enabled ?? true,
     ai_hub_url: props.businessSetting?.ai_hub_url || 'http://127.0.0.1:8001',
     ai_api_key: props.businessSetting?.ai_api_key || '',
@@ -114,7 +124,71 @@ const openOnboardingStandee = () => {
     window.open(route('business-settings.onboarding-standee.print'), '_blank', 'noopener');
 };
 
+const barcodePresets = [
+    {
+        label: 'Standard Dumbbell Tag (100mm × 15mm) - Default',
+        value: 'dumbbell_100_15',
+        paper_width: 100,
+        paper_height: 15,
+        barcode_width: 49,
+        barcode_height: 8.6,
+    },
+    {
+        label: 'Butterfly Tag (84mm × 12mm)',
+        value: 'butterfly_84_12',
+        paper_width: 84,
+        paper_height: 12,
+        barcode_width: 41,
+        barcode_height: 6.8,
+    },
+    {
+        label: 'Mini Tag (75mm × 12mm)',
+        value: 'mini_75_12',
+        paper_width: 75,
+        paper_height: 12,
+        barcode_width: 36,
+        barcode_height: 6.8,
+    },
+    {
+        label: 'Compact Tag (50mm × 15mm)',
+        value: 'compact_50_15',
+        paper_width: 50,
+        paper_height: 15,
+        barcode_width: 25,
+        barcode_height: 8.6,
+    },
+    {
+        label: 'Custom Dimensions',
+        value: 'custom',
+    },
+];
 
+const onPresetChange = (presetValue) => {
+    form.barcode_settings.preset = presetValue;
+    const found = barcodePresets.find((p) => p.value === presetValue);
+    if (found && found.value !== 'custom') {
+        form.barcode_settings.paper_width = found.paper_width;
+        form.barcode_settings.paper_height = found.paper_height;
+        form.barcode_settings.barcode_width = found.barcode_width;
+        form.barcode_settings.barcode_height = found.barcode_height;
+    }
+};
+
+const resetBarcodeSettings = () => {
+    onPresetChange('dumbbell_100_15');
+    form.barcode_settings.store_suffix = 'MRTN';
+    form.barcode_settings.show_guides = true;
+    toast.add({
+        severity: 'info',
+        summary: 'Defaults Restored',
+        detail: 'Standard 100mm × 15mm values loaded.',
+        life: 2500,
+    });
+};
+
+const openBarcodeTestPrint = () => {
+    window.open(route('business-settings.barcode.test'), '_blank', 'noopener');
+};
 </script>
 
 <template>
@@ -246,6 +320,125 @@ const openOnboardingStandee = () => {
                                         <Button label="Copy Link" icon="pi pi-copy" severity="secondary" size="small" type="button" @click="copyJoinUrl" />
                                         <Button label="Print VIP Standee" icon="pi pi-print" severity="warning" size="small" type="button" @click="openOnboardingStandee" />
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Barcode & Jewellery Tag Printing Configuration -->
+                        <div class="md:col-span-2 rounded-xl border border-sky-500/30 bg-sky-50/20 p-5 shadow-xs">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-100 text-sky-700">
+                                        <i class="pi pi-qrcode text-base font-bold"></i>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold text-surface-900">
+                                            Barcode & Jewellery Tag Printing
+                                        </label>
+                                        <p class="text-xs text-surface-500">Configure sticker tag roll dimensions and barcode layout for thermal printers (TSC, Zebra, Citizen, etc.).</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <Button label="Reset Defaults" icon="pi pi-refresh" severity="secondary" size="small" type="button" @click="resetBarcodeSettings" />
+                                    <Button label="Test Print Sample" icon="pi pi-print" severity="info" size="small" type="button" @click="openBarcodeTestPrint" />
+                                </div>
+                            </div>
+
+                            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 pt-3 border-t border-sky-500/20">
+                                <div class="sm:col-span-2 lg:col-span-4">
+                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Quick Label Preset</label>
+                                    <Select
+                                        v-model="form.barcode_settings.preset"
+                                        :options="barcodePresets"
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        placeholder="Select Preset"
+                                        class="w-full text-xs"
+                                        @update:modelValue="onPresetChange"
+                                    />
+                                    <small class="text-[10px] text-surface-500">Select standard jewellery tag size or customize individual dimensions below.</small>
+                                </div>
+
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Label Width (mm)</label>
+                                    <InputNumber
+                                        v-model="form.barcode_settings.paper_width"
+                                        :min="20"
+                                        :max="200"
+                                        :minFractionDigits="1"
+                                        :maxFractionDigits="2"
+                                        class="w-full text-xs"
+                                        suffix=" mm"
+                                        @update:modelValue="form.barcode_settings.preset = 'custom'"
+                                    />
+                                    <small class="text-[10px] text-surface-500">Total width of sticker paper.</small>
+                                </div>
+
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Label Height (mm)</label>
+                                    <InputNumber
+                                        v-model="form.barcode_settings.paper_height"
+                                        :min="8"
+                                        :max="100"
+                                        :minFractionDigits="1"
+                                        :maxFractionDigits="2"
+                                        class="w-full text-xs"
+                                        suffix=" mm"
+                                        @update:modelValue="form.barcode_settings.preset = 'custom'"
+                                    />
+                                    <small class="text-[10px] text-surface-500">Height of sticker tag.</small>
+                                </div>
+
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Barcode Width (mm)</label>
+                                    <InputNumber
+                                        v-model="form.barcode_settings.barcode_width"
+                                        :min="10"
+                                        :max="150"
+                                        :minFractionDigits="1"
+                                        :maxFractionDigits="2"
+                                        class="w-full text-xs"
+                                        suffix=" mm"
+                                        @update:modelValue="form.barcode_settings.preset = 'custom'"
+                                    />
+                                    <small class="text-[10px] text-surface-500">Width of 1D barcode lines.</small>
+                                </div>
+
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Barcode Height (mm)</label>
+                                    <InputNumber
+                                        v-model="form.barcode_settings.barcode_height"
+                                        :min="4"
+                                        :max="50"
+                                        :minFractionDigits="1"
+                                        :maxFractionDigits="2"
+                                        class="w-full text-xs"
+                                        suffix=" mm"
+                                        @update:modelValue="form.barcode_settings.preset = 'custom'"
+                                    />
+                                    <small class="text-[10px] text-surface-500">Vertical height of barcode.</small>
+                                </div>
+
+                                <div class="sm:col-span-2">
+                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Store Code Suffix</label>
+                                    <InputText
+                                        v-model="form.barcode_settings.store_suffix"
+                                        placeholder="e.g. MRTN"
+                                        class="w-full font-mono text-xs uppercase"
+                                    />
+                                    <small class="text-[10px] text-surface-500">Short showroom tag printed next to product barcode (e.g. MJ-00001 MRTN).</small>
+                                </div>
+
+                                <div class="sm:col-span-2 flex items-center gap-2 pt-5">
+                                    <input
+                                        type="checkbox"
+                                        id="barcode_guides_toggle"
+                                        v-model="form.barcode_settings.show_guides"
+                                        class="h-4 w-4 rounded text-sky-600 focus:ring-sky-500"
+                                    />
+                                    <label for="barcode_guides_toggle" class="text-xs font-medium text-surface-700">
+                                        Show Dumbbell Fold & Split Guide Lines (Helpful for jewellery tag folding)
+                                    </label>
                                 </div>
                             </div>
                         </div>

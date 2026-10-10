@@ -24,6 +24,7 @@ class BusinessSetting extends Model
         'qr_onboarding_enabled',
         'qr_onboarding_token',
         'qr_onboarding_pin',
+        'barcode_settings',
     ];
 
     protected function casts(): array
@@ -32,7 +33,15 @@ class BusinessSetting extends Model
             'ai_enabled' => 'boolean',
             'ai_voice_enabled' => 'boolean',
             'qr_onboarding_enabled' => 'boolean',
+            'barcode_settings' => 'array',
         ];
+    }
+
+    public function getBarcodeSettingsOrDefault(): array
+    {
+        $saved = is_array($this->barcode_settings) ? $this->barcode_settings : [];
+
+        return array_merge(\App\Services\BarcodeLabelPdfService::DEFAULT_SETTINGS, $saved);
     }
 
     public static function generateQrOnboardingToken(): string

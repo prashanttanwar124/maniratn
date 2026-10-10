@@ -2,16 +2,54 @@
 
 namespace App\Services;
 
+use App\Models\BusinessSetting;
 use TCPDF;
 use TCPDF_FONTS;
 
 class BarcodeLabelPdfService
 {
+    public const DEFAULT_SETTINGS = [
+        'preset' => 'dumbbell_100_15',
+        'paper_width' => 100.0,
+        'paper_height' => 15.0,
+        'barcode_width' => 49.0,
+        'barcode_height' => 8.6,
+        'store_suffix' => 'MRTN',
+        'show_guides' => true,
+    ];
+
     protected static ?array $fontFamilies = null;
 
-    public function stream(array $labels, string $filename)
+    public function resolveConfig(array $overrides = []): array
     {
-        $pdf = new TCPDF('L', 'mm', [15, 100], true, 'UTF-8', false);
+        $setting = BusinessSetting::first();
+        $dbSettings = is_array($setting?->barcode_settings) ? $setting->barcode_settings : [];
+
+        $config = array_merge(self::DEFAULT_SETTINGS, array_filter($dbSettings, fn ($v) => $v !== null && $v !== ''));
+
+        foreach ($overrides as $k => $v) {
+            if ($v !== null && $v !== '') {
+                $config[$k] = is_numeric($v) ? (float) $v : $v;
+            }
+        }
+
+        $config['paper_width'] = max(20.0, (float) ($config['paper_width'] ?? 100.0));
+        $config['paper_height'] = max(8.0, (float) ($config['paper_height'] ?? 15.0));
+        $config['barcode_width'] = max(10.0, (float) ($config['barcode_width'] ?? 49.0));
+        $config['barcode_height'] = max(4.0, (float) ($config['barcode_height'] ?? 8.6));
+        $config['store_suffix'] = trim((string) ($config['store_suffix'] ?? 'MRTN'));
+        $config['show_guides'] = filter_var($config['show_guides'] ?? true, FILTER_VALIDATE_BOOLEAN);
+
+        return $config;
+    }
+
+    public function stream(array $labels, string $filename, array $overrides = [])
+    {
+        $config = $this->resolveConfig($overrides);
+        $paperWidth = (float) $config['paper_width'];
+        $paperHeight = (float) $config['paper_height'];
+
+        $pdf = new TCPDF('L', 'mm', [$paperHeight, $paperWidth], true, 'UTF-8', false);
         $fonts = $this->registerFonts();
 
         $pdf->SetCreator(config('app.name'));
@@ -25,32 +63,74 @@ class BarcodeLabelPdfService
         $pdf->SetCellPadding(0);
         $pdf->setCellMargins(0, 0, 0, 0);
 
+        $isDefaultScale = abs($paperWidth - 100.0) < 0.1 && abs($paperHeight - 15.0) < 0.1;
+        $scaleX = $isDefaultScale ? 1.0 : ($paperWidth / 100.0);
+        $scaleY = $isDefaultScale ? 1.0 : ($paperHeight / 15.0);
+        $minScale = min($scaleX, $scaleY);
+
+        $showGuides = (bool) $config['show_guides'];
+        $guide1X = $isDefaultScale ? 35.0 : round(35.0 * $scaleX, 2);
+        $guide2X = $isDefaultScale ? 74.0 : round(74.0 * $scaleX, 2);
+        $guideY1 = round(0.8 * $scaleY, 2);
+        $guideY2 = round($paperHeight - (0.8 * $scaleY), 2);
+
+        $leftColX = $isDefaultScale ? 2.0 : round(2.0 * $scaleX, 2);
+        $leftColWidth = $isDefaultScale ? 34.0 : max(15.0, round(34.0 * $scaleX, 2));
+
+        $fontSizeTitle = $isDefaultScale ? 6.8 : max(4.8, round(6.8 * $minScale, 1));
+        $fontSizeBody = $isDefaultScale ? 6.4 : max(4.4, round(6.4 * $minScale, 1));
+        $fontSizeBarcodeText = $isDefaultScale ? 6.2 : max(4.2, round(6.2 * $minScale, 1));
+
+        $line1Y = $isDefaultScale ? 2.0 : round(2.0 * $scaleY, 2);
+        $line1H = $isDefaultScale ? 2.6 : round(2.6 * $scaleY, 2);
+        $line2Y = $isDefaultScale ? 5.3 : round(5.3 * $scaleY, 2);
+        $line2H = $isDefaultScale ? 2.8 : round(2.8 * $scaleY, 2);
+        $line3Y = $isDefaultScale ? 8.4 : round(8.4 * $scaleY, 2);
+        $line3H = $isDefaultScale ? 2.8 : round(2.8 * $scaleY, 2);
+
+        $barcodeX = $isDefaultScale ? 40.2 : (isset($overrides['barcode_x']) ? (float) $overrides['barcode_x'] : round(40.2 * $scaleX, 2));
+        $barcodeY = $isDefaultScale ? 1.9 : (isset($overrides['barcode_y']) ? (float) $overrides['barcode_y'] : round(1.9 * $scaleY, 2));
+        $barcodeW = (float) $config['barcode_width'];
+        $barcodeH = (float) $config['barcode_height'];
+
+        // Safety bounds clamp
+        if ($barcodeX + $barcodeW > $paperWidth - 0.5) {
+            $barcodeW = max(10.0, ($paperWidth - 0.5) - $barcodeX);
+        }
+        if ($barcodeY + $barcodeH > $paperHeight - 1.5) {
+            $barcodeH = max(4.0, ($paperHeight - 2.5) - $barcodeY);
+        }
+
+        $textY = $isDefaultScale ? 10.6 : round(($barcodeY + $barcodeH + 0.3), 2);
+        $storeSuffix = (string) $config['store_suffix'];
+
         foreach ($labels as $label) {
             $pdf->AddPage();
-            $pdf->SetDrawColor(185, 185, 185);
-            $pdf->SetLineWidth(0.08);
 
-            // Test guides: middle split and tail start.
-            $pdf->Line(35, 0.8, 35, 14.2);
-            $pdf->Line(74, 0.8, 74, 14.2);
+            if ($showGuides) {
+                $pdf->SetDrawColor(185, 185, 185);
+                $pdf->SetLineWidth(0.08);
+                $pdf->Line($guide1X, $guideY1, $guide1X, $guideY2);
+                $pdf->Line($guide2X, $guideY1, $guide2X, $guideY2);
+            }
 
-            $pdf->SetFont($fonts['bold'], '', 6.8);
+            $pdf->SetFont($fonts['bold'], '', $fontSizeTitle);
             $pdf->SetTextColor(20, 20, 20);
 
             // Left info block
-            $pdf->SetXY(2.0, 2.0);
+            $pdf->SetXY($leftColX, $line1Y);
             $categoryLine = trim($this->fitText($label['category'] ?? '', 12) . ' ' . $this->fitText($label['purity'] ?? '', 8));
-            $pdf->Cell(34.0, 2.6, $categoryLine, 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $pdf->Cell($leftColWidth, $line1H, $categoryLine, 0, 1, 'C', false, '', 0, false, 'T', 'M');
 
-            $pdf->SetFont($fonts['bold'], '', 6.4);
-            $pdf->SetXY(2.2, 5.3);
-            $pdf->Cell(34, 2.8, 'GW ' . number_format((float) $label['gross_weight'], 3) . 'G', 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $pdf->SetFont($fonts['bold'], '', $fontSizeBody);
+            $pdf->SetXY($leftColX + ($isDefaultScale ? 0.2 : 0), $line2Y);
+            $pdf->Cell($leftColWidth, $line2H, 'GW ' . number_format((float) $label['gross_weight'], 3) . 'G', 0, 1, 'C', false, '', 0, false, 'T', 'M');
 
-            $pdf->SetFont($fonts['bold'], '', 6.4);
-            $pdf->SetXY(2.2, 8.4);
-            $pdf->Cell(34, 2.8, 'NW ' . number_format((float) $label['net_weight'], 3) . 'G', 0, 1, 'C', false, '', 0, false, 'T', 'M');
+            $pdf->SetFont($fonts['bold'], '', $fontSizeBody);
+            $pdf->SetXY($leftColX + ($isDefaultScale ? 0.2 : 0), $line3Y);
+            $pdf->Cell($leftColWidth, $line3H, 'NW ' . number_format((float) $label['net_weight'], 3) . 'G', 0, 1, 'C', false, '', 0, false, 'T', 'M');
 
-            // Vector barcode in center block
+            // Vector barcode
             $style = [
                 'position' => '',
                 'align' => 'C',
@@ -71,24 +151,22 @@ class BarcodeLabelPdfService
             $pdf->write1DBarcode(
                 $label['code'],
                 'C128',
-                40.2,
-                1.9,
-                49.0,
-                8.6,
+                $barcodeX,
+                $barcodeY,
+                $barcodeW,
+                $barcodeH,
                 0.28,
                 $style,
                 'N'
             );
 
-            $pdf->SetFont($fonts['bold'], '', 6.2);
-            $barcodeText = $this->fitText($label['code'], 18) . ' MRTN';
-            $barcodeBlockX = 40.2;
-            $barcodeBlockWidth = 49.0;
-            $barcodeCenterX = $barcodeBlockX + ($barcodeBlockWidth / 2);
+            $pdf->SetFont($fonts['bold'], '', $fontSizeBarcodeText);
+            $barcodeText = $this->fitText($label['code'], 18) . ($storeSuffix !== '' ? ' ' . $storeSuffix : '');
+            $barcodeCenterX = $barcodeX + ($barcodeW / 2);
             $textWidth = $pdf->GetStringWidth($barcodeText);
-            $textX = ($barcodeCenterX - ($textWidth / 2)) - 9.6;
+            $textX = ($barcodeCenterX - ($textWidth / 2)) - ($isDefaultScale ? 9.6 : round(9.6 * $scaleX, 2));
 
-            $pdf->SetXY($textX, 10.6);
+            $pdf->SetXY($textX, $textY);
             $pdf->Cell($textWidth, 2.0, $barcodeText, 0, 1, 'L', false, '', 0, false, 'T', 'M');
         }
 
@@ -96,6 +174,26 @@ class BarcodeLabelPdfService
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '"',
         ]);
+    }
+
+    public function getSampleLabels(): array
+    {
+        return [
+            [
+                'category' => 'GOLD',
+                'purity' => '22K',
+                'gross_weight' => 12.450,
+                'net_weight' => 11.200,
+                'code' => 'MJ-00001',
+            ],
+            [
+                'category' => 'SILVER',
+                'purity' => '92.5',
+                'gross_weight' => 45.800,
+                'net_weight' => 45.800,
+                'code' => 'SJ-00002',
+            ],
+        ];
     }
 
     protected function fitText(string $value, int $maxLength): string

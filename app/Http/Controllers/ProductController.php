@@ -471,6 +471,8 @@ class ProductController extends Controller
             ];
         }
 
-        return $barcodeLabelPdfService->stream($labels, 'product-barcodes.pdf');
+        $options = $request->only(['paper_width', 'paper_height', 'barcode_width', 'barcode_height', 'store_suffix', 'show_guides']);
+
+        return $barcodeLabelPdfService->stream($labels, 'product-barcodes.pdf', $options);
     }
 }
