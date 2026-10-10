@@ -481,63 +481,6 @@ const currentTabTitle = computed(() => {
                             </div>
                         </div>
 
-                        <!-- Live Tag Visual Preview Card -->
-                        <div class="rounded-xl border border-surface-200 bg-surface-50/70 p-5 mt-6">
-                            <div class="flex items-center justify-between mb-3">
-                                <span class="text-xs font-bold uppercase tracking-wider text-surface-600 flex items-center gap-1.5">
-                                    <i class="pi pi-eye text-surface-400"></i>
-                                    Live Tag Layout Preview
-                                </span>
-                                <span class="text-[11px] font-mono font-semibold text-surface-600 bg-white px-2.5 py-1 rounded-md border border-surface-200 shadow-2xs">
-                                    {{ form.barcode_settings.paper_width }}mm × {{ form.barcode_settings.paper_height }}mm
-                                </span>
-                            </div>
-
-                            <div class="flex justify-center py-5 bg-surface-100/60 rounded-lg border border-surface-200/60 overflow-x-auto">
-                                <!-- Tag Mockup with Clean Proportions -->
-                                <div
-                                    class="relative rounded border border-surface-300 bg-white shadow-xs flex items-center px-4 py-2 select-none"
-                                    :style="{
-                                        width: 'min(100%, 460px)',
-                                        height: '84px',
-                                    }"
-                                >
-                                    <!-- Left Info Zone -->
-                                    <div class="w-2/5 border-r border-surface-200 pr-3 flex flex-col justify-center text-center">
-                                        <p class="text-xs font-black text-surface-900 tracking-tight leading-tight">GOLD 22K</p>
-                                        <p class="text-[10px] font-bold text-surface-700 font-mono mt-0.5 leading-tight">GW 12.450G</p>
-                                        <p class="text-[10px] font-bold text-surface-700 font-mono leading-tight">NW 11.200G</p>
-                                    </div>
-
-                                    <!-- Middle Gap / Guide -->
-                                    <div class="w-1/6 flex items-center justify-center">
-                                        <div v-if="form.barcode_settings.show_guides" class="h-full border-r border-dashed border-surface-300"></div>
-                                    </div>
-
-                                    <!-- Right Barcode Zone -->
-                                    <div class="w-1/2 pl-2 flex flex-col items-center justify-center">
-                                        <div class="flex items-center gap-[2px] h-6 w-4/5 justify-center py-0.5">
-                                            <div class="w-[2px] h-full bg-surface-900"></div>
-                                            <div class="w-[1px] h-full bg-surface-900"></div>
-                                            <div class="w-[3px] h-full bg-surface-900"></div>
-                                            <div class="w-[1px] h-full bg-surface-900"></div>
-                                            <div class="w-[2px] h-full bg-surface-900"></div>
-                                            <div class="w-[1px] h-full bg-surface-900"></div>
-                                            <div class="w-[3px] h-full bg-surface-900"></div>
-                                            <div class="w-[2px] h-full bg-surface-900"></div>
-                                            <div class="w-[1px] h-full bg-surface-900"></div>
-                                            <div class="w-[3px] h-full bg-surface-900"></div>
-                                            <div class="w-[2px] h-full bg-surface-900"></div>
-                                        </div>
-                                        <p class="mt-1 font-mono text-[10px] font-bold text-surface-800 text-center truncate">
-                                            MJ-00001 {{ form.barcode_settings.store_suffix || 'MRTN' }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Bottom Save Action -->
                         <div class="flex items-center justify-end gap-3 border-t border-surface-200 pt-6">
                             <Button label="Save Changes" icon="pi pi-check" :loading="form.processing" :disabled="form.processing" @click="saveBusinessProfile" />
                         </div>
