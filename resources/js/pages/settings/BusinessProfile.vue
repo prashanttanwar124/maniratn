@@ -7,10 +7,15 @@ import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
+import Tab from 'primevue/tab';
+import TabList from 'primevue/tablist';
+import TabPanel from 'primevue/tabpanel';
+import TabPanels from 'primevue/tabpanels';
+import Tabs from 'primevue/tabs';
 import Textarea from 'primevue/textarea';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     businessSetting: Object,
@@ -19,6 +24,18 @@ const props = defineProps({
 const toast = useToast();
 const showRegenerateModal = ref(false);
 
+// Active Tab with URL query support (e.g. /settings/business-profile?tab=barcode)
+const getInitialTab = () => {
+    if (typeof window !== 'undefined') {
+        const tab = new URLSearchParams(window.location.search).get('tab');
+        if (['general', 'barcode', 'reviews', 'vip_qr', 'ai'].includes(tab)) {
+            return tab;
+        }
+    }
+    return 'general';
+};
+const activeTab = ref(getInitialTab());
+
 const voiceOptions = [
     { label: 'Aoede (Warm Female)', value: 'Aoede' },
     { label: 'Kore (Calm Female)', value: 'Kore' },
@@ -26,6 +43,8 @@ const voiceOptions = [
     { label: 'Fenrir (Deep Male)', value: 'Fenrir' },
     { label: 'Charon (Authoritative Male)', value: 'Charon' },
 ];
+
+const savedBarcode = props.businessSetting?.barcode_settings || {};
 
 const form = useForm({
     store_name: props.businessSetting?.store_name || '',
@@ -40,13 +59,13 @@ const form = useForm({
     qr_onboarding_pin: props.businessSetting?.qr_onboarding_pin || '',
     regenerate_qr_token: false,
     barcode_settings: {
-        preset: props.businessSetting?.barcode_settings?.preset || 'dumbbell_100_15',
-        paper_width: Number(props.businessSetting?.barcode_settings?.paper_width ?? 100),
-        paper_height: Number(props.businessSetting?.barcode_settings?.paper_height ?? 15),
-        barcode_width: Number(props.businessSetting?.barcode_settings?.barcode_width ?? 49),
-        barcode_height: Number(props.businessSetting?.barcode_settings?.barcode_height ?? 8.6),
-        store_suffix: props.businessSetting?.barcode_settings?.store_suffix !== undefined ? props.businessSetting.barcode_settings.store_suffix : 'MRTN',
-        show_guides: props.businessSetting?.barcode_settings?.show_guides ?? true,
+        preset: savedBarcode.preset || 'dumbbell_100_15',
+        paper_width: Number(savedBarcode.paper_width ?? 100),
+        paper_height: Number(savedBarcode.paper_height ?? 15),
+        barcode_width: Number(savedBarcode.barcode_width ?? 49),
+        barcode_height: Number(savedBarcode.barcode_height ?? 8.6),
+        store_suffix: savedBarcode.store_suffix !== undefined ? savedBarcode.store_suffix : 'MRTN',
+        show_guides: savedBarcode.show_guides ?? true,
     },
     ai_enabled: props.businessSetting?.ai_enabled ?? true,
     ai_hub_url: props.businessSetting?.ai_hub_url || 'http://127.0.0.1:8001',
@@ -112,6 +131,12 @@ const saveBusinessProfile = () => {
         forceFormData: true,
         onSuccess: () => {
             form.regenerate_qr_token = false;
+            toast.add({
+                severity: 'success',
+                summary: 'Settings Saved',
+                detail: 'Business profile and settings updated successfully.',
+                life: 3000,
+            });
         },
     });
 };
@@ -189,359 +214,618 @@ const resetBarcodeSettings = () => {
 const openBarcodeTestPrint = () => {
     window.open(route('business-settings.barcode.test'), '_blank', 'noopener');
 };
+
+const currentTabTitle = computed(() => {
+    switch (activeTab.value) {
+        case 'barcode':
+            return 'Barcode & Jewellery Tag Printing';
+        case 'reviews':
+            return 'Google Review & Counter Standee';
+        case 'vip_qr':
+            return 'VIP Customer QR Self-Registration';
+        case 'ai':
+            return 'Karat AI Voice Assistant';
+        default:
+            return 'General Store Profile & Branding';
+    }
+});
 </script>
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
-        <Head title="Business profile" />
+        <Head title="Business Settings" />
 
         <SettingsLayout>
             <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <div class="erp-panel p-6">
-                    <div class="border-b border-surface-200 pb-4 mb-6">
-                        <h2 class="text-lg font-semibold text-surface-900">Business Profile</h2>
-                        <p class="mt-1 text-sm text-surface-500">Store logo and shop details used in invoice print and future customer-facing documents.</p>
-                    </div>
-
-                    <div class="mt-6 grid gap-5 md:grid-cols-2">
-                        <div class="md:col-span-2">
-                            <label class="mb-2 block text-sm font-medium text-surface-700">Store Name</label>
-                            <InputText v-model="form.store_name" class="w-full" placeholder="Enter store name" />
-                            <small v-if="form.errors.store_name" class="mt-1 block text-xs text-red-500">{{ form.errors.store_name }}</small>
-                        </div>
-
+                <!-- Main Settings Container with Tabs -->
+                <div class="erp-panel overflow-hidden">
+                    <!-- Top Action Header with Sticky Save Button -->
+                    <div class="p-6 border-b border-surface-200 bg-white sticky top-0 z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700">Phone Number</label>
-                            <InputText v-model="form.phone" class="w-full" placeholder="Enter phone number" />
-                            <small v-if="form.errors.phone" class="mt-1 block text-xs text-red-500">{{ form.errors.phone }}</small>
-                        </div>
-
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700">Email</label>
-                            <InputText v-model="form.email" type="email" class="w-full" placeholder="Enter business email" />
-                            <small v-if="form.errors.email" class="mt-1 block text-xs text-red-500">{{ form.errors.email }}</small>
-                        </div>
-
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700">Website</label>
-                            <InputText v-model="form.website" class="w-full" placeholder="https://maniratnjewellers.com" />
-                            <small v-if="form.errors.website" class="mt-1 block text-xs text-red-500">{{ form.errors.website }}</small>
-                        </div>
-
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-surface-700">GST Number</label>
-                            <InputText v-model="form.gst_number" class="w-full" placeholder="Enter GST number" />
-                            <small v-if="form.errors.gst_number" class="mt-1 block text-xs text-red-500">{{ form.errors.gst_number }}</small>
-                        </div>
-
-                        <div class="md:col-span-2 erp-subpanel p-4">
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="block text-sm font-semibold text-surface-900">
-                                    ⭐ Google Maps Review URL & Counter Display
-                                </label>
-                                <div class="flex items-center gap-3">
-                                    <a
-                                        v-if="form.google_review_url"
-                                        :href="form.google_review_url"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        class="text-xs font-medium text-amber-700 hover:text-amber-800 flex items-center gap-1"
-                                    >
-                                        <i class="pi pi-external-link text-[10px]"></i> Test Link
-                                    </a>
-                                    <Button
-                                        v-if="form.google_review_url"
-                                        label="Print Counter Standee"
-                                        icon="pi pi-print"
-                                        severity="secondary"
-                                        size="small"
-                                        type="button"
-                                        @click="openStandee"
-                                    />
-                                </div>
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-lg font-bold text-surface-900">{{ currentTabTitle }}</h2>
+                                <span v-if="form.isDirty" class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20">
+                                    Unsaved Changes
+                                </span>
                             </div>
-                            <InputText
-                                v-model="form.google_review_url"
-                                class="w-full bg-white"
-                                placeholder="e.g. https://g.page/r/your-shop/review or https://maps.app.goo.gl/..."
-                            />
-                            <p class="mt-2 text-xs text-surface-600">
-                                When entered, a <strong>scannable Google Review QR Code</strong> appears on printed invoices, in the Customer Digital Vault, and in WhatsApp bills. You can also print a beautiful <strong>tabletop counter standee</strong> for your showroom counter!
+                            <p class="mt-0.5 text-xs text-surface-500">
+                                Manage showroom profile, barcode sizing, QR standees, and AI assistant configurations.
                             </p>
-                            <small v-if="form.errors.google_review_url" class="mt-1 block text-xs text-red-500">{{ form.errors.google_review_url }}</small>
                         </div>
-
-                        <!-- VIP Customer QR Self-Registration & Standee -->
-                        <div class="md:col-span-2 rounded-xl border border-amber-500/30 bg-amber-50/20 p-5 shadow-xs">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="flex items-center gap-2">
-                                    <i class="pi pi-qrcode text-amber-600 font-bold text-base"></i>
-                                    <div>
-                                        <label class="block text-sm font-bold text-surface-900">
-                                            VIP Customer QR Self-Registration (Walk-in Standee)
-                                        </label>
-                                        <p class="text-xs text-surface-500">Allow showroom walk-in customers to scan QR and register themselves securely via website.</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <label class="text-xs text-surface-600 font-medium">Enable QR Onboarding</label>
-                                    <input type="checkbox" v-model="form.qr_onboarding_enabled" class="h-4 w-4 rounded text-amber-600 focus:ring-amber-500" />
-                                </div>
-                            </div>
-
-                            <div v-if="form.qr_onboarding_enabled" class="grid gap-4 sm:grid-cols-2 pt-3 border-t border-amber-500/20">
-                                <div>
-                                    <div class="flex items-center justify-between mb-1.5">
-                                        <label class="block text-xs font-semibold text-surface-700">Counter QR Secret Token</label>
-                                        <button type="button" class="text-[11px] text-amber-700 hover:text-amber-800 font-medium underline" @click="regenerateToken">
-                                            Regenerate
-                                        </button>
-                                    </div>
-                                    <InputText v-model="form.qr_onboarding_token" readonly class="w-full bg-surface-100 font-mono text-xs text-surface-700" />
-                                    <small class="text-[10px] text-surface-500">Embedded in standee QR code to authorize genuine submissions without exposing your ERP.</small>
-                                </div>
-
-                                <div>
-                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Optional Store Counter PIN</label>
-                                    <InputText v-model="form.qr_onboarding_pin" class="w-full bg-white font-mono text-xs" placeholder="e.g. 4123 (Leave empty for direct scan)" />
-                                    <small class="text-[10px] text-surface-500">Optional 4-digit code. If entered, customers will be prompted for this counter code.</small>
-                                </div>
-
-                                <div class="sm:col-span-2 rounded-lg border border-amber-200 bg-white p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-                                    <div class="min-w-0 flex-1">
-                                        <p class="text-xs font-semibold text-surface-900 flex items-center gap-1.5">
-                                            <i class="pi pi-link text-amber-600 text-xs"></i> Walk-in Customer Registration Link:
-                                        </p>
-                                        <p class="mt-1 text-xs font-mono text-surface-600 truncate">
-                                            {{ props.businessSetting?.qr_onboarding_url || 'https://maniratnjewellers.com/join?code=...' }}
-                                        </p>
-                                    </div>
-                                    <div class="flex items-center gap-2 shrink-0">
-                                        <Button label="Copy Link" icon="pi pi-copy" severity="secondary" size="small" type="button" @click="copyJoinUrl" />
-                                        <Button label="Print VIP Standee" icon="pi pi-print" severity="warning" size="small" type="button" @click="openOnboardingStandee" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Barcode & Jewellery Tag Printing Configuration -->
-                        <div class="md:col-span-2 rounded-xl border border-sky-500/30 bg-sky-50/20 p-5 shadow-xs">
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-100 text-sky-700">
-                                        <i class="pi pi-qrcode text-base font-bold"></i>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-bold text-surface-900">
-                                            Barcode & Jewellery Tag Printing
-                                        </label>
-                                        <p class="text-xs text-surface-500">Configure sticker tag roll dimensions and barcode layout for thermal printers (TSC, Zebra, Citizen, etc.).</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2 shrink-0">
-                                    <Button label="Reset Defaults" icon="pi pi-refresh" severity="secondary" size="small" type="button" @click="resetBarcodeSettings" />
-                                    <Button label="Test Print Sample" icon="pi pi-print" severity="info" size="small" type="button" @click="openBarcodeTestPrint" />
-                                </div>
-                            </div>
-
-                            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 pt-3 border-t border-sky-500/20">
-                                <div class="sm:col-span-2 lg:col-span-4">
-                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Quick Label Preset</label>
-                                    <Select
-                                        v-model="form.barcode_settings.preset"
-                                        :options="barcodePresets"
-                                        optionLabel="label"
-                                        optionValue="value"
-                                        placeholder="Select Preset"
-                                        class="w-full text-xs"
-                                        @update:modelValue="onPresetChange"
-                                    />
-                                    <small class="text-[10px] text-surface-500">Select standard jewellery tag size or customize individual dimensions below.</small>
-                                </div>
-
-                                <div>
-                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Label Width (mm)</label>
-                                    <InputNumber
-                                        v-model="form.barcode_settings.paper_width"
-                                        :min="20"
-                                        :max="200"
-                                        :minFractionDigits="1"
-                                        :maxFractionDigits="2"
-                                        class="w-full text-xs"
-                                        suffix=" mm"
-                                        @update:modelValue="form.barcode_settings.preset = 'custom'"
-                                    />
-                                    <small class="text-[10px] text-surface-500">Total width of sticker paper.</small>
-                                </div>
-
-                                <div>
-                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Label Height (mm)</label>
-                                    <InputNumber
-                                        v-model="form.barcode_settings.paper_height"
-                                        :min="8"
-                                        :max="100"
-                                        :minFractionDigits="1"
-                                        :maxFractionDigits="2"
-                                        class="w-full text-xs"
-                                        suffix=" mm"
-                                        @update:modelValue="form.barcode_settings.preset = 'custom'"
-                                    />
-                                    <small class="text-[10px] text-surface-500">Height of sticker tag.</small>
-                                </div>
-
-                                <div>
-                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Barcode Width (mm)</label>
-                                    <InputNumber
-                                        v-model="form.barcode_settings.barcode_width"
-                                        :min="10"
-                                        :max="150"
-                                        :minFractionDigits="1"
-                                        :maxFractionDigits="2"
-                                        class="w-full text-xs"
-                                        suffix=" mm"
-                                        @update:modelValue="form.barcode_settings.preset = 'custom'"
-                                    />
-                                    <small class="text-[10px] text-surface-500">Width of 1D barcode lines.</small>
-                                </div>
-
-                                <div>
-                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Barcode Height (mm)</label>
-                                    <InputNumber
-                                        v-model="form.barcode_settings.barcode_height"
-                                        :min="4"
-                                        :max="50"
-                                        :minFractionDigits="1"
-                                        :maxFractionDigits="2"
-                                        class="w-full text-xs"
-                                        suffix=" mm"
-                                        @update:modelValue="form.barcode_settings.preset = 'custom'"
-                                    />
-                                    <small class="text-[10px] text-surface-500">Vertical height of barcode.</small>
-                                </div>
-
-                                <div class="sm:col-span-2">
-                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Store Code Suffix</label>
-                                    <InputText
-                                        v-model="form.barcode_settings.store_suffix"
-                                        placeholder="e.g. MRTN"
-                                        class="w-full font-mono text-xs uppercase"
-                                    />
-                                    <small class="text-[10px] text-surface-500">Short showroom tag printed next to product barcode (e.g. MJ-00001 MRTN).</small>
-                                </div>
-
-                                <div class="sm:col-span-2 flex items-center gap-2 pt-5">
-                                    <input
-                                        type="checkbox"
-                                        id="barcode_guides_toggle"
-                                        v-model="form.barcode_settings.show_guides"
-                                        class="h-4 w-4 rounded text-sky-600 focus:ring-sky-500"
-                                    />
-                                    <label for="barcode_guides_toggle" class="text-xs font-medium text-surface-700">
-                                        Show Dumbbell Fold & Split Guide Lines (Helpful for jewellery tag folding)
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="md:col-span-2 rounded-lg border border-emerald-500/30 bg-emerald-50/20 p-4 shadow-xs">
-
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="flex items-center gap-2">
-                                    <i class="pi pi-sparkles text-emerald-600 font-bold"></i>
-                                    <label class="block text-sm font-bold text-surface-900">
-                                        Karat AI Voice Assistant Configuration
-                                    </label>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <label class="text-xs text-surface-600 font-medium">Enable AI</label>
-                                    <input type="checkbox" v-model="form.ai_enabled" class="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500" />
-                                </div>
-                            </div>
-
-                            <div v-if="form.ai_enabled" class="grid gap-4 sm:grid-cols-2 pt-2 border-t border-emerald-500/20">
-                                <div>
-                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Central AI Hub URL</label>
-                                    <InputText v-model="form.ai_hub_url" class="w-full bg-white" placeholder="http://127.0.0.1:8001" />
-                                    <small class="text-[10px] text-surface-500">URL of your central maniratn-ai server.</small>
-                                </div>
-
-                                <div>
-                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Shop AI Secret Key</label>
-                                    <InputText v-model="form.ai_api_key" class="w-full bg-white font-mono text-xs" placeholder="mn_live_..." />
-                                    <small class="text-[10px] text-surface-500">Unique secret token from your AI subscription.</small>
-                                </div>
-
-                                <div>
-                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">HD Voice Persona</label>
-                                    <Select
-                                        v-model="form.ai_voice_name"
-                                        :options="voiceOptions"
-                                        optionLabel="label"
-                                        optionValue="value"
-                                        placeholder="Select Voice Persona"
-                                        class="w-full text-xs"
-                                    />
-                                </div>
-
-                                <div class="flex items-center gap-2 pt-6">
-                                    <input type="checkbox" id="ai_voice_toggle" v-model="form.ai_voice_enabled" class="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500" />
-                                    <label for="ai_voice_toggle" class="text-xs font-medium text-surface-700">Enable Spoken Audio Response</label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <label class="mb-2 block text-sm font-medium text-surface-700">Address</label>
-                            <Textarea v-model="form.address" rows="4" class="w-full" placeholder="Enter full store address" />
-                            <small v-if="form.errors.address" class="mt-1 block text-xs text-red-500">{{ form.errors.address }}</small>
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <label class="mb-2 block text-sm font-medium text-surface-700">Logo</label>
-                            <input type="file" accept="image/*" class="block w-full text-sm text-surface-700 file:mr-4 file:rounded-lg file:border-0 file:bg-surface-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-surface-900" @change="onLogoChange" />
-                            <small v-if="form.errors.logo" class="mt-1 block text-xs text-red-500">{{ form.errors.logo }}</small>
-
-                            <div v-if="currentLogoUrl && !form.remove_logo" class="mt-4 rounded-lg border border-surface-200 bg-surface-50 p-4 shadow-xs">
-                                <p class="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-surface-500">Current logo</p>
-                                <img :src="currentLogoUrl" alt="Business logo" class="max-h-24 max-w-full rounded-md object-contain" />
-                                <Button label="Remove Logo" icon="pi pi-trash" severity="danger" text class="mt-3 !px-0" @click="removeLogo" />
-                            </div>
+                        <div class="flex items-center gap-2.5 shrink-0">
+                            <span v-if="form.recentlySuccessful" class="text-xs font-semibold text-emerald-600 flex items-center gap-1">
+                                <i class="pi pi-check-circle"></i> Saved
+                            </span>
+                            <Button
+                                label="Save Changes"
+                                icon="pi pi-check"
+                                severity="primary"
+                                size="small"
+                                :loading="form.processing"
+                                :disabled="form.processing"
+                                @click="saveBusinessProfile"
+                            />
                         </div>
                     </div>
 
-                    <div class="mt-6 flex items-center gap-3 border-t border-surface-200 pt-4">
-                        <Button label="Save Business Profile" :loading="form.processing" :disabled="form.processing" @click="saveBusinessProfile" />
-                        <span v-if="form.recentlySuccessful" class="text-sm text-green-700">Business profile updated.</span>
-                    </div>
+                    <!-- Modern Tabs Navigation -->
+                    <Tabs v-model:value="activeTab">
+                        <TabList class="border-b border-surface-200 bg-surface-50/70 px-4 pt-1 overflow-x-auto flex-nowrap">
+                            <Tab value="general" class="!px-4 !py-3">
+                                <div class="flex items-center gap-2 text-xs font-semibold whitespace-nowrap">
+                                    <i class="pi pi-building text-sm"></i>
+                                    <span>Store Profile</span>
+                                </div>
+                            </Tab>
+
+                            <Tab value="barcode" class="!px-4 !py-3">
+                                <div class="flex items-center gap-2 text-xs font-semibold whitespace-nowrap">
+                                    <i class="pi pi-qrcode text-sm"></i>
+                                    <span>Barcode & Tags</span>
+                                </div>
+                            </Tab>
+
+                            <Tab value="reviews" class="!px-4 !py-3">
+                                <div class="flex items-center gap-2 text-xs font-semibold whitespace-nowrap">
+                                    <i class="pi pi-star text-sm"></i>
+                                    <span>Google Reviews</span>
+                                </div>
+                            </Tab>
+
+                            <Tab value="vip_qr" class="!px-4 !py-3">
+                                <div class="flex items-center gap-2 text-xs font-semibold whitespace-nowrap">
+                                    <i class="pi pi-id-card text-sm"></i>
+                                    <span>VIP Walk-in QR</span>
+                                </div>
+                            </Tab>
+
+                            <Tab value="ai" class="!px-4 !py-3">
+                                <div class="flex items-center gap-2 text-xs font-semibold whitespace-nowrap">
+                                    <i class="pi pi-sparkles text-sm text-emerald-600"></i>
+                                    <span>AI Assistant</span>
+                                </div>
+                            </Tab>
+                        </TabList>
+
+                        <TabPanels class="p-6">
+                            <!-- TAB 1: STORE PROFILE & BRANDING -->
+                            <TabPanel value="general">
+                                <div class="space-y-6">
+                                    <div class="grid gap-5 md:grid-cols-2">
+                                        <div class="md:col-span-2">
+                                            <label class="mb-1.5 block text-xs font-semibold text-surface-700">Store Name</label>
+                                            <InputText v-model="form.store_name" class="w-full text-sm" placeholder="Enter store name" />
+                                            <small v-if="form.errors.store_name" class="mt-1 block text-xs text-red-500">{{ form.errors.store_name }}</small>
+                                        </div>
+
+                                        <div>
+                                            <label class="mb-1.5 block text-xs font-semibold text-surface-700">Phone Number</label>
+                                            <InputText v-model="form.phone" class="w-full text-sm" placeholder="Enter phone number" />
+                                            <small v-if="form.errors.phone" class="mt-1 block text-xs text-red-500">{{ form.errors.phone }}</small>
+                                        </div>
+
+                                        <div>
+                                            <label class="mb-1.5 block text-xs font-semibold text-surface-700">Email Address</label>
+                                            <InputText v-model="form.email" type="email" class="w-full text-sm" placeholder="Enter business email" />
+                                            <small v-if="form.errors.email" class="mt-1 block text-xs text-red-500">{{ form.errors.email }}</small>
+                                        </div>
+
+                                        <div>
+                                            <label class="mb-1.5 block text-xs font-semibold text-surface-700">Website URL</label>
+                                            <InputText v-model="form.website" class="w-full text-sm" placeholder="https://maniratnjewellers.com" />
+                                            <small v-if="form.errors.website" class="mt-1 block text-xs text-red-500">{{ form.errors.website }}</small>
+                                        </div>
+
+                                        <div>
+                                            <label class="mb-1.5 block text-xs font-semibold text-surface-700">GST Identification Number (GSTIN)</label>
+                                            <InputText v-model="form.gst_number" class="w-full font-mono text-sm uppercase" placeholder="e.g. 24ABCDE1234F1Z5" />
+                                            <small v-if="form.errors.gst_number" class="mt-1 block text-xs text-red-500">{{ form.errors.gst_number }}</small>
+                                        </div>
+
+                                        <div class="md:col-span-2">
+                                            <label class="mb-1.5 block text-xs font-semibold text-surface-700">Showroom Address</label>
+                                            <Textarea v-model="form.address" rows="3" class="w-full text-sm" placeholder="Enter full store address printed on bills" />
+                                            <small v-if="form.errors.address" class="mt-1 block text-xs text-red-500">{{ form.errors.address }}</small>
+                                        </div>
+
+                                        <div class="md:col-span-2 border-t border-surface-200 pt-5">
+                                            <label class="mb-1.5 block text-xs font-semibold text-surface-700">Store Logo</label>
+                                            <p class="mb-3 text-xs text-surface-500">Logo appears in top-left of printed tax invoices and estimate slips.</p>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                class="block w-full text-xs text-surface-700 file:mr-4 file:rounded-lg file:border-0 file:bg-surface-100 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-surface-900 hover:file:bg-surface-200 cursor-pointer"
+                                                @change="onLogoChange"
+                                            />
+                                            <small v-if="form.errors.logo" class="mt-1 block text-xs text-red-500">{{ form.errors.logo }}</small>
+
+                                            <div v-if="currentLogoUrl && !form.remove_logo" class="mt-4 flex items-center gap-4 rounded-xl border border-surface-200 bg-surface-50 p-4 shadow-2xs">
+                                                <img :src="currentLogoUrl" alt="Business logo" class="h-16 max-w-44 rounded-md object-contain border border-surface-200 bg-white p-1" />
+                                                <div>
+                                                    <p class="text-xs font-bold text-surface-800">Active Logo</p>
+                                                    <p class="text-[11px] text-surface-500">Used across all invoice headers.</p>
+                                                    <Button label="Remove Logo" icon="pi pi-trash" severity="danger" text size="small" class="mt-1 !p-0" @click="removeLogo" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-end gap-3 border-t border-surface-200 pt-5">
+                                        <Button label="Save Changes" icon="pi pi-check" :loading="form.processing" :disabled="form.processing" @click="saveBusinessProfile" />
+                                    </div>
+                                </div>
+                            </TabPanel>
+
+                            <!-- TAB 2: BARCODE & TAG PRINTING -->
+                            <TabPanel value="barcode">
+                                <div class="space-y-6">
+                                    <!-- Barcode Controls Header -->
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-sky-200 bg-sky-50/40">
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-100 text-sky-700">
+                                                <i class="pi pi-qrcode text-lg font-bold"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="text-sm font-bold text-surface-900">Thermal Jewellery Tag Sizing</h3>
+                                                <p class="text-xs text-surface-500">Adjust roll dimensions for TSC, Zebra, Citizen, or Argox thermal printers.</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <Button label="Reset Defaults" icon="pi pi-refresh" severity="secondary" size="small" type="button" @click="resetBarcodeSettings" />
+                                            <Button label="Test Print Sample" icon="pi pi-print" severity="info" size="small" type="button" @click="openBarcodeTestPrint" />
+                                        </div>
+                                    </div>
+
+                                    <!-- Preset Selector -->
+                                    <div>
+                                        <label class="mb-1.5 block text-xs font-semibold text-surface-700">Sticker Tag Preset</label>
+                                        <Select
+                                            v-model="form.barcode_settings.preset"
+                                            :options="barcodePresets"
+                                            optionLabel="label"
+                                            optionValue="value"
+                                            placeholder="Select Preset"
+                                            class="w-full text-xs"
+                                            @update:modelValue="onPresetChange"
+                                        />
+                                        <small class="text-[11px] text-surface-500">Select standard jewellery tag size or customize individual dimensions below.</small>
+                                    </div>
+
+                                    <!-- Dimensions Inputs Grid -->
+                                    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                        <div class="rounded-lg border border-surface-200 bg-surface-50/50 p-3.5">
+                                            <label class="mb-1 block text-xs font-semibold text-surface-700">Label Width (mm)</label>
+                                            <InputNumber
+                                                v-model="form.barcode_settings.paper_width"
+                                                :min="20"
+                                                :max="200"
+                                                :minFractionDigits="1"
+                                                :maxFractionDigits="2"
+                                                class="w-full text-xs"
+                                                suffix=" mm"
+                                                @update:modelValue="form.barcode_settings.preset = 'custom'"
+                                            />
+                                            <small class="text-[10px] text-surface-500">Full sticker width (Default: 100 mm)</small>
+                                        </div>
+
+                                        <div class="rounded-lg border border-surface-200 bg-surface-50/50 p-3.5">
+                                            <label class="mb-1 block text-xs font-semibold text-surface-700">Label Height (mm)</label>
+                                            <InputNumber
+                                                v-model="form.barcode_settings.paper_height"
+                                                :min="8"
+                                                :max="100"
+                                                :minFractionDigits="1"
+                                                :maxFractionDigits="2"
+                                                class="w-full text-xs"
+                                                suffix=" mm"
+                                                @update:modelValue="form.barcode_settings.preset = 'custom'"
+                                            />
+                                            <small class="text-[10px] text-surface-500">Tag height (Default: 15 mm)</small>
+                                        </div>
+
+                                        <div class="rounded-lg border border-surface-200 bg-surface-50/50 p-3.5">
+                                            <label class="mb-1 block text-xs font-semibold text-surface-700">Barcode Width (mm)</label>
+                                            <InputNumber
+                                                v-model="form.barcode_settings.barcode_width"
+                                                :min="10"
+                                                :max="150"
+                                                :minFractionDigits="1"
+                                                :maxFractionDigits="2"
+                                                class="w-full text-xs"
+                                                suffix=" mm"
+                                                @update:modelValue="form.barcode_settings.preset = 'custom'"
+                                            />
+                                            <small class="text-[10px] text-surface-500">1D Barcode width (Default: 49 mm)</small>
+                                        </div>
+
+                                        <div class="rounded-lg border border-surface-200 bg-surface-50/50 p-3.5">
+                                            <label class="mb-1 block text-xs font-semibold text-surface-700">Barcode Height (mm)</label>
+                                            <InputNumber
+                                                v-model="form.barcode_settings.barcode_height"
+                                                :min="4"
+                                                :max="50"
+                                                :minFractionDigits="1"
+                                                :maxFractionDigits="2"
+                                                class="w-full text-xs"
+                                                suffix=" mm"
+                                                @update:modelValue="form.barcode_settings.preset = 'custom'"
+                                            />
+                                            <small class="text-[10px] text-surface-500">Vertical height (Default: 8.6 mm)</small>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tag Extra Settings -->
+                                    <div class="grid gap-4 sm:grid-cols-2">
+                                        <div>
+                                            <label class="mb-1.5 block text-xs font-semibold text-surface-700">Store Code Suffix</label>
+                                            <InputText
+                                                v-model="form.barcode_settings.store_suffix"
+                                                placeholder="e.g. MRTN"
+                                                class="w-full font-mono text-xs uppercase"
+                                            />
+                                            <small class="text-[10px] text-surface-500">Showroom identifier printed under the barcode (e.g. MJ-00001 MRTN).</small>
+                                        </div>
+
+                                        <div class="flex items-center gap-2 pt-6">
+                                            <input
+                                                type="checkbox"
+                                                id="barcode_guides_toggle"
+                                                v-model="form.barcode_settings.show_guides"
+                                                class="h-4 w-4 rounded text-sky-600 focus:ring-sky-500"
+                                            />
+                                            <label for="barcode_guides_toggle" class="text-xs font-medium text-surface-700 cursor-pointer">
+                                                Show Fold & Split Guide Lines (Helpful for dumbbell tag alignment)
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Live Visual Tag Preview -->
+                                    <div class="rounded-xl border border-surface-200 bg-surface-50/70 p-4">
+                                        <div class="flex items-center justify-between mb-3">
+                                            <span class="text-xs font-bold uppercase tracking-wider text-surface-600">
+                                                Interactive Tag Preview
+                                            </span>
+                                            <span class="text-[11px] font-mono text-surface-500 bg-white px-2 py-0.5 rounded border border-surface-200">
+                                                {{ form.barcode_settings.paper_width }}mm × {{ form.barcode_settings.paper_height }}mm
+                                            </span>
+                                        </div>
+
+                                        <div class="relative w-full overflow-x-auto py-2">
+                                            <div
+                                                class="relative mx-auto rounded border-2 border-dashed border-surface-300 bg-white p-2 shadow-sm flex items-center justify-between select-none"
+                                                :style="{
+                                                    width: 'min(100%, 540px)',
+                                                    minHeight: '85px',
+                                                }"
+                                            >
+                                                <!-- Left Zone: Item Info -->
+                                                <div class="w-2/5 border-r border-surface-200 pr-3 flex flex-col justify-center text-center">
+                                                    <p class="text-xs font-bold text-surface-900 tracking-tight">GOLD 22K</p>
+                                                    <p class="text-[11px] font-semibold text-surface-800 font-mono mt-0.5">GW 12.450G</p>
+                                                    <p class="text-[11px] font-semibold text-surface-800 font-mono">NW 11.200G</p>
+                                                </div>
+
+                                                <!-- Right Zone: Simulated Vector Barcode -->
+                                                <div class="w-3/5 pl-3 flex flex-col items-center justify-center">
+                                                    <div class="flex items-center gap-[2px] h-7 w-3/4 justify-center bg-surface-100/50 py-1 px-2 rounded">
+                                                        <div class="w-[2px] h-full bg-surface-900"></div>
+                                                        <div class="w-[1px] h-full bg-surface-900"></div>
+                                                        <div class="w-[3px] h-full bg-surface-900"></div>
+                                                        <div class="w-[1px] h-full bg-surface-900"></div>
+                                                        <div class="w-[2px] h-full bg-surface-900"></div>
+                                                        <div class="w-[1px] h-full bg-surface-900"></div>
+                                                        <div class="w-[3px] h-full bg-surface-900"></div>
+                                                        <div class="w-[2px] h-full bg-surface-900"></div>
+                                                        <div class="w-[1px] h-full bg-surface-900"></div>
+                                                        <div class="w-[3px] h-full bg-surface-900"></div>
+                                                        <div class="w-[2px] h-full bg-surface-900"></div>
+                                                        <div class="w-[1px] h-full bg-surface-900"></div>
+                                                    </div>
+                                                    <p class="mt-1 font-mono text-[10px] font-bold text-surface-700">
+                                                        MJ-00001 {{ form.barcode_settings.store_suffix || 'MRTN' }}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-end gap-3 border-t border-surface-200 pt-5">
+                                        <Button label="Save Changes" icon="pi pi-check" :loading="form.processing" :disabled="form.processing" @click="saveBusinessProfile" />
+                                    </div>
+                                </div>
+                            </TabPanel>
+
+                            <!-- TAB 3: GOOGLE REVIEWS & STANDEE -->
+                            <TabPanel value="reviews">
+                                <div class="space-y-6">
+                                    <div class="rounded-xl border border-blue-200 bg-blue-50/30 p-5">
+                                        <div class="flex items-center gap-3 mb-4">
+                                            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+                                                <i class="pi pi-star-fill text-lg"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="text-sm font-bold text-surface-900">Google Review Integration</h3>
+                                                <p class="text-xs text-surface-500">Collect 5-star customer feedback straight from counter standees and invoice QR codes.</p>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label class="mb-1.5 block text-xs font-semibold text-surface-700">Google Business Review Short Link</label>
+                                            <InputText
+                                                v-model="form.google_review_url"
+                                                class="w-full text-xs font-mono"
+                                                placeholder="https://g.page/r/YOUR_SHORT_CODE/review"
+                                            />
+                                            <small class="text-[11px] text-surface-500 block mt-1">
+                                                Obtained from your Google Business Profile &gt; "Ask for reviews".
+                                            </small>
+                                        </div>
+
+                                        <div class="mt-5 rounded-lg border border-blue-200 bg-white p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                                            <div>
+                                                <p class="text-xs font-bold text-surface-800">Countertop Review Standee</p>
+                                                <p class="text-[11px] text-surface-500">Print an elegant A5 tabletop standee for your billing desk.</p>
+                                            </div>
+                                            <Button
+                                                label="Print Counter Standee"
+                                                icon="pi pi-print"
+                                                severity="secondary"
+                                                size="small"
+                                                type="button"
+                                                @click="openStandee"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-end gap-3 border-t border-surface-200 pt-5">
+                                        <Button label="Save Changes" icon="pi pi-check" :loading="form.processing" :disabled="form.processing" @click="saveBusinessProfile" />
+                                    </div>
+                                </div>
+                            </TabPanel>
+
+                            <!-- TAB 4: VIP WALK-IN QR SELF-REGISTRATION -->
+                            <TabPanel value="vip_qr">
+                                <div class="space-y-6">
+                                    <div class="rounded-xl border border-amber-200 bg-amber-50/30 p-5">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <div class="flex items-center gap-3">
+                                                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                                                    <i class="pi pi-qrcode text-lg"></i>
+                                                </div>
+                                                <div>
+                                                    <h3 class="text-sm font-bold text-surface-900">Walk-in VIP Self-Registration</h3>
+                                                    <p class="text-xs text-surface-500">Allow customers to scan counter QR and register their KYC / membership.</p>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <label class="text-xs text-surface-600 font-medium">Enable QR Onboarding</label>
+                                                <input type="checkbox" v-model="form.qr_onboarding_enabled" class="h-4 w-4 rounded text-amber-600 focus:ring-amber-500" />
+                                            </div>
+                                        </div>
+
+                                        <div v-if="form.qr_onboarding_enabled" class="space-y-4 pt-3 border-t border-amber-200">
+                                            <div class="grid gap-4 sm:grid-cols-2">
+                                                <div>
+                                                    <div class="flex items-center justify-between mb-1.5">
+                                                        <label class="block text-xs font-semibold text-surface-700">Secret Token</label>
+                                                        <button type="button" class="text-[11px] text-amber-700 hover:text-amber-800 font-medium underline" @click="regenerateToken">
+                                                            Regenerate
+                                                        </button>
+                                                    </div>
+                                                    <InputText v-model="form.qr_onboarding_token" readonly class="w-full bg-surface-100 font-mono text-xs text-surface-700" />
+                                                    <small class="text-[10px] text-surface-500">Authorizes genuine submissions without exposing your ERP internals.</small>
+                                                </div>
+
+                                                <div>
+                                                    <label class="mb-1.5 block text-xs font-semibold text-surface-700">Optional Store Counter PIN</label>
+                                                    <InputText v-model="form.qr_onboarding_pin" class="w-full bg-white font-mono text-xs" placeholder="e.g. 9892 (Leave empty for direct scan)" />
+                                                    <small class="text-[10px] text-surface-500">Optional 4-digit code prompted during scanning.</small>
+                                                </div>
+                                            </div>
+
+                                            <div class="rounded-lg border border-amber-200 bg-white p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-xs font-semibold text-surface-900 flex items-center gap-1.5">
+                                                        <i class="pi pi-link text-amber-600 text-xs"></i> Walk-in Registration URL:
+                                                    </p>
+                                                    <p class="mt-1 text-xs font-mono text-surface-600 truncate">
+                                                        {{ props.businessSetting?.qr_onboarding_url || 'https://maniratnjewellers.com/join?code=...' }}
+                                                    </p>
+                                                </div>
+                                                <div class="flex items-center gap-2 shrink-0">
+                                                    <Button label="Copy Link" icon="pi pi-copy" severity="secondary" size="small" type="button" @click="copyJoinUrl" />
+                                                    <Button label="Print VIP Standee" icon="pi pi-print" severity="warning" size="small" type="button" @click="openOnboardingStandee" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-end gap-3 border-t border-surface-200 pt-5">
+                                        <Button label="Save Changes" icon="pi pi-check" :loading="form.processing" :disabled="form.processing" @click="saveBusinessProfile" />
+                                    </div>
+                                </div>
+                            </TabPanel>
+
+                            <!-- TAB 5: AI VOICE ASSISTANT -->
+                            <TabPanel value="ai">
+                                <div class="space-y-6">
+                                    <div class="rounded-xl border border-emerald-200 bg-emerald-50/30 p-5">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <div class="flex items-center gap-3">
+                                                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                                                    <i class="pi pi-sparkles text-lg"></i>
+                                                </div>
+                                                <div>
+                                                    <h3 class="text-sm font-bold text-surface-900">Karat AI Voice Assistant</h3>
+                                                    <p class="text-xs text-surface-500">Configure central AI LLM endpoints and spoken voice persona.</p>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <label class="text-xs text-surface-600 font-medium">Enable AI</label>
+                                                <input type="checkbox" v-model="form.ai_enabled" class="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500" />
+                                            </div>
+                                        </div>
+
+                                        <div v-if="form.ai_enabled" class="grid gap-4 sm:grid-cols-2 pt-3 border-t border-emerald-200">
+                                            <div>
+                                                <label class="mb-1.5 block text-xs font-semibold text-surface-700">Central AI Hub URL</label>
+                                                <InputText v-model="form.ai_hub_url" class="w-full bg-white text-xs font-mono" placeholder="http://127.0.0.1:8001" />
+                                                <small class="text-[10px] text-surface-500">URL of your central maniratn-ai server.</small>
+                                            </div>
+
+                                            <div>
+                                                <label class="mb-1.5 block text-xs font-semibold text-surface-700">Shop AI Secret Key</label>
+                                                <InputText v-model="form.ai_api_key" class="w-full bg-white font-mono text-xs" placeholder="mn_live_..." />
+                                                <small class="text-[10px] text-surface-500">Unique secret token from your AI subscription.</small>
+                                            </div>
+
+                                            <div>
+                                                <label class="mb-1.5 block text-xs font-semibold text-surface-700">HD Voice Persona</label>
+                                                <Select
+                                                    v-model="form.ai_voice_name"
+                                                    :options="voiceOptions"
+                                                    optionLabel="label"
+                                                    optionValue="value"
+                                                    placeholder="Select Voice Persona"
+                                                    class="w-full text-xs"
+                                                />
+                                            </div>
+
+                                            <div class="flex items-center gap-2 pt-6">
+                                                <input type="checkbox" id="ai_voice_toggle" v-model="form.ai_voice_enabled" class="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500" />
+                                                <label for="ai_voice_toggle" class="text-xs font-medium text-surface-700 cursor-pointer">
+                                                    Enable Spoken Audio Response
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-end gap-3 border-t border-surface-200 pt-5">
+                                        <Button label="Save Changes" icon="pi pi-check" :loading="form.processing" :disabled="form.processing" @click="saveBusinessProfile" />
+                                    </div>
+                                </div>
+                            </TabPanel>
+                        </TabPanels>
+                    </Tabs>
                 </div>
 
-                <div class="space-y-6">
-                    <div class="erp-panel p-5">
+                <!-- Right Contextual Sidebar -->
+                <div class="space-y-5">
+                    <!-- Dynamic Tip Card based on active tab -->
+                    <div v-if="activeTab === 'barcode'" class="erp-panel p-5 bg-sky-50/30 border-sky-200">
+                        <div class="flex items-center gap-2 text-sky-800 font-bold text-sm mb-2">
+                            <i class="pi pi-info-circle"></i>
+                            <span>Barcode Printing Guide</span>
+                        </div>
+                        <ul class="space-y-2 text-xs text-surface-600 leading-relaxed">
+                            <li><strong>Standard 100×15mm</strong> is standard for Indian dumbbell/rat-tail jewellery stickers.</li>
+                            <li>Always click <strong>Test Print Sample</strong> before printing in bulk to check thermal alignment.</li>
+                            <li>Fold guide lines help karigars and staff wrap the tail around the ornament without covering the barcode.</li>
+                        </ul>
+                    </div>
+
+                    <div v-else-if="activeTab === 'vip_qr'" class="erp-panel p-5 bg-amber-50/30 border-amber-200">
+                        <div class="flex items-center gap-2 text-amber-800 font-bold text-sm mb-2">
+                            <i class="pi pi-shield"></i>
+                            <span>VIP QR Security</span>
+                        </div>
+                        <p class="text-xs text-surface-600 leading-relaxed">
+                            Regenerating the token invalidates previous counter standees. Use an optional counter PIN if you only want walk-ins assisted by showroom staff to submit.
+                        </p>
+                    </div>
+
+                    <div v-else-if="activeTab === 'ai'" class="erp-panel p-5 bg-emerald-50/30 border-emerald-200">
+                        <div class="flex items-center gap-2 text-emerald-800 font-bold text-sm mb-2">
+                            <i class="pi pi-sparkles"></i>
+                            <span>AI Copilot & Voice</span>
+                        </div>
+                        <p class="text-xs text-surface-600 leading-relaxed">
+                            Karat AI provides instant stock lookups, customer ledger summaries, and billing voice queries. Ensure your Central AI Hub is reachable.
+                        </p>
+                    </div>
+
+                    <div v-else class="erp-panel p-5">
                         <h3 class="text-sm font-semibold uppercase tracking-wider text-surface-600">Store Identity</h3>
                         <p class="mt-2 text-xs leading-5 text-surface-500">
                             The business name and details entered here will automatically populate headers across customer printouts, receipts, and invoices.
                         </p>
                     </div>
 
+                    <!-- General Persistent Tips -->
                     <div class="erp-panel p-5">
-                        <h3 class="text-sm font-semibold uppercase tracking-wider text-surface-600">Tax & Compliance</h3>
-                        <p class="mt-2 text-xs leading-5 text-surface-500">
-                            Valid GST format ensures accurate 3% GST calculation and legally compliant tax invoices for customers.
-                        </p>
-                    </div>
-
-                    <div class="erp-panel p-5">
-                        <h3 class="text-base font-semibold text-surface-900">Tips</h3>
-                        <ul class="mt-4 space-y-2 text-sm text-surface-600">
-                            <li>Use a clean square or horizontal logo for better invoice print clarity.</li>
-                            <li>Keep the phone number and address exactly as you want them to appear on invoices.</li>
-                            <li>Website can be added now even if it is not live yet.</li>
-                        </ul>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-surface-600 mb-3">Quick Navigation</h3>
+                        <div class="space-y-1.5">
+                            <button
+                                type="button"
+                                class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-between"
+                                :class="activeTab === 'general' ? 'bg-surface-100 text-surface-900 font-bold' : 'text-surface-600 hover:bg-surface-50'"
+                                @click="activeTab = 'general'"
+                            >
+                                <span class="flex items-center gap-2"><i class="pi pi-building text-xs"></i> Store Profile</span>
+                                <i class="pi pi-chevron-right text-[10px] text-surface-400"></i>
+                            </button>
+                            <button
+                                type="button"
+                                class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-between"
+                                :class="activeTab === 'barcode' ? 'bg-surface-100 text-surface-900 font-bold' : 'text-surface-600 hover:bg-surface-50'"
+                                @click="activeTab = 'barcode'"
+                            >
+                                <span class="flex items-center gap-2"><i class="pi pi-qrcode text-xs"></i> Barcode & Tags</span>
+                                <i class="pi pi-chevron-right text-[10px] text-surface-400"></i>
+                            </button>
+                            <button
+                                type="button"
+                                class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-between"
+                                :class="activeTab === 'reviews' ? 'bg-surface-100 text-surface-900 font-bold' : 'text-surface-600 hover:bg-surface-50'"
+                                @click="activeTab = 'reviews'"
+                            >
+                                <span class="flex items-center gap-2"><i class="pi pi-star text-xs"></i> Google Reviews</span>
+                                <i class="pi pi-chevron-right text-[10px] text-surface-400"></i>
+                            </button>
+                            <button
+                                type="button"
+                                class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-between"
+                                :class="activeTab === 'vip_qr' ? 'bg-surface-100 text-surface-900 font-bold' : 'text-surface-600 hover:bg-surface-50'"
+                                @click="activeTab = 'vip_qr'"
+                            >
+                                <span class="flex items-center gap-2"><i class="pi pi-id-card text-xs"></i> VIP Walk-in QR</span>
+                                <i class="pi pi-chevron-right text-[10px] text-surface-400"></i>
+                            </button>
+                            <button
+                                type="button"
+                                class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-between"
+                                :class="activeTab === 'ai' ? 'bg-surface-100 text-surface-900 font-bold' : 'text-surface-600 hover:bg-surface-50'"
+                                @click="activeTab = 'ai'"
+                            >
+                                <span class="flex items-center gap-2"><i class="pi pi-sparkles text-xs text-emerald-600"></i> AI Assistant</span>
+                                <i class="pi pi-chevron-right text-[10px] text-surface-400"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Sleek PrimeVue Confirmation Modal for Token Regeneration -->
+            <!-- Confirmation Modal for Token Regeneration -->
             <Dialog
                 v-model:visible="showRegenerateModal"
                 modal
@@ -572,4 +856,3 @@ const openBarcodeTestPrint = () => {
         </SettingsLayout>
     </AppLayout>
 </template>
-
