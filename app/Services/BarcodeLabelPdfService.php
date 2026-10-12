@@ -81,27 +81,27 @@ class BarcodeLabelPdfService
         $fontSizeBody = $isDefaultScale ? 6.4 : max(4.4, round(6.4 * $minScale, 1));
         $fontSizeBarcodeText = $isDefaultScale ? 6.2 : max(4.2, round(6.2 * $minScale, 1));
 
-        $line1Y = $isDefaultScale ? 2.0 : round(2.0 * $scaleY, 2);
+        $line1Y = $isDefaultScale ? 1.6 : round(1.6 * $scaleY, 2);
         $line1H = $isDefaultScale ? 2.6 : round(2.6 * $scaleY, 2);
-        $line2Y = $isDefaultScale ? 5.3 : round(5.3 * $scaleY, 2);
+        $line2Y = $isDefaultScale ? 4.8 : round(4.8 * $scaleY, 2);
         $line2H = $isDefaultScale ? 2.8 : round(2.8 * $scaleY, 2);
-        $line3Y = $isDefaultScale ? 8.4 : round(8.4 * $scaleY, 2);
+        $line3Y = $isDefaultScale ? 7.8 : round(7.8 * $scaleY, 2);
         $line3H = $isDefaultScale ? 2.8 : round(2.8 * $scaleY, 2);
 
         $barcodeX = $isDefaultScale ? 40.2 : (isset($overrides['barcode_x']) ? (float) $overrides['barcode_x'] : round(40.2 * $scaleX, 2));
-        $barcodeY = $isDefaultScale ? 1.9 : (isset($overrides['barcode_y']) ? (float) $overrides['barcode_y'] : round(1.9 * $scaleY, 2));
+        $barcodeY = isset($overrides['barcode_y']) ? (float) $overrides['barcode_y'] : ($isDefaultScale ? 1.5 : round(1.5 * $scaleY, 2));
         $barcodeW = (float) $config['barcode_width'];
         $barcodeH = (float) $config['barcode_height'];
 
-        // Safety bounds clamp
+        // Safety bounds clamp: ensure at least 3.0mm headroom for text under barcode
         if ($barcodeX + $barcodeW > $paperWidth - 0.5) {
             $barcodeW = max(10.0, ($paperWidth - 0.5) - $barcodeX);
         }
-        if ($barcodeY + $barcodeH > $paperHeight - 1.5) {
-            $barcodeH = max(4.0, ($paperHeight - 2.5) - $barcodeY);
+        if ($barcodeY + $barcodeH > $paperHeight - 3.0) {
+            $barcodeH = max(4.0, ($paperHeight - 3.0) - $barcodeY);
         }
 
-        $textY = $isDefaultScale ? 10.6 : round(($barcodeY + $barcodeH + 0.3), 2);
+        $textY = round(($barcodeY + $barcodeH + 0.3), 2);
         $storeSuffix = (string) $config['store_suffix'];
 
         foreach ($labels as $label) {
